@@ -1,22 +1,24 @@
 import { cloneElement, Component, createElement, Fragment, isValidElement, memo, useCallback, useMemo, useRef, type ComponentType, type CSSProperties, type ErrorInfo, type ReactElement, type ReactNode } from 'react';
-import { mapText, rangeOf, safeUrl, walk, type AnnotationOccurrence, type Block, type Highlight, type MarkdownNode } from '../core';
+import { mapText, rangeOf, safeUrl, walk, type AnnotationOccurrence, type Block, type Highlight, type MarkdownNode, type TextMapping } from '../core';
 import { intersects } from '../core/tree';
 import { useDocumentSelector, useRuntime, useStoreSelector } from './context';
-import { emptyList, type BlockDecorations, type ReaderRuntime } from './runtime';
-import type { ViewConfiguration } from './types';
+import { emptyDecorations, emptyList, type BlockDecorations, type ReaderRuntime } from './runtime';
+import type { TextToken, ViewConfiguration } from './types';
 import { bindCompactText, compactTextNodes } from './text-binding';
+import { literalValue, mapLiteral } from './literal';
 
 interface RenderContext {
   runtime: ReaderRuntime;
   block: Block;
   marks: Map<MarkdownNode, readonly AnnotationOccurrence[]>;
   highlights: readonly Highlight[];
+  occurrences: readonly AnnotationOccurrence[];
   tightList?: boolean;
   compact?: boolean;
   blockElement?: BlockElement;
 }
-interface BlockElement { id: string; pending: boolean; ref: (element: HTMLElement | null) => void }
-const blockAttributes = (block?: BlockElement) => block ? { 'data-limr-block': block.id, 'data-pending': block.pending || undefined } : {};
+interface BlockElement { id: string; range: Block['range']; pending: boolean; ref: (element: HTMLElement | null) => void }
+const blockAttributes = (block?: BlockElement) => block ? { 'data-limr-block': block.id, 'data-source-start': block.range.start, 'data-source-end': block.range.end, 'data-pending': block.pending || undefined } : {};
 
 export function AnnotationMarker({ occurrence }: { occurrence: AnnotationOccurrence }) {
   const runtime = useRuntime();
@@ -28,21 +30,31 @@ export function AnnotationMarker({ occurrence }: { occurrence: AnnotationOccurre
   const Custom = definition?.Marker;
   const icon = typeof Icon === 'function' || Icon && typeof Icon === 'object' && !isValidElement(Icon) && '$$typeof' in Icon
     ? createElement(Icon as ComponentType) : Icon;
-  return <sup className="limr-mark-wrap" data-limr-ignore="true"><button type="button"
+  return <span className="limr-mark-wrap" data-limr-ignore="true" data-limr-marker={occurrence.id} data-source-start={occurrence.range.start} data-source-end={occurrence.range.end}><button type="button"
     ref={element => runtime.registerAnchor(occurrence.id, element)}
     className="limr-mark" data-limr-anchor={occurrence.id} data-active={active || hovered || undefined}
     style={{ '--limr-mark-color': definition?.color } as CSSProperties}
     aria-label={definition?.label ?? annotation?.type ?? 'Annotation'} aria-expanded={active}
     onPointerEnter={event => { if (event.pointerType !== 'touch') runtime.hover(occurrence.id); }}
-    onPointerLeave={event => { if (event.pointerType !== 'touch') runtime.hover(null); }}
-    onFocus={() => runtime.hover(occurrence.id)} onBlur={() => runtime.hover(null)}
-    onClick={() => runtime.activate(active ? null : occurrence.id)}>
-    {Custom && annotation ? <Custom annotation={annotation} active={active} /> : icon ?? '•'}
+    onPointerLeave={event => { if (event.pointerType !== 'touch' && runtime.interaction.get().hovered === occurrence.id && runtime.interaction.get().hoverSource === 'marker') runtime.hover(null); }}
+    onFocus={event => { if (event.currentTarget.matches(':focus-visible')) runtime.hover(occurrence.id); }} onBlur={event => {
+      // Focus can move from a marker into its hovered sidebar card on mousedown.
+      // That blur must not erase the card's hover before its click toggles it.
+      if (event.relatedTarget instanceof Element && event.relatedTarget.closest('[data-occurrence]')?.getAttribute('data-occurrence') === occurrence.id) return;
+      if (runtime.interaction.get().hovered === occurrence.id && runtime.interaction.get().hoverSource === 'marker') runtime.hover(null);
+    }}
+    onClick={() => {
+      const hovering = runtime.interaction.get().hovered === occurrence.id;
+      runtime.activate(active ? null : occurrence.id);
+      // A click does not move the pointer. Preserve hover across both toggles.
+      if (hovering) runtime.hover(occurrence.id);
+    }}>
+    <span className="limr-mark-icon">{Custom && annotation ? <Custom annotation={annotation} active={active} /> : icon ?? '•'}</span>
     {occurrence.annotationIds.length > 1 && <span className="limr-mark-count">{occurrence.annotationIds.length}</span>}
-  </button></sup>;
+  </button></span>;
 }
 
-function Text({ node, context }: { node: MarkdownNode; context: RenderContext }) {
+function Text({ node, context, mapping: literalMapping, marks: literalMarks, style, className }: { node: MarkdownNode; context: RenderContext; mapping?: TextMapping; marks?: readonly AnnotationOccurrence[]; style?: CSSProperties; className?: string }) {
   const { runtime } = context;
   const value = node.value ?? '';
   const range = rangeOf(node);
@@ -51,20 +63,21 @@ function Text({ node, context }: { node: MarkdownNode; context: RenderContext })
     let mapping: ReturnType<typeof mapText> | undefined;
     const raw = source.slice(range.start, range.end);
     return () => {
+      if (literalMapping) return literalMapping;
       if (!mapping) {
-        const relative = mapText(raw, value, { start: 0, end: raw.length });
+        const relative = mapText(raw, value, { start: 0, end: raw.length }, { escapes: node.verbatimEscapes !== true });
         mapping = { starts: relative.starts.map(offset => offset + range.start), ends: relative.ends.map(offset => offset + range.start), exact: relative.exact };
       }
       return mapping;
     };
-  }, [node]);
-  const marks = context.marks.get(node) ?? emptyList;
+  }, [node, literalMapping]);
+  const marks = literalMarks ?? context.marks.get(node) ?? emptyList;
   const highlights = context.highlights.filter(highlight => intersects(highlight.range, range));
   if (!marks.length && !highlights.length) {
     // Most text is undecorated. Build character maps only when an actual
     // selection needs decoded entity/escape positions, never during SSR.
-    const direct = source.slice(range.start, range.end) === value;
-    return <span data-limr-text="" data-source-start={range.start} data-source-end={range.end} ref={element => {
+    const direct = !literalMapping && source.slice(range.start, range.end) === value;
+    return <span style={style} className={className} data-limr-text="" data-source-start={range.start} data-source-end={range.end} ref={element => {
       if (element) runtime.bindings.set(element, {
         range, atomic: false,
         get exact() { return direct || mapped().exact; },
@@ -92,7 +105,7 @@ function Text({ node, context }: { node: MarkdownNode; context: RenderContext })
     const styles = highlights.filter(highlight => intersects(highlight.range, segmentRange));
     let text: ReactNode = value.slice(start, end);
     for (const highlight of styles) text = <mark key={highlight.id} data-limr-highlight={highlight.id} className={`limr-highlight limr-highlight-${highlight.style ?? 'background'}`} style={{ '--limr-highlight': highlight.color ?? '#f3ce7380' } as CSSProperties}>{text}</mark>;
-    return <span key={start} ref={element => {
+    return <span key={start} style={style} className={className} ref={element => {
       if (element) runtime.bindings.set(element, { range: segmentRange, atomic: false, exact: mapping.exact, resolve: (offset, edge) => {
         const at = Math.max(start, Math.min(end, start + offset));
         return edge === 'start' ? mapping.starts[at] ?? segmentRange.end : mapping.ends[at - 1] ?? segmentRange.start;
@@ -103,12 +116,28 @@ function Text({ node, context }: { node: MarkdownNode; context: RenderContext })
   })}</>;
 }
 
+function LiteralValue({ node, context, tokens }: { node: MarkdownNode; context: RenderContext; tokens?: readonly TextToken[] }) {
+  const source = context.runtime.document.getSnapshot().source;
+  const mapping = useMemo(() => mapLiteral(source, node), [node]);
+  const value = literalValue(node);
+  const marks = context.marks.get(node) ?? emptyList;
+  const segments = tokens?.length ? tokens : [{ content: value, offset: 0 }];
+  return <>{segments.map((token, index) => {
+    const start = token.offset, end = start + token.content.length;
+    const mapped = { starts: mapping.starts.slice(start, end), ends: mapping.ends.slice(start, end), exact: mapping.exact };
+    const range = { start: mapped.starts[0] ?? rangeOf(node).start, end: mapped.ends.at(-1) ?? rangeOf(node).end };
+    const leaf: MarkdownNode = { type: 'text', value: token.content, position: { start: { offset: range.start, line: 0, column: 0 }, end: { offset: range.end, line: 0, column: 0 } } };
+    return <Text key={index} className={token.style ? 'limr-code-token' : undefined} style={token.style} node={leaf} context={context} mapping={mapped} marks={marks.filter(mark => mark.range.end > range.start && mark.range.end <= range.end)} />;
+  })}</>;
+}
+
 function Atomic({ node, context, children, inline, blockElement }: { node: MarkdownNode; context: RenderContext; children: ReactNode; inline: boolean; blockElement?: BlockElement }) {
   const range = rangeOf(node);
   const selected = useStoreSelector(context.runtime.interaction, state => state.selection?.raw.ranges.some(selection => intersects(selection, range)) ?? false);
   const highlights = context.highlights.filter(highlight => intersects(highlight.range, range));
   const Tag = inline ? 'span' : 'div';
   return <Tag {...blockAttributes(blockElement)} className={`limr-atomic${highlights.length ? ' limr-atomic-highlight' : ''}`} data-selected={selected || undefined}
+    data-limr-atomic={inline ? 'inline' : 'block'} data-source-start={range.start} data-source-end={range.end}
     style={{ '--limr-highlight': highlights[0]?.color ?? '#f3ce7380' } as CSSProperties}
     ref={element => { if (element) context.runtime.bindings.set(element, { range, atomic: true }); blockElement?.ref(element); }}>
     {children}{context.marks.get(node)?.map(occurrence => <AnnotationMarker key={occurrence.id} occurrence={occurrence} />)}
@@ -165,7 +194,13 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0): Reac
   let element: ReactNode;
   if (Renderer) {
     const range = rangeOf(node);
-    element = <ExtensionBoundary key={key} fallback={runtime.document.getSnapshot().source.slice(range.start, range.end)}><Renderer node={node} children={children} pending={context.block.pending} source={runtime.document.getSnapshot().source.slice(range.start, range.end)} renderChildren={renderChildren} /></ExtensionBoundary>;
+    const renderAttribute = (name: string) => {
+      const attribute = node.attributeNodes?.[name];
+      if (!attribute) return String(node.attributes?.[name] ?? '');
+      const range = rangeOf(attribute);
+      return <Text node={attribute} context={context} marks={context.occurrences.filter(item => item.range.end > range.start && item.range.end <= range.end)} />;
+    };
+    element = <ExtensionBoundary key={key} fallback={runtime.document.getSnapshot().source.slice(range.start, range.end)}><Renderer node={node} children={children} pending={context.block.pending} source={runtime.document.getSnapshot().source.slice(range.start, range.end)} renderChildren={renderChildren} renderValue={tokens => <LiteralValue node={node} context={context} tokens={tokens} />} renderAttribute={renderAttribute} /></ExtensionBoundary>;
   } else {
     switch (node.type) {
       case 'text': return context.compact ? node.value ?? '' : <Text key={key} node={node} context={context} />;
@@ -174,10 +209,10 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0): Reac
       case 'strong': element = <strong>{children}</strong>; break;
       case 'emphasis': element = <em>{children}</em>; break;
       case 'delete': element = <del>{children}</del>; break;
-      case 'inlineCode': element = <code>{node.value}</code>; break;
-      case 'code': element = <pre><code>{node.value}</code></pre>; break;
+      case 'inlineCode': element = <code className="limr-inline-code"><LiteralValue node={node} context={context} /></code>; break;
+      case 'code': element = <pre><code><LiteralValue node={node} context={context} /></code></pre>; break;
       case 'math': case 'inlineMath': element = <code>{node.value}</code>; break;
-      case 'blockquote': element = <blockquote>{children}</blockquote>; break;
+      case 'blockquote': element = <blockquote className="limr-note"><div className="limr-card-label" data-limr-ignore="true">{runtime.locale.note}</div><div className="limr-block-content">{children}</div></blockquote>; break;
       case 'list': element = node.ordered ? <ol start={Number(node.start ?? 1)}>{children}</ol> : <ul>{children}</ul>; break;
       case 'listItem': element = <li className={typeof node.checked === 'boolean' ? 'limr-task-item' : undefined}>{typeof node.checked === 'boolean' && <input type="checkbox" checked={node.checked} disabled aria-label="Task" />}{children}</li>; break;
       case 'link': element = <a href={safeUrl(node.url)} title={node.title ? String(node.title) : undefined}>{children}</a>; break;
@@ -201,7 +236,7 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0): Reac
       default: element = children.length ? children : node.value ?? null;
     }
   }
-  const atomic = node.selection === 'atomic' || ['inlineCode', 'code', 'math', 'inlineMath', 'image', 'imageReference', 'html'].includes(node.type);
+  const atomic = node.selection === 'atomic' || ['math', 'inlineMath', 'image', 'imageReference', 'html'].includes(node.type);
   if (atomic) return <Atomic key={key} node={node} context={context} blockElement={blockElement} inline={node.inline || ['inlineCode', 'inlineMath', 'image', 'imageReference', 'html'].includes(node.type)}>{element}</Atomic>;
   if (blockElement) {
     const attributes = { ...blockAttributes(blockElement), ref: blockElement.ref };
@@ -214,11 +249,12 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0): Reac
   return isValidElement(element) ? cloneElement(element, { key }) : <Fragment key={key}>{element}</Fragment>;
 }
 
-export const BlockView = memo(function BlockView({ block, runtime, components, extensions, decorations }: { block: Block; runtime: ReaderRuntime; decorations: BlockDecorations } & Pick<ViewConfiguration, 'components' | 'extensions'>) {
+export const BlockView = memo(function BlockView({ block, runtime, components, extensions, decorations, footnoteId }: { block: Block; runtime: ReaderRuntime; decorations: BlockDecorations; footnoteId?: string } & Pick<ViewConfiguration, 'components' | 'extensions'>) {
   const element = useRef<HTMLElement | null>(null);
   const clearBindings = useRef<(() => void) | undefined>(undefined);
   const { occurrences, highlights } = decorations;
-  const texts = useMemo(() => compactTextNodes(block.node, runtime.components), [block, runtime, components, extensions]);
+  const root = useMemo(() => footnoteId ? { ...block.node, type: 'listItem' } : block.node, [block, footnoteId]);
+  const texts = useMemo(() => compactTextNodes(root, runtime.components), [root, runtime, components, extensions]);
   const compact = !!texts && !occurrences.length && !highlights.length;
   const observe = useCallback((next: HTMLElement | null) => {
     clearBindings.current?.(); clearBindings.current = undefined;
@@ -232,31 +268,38 @@ export const BlockView = memo(function BlockView({ block, runtime, components, e
     const map = new Map<MarkdownNode, AnnotationOccurrence[]>();
     if (!occurrences.length) return map;
     const leaves: MarkdownNode[] = [];
+    const attributes: MarkdownNode[] = [];
     function collect(node: MarkdownNode) {
+      if (node.attributeNodes) attributes.push(...Object.values(node.attributeNodes));
       if (node.selection === 'atomic' || ['text', 'inlineCode', 'code', 'math', 'inlineMath', 'image', 'imageReference', 'html'].includes(node.type)) leaves.push(node);
       else node.children?.forEach(collect);
     }
     collect(block.node);
     for (const occurrence of occurrences) {
+      if (attributes.some(attribute => { const range = rangeOf(attribute); return occurrence.range.end > range.start && occurrence.range.end <= range.end; })) continue;
       const target = [...leaves].reverse().find(node => rangeOf(node).start < occurrence.range.end) ?? leaves[0];
       if (target) map.set(target, [...map.get(target) ?? [], occurrence]);
     }
     return map;
   }, [block, occurrences]);
-  if (['definition', 'footnoteDefinition', 'annotationDefinition'].includes(block.node.type)) return null;
-  const context: RenderContext = { runtime, block, marks, highlights, compact, blockElement: { id: block.id, pending: block.pending, ref: observe } };
+  if (!footnoteId && ['definition', 'footnoteDefinition', 'annotationDefinition'].includes(block.node.type)) return null;
+  const context: RenderContext = { runtime, block, marks, highlights, occurrences, compact, blockElement: { id: block.id, range: block.range, pending: block.pending, ref: observe } };
+  if (footnoteId) return <li id={`${runtime.document.id}-fn-${encodeURIComponent(footnoteId)}`} {...blockAttributes(context.blockElement)} ref={observe}>{block.node.children?.map((child, index) => renderNode(child, { ...context, blockElement: undefined }, index))}</li>;
   return renderNode(block.node, context);
 });
 
 export function Footnotes() {
   const runtime = useRuntime();
   const doc = useDocumentSelector(snapshot => snapshot);
+  const components = useStoreSelector(runtime.configuration, config => config.components);
+  const extensions = useStoreSelector(runtime.configuration, config => config.extensions);
+  const decorations = useStoreSelector(runtime.decorations, state => state.byBlock);
+  const blocks = useMemo(() => new Map(doc.blocks.filter(block => block.node.type === 'footnoteDefinition').map(block => [String(block.node.identifier), block])), [doc.blocks]);
   if (!doc.footnoteOrder.length) return null;
   return <section className="limr-footnotes" aria-label={runtime.locale.footnotes}><hr /><ol>{doc.footnoteOrder.map(id => {
     const node = doc.footnotes.get(id);
     if (!node) return null;
-    const block: Block = { id: `${doc.id}-fn-${id}`, range: rangeOf(node), node, pending: false };
-    const context: RenderContext = { runtime, block, marks: new Map(), highlights: [] };
-    return <li key={id} id={`${doc.id}-fn-${encodeURIComponent(id)}`}>{node.children?.map((child, index) => renderNode(child, context, index))}</li>;
+    const block: Block = blocks.get(id) ?? { id: `${doc.id}-fn-${id}`, range: rangeOf(node), node, pending: false };
+    return <BlockView key={id} block={block} runtime={runtime} components={components} extensions={extensions} footnoteId={id} decorations={decorations.get(block.id) ?? emptyDecorations} />;
   })}</ol></section>;
 }

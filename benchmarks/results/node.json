@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-12T04:34:56.348Z",
+  "date": "2026-10-12T09:34:31.373Z",
   "node": "v20.19.5",
   "mode": "production",
   "platform": "linux 6.18.40.1-microsoft-standard-WSL2",
@@ -10,24 +10,24 @@
       "characters": 87381,
       "sections": 200,
       "core": {
-        "medianMs": 114.64,
-        "minMs": 110.57,
-        "maxMs": 142.9
+        "medianMs": 109.32,
+        "minMs": 102.73,
+        "maxMs": 125.04
       },
       "mdast": {
-        "medianMs": 112.79,
-        "minMs": 107.87,
-        "maxMs": 162.73
+        "medianMs": 101.78,
+        "minMs": 95.3,
+        "maxMs": 114.94
       },
       "limrSSR": {
-        "medianMs": 109.64,
-        "minMs": 107.26,
-        "maxMs": 113.05
+        "medianMs": 123.85,
+        "minMs": 123.37,
+        "maxMs": 132.6
       },
       "reactMarkdownSSR": {
-        "medianMs": 115.6,
-        "minMs": 113.95,
-        "maxMs": 116.66
+        "medianMs": 135.8,
+        "minMs": 133.71,
+        "maxMs": 162.13
       }
     },
     {
@@ -35,24 +35,24 @@
       "characters": 877782,
       "sections": 2000,
       "core": {
-        "medianMs": 2371.85,
-        "minMs": 2308.47,
-        "maxMs": 2689.28
+        "medianMs": 2702.76,
+        "minMs": 2546.75,
+        "maxMs": 6815.28
       },
       "mdast": {
-        "medianMs": 2413.3,
-        "minMs": 2309.97,
-        "maxMs": 2465.78
+        "medianMs": 2864.73,
+        "minMs": 2501.24,
+        "maxMs": 4779.01
       },
       "limrSSR": {
-        "medianMs": 2369.39,
-        "minMs": 2345.85,
-        "maxMs": 2555.66
+        "medianMs": 5508.29,
+        "minMs": 2642.18,
+        "maxMs": 9102.85
       },
       "reactMarkdownSSR": {
-        "medianMs": 2586.03,
-        "minMs": 2535.33,
-        "maxMs": 2626.17
+        "medianMs": 2720.7,
+        "minMs": 2698.5,
+        "maxMs": 5033.33
       }
     },
     {
@@ -61,14 +61,14 @@
       "chunkSize": 256,
       "updates": 137,
       "incremental": {
-        "medianMs": 159.99,
-        "minMs": 154.49,
-        "maxMs": 177.24
+        "medianMs": 164.04,
+        "minMs": 152.69,
+        "maxMs": 175.39
       },
       "fullParse": {
-        "medianMs": 2646.48,
-        "minMs": 2567.55,
-        "maxMs": 2654.57
+        "medianMs": 2673.74,
+        "minMs": 2626.34,
+        "maxMs": 2769.29
       }
     }
   ]

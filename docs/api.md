@@ -10,6 +10,8 @@
 | `streaming` | `false`，追加模式下允许复用稳定区块 |
 | `documentId` | 自动生成且与 SSR hydration 一致；显式传入时应在页面内唯一 |
 | `extensions` | `standard()`，完整扩展列表 |
+| `plugins` | 追加到默认模块或显式 extensions 的第三方扩展 |
+| `appearance` | `classic`；CSS 样式包作用域，包含 portal 浮层 |
 | `components` | 覆盖 AST 节点类型或特殊标签名对应的组件 |
 | `annotationTypes` | 追加或覆盖同 type 的角注显示定义 |
 | `annotations` / `highlights` | 外部控制的角注和高亮数组；不传时由命令维护内部状态 |
@@ -24,11 +26,11 @@
 
 数组、扩展和数据对象按不可变数据使用。发生变更时传新对象，静态配置保持引用稳定。更换整篇独立文档时可以给 Provider/Reader 换一个 React `key`，从而清除上篇文章的局部交互和任务。
 
-`Reader` 额外接受 `toc`、`sidebar`（均默认 true）、`sidebarBreakpoint`（默认 1120，按容器宽度判断）、`actions`、`followOutput`、`className`、`style`。`Markdown` 额外接受 `interactive`（默认 true，控制选区监听）、`followOutput` 和样式属性。
+`Reader` 额外接受 `toc`、`sidebar`、`fillHeight`（均默认 true）、`sidebarBreakpoint`（默认 1120，按容器宽度判断）、`actions`、`followOutput`、`className`、`style`。`fillHeight` 让短正文补足当前位置到滚动视口底部的可用高度，默认预留 24px；可通过 `--limr-reader-bottom-space` 为页脚留位，或用 `--limr-reader-min-height` 覆盖最小高度。内嵌小卡片可设 `fillHeight={false}`。计算使用滚动坐标中的固定起点，普通滚动不会改变最小高度。`Markdown` 额外接受 `interactive`（默认 true，控制选区监听）、`followOutput` 和样式属性。
 
 ## 布局和定位
 
-默认组合约定：目录、正文和侧栏在同一个滚动容器内，侧栏由正常文档流定位，卡片在侧栏内部绝对定位。保持侧栏和正文处于同一个未缩放的 CSS 坐标系，不在其中一列添加独立滚动或 transform。ResizeObserver、图片加载、字体加载及容器变化会重新测量几何；普通滚动使用缓存的标题位置。
+默认组合约定：目录、正文和侧栏在同一个滚动容器内。正文与阅读区域最小高度共同决定布局，同步侧栏拉伸至所在网格行的高度，卡片在内部绝对定位并裁切溢出，不参与父组件高度计算。保持侧栏和正文处于同一个未缩放的 CSS 坐标系，不额外添加独立滚动或 transform。自定义组合应像下面一样使用同一行的 grid，并给正文提供裁切容器；非 grid 布局需要由宿主给侧栏明确高度。ResizeObserver、图片加载、字体加载及容器变化会重新测量几何；普通滚动使用缓存的标题位置。
 
 ```tsx
 const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
@@ -37,7 +39,7 @@ const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
   <DocumentProvider source={source} scrollRoot={scrollRoot}>
     <div style={{ display: 'grid', gridTemplateColumns: '180px minmax(0,1fr) 260px', gap: 24, alignItems: 'start' }}>
       <TableOfContents style={{ position: 'sticky', top: 0, maxHeight: '75vh' }} />
-      <Markdown />
+      <main className="limr-reader-content" style={{ alignSelf: 'stretch', overflow: 'clip' }}><Markdown /></main>
       <AnnotationSidebar />
     </div>
     <SelectionToolbar actions={actions} />
@@ -45,13 +47,19 @@ const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
 </div>
 ```
 
-在独立抽屉等场景使用 `<AnnotationSidebar sync="none" />`。它不读取正文的对齐位置，也展示没有锚点的角注。`positioner(items, {activeId, gap})` 可以替换对齐算法；items 含 occurrence ID、相对侧栏的角标顶部和卡片高度，返回 ID 到顶部距离的 Map。默认优先对齐活动卡片，并避开相邻卡片；当空间不足时，对齐服从不重叠和不越过顶部的约束。
+同步侧栏没有独立滚动条，也不接受滚轮、触摸或聚焦引起的列表滚动。悬浮正文角标时移动侧栏；悬浮侧栏卡片时锁住当前卡片与相邻条目位置，让正文平滑位移至关联位置。正文位移不改变布局高度，测量锚点时扣除动画中的实时位移，避免位置反馈循环。展开/收起保留交互来源与 hover；点击空白处清除卡片与角标的激活状态并恢复正文位置，Esc 收起并把焦点还给角标。长回答的正文仍可在卡片内滚动，隐藏原生滚动条，卡片高度受侧栏剩余空间限制。
+
+在独立抽屉等场景使用 `<AnnotationSidebar sync="none" />`。它保留正常列表流，不读取正文的对齐位置，也展示没有锚点的角注，宿主自行约束高度与滚动。`positioner(items, {activeId, gap})` 可以替换同步侧栏的对齐算法；items 含 occurrence ID、相对侧栏的角标顶部和卡片高度，返回 ID 到顶部距离的 Map。默认优先对齐 hover/激活角标；无激活条目时跟随正文当前阅读位置。前面的卡片允许返回负位置并在侧栏内裁切，不会为了保留前面条目而挤走当前卡片；卡片顺序和间隔仍然保留。
 
 `renderCard({occurrence, active, activate})` 替换侧栏卡片外壳；单个角注的内容通常通过 `AnnotationType.Content` 替换。需要完全自主的布局时，用 `useAnchor(occurrenceId)` 获得实时角标元素、视口矩形和正文矩形，再自行放置组件。
 
-`AnnotationOverlay` 接受 `disabled`、`portalRoot`、`previewWidth`（340）和 `maxHeight`（`80dvh`）。浮层默认通过 portal 放入 body。预览贴近角标；展开状态按正文列宽和 visualViewport 限制大小，支持触摸、Esc、遮罩关闭和焦点恢复。高 z-index 宿主可覆盖 `--limr-overlay-z` / `--limr-toolbar-z`。
+`AnnotationOverlay` 接受 `disabled`、`portalRoot`、`previewWidth`（340）和 `maxHeight`（`80dvh`，模块未指定展开上限时使用）。浮层默认通过 portal 放入 body。模块通过 `overlay.Card` 渲染完整卡片，通过 `overlay.previewWidth` 和 `overlay.expand` 声明预览宽度、展开能力及布局；LiMR 管理挂载、位置、焦点和动画。预览贴近角标，展开可以原地增高或在整个页面的可视区域居中。默认 Citation 不展开，点击会固定预览。模块可配置尺寸或按 annotation 动态返回策略，详见[扩展指南](extensions.md)。所有模式均支持触摸、Esc、外部点击关闭和焦点恢复，居中模式另有遮罩与焦点约束。打开时焦点落到对话框容器，Tab 再进入模块提供的控件。高 z-index 宿主可覆盖 `--limr-overlay-z` / `--limr-toolbar-z`。
+
+`AnnotationCard` 是模块可选用的默认卡片布局，接收 `AnnotationOverlayCardProps` 以及必填的 `title: ReactNode`、可选的 `bodyLabel`。它提供标题栏、展开/收起/关闭按钮和滚动区域；模块也可以完全自行渲染这些部分。旧模块只提供 `Content` 时仍可使用兼容布局，其标题来自类型的 `label`。
 
 `TableOfContents` 接受 `title`、`maxDepth`、`followActive`、`topInset`（12）、`updateHash`（false）和样式属性。独立使用时给它或父容器设定可用高度。标题位于滚动区之外；手动滚动目录会短暂暂停自动跟随；页面底部将最后一个标题视为 active。
+
+`Reader` 的窄屏目录使用整行按钮，右侧箭头随展开状态旋转。目录内容持续挂载，展开/收起从当前高度连续过渡，快速点击可随时反转；隐藏内容不可获得焦点。
 
 ## 角注数据与命令
 
@@ -94,7 +102,7 @@ const [annotations, setAnnotations] = useState<Annotation[]>([
 | `settled` | 拖动调整选区时为 false |
 | `documentId` / `revision` | 选区对应的文档版本 |
 
-公式、代码、图片属于原子节点：无法可靠地把其内部显示文字逐字映射回原文时，结果覆盖整个语法节点，并标为 `atomic`。自定义组件应渲染提供的 `children` / `renderChildren` 来保留正文映射，或声明原子选择。生成的 UI 文字不应冒充原文；可加 `data-limr-ignore` 排除按钮和标签。
+公式、图片属于原子节点，结果覆盖整个语法节点，并标为 `atomic`。行内代码及围栏代码提供字面量源码映射，支持部分选择；它们的 `syntax` 结果仍补全整个语法。自定义组件应渲染提供的 `children` / `renderChildren` / `renderValue` 来保留正文映射，或声明原子选择。生成的 UI 文字不应冒充原文；可加 `data-limr-ignore` 排除按钮和标签。
 
 `SelectionAction` 含 `id`、`label`、`icon?`、`visible?`、`disabled?`、`run?`、`render?`。`run(context)` 支持 async；错误在菜单中显示。context 包含三种选区、当时的文档快照、文档命令和 `signal`。这个 signal 的生命期是阅读器，关闭菜单不会中止已开始的请求，卸载会取消。
 
@@ -121,6 +129,6 @@ core 默认仅 CommonMark，不依赖 React、DOM 或浏览器全局。需要 GF
 
 常用 CSS 变量：`--limr-font-text`、`--limr-font-code`、`--limr-font-size`、`--limr-line-height`、`--limr-text`、`--limr-heading`、`--limr-background`、`--limr-accent`、`--limr-content-width`、`--limr-reader-width`、`--limr-sticky-top`。
 
-样式放在 `@layer limr`，应用的普通 CSS 可以覆盖它。所有字体由应用决定是否加载；playground 显式安装了本地 Noto Serif SC 演示字体，这不是运行时依赖。需要字体统一时可自行导入 fontsource 或自托管字体并覆盖变量。
+样式放在 `@layer limr`，应用的普通 CSS 可以覆盖它。`appearance` 传播样式包的作用域到各组件和 portal。默认 `styles.css` 附带本地 Maple Mono NF CN 子集；`styles/base.css` 不导入字体。Playground 的 Noto Serif SC 是演示依赖。缓存、主题包和交互样式见[样式指南](styles.md)。
 
 服务端和客户端使用相同 source、extensions、documentId 和首次 streaming 值。不要把随后客户端已有的数据提前只传给其中一端。同步 SSR 的公式可用 `await preloadMath()` 预加载；代码始终有可读的源码回退。自动 documentId 使用 React useId，多根 hydration 可使用 React identifierPrefix 或显式唯一 ID。

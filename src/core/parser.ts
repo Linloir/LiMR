@@ -3,8 +3,8 @@ import { mdxJsx } from 'micromark-extension-mdx-jsx';
 import { mdxJsxFromMarkdown } from 'mdast-util-mdx-jsx';
 import { directive } from 'micromark-extension-directive';
 import { directiveFromMarkdown } from 'mdast-util-directive';
-import { sourcePoint, walk } from './tree';
-import type { Diagnostic, MarkdownNode, ParseContext, SyntaxExtension } from './types';
+import { lineStarts, sourcePoint, walk } from './tree';
+import type { Diagnostic, MarkdownNode, ParseContext, SourcePosition, SyntaxExtension } from './types';
 
 export function validateExtensions(extensions: readonly SyntaxExtension[]): void {
   const names = new Set<string>();
@@ -40,6 +40,8 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
     const prefix = environment ? `${environment}\n\nlimr-definition-boundary\n\n` : '';
     const input = prefix + fragment;
     const diagnostics: Diagnostic[] = [];
+    let attributeLines: readonly number[] | undefined;
+    const attributePoint = (at: number) => sourcePoint(at, lines.length ? lines : attributeLines ??= lineStarts(context.source));
     let recoveryOffset: number | undefined;
     let root: MarkdownNode;
     try {
@@ -60,15 +62,25 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
       }
       if (node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement') {
         const definition = tagDefinitions.get(node.name ?? '');
-        const rawAttributes = node.attributes as unknown as { type: string; name: string; value: unknown }[];
+        const rawAttributes = node.attributes as unknown as { type: string; name: string; value: unknown; position?: SourcePosition }[];
         const attributes: Record<string, string | boolean | number> = {};
+        const attributeNodes: Record<string, MarkdownNode> = {};
         for (const attr of rawAttributes ?? []) {
-          if (attr.type === 'mdxJsxAttribute' && (typeof attr.value === 'string' || attr.value === null)) attributes[attr.name] = attr.value ?? true;
+          if (attr.type === 'mdxJsxAttribute' && (typeof attr.value === 'string' || attr.value === null)) {
+            attributes[attr.name] = attr.value ?? true;
+            if (definition && typeof attr.value === 'string' && attr.position) {
+              const start = attr.position.start.offset - prefix.length + offset;
+              const end = attr.position.end.offset - prefix.length + offset;
+              const raw = context.source.slice(start, end), opening = raw.search(/["']/);
+              if (opening >= 0) attributeNodes[attr.name] = { type: 'text', value: attr.value, verbatimEscapes: true, position: { start: attributePoint(start + opening + 1), end: attributePoint(end - 1) } };
+            }
+          }
           else diagnostics.push({ message: 'JSX expressions are not executed. Use string attributes or pass data from React.', offset: node.position?.start.offset });
         }
         node.inline = definition?.display === 'block' ? false : definition?.display === 'inline' ? true : node.type === 'mdxJsxTextElement';
         node.type = definition ? 'component' : 'html';
         node.attributes = attributes;
+        if (Object.keys(attributeNodes).length) node.attributeNodes = attributeNodes;
         node.selection = definition?.selection ?? 'content';
         if (!definition && node.position) {
           node.value = context.source.slice(node.position.start.offset, node.position.end.offset);
@@ -77,6 +89,26 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
       } else if (node.type === 'containerDirective' || node.type === 'leafDirective' || node.type === 'textDirective') {
         const definition = directiveDefinitions.get(node.name ?? '');
         if (definition) {
+          // Directive attributes have no mdast positions. Scan only their header,
+          // respecting quoted values instead of searching the rendered title.
+          const start = node.position?.start.offset ?? 0;
+          const end = context.source.indexOf('\n', start);
+          const header = context.source.slice(start, end < 0 ? context.source.length : end);
+          const brace = header.indexOf('{');
+          if (brace >= 0) {
+            const attributeNodes: Record<string, MarkdownNode> = {};
+            const expression = /([^\s{}=]+)\s*=\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|([^\s}]+))/g;
+            const raw = header.slice(brace + 1);
+            for (const match of raw.matchAll(expression)) {
+              const name = match[1], value = node.attributes?.[name];
+              if (typeof value !== 'string') continue;
+              const quoted = match[2] !== undefined || match[3] !== undefined;
+              const valueLength = (match[2] ?? match[3] ?? match[4]).length;
+              const valueEnd = start + brace + 1 + match.index! + match[0].length - (quoted ? 1 : 0);
+              attributeNodes[name] = { type: 'text', value, position: { start: attributePoint(valueEnd - valueLength), end: attributePoint(valueEnd) } };
+            }
+            if (Object.keys(attributeNodes).length) node.attributeNodes = attributeNodes;
+          }
           node.inline = node.type === 'textDirective';
           node.type = 'component';
           node.selection = definition.selection ?? 'content';

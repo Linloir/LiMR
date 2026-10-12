@@ -1,0 +1,18 @@
+/* Unlayered application/theme CSS overrides the built-in @layer limr. */
+[data-limr-appearance='paper'] {
+  --limr-accent: #185145;
+  --limr-link: #185145;
+  --limr-selection: #548b7440;
+  --limr-background: #fcfaf4;
+  --limr-heading: #283b34;
+}
+[data-limr-appearance='paper'][data-limr-theme='dark'] {
+  --limr-background: #1e2421;
+  --limr-heading: #d8e4db;
+  --limr-link: #a8cbb8;
+}
+[data-limr-appearance='paper'] .reading-tip {
+  border-inline-start: 3px solid var(--limr-accent);
+  padding: .8rem 1rem;
+  background: #548b7410;
+}

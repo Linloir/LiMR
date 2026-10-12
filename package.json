@@ -34,6 +34,8 @@
       "import": "./dist/extensions/index.js"
     },
     "./styles.css": "./dist/styles.css",
+    "./styles/base.css": "./dist/base.css",
+    "./fonts.css": "./dist/fonts/maple.css",
     "./math.css": "./dist/math.css",
     "./package.json": "./package.json"
   },
@@ -48,6 +50,7 @@
     "test:package": "node scripts/package-smoke.mjs",
     "bench": "tsx benchmarks/run.ts",
     "bench:browser": "tsx benchmarks/browser.ts",
+    "bench:selection": "tsx benchmarks/selection.ts",
     "check": "pnpm typecheck && pnpm test && pnpm build",
     "prepack": "pnpm build"
   },

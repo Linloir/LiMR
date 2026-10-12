@@ -105,6 +105,26 @@ describe('default extension modules', () => {
   it('has reference annotations only by default', () => {
     expect(standard().flatMap(extension => extension.annotationTypes?.map(type => type.type) ?? [])).toEqual(['citation']);
   });
+  it('retains exact attribute offsets across JSX, directives and streaming recovery', () => {
+    const source = 'Before\r\n\r\n<definition title="Same &amp; 😀 \\* title"><content>Same title.</content></definition>\r\n\r\n:::question{title="Which &amp; why?"}\r\nBody\r\n:::';
+    const extensions = standard();
+    const document = createDocument('', { extensions, streaming: true });
+    for (let at = 0; at < source.length; at += 13) {
+      const prefix = source.slice(0, at + 13);
+      expect(document.update(prefix, { streaming: true }).blocks.map(block => block.node)).toEqual(createDocument(prefix, { extensions, streaming: true }).getSnapshot().blocks.map(block => block.node));
+    }
+    const titles: { value: string; raw: string; exact: boolean }[] = [];
+    for (const block of document.finish().blocks) walk(block.node, node => {
+      const attribute = node.attributeNodes?.title;
+      if (!attribute) return;
+      const range = { start: attribute.position!.start.offset, end: attribute.position!.end.offset };
+      titles.push({ value: attribute.value!, raw: source.slice(range.start, range.end), exact: mapText(source, attribute.value!, range, { escapes: attribute.verbatimEscapes !== true }).exact });
+    });
+    expect(titles).toEqual([
+      { value: 'Same & 😀 \\* title', raw: 'Same &amp; 😀 \\* title', exact: true },
+      { value: 'Which & why?', raw: 'Which &amp; why?', exact: true },
+    ]);
+  });
 });
 
 describe('selection source mapping', () => {
@@ -126,5 +146,13 @@ describe('selection source mapping', () => {
     expect(selection.syntax.sourceText).toBe('**important**');
     expect(selection.blocks.sourceText).toBe('First **important** paragraph.');
     expect(selectionFromRange(document, { start, end: source.indexOf('Second') + 4 }).blocks.ranges).toHaveLength(2);
+  });
+  it('completes nested boundary markup and both sides of a cross-sibling selection', () => {
+    const source = 'Before ***deep*** [a **linked** word](https://example.com) after.';
+    const document = createDocument(source).getSnapshot();
+    const start = source.indexOf('deep') + 1;
+    expect(selectionFromRange(document, { start, end: start + 1 }).syntax.sourceText).toBe('***deep***');
+    expect(selectionFromRange(document, { start, end: source.indexOf('linked') + 2 }).syntax.sourceText).toBe('***deep*** [a **linked** word](https://example.com)');
+    expect(selectionFromRange(document, { start: 0, end: source.length }).syntax.sourceText).toBe(source);
   });
 });

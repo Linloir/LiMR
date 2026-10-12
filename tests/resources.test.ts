@@ -40,10 +40,11 @@ describe('resource lifetime', () => {
     expect(signal!.aborted).toBe(true);
   });
 });
-it('keeps colliding cards ordered, bounded and separate while prioritizing the active anchor', () => {
+it('keeps colliding cards separate and aligns the active anchor even when earlier cards are clipped', () => {
   const items = [{ id: 'a', anchorTop: 0, height: 50 }, { id: 'b', anchorTop: 10, height: 100 }, { id: 'c', anchorTop: 30, height: 60 }];
   const positions = alignSidebar(items, { activeId: 'b', gap: 14 });
-  expect(positions.get('a')).toBeGreaterThanOrEqual(0);
+  expect(positions.get('a')).toBeLessThan(0);
+  expect(positions.get('b')).toBe(items[1].anchorTop);
   expect(positions.get('b')! - positions.get('a')!).toBeGreaterThanOrEqual(64);
   expect(positions.get('c')! - positions.get('b')!).toBeGreaterThanOrEqual(114);
 });

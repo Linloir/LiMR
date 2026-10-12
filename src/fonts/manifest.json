@@ -1,0 +1,2204 @@
+{
+  "source": "https://github.com/subframe7536/maple-font/releases/tag/v7.9",
+  "archiveSha256": "ab88522932cf4015dffeaef6dedc59a22a5fefecdcc6e583d9fcd997da5b7cac",
+  "subsets": [
+    {
+      "file": "maple-7.9-regular-latin-59c752ba1d.woff2",
+      "bytes": 48072,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+0,U+D,U+20-7E,U+A0-AC,U+AE-17F,U+18F-190,U+192,U+19B,U+1A0-1A1,U+1AF-1B0,U+1CD-1D4,U+1D6,U+1D8,U+1DA,U+1DC,U+1E6-1E7,U+1EA-1EB,U+1F4-1F5,U+1FC-1FF,U+218-21B,U+21E-21F,U+232-233,U+237,U+251-252,U+254,U+258-259,U+25B-25C,U+261,U+26A,U+279,U+283,U+28A,U+28C,U+292,U+2B0,U+2B9-2BA,U+2BC,U+2C6-2C9,U+2CC,U+2D0-2D1,U+2D8-2DD,U+2F3,U+2F7,U+300-304,U+306-30C,U+30F,U+312,U+31B,U+323,U+325-328,U+336-338,U+374-375,U+37E,U+384-38A,U+38C,U+38E-3A1,U+3A3-3CF,U+3D5-3D7,U+401-40C,U+40E-44F,U+451-45C,U+45E-45F,U+490-493,U+496-497,U+49A-49B,U+4A2-4A3,U+4AE-4B3,U+4B6-4B7,U+4BA-4BB,U+4D4-4D5,U+4D8-4D9,U+4DC-4DF,U+4E4-4E9,U+4F4-4F5,U+4FD,U+4FF"
+    },
+    {
+      "file": "maple-7.9-regular-005-90bff107ac.woff2",
+      "bytes": 796,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+AEA"
+    },
+    {
+      "file": "maple-7.9-regular-00f-001e503e53.woff2",
+      "bytes": 4440,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+1E80-1E85,U+1E9E,U+1EA0-1EF9"
+    },
+    {
+      "file": "maple-7.9-regular-010-374da1ebb4.woff2",
+      "bytes": 9212,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+2001,U+200B,U+2010,U+2013-2014,U+2016,U+2018-2024,U+2026-2027,U+2030,U+2032-2034,U+2039-203A,U+203C-203F,U+2044-2046,U+204F,U+2070-2071,U+2074-2089,U+20A3,U+20A6,U+20A9,U+20AB-20AC,U+20B9-20BA,U+20BD,U+20BF,U+2103,U+2109,U+2113,U+2116,U+2122,U+212E,U+2140,U+2160-216B,U+2170-217B,U+218A-218B,U+2190-2199,U+219D-219E,U+21A0,U+21A2-21A7,U+21A9-21AA,U+21AD,U+21B0-21B3,U+21BE,U+21C4,U+21C6,U+21C9,U+21D0-21D4,U+21DA-21DB,U+21DE-21DF,U+21E4-21EA"
+    },
+    {
+      "file": "maple-7.9-regular-011-8f91fcc9e7.woff2",
+      "bytes": 3876,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+2200,U+2202-2205,U+2208-220D,U+220F-2212,U+2215,U+2219-221A,U+221E,U+2223,U+2227-222B,U+2234-2236,U+2248,U+2260,U+2264-2265,U+2282-2285,U+2295-2299,U+22C0-22C3,U+2302,U+23BE-23BF,U+23CB-23CC,U+23FB-23FE"
+    },
+    {
+      "file": "maple-7.9-regular-012-e4ec3016ef.woff2",
+      "bytes": 3540,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+24BE,U+24E7,U+2500-25A1,U+25AA-25AB,U+25B2-25CC,U+25CE-25CF,U+25D4-25D5,U+25E6-25EB,U+25EF,U+25F6"
+    },
+    {
+      "file": "maple-7.9-regular-013-e779e13a12.woff2",
+      "bytes": 2620,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+2610-2612,U+2630,U+2665,U+266D,U+266F,U+26A0-26A1,U+2713-2715,U+2717-2718,U+2736,U+276E-2771,U+2794,U+279C-279E,U+27C5-27C6,U+27DC,U+27E6-27EB,U+27F5-27F7"
+    },
+    {
+      "file": "maple-7.9-regular-014-6b833ad501.woff2",
+      "bytes": 2580,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+2800-28FF,U+2916,U+294A,U+2987-2988"
+    },
+    {
+      "file": "maple-7.9-regular-015-4e058c4c42.woff2",
+      "bytes": 956,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+2A00,U+2A05-2A06,U+2B58"
+    },
+    {
+      "file": "maple-7.9-regular-018-6f776bc19b.woff2",
+      "bytes": 42052,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+3000-3003,U+3005-3011,U+3014-301C,U+3021-3029,U+3031-303B,U+3041-3096,U+3099-30FF,U+3105-312F"
+    },
+    {
+      "file": "maple-7.9-regular-027-92c0be3439.woff2",
+      "bytes": 100256,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+4E00-4FFF"
+    },
+    {
+      "file": "maple-7.9-regular-028-154c8c3039.woff2",
+      "bytes": 139836,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+5000-51FF"
+    },
+    {
+      "file": "maple-7.9-regular-029-9d88470aca.woff2",
+      "bytes": 128744,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+5200-53FF"
+    },
+    {
+      "file": "maple-7.9-regular-02a-7a94cb26f2.woff2",
+      "bytes": 117620,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+5400-55FF"
+    },
+    {
+      "file": "maple-7.9-regular-02b-1725b841c2.woff2",
+      "bytes": 139752,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+5600-57FF"
+    },
+    {
+      "file": "maple-7.9-regular-02c-e080c435d6.woff2",
+      "bytes": 144112,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+5800-59FF"
+    },
+    {
+      "file": "maple-7.9-regular-02d-a6461c4708.woff2",
+      "bytes": 163928,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+5A00-5BFF"
+    },
+    {
+      "file": "maple-7.9-regular-02e-2e55d9b957.woff2",
+      "bytes": 135792,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+5C00-5DFF"
+    },
+    {
+      "file": "maple-7.9-regular-02f-858a76fa1f.woff2",
+      "bytes": 137384,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+5E00-5FFF"
+    },
+    {
+      "file": "maple-7.9-regular-030-bbbe80f8ad.woff2",
+      "bytes": 155636,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+6000-61FF"
+    },
+    {
+      "file": "maple-7.9-regular-031-cafc1258ad.woff2",
+      "bytes": 127220,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+6200-63FF"
+    },
+    {
+      "file": "maple-7.9-regular-032-0ca83ecceb.woff2",
+      "bytes": 172688,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+6400-65FF"
+    },
+    {
+      "file": "maple-7.9-regular-033-6cb995f2e7.woff2",
+      "bytes": 122896,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+6600-67FF"
+    },
+    {
+      "file": "maple-7.9-regular-034-5877222be6.woff2",
+      "bytes": 146796,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+6800-69FF"
+    },
+    {
+      "file": "maple-7.9-regular-035-988d8f2d26.woff2",
+      "bytes": 183164,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+6A00-6BFF"
+    },
+    {
+      "file": "maple-7.9-regular-036-e91853e3ca.woff2",
+      "bytes": 127968,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+6C00-6DFF"
+    },
+    {
+      "file": "maple-7.9-regular-037-3eed60f359.woff2",
+      "bytes": 172476,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+6E00-6FFF"
+    },
+    {
+      "file": "maple-7.9-regular-038-5681f42a4a.woff2",
+      "bytes": 175592,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+7000-71FF"
+    },
+    {
+      "file": "maple-7.9-regular-039-07036fe444.woff2",
+      "bytes": 152276,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+7200-73FF"
+    },
+    {
+      "file": "maple-7.9-regular-03a-5495eead93.woff2",
+      "bytes": 154644,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+7400-75FF"
+    },
+    {
+      "file": "maple-7.9-regular-03b-d07b1d6c1e.woff2",
+      "bytes": 151120,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+7600-77FF"
+    },
+    {
+      "file": "maple-7.9-regular-03c-6291400ee0.woff2",
+      "bytes": 143636,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+7800-79FF"
+    },
+    {
+      "file": "maple-7.9-regular-03d-3787a51772.woff2",
+      "bytes": 166416,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+7A00-7BFF"
+    },
+    {
+      "file": "maple-7.9-regular-03e-ce4d945844.woff2",
+      "bytes": 184564,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+7C00-7DFF"
+    },
+    {
+      "file": "maple-7.9-regular-03f-95e98b329c.woff2",
+      "bytes": 191812,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+7E00-7FFF"
+    },
+    {
+      "file": "maple-7.9-regular-040-693b769fe8.woff2",
+      "bytes": 148556,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+8000-81FF"
+    },
+    {
+      "file": "maple-7.9-regular-041-7b436d2c09.woff2",
+      "bytes": 125732,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+8200-83FF"
+    },
+    {
+      "file": "maple-7.9-regular-042-9ad884cd73.woff2",
+      "bytes": 159732,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+8400-85FF"
+    },
+    {
+      "file": "maple-7.9-regular-043-372231e8e2.woff2",
+      "bytes": 169492,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+8600-87FF"
+    },
+    {
+      "file": "maple-7.9-regular-044-9922b540b1.woff2",
+      "bytes": 177804,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+8800-89FF"
+    },
+    {
+      "file": "maple-7.9-regular-045-8a88a91c22.woff2",
+      "bytes": 142116,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+8A00-8BFF"
+    },
+    {
+      "file": "maple-7.9-regular-046-82859ede10.woff2",
+      "bytes": 154376,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+8C00-8DFF"
+    },
+    {
+      "file": "maple-7.9-regular-047-6532babd62.woff2",
+      "bytes": 149152,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+8E00-8FFF"
+    },
+    {
+      "file": "maple-7.9-regular-048-abfdc5d7ce.woff2",
+      "bytes": 153756,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+9000-91FF"
+    },
+    {
+      "file": "maple-7.9-regular-049-adb7fa9ed3.woff2",
+      "bytes": 159636,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+9200-93FF"
+    },
+    {
+      "file": "maple-7.9-regular-04a-f3f794b1cb.woff2",
+      "bytes": 164104,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+9400-95FF"
+    },
+    {
+      "file": "maple-7.9-regular-04b-715211b8dd.woff2",
+      "bytes": 152176,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+9600-97FF"
+    },
+    {
+      "file": "maple-7.9-regular-04c-c6f978d10d.woff2",
+      "bytes": 170496,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+9800-99FF"
+    },
+    {
+      "file": "maple-7.9-regular-04d-61019a1c8f.woff2",
+      "bytes": 182188,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+9A00-9BFF"
+    },
+    {
+      "file": "maple-7.9-regular-04e-806d6efe85.woff2",
+      "bytes": 182836,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+9C00-9DFF"
+    },
+    {
+      "file": "maple-7.9-regular-04f-99d19aa8db.woff2",
+      "bytes": 191612,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+9E00-9FEF"
+    },
+    {
+      "file": "maple-7.9-regular-070-e94ba9445d.woff2",
+      "bytes": 8404,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+E000-E00A,U+E0A0-E0A3,U+E0B0-E0C8,U+E0CA,U+E0CC-E0D2,U+E0D4,U+E0D6-E0D7"
+    },
+    {
+      "file": "maple-7.9-regular-071-057314b533.woff2",
+      "bytes": 53496,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+E200-E2A9,U+E300-E3E3"
+    },
+    {
+      "file": "maple-7.9-regular-072-a7699beb84.woff2",
+      "bytes": 1472,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+E5FA-E5FF"
+    },
+    {
+      "file": "maple-7.9-regular-073-ebe1bd9ef4.woff2",
+      "bytes": 102804,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+E600-E6B8,U+E700-E7FF"
+    },
+    {
+      "file": "maple-7.9-regular-074-722db38100.woff2",
+      "bytes": 67060,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+E800-E8EF"
+    },
+    {
+      "file": "maple-7.9-regular-075-150ff7187b.woff2",
+      "bytes": 32984,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+EA60-EA88,U+EA8A-EA8C,U+EA8F-EAC7,U+EAC9,U+EACC-EAFA,U+EAFC-EB09,U+EB0B-EB4E,U+EB50-EBFF"
+    },
+    {
+      "file": "maple-7.9-regular-076-c14595e715.woff2",
+      "bytes": 40576,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+EC00-EC1E,U+ED00-EDFF"
+    },
+    {
+      "file": "maple-7.9-regular-077-6c88302a32.woff2",
+      "bytes": 61840,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+EE00-EFCE"
+    },
+    {
+      "file": "maple-7.9-regular-078-549b294c78.woff2",
+      "bytes": 49000,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F000-F1FF"
+    },
+    {
+      "file": "maple-7.9-regular-079-5131c42759.woff2",
+      "bytes": 62928,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F200-F381"
+    },
+    {
+      "file": "maple-7.9-regular-07a-c0dad221b5.woff2",
+      "bytes": 27616,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F400-F533"
+    },
+    {
+      "file": "maple-7.9-regular-07f-5cf5ebe065.woff2",
+      "bytes": 2828,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+FE62,U+FEFF,U+FF01,U+FF08-FF09,U+FF0C,U+FF0E,U+FF1A-FF1B,U+FF1F,U+FF3B,U+FF3D,U+FF5B-FF5E,U+FFE0-FFE1,U+FFE5,U+FFEE,U+FFFD"
+    },
+    {
+      "file": "maple-7.9-regular-0fc-b644c0c6d9.woff2",
+      "bytes": 1064,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+1F850-1F859"
+    },
+    {
+      "file": "maple-7.9-regular-780-c6000d472a.woff2",
+      "bytes": 26516,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F0001-F01FF"
+    },
+    {
+      "file": "maple-7.9-regular-781-86409ab7f7.woff2",
+      "bytes": 28676,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F0200-F0387,U+F0389-F03FF"
+    },
+    {
+      "file": "maple-7.9-regular-782-9cd950637c.woff2",
+      "bytes": 32764,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F0400-F043C,U+F043E-F0508,U+F050A-F05FB,U+F05FD-F05FF"
+    },
+    {
+      "file": "maple-7.9-regular-783-105c4d02df.woff2",
+      "bytes": 30112,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F0600-F0764,U+F0767-F07FF"
+    },
+    {
+      "file": "maple-7.9-regular-784-00c042af97.woff2",
+      "bytes": 32052,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F0800-F08CF,U+F08D1-F09FF"
+    },
+    {
+      "file": "maple-7.9-regular-785-022568d0b8.woff2",
+      "bytes": 30612,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F0A00-F0B38,U+F0B3A-F0BFF"
+    },
+    {
+      "file": "maple-7.9-regular-786-90b6f3aef5.woff2",
+      "bytes": 32124,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F0C00-F0C9D,U+F0CA0-F0DFF"
+    },
+    {
+      "file": "maple-7.9-regular-787-e2888596c9.woff2",
+      "bytes": 33656,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F0E00-F0FFF"
+    },
+    {
+      "file": "maple-7.9-regular-788-3416e1fda3.woff2",
+      "bytes": 35104,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F1000-F1087,U+F1089-F108B,U+F108D-F1090,U+F1092-F11FF"
+    },
+    {
+      "file": "maple-7.9-regular-789-9ffc917b0b.woff2",
+      "bytes": 33600,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F1200-F13A5,U+F13A7-F13FF"
+    },
+    {
+      "file": "maple-7.9-regular-78a-4a921d07f6.woff2",
+      "bytes": 32140,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F1400-F15FF"
+    },
+    {
+      "file": "maple-7.9-regular-78b-9d71c5327b.woff2",
+      "bytes": 32896,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F1600-F17FF"
+    },
+    {
+      "file": "maple-7.9-regular-78c-9ec048314b.woff2",
+      "bytes": 37212,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F1800-F189F,U+F18A1-F18EF,U+F18F1-F19FF"
+    },
+    {
+      "file": "maple-7.9-regular-78d-46a2ebd113.woff2",
+      "bytes": 17464,
+      "weight": 400,
+      "style": "normal",
+      "coverage": "U+F1A00-F1AF0"
+    },
+    {
+      "file": "maple-7.9-bold-latin-3b4b2831f3.woff2",
+      "bytes": 50300,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+0,U+D,U+20-7E,U+A0-AC,U+AE-17F,U+18F-190,U+192,U+19B,U+1A0-1A1,U+1AF-1B0,U+1CD-1D4,U+1D6,U+1D8,U+1DA,U+1DC,U+1E6-1E7,U+1EA-1EB,U+1F4-1F5,U+1FC-1FF,U+218-21B,U+21E-21F,U+232-233,U+237,U+251-252,U+254,U+258-259,U+25B-25C,U+261,U+26A,U+279,U+283,U+28A,U+28C,U+292,U+2B0,U+2B9-2BA,U+2BC,U+2C6-2C9,U+2CC,U+2D0-2D1,U+2D8-2DD,U+2F3,U+2F7,U+300-304,U+306-30C,U+30F,U+312,U+31B,U+323,U+325-328,U+336-338,U+374-375,U+37E,U+384-38A,U+38C,U+38E-3A1,U+3A3-3CF,U+3D5-3D7,U+401-40C,U+40E-44F,U+451-45C,U+45E-45F,U+490-493,U+496-497,U+49A-49B,U+4A2-4A3,U+4AE-4B3,U+4B6-4B7,U+4BA-4BB,U+4D4-4D5,U+4D8-4D9,U+4DC-4DF,U+4E4-4E9,U+4F4-4F5,U+4FD,U+4FF"
+    },
+    {
+      "file": "maple-7.9-bold-005-5530d8c1d6.woff2",
+      "bytes": 800,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+AEA"
+    },
+    {
+      "file": "maple-7.9-bold-00f-1179d800a7.woff2",
+      "bytes": 4644,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+1E80-1E85,U+1E9E,U+1EA0-1EF9"
+    },
+    {
+      "file": "maple-7.9-bold-010-9974a942b1.woff2",
+      "bytes": 9488,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+2001,U+200B,U+2010,U+2013-2014,U+2016,U+2018-2024,U+2026-2027,U+2030,U+2032-2034,U+2039-203A,U+203C-203F,U+2044-2046,U+204F,U+2070-2071,U+2074-2089,U+20A3,U+20A6,U+20A9,U+20AB-20AC,U+20B9-20BA,U+20BD,U+20BF,U+2103,U+2109,U+2113,U+2116,U+2122,U+212E,U+2140,U+2160-216B,U+2170-217B,U+218A-218B,U+2190-2199,U+219D-219E,U+21A0,U+21A2-21A7,U+21A9-21AA,U+21AD,U+21B0-21B3,U+21BE,U+21C4,U+21C6,U+21C9,U+21D0-21D4,U+21DA-21DB,U+21DE-21DF,U+21E4-21EA"
+    },
+    {
+      "file": "maple-7.9-bold-011-9b9230baf2.woff2",
+      "bytes": 3956,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+2200,U+2202-2205,U+2208-220D,U+220F-2212,U+2215,U+2219-221A,U+221E,U+2223,U+2227-222B,U+2234-2236,U+2248,U+2260,U+2264-2265,U+2282-2285,U+2295-2299,U+22C0-22C3,U+2302,U+23BE-23BF,U+23CB-23CC,U+23FB-23FE"
+    },
+    {
+      "file": "maple-7.9-bold-012-c2545292b1.woff2",
+      "bytes": 3564,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+24BE,U+24E7,U+2500-25A1,U+25AA-25AB,U+25B2-25CC,U+25CE-25CF,U+25D4-25D5,U+25E6-25EB,U+25EF,U+25F6"
+    },
+    {
+      "file": "maple-7.9-bold-013-877b19fe05.woff2",
+      "bytes": 2648,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+2610-2612,U+2630,U+2665,U+266D,U+266F,U+26A0-26A1,U+2713-2715,U+2717-2718,U+2736,U+276E-2771,U+2794,U+279C-279E,U+27C5-27C6,U+27DC,U+27E6-27EB,U+27F5-27F7"
+    },
+    {
+      "file": "maple-7.9-bold-014-6acf4a4e92.woff2",
+      "bytes": 2624,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+2800-28FF,U+2916,U+294A,U+2987-2988"
+    },
+    {
+      "file": "maple-7.9-bold-015-c889146da3.woff2",
+      "bytes": 980,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+2A00,U+2A05-2A06,U+2B58"
+    },
+    {
+      "file": "maple-7.9-bold-018-419ad5f31f.woff2",
+      "bytes": 42128,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+3000-3003,U+3005-3011,U+3014-301C,U+3021-3029,U+3031-303B,U+3041-3096,U+3099-30FF,U+3105-312F"
+    },
+    {
+      "file": "maple-7.9-bold-027-dd414483da.woff2",
+      "bytes": 102984,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+4E00-4FFF"
+    },
+    {
+      "file": "maple-7.9-bold-028-263744fbc7.woff2",
+      "bytes": 142980,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+5000-51FF"
+    },
+    {
+      "file": "maple-7.9-bold-029-ae3a163d8b.woff2",
+      "bytes": 132344,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+5200-53FF"
+    },
+    {
+      "file": "maple-7.9-bold-02a-515f0a82c2.woff2",
+      "bytes": 121392,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+5400-55FF"
+    },
+    {
+      "file": "maple-7.9-bold-02b-0823c5133d.woff2",
+      "bytes": 143008,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+5600-57FF"
+    },
+    {
+      "file": "maple-7.9-bold-02c-296fd5db38.woff2",
+      "bytes": 147676,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+5800-59FF"
+    },
+    {
+      "file": "maple-7.9-bold-02d-0bb4734363.woff2",
+      "bytes": 168032,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+5A00-5BFF"
+    },
+    {
+      "file": "maple-7.9-bold-02e-25415fed50.woff2",
+      "bytes": 139360,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+5C00-5DFF"
+    },
+    {
+      "file": "maple-7.9-bold-02f-19ed79a84e.woff2",
+      "bytes": 141152,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+5E00-5FFF"
+    },
+    {
+      "file": "maple-7.9-bold-030-21962a0327.woff2",
+      "bytes": 160164,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+6000-61FF"
+    },
+    {
+      "file": "maple-7.9-bold-031-d216fc0d68.woff2",
+      "bytes": 130552,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+6200-63FF"
+    },
+    {
+      "file": "maple-7.9-bold-032-d90ba34901.woff2",
+      "bytes": 176008,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+6400-65FF"
+    },
+    {
+      "file": "maple-7.9-bold-033-55ea37ea00.woff2",
+      "bytes": 126376,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+6600-67FF"
+    },
+    {
+      "file": "maple-7.9-bold-034-bc8649f808.woff2",
+      "bytes": 150648,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+6800-69FF"
+    },
+    {
+      "file": "maple-7.9-bold-035-03604fe40b.woff2",
+      "bytes": 186376,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+6A00-6BFF"
+    },
+    {
+      "file": "maple-7.9-bold-036-44fc7f77b2.woff2",
+      "bytes": 130232,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+6C00-6DFF"
+    },
+    {
+      "file": "maple-7.9-bold-037-8a1440f155.woff2",
+      "bytes": 175804,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+6E00-6FFF"
+    },
+    {
+      "file": "maple-7.9-bold-038-c65a618d5c.woff2",
+      "bytes": 179396,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+7000-71FF"
+    },
+    {
+      "file": "maple-7.9-bold-039-be05db966d.woff2",
+      "bytes": 155680,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+7200-73FF"
+    },
+    {
+      "file": "maple-7.9-bold-03a-ca3a10002d.woff2",
+      "bytes": 158828,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+7400-75FF"
+    },
+    {
+      "file": "maple-7.9-bold-03b-067b32e10b.woff2",
+      "bytes": 154840,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+7600-77FF"
+    },
+    {
+      "file": "maple-7.9-bold-03c-4da4f84530.woff2",
+      "bytes": 147524,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+7800-79FF"
+    },
+    {
+      "file": "maple-7.9-bold-03d-f0fe6a68c8.woff2",
+      "bytes": 169604,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+7A00-7BFF"
+    },
+    {
+      "file": "maple-7.9-bold-03e-0e97f89433.woff2",
+      "bytes": 190424,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+7C00-7DFF"
+    },
+    {
+      "file": "maple-7.9-bold-03f-3289a5e3bc.woff2",
+      "bytes": 198136,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+7E00-7FFF"
+    },
+    {
+      "file": "maple-7.9-bold-040-232dcd0d7b.woff2",
+      "bytes": 152588,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+8000-81FF"
+    },
+    {
+      "file": "maple-7.9-bold-041-e25e9a9c41.woff2",
+      "bytes": 129272,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+8200-83FF"
+    },
+    {
+      "file": "maple-7.9-bold-042-d64a2b1824.woff2",
+      "bytes": 163436,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+8400-85FF"
+    },
+    {
+      "file": "maple-7.9-bold-043-2d01cf5e52.woff2",
+      "bytes": 173612,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+8600-87FF"
+    },
+    {
+      "file": "maple-7.9-bold-044-0ab808b5f1.woff2",
+      "bytes": 180832,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+8800-89FF"
+    },
+    {
+      "file": "maple-7.9-bold-045-e41dc814b4.woff2",
+      "bytes": 145764,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+8A00-8BFF"
+    },
+    {
+      "file": "maple-7.9-bold-046-d5fe26344d.woff2",
+      "bytes": 157912,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+8C00-8DFF"
+    },
+    {
+      "file": "maple-7.9-bold-047-f322ded671.woff2",
+      "bytes": 153344,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+8E00-8FFF"
+    },
+    {
+      "file": "maple-7.9-bold-048-0cdcf7257f.woff2",
+      "bytes": 157728,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+9000-91FF"
+    },
+    {
+      "file": "maple-7.9-bold-049-aa280ca08a.woff2",
+      "bytes": 162636,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+9200-93FF"
+    },
+    {
+      "file": "maple-7.9-bold-04a-f51ad4d92c.woff2",
+      "bytes": 167920,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+9400-95FF"
+    },
+    {
+      "file": "maple-7.9-bold-04b-4e8c6fa3ee.woff2",
+      "bytes": 156416,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+9600-97FF"
+    },
+    {
+      "file": "maple-7.9-bold-04c-9bfdf4d743.woff2",
+      "bytes": 173780,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+9800-99FF"
+    },
+    {
+      "file": "maple-7.9-bold-04d-83ac1f5bb3.woff2",
+      "bytes": 186340,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+9A00-9BFF"
+    },
+    {
+      "file": "maple-7.9-bold-04e-bcec89804a.woff2",
+      "bytes": 186984,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+9C00-9DFF"
+    },
+    {
+      "file": "maple-7.9-bold-04f-d31e83b6ce.woff2",
+      "bytes": 196372,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+9E00-9FEF"
+    },
+    {
+      "file": "maple-7.9-bold-070-8a3b0fdf98.woff2",
+      "bytes": 8412,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+E000-E00A,U+E0A0-E0A3,U+E0B0-E0C8,U+E0CA,U+E0CC-E0D2,U+E0D4,U+E0D6-E0D7"
+    },
+    {
+      "file": "maple-7.9-bold-071-5bee0a62c4.woff2",
+      "bytes": 53456,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+E200-E2A9,U+E300-E3E3"
+    },
+    {
+      "file": "maple-7.9-bold-072-97d891eee4.woff2",
+      "bytes": 1440,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+E5FA-E5FF"
+    },
+    {
+      "file": "maple-7.9-bold-073-4d4c36aca0.woff2",
+      "bytes": 102916,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+E600-E6B8,U+E700-E7FF"
+    },
+    {
+      "file": "maple-7.9-bold-074-6d3cc01e90.woff2",
+      "bytes": 67188,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+E800-E8EF"
+    },
+    {
+      "file": "maple-7.9-bold-075-eab42ad657.woff2",
+      "bytes": 32992,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+EA60-EA88,U+EA8A-EA8C,U+EA8F-EAC7,U+EAC9,U+EACC-EAFA,U+EAFC-EB09,U+EB0B-EB4E,U+EB50-EBFF"
+    },
+    {
+      "file": "maple-7.9-bold-076-2b1f5c4a42.woff2",
+      "bytes": 40532,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+EC00-EC1E,U+ED00-EDFF"
+    },
+    {
+      "file": "maple-7.9-bold-077-1db0d50873.woff2",
+      "bytes": 61864,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+EE00-EFCE"
+    },
+    {
+      "file": "maple-7.9-bold-078-bc6994a28f.woff2",
+      "bytes": 48984,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F000-F1FF"
+    },
+    {
+      "file": "maple-7.9-bold-079-ad6c1757ce.woff2",
+      "bytes": 62892,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F200-F381"
+    },
+    {
+      "file": "maple-7.9-bold-07a-d08ed2b87d.woff2",
+      "bytes": 27580,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F400-F533"
+    },
+    {
+      "file": "maple-7.9-bold-07f-2f4af46cc6.woff2",
+      "bytes": 2856,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+FE62,U+FEFF,U+FF01,U+FF08-FF09,U+FF0C,U+FF0E,U+FF1A-FF1B,U+FF1F,U+FF3B,U+FF3D,U+FF5B-FF5E,U+FFE0-FFE1,U+FFE5,U+FFEE,U+FFFD"
+    },
+    {
+      "file": "maple-7.9-bold-0fc-42ed90884c.woff2",
+      "bytes": 1064,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+1F850-1F859"
+    },
+    {
+      "file": "maple-7.9-bold-780-261fac1b24.woff2",
+      "bytes": 26408,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F0001-F01FF"
+    },
+    {
+      "file": "maple-7.9-bold-781-377319a91b.woff2",
+      "bytes": 28756,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F0200-F0387,U+F0389-F03FF"
+    },
+    {
+      "file": "maple-7.9-bold-782-3106f0be62.woff2",
+      "bytes": 32780,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F0400-F043C,U+F043E-F0508,U+F050A-F05FB,U+F05FD-F05FF"
+    },
+    {
+      "file": "maple-7.9-bold-783-74fbfa8648.woff2",
+      "bytes": 30144,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F0600-F0764,U+F0767-F07FF"
+    },
+    {
+      "file": "maple-7.9-bold-784-8570270664.woff2",
+      "bytes": 32036,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F0800-F08CF,U+F08D1-F09FF"
+    },
+    {
+      "file": "maple-7.9-bold-785-cee8de1ded.woff2",
+      "bytes": 30592,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F0A00-F0B38,U+F0B3A-F0BFF"
+    },
+    {
+      "file": "maple-7.9-bold-786-5ab5ff7149.woff2",
+      "bytes": 32192,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F0C00-F0C9D,U+F0CA0-F0DFF"
+    },
+    {
+      "file": "maple-7.9-bold-787-844b4c4373.woff2",
+      "bytes": 33672,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F0E00-F0FFF"
+    },
+    {
+      "file": "maple-7.9-bold-788-01731198ab.woff2",
+      "bytes": 35092,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F1000-F1087,U+F1089-F108B,U+F108D-F1090,U+F1092-F11FF"
+    },
+    {
+      "file": "maple-7.9-bold-789-f4c75fa806.woff2",
+      "bytes": 33600,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F1200-F13A5,U+F13A7-F13FF"
+    },
+    {
+      "file": "maple-7.9-bold-78a-4370321ec6.woff2",
+      "bytes": 32140,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F1400-F15FF"
+    },
+    {
+      "file": "maple-7.9-bold-78b-5cd412b56f.woff2",
+      "bytes": 32908,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F1600-F17FF"
+    },
+    {
+      "file": "maple-7.9-bold-78c-f88e331085.woff2",
+      "bytes": 37216,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F1800-F189F,U+F18A1-F18EF,U+F18F1-F19FF"
+    },
+    {
+      "file": "maple-7.9-bold-78d-1b9b77f6e8.woff2",
+      "bytes": 17464,
+      "weight": 700,
+      "style": "normal",
+      "coverage": "U+F1A00-F1AF0"
+    },
+    {
+      "file": "maple-7.9-italic-latin-befeb2b610.woff2",
+      "bytes": 55716,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+0,U+D,U+20-7E,U+A0-AC,U+AE-17F,U+18F-190,U+192,U+19B,U+1A0-1A1,U+1AF-1B0,U+1CD-1D4,U+1D6,U+1D8,U+1DA,U+1DC,U+1E6-1E7,U+1EA-1EB,U+1F4-1F5,U+1FC-1FF,U+218-21B,U+21E-21F,U+232-233,U+237,U+251-252,U+254,U+258-259,U+25B-25C,U+261,U+26A,U+279,U+283,U+28A,U+28C,U+292,U+2B0,U+2B9-2BA,U+2BC,U+2C6-2C9,U+2CC,U+2D0-2D1,U+2D8-2DD,U+2F3,U+2F7,U+300-304,U+306-30C,U+30F,U+312,U+31B,U+323,U+325-328,U+336-338,U+374-375,U+37E,U+384-38A,U+38C,U+38E-3A1,U+3A3-3CF,U+3D5-3D7,U+401-40C,U+40E-44F,U+451-45C,U+45E-45F,U+490-493,U+496-497,U+49A-49B,U+4A2-4A3,U+4AE-4B3,U+4B6-4B7,U+4BA-4BB,U+4D8-4D9,U+4DC-4DF,U+4E4-4E9,U+4EF,U+4F1,U+4F3-4F5,U+4FD,U+4FF"
+    },
+    {
+      "file": "maple-7.9-italic-005-23b09473f8.woff2",
+      "bytes": 832,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+AEA"
+    },
+    {
+      "file": "maple-7.9-italic-00f-e9bf4dd93c.woff2",
+      "bytes": 4980,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+1E80-1E85,U+1E9E,U+1EA0-1EF9"
+    },
+    {
+      "file": "maple-7.9-italic-010-22933d6d77.woff2",
+      "bytes": 9936,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+2001,U+200B,U+2010,U+2013-2014,U+2016,U+2018-2024,U+2026-2027,U+2030,U+2032-2034,U+2039-203A,U+203C-203F,U+2044-2046,U+204F,U+2070-2071,U+2074-2089,U+20A3,U+20A6,U+20A9,U+20AB-20AC,U+20B9-20BA,U+20BD,U+20BF,U+2103,U+2109,U+2113,U+2116,U+2122,U+212E,U+2140,U+2160-216B,U+2170-217B,U+218A-218B,U+2190-2199,U+219D-219E,U+21A0,U+21A2-21A7,U+21A9-21AA,U+21AD,U+21B0-21B3,U+21BE,U+21C4,U+21C6,U+21C9,U+21D0-21D4,U+21DA-21DB,U+21DE-21DF,U+21E4-21EA"
+    },
+    {
+      "file": "maple-7.9-italic-011-71b0157ddc.woff2",
+      "bytes": 4224,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+2200,U+2202-2205,U+2208-220D,U+220F-2212,U+2215,U+2219-221A,U+221E,U+2223,U+2227-222B,U+2234-2236,U+2248,U+2260,U+2264-2265,U+2282-2285,U+2295-2299,U+22C0-22C3,U+2302,U+23BE-23BF,U+23CB-23CC,U+23FB-23FE"
+    },
+    {
+      "file": "maple-7.9-italic-012-b751ab3752.woff2",
+      "bytes": 3576,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+24BE,U+24E7,U+2500-25A1,U+25AA-25AB,U+25B2-25CC,U+25CE-25CF,U+25D4-25D5,U+25E6-25EB,U+25EF,U+25F6"
+    },
+    {
+      "file": "maple-7.9-italic-013-530b1d3f8b.woff2",
+      "bytes": 2736,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+2610-2612,U+2630,U+2665,U+266D,U+266F,U+26A0-26A1,U+2713-2715,U+2717-2718,U+2736,U+276E-2771,U+2794,U+279C-279E,U+27C5-27C6,U+27DC,U+27E6-27EB,U+27F5-27F7"
+    },
+    {
+      "file": "maple-7.9-italic-014-0e842f6749.woff2",
+      "bytes": 2596,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+2801-28FF,U+2916,U+294A,U+2987-2988"
+    },
+    {
+      "file": "maple-7.9-italic-015-642211b03a.woff2",
+      "bytes": 988,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+2A00,U+2A05-2A06,U+2B58"
+    },
+    {
+      "file": "maple-7.9-italic-018-0c5b0001c6.woff2",
+      "bytes": 44240,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+3000-3003,U+3005-3011,U+3014-301C,U+3021-3029,U+3031-303B,U+3041-3096,U+3099-30FF,U+3105-312F"
+    },
+    {
+      "file": "maple-7.9-italic-027-9a09afbbb1.woff2",
+      "bytes": 107544,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+4E00-4FFF"
+    },
+    {
+      "file": "maple-7.9-italic-028-93fea67326.woff2",
+      "bytes": 150824,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+5000-51FF"
+    },
+    {
+      "file": "maple-7.9-italic-029-7d7627d4cc.woff2",
+      "bytes": 139300,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+5200-53FF"
+    },
+    {
+      "file": "maple-7.9-italic-02a-88e76d051b.woff2",
+      "bytes": 128748,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+5400-55FF"
+    },
+    {
+      "file": "maple-7.9-italic-02b-7d9219748b.woff2",
+      "bytes": 152624,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+5600-57FF"
+    },
+    {
+      "file": "maple-7.9-italic-02c-049df19d84.woff2",
+      "bytes": 155192,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+5800-59FF"
+    },
+    {
+      "file": "maple-7.9-italic-02d-663fc73c6e.woff2",
+      "bytes": 175896,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+5A00-5BFF"
+    },
+    {
+      "file": "maple-7.9-italic-02e-a98ed33998.woff2",
+      "bytes": 148100,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+5C00-5DFF"
+    },
+    {
+      "file": "maple-7.9-italic-02f-8ef9d93d09.woff2",
+      "bytes": 148176,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+5E00-5FFF"
+    },
+    {
+      "file": "maple-7.9-italic-030-74885d994d.woff2",
+      "bytes": 166616,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+6000-61FF"
+    },
+    {
+      "file": "maple-7.9-italic-031-4cf66c5d65.woff2",
+      "bytes": 136936,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+6200-63FF"
+    },
+    {
+      "file": "maple-7.9-italic-032-a608b7aed4.woff2",
+      "bytes": 185836,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+6400-65FF"
+    },
+    {
+      "file": "maple-7.9-italic-033-2978f66e55.woff2",
+      "bytes": 134100,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+6600-67FF"
+    },
+    {
+      "file": "maple-7.9-italic-034-38f7a0bf87.woff2",
+      "bytes": 158072,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+6800-69FF"
+    },
+    {
+      "file": "maple-7.9-italic-035-5cc45cd3b7.woff2",
+      "bytes": 197048,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+6A00-6BFF"
+    },
+    {
+      "file": "maple-7.9-italic-036-ca92d327e5.woff2",
+      "bytes": 136088,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+6C00-6DFF"
+    },
+    {
+      "file": "maple-7.9-italic-037-f887681c7d.woff2",
+      "bytes": 184276,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+6E00-6FFF"
+    },
+    {
+      "file": "maple-7.9-italic-038-06150b88f8.woff2",
+      "bytes": 188048,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+7000-71FF"
+    },
+    {
+      "file": "maple-7.9-italic-039-761da333b7.woff2",
+      "bytes": 163532,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+7200-73FF"
+    },
+    {
+      "file": "maple-7.9-italic-03a-1408ddaf2c.woff2",
+      "bytes": 167596,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+7400-75FF"
+    },
+    {
+      "file": "maple-7.9-italic-03b-1542b3b67c.woff2",
+      "bytes": 165508,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+7600-77FF"
+    },
+    {
+      "file": "maple-7.9-italic-03c-479f2f5011.woff2",
+      "bytes": 156668,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+7800-79FF"
+    },
+    {
+      "file": "maple-7.9-italic-03d-0f10590b11.woff2",
+      "bytes": 177912,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+7A00-7BFF"
+    },
+    {
+      "file": "maple-7.9-italic-03e-8b93e0ee0e.woff2",
+      "bytes": 196908,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+7C00-7DFF"
+    },
+    {
+      "file": "maple-7.9-italic-03f-2bd8815e3e.woff2",
+      "bytes": 206332,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+7E00-7FFF"
+    },
+    {
+      "file": "maple-7.9-italic-040-b85023679a.woff2",
+      "bytes": 161024,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+8000-81FF"
+    },
+    {
+      "file": "maple-7.9-italic-041-eb881b7b92.woff2",
+      "bytes": 136836,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+8200-83FF"
+    },
+    {
+      "file": "maple-7.9-italic-042-01490a139e.woff2",
+      "bytes": 173936,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+8400-85FF"
+    },
+    {
+      "file": "maple-7.9-italic-043-ffb21b6c4c.woff2",
+      "bytes": 185712,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+8600-87FF"
+    },
+    {
+      "file": "maple-7.9-italic-044-05cd1a1b14.woff2",
+      "bytes": 192432,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+8800-89FF"
+    },
+    {
+      "file": "maple-7.9-italic-045-1270935363.woff2",
+      "bytes": 155628,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+8A00-8BFF"
+    },
+    {
+      "file": "maple-7.9-italic-046-857077eab1.woff2",
+      "bytes": 167384,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+8C00-8DFF"
+    },
+    {
+      "file": "maple-7.9-italic-047-ca57774cc3.woff2",
+      "bytes": 163080,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+8E00-8FFF"
+    },
+    {
+      "file": "maple-7.9-italic-048-20969d6307.woff2",
+      "bytes": 166648,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+9000-91FF"
+    },
+    {
+      "file": "maple-7.9-italic-049-4066aa1a18.woff2",
+      "bytes": 171332,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+9200-93FF"
+    },
+    {
+      "file": "maple-7.9-italic-04a-1ed360d580.woff2",
+      "bytes": 178300,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+9400-95FF"
+    },
+    {
+      "file": "maple-7.9-italic-04b-2eba62d76b.woff2",
+      "bytes": 166564,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+9600-97FF"
+    },
+    {
+      "file": "maple-7.9-italic-04c-2f4effc460.woff2",
+      "bytes": 184280,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+9800-99FF"
+    },
+    {
+      "file": "maple-7.9-italic-04d-d858c0a9c1.woff2",
+      "bytes": 197232,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+9A00-9BFF"
+    },
+    {
+      "file": "maple-7.9-italic-04e-a19eb0289f.woff2",
+      "bytes": 199256,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+9C00-9DFF"
+    },
+    {
+      "file": "maple-7.9-italic-04f-8addde15f2.woff2",
+      "bytes": 208040,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+9E00-9FEF"
+    },
+    {
+      "file": "maple-7.9-italic-070-f0bd641f1c.woff2",
+      "bytes": 8488,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+E000-E00A,U+E0A0-E0A3,U+E0B0-E0C8,U+E0CA,U+E0CC-E0D2,U+E0D4,U+E0D6-E0D7"
+    },
+    {
+      "file": "maple-7.9-italic-071-e6ac564431.woff2",
+      "bytes": 53428,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+E200-E2A9,U+E300-E3E3"
+    },
+    {
+      "file": "maple-7.9-italic-072-e6fea65bca.woff2",
+      "bytes": 1428,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+E5FA-E5FF"
+    },
+    {
+      "file": "maple-7.9-italic-073-71621c00dc.woff2",
+      "bytes": 102776,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+E600-E6B8,U+E700-E7FF"
+    },
+    {
+      "file": "maple-7.9-italic-074-4bd488962a.woff2",
+      "bytes": 67164,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+E800-E8EF"
+    },
+    {
+      "file": "maple-7.9-italic-075-2838d95bd6.woff2",
+      "bytes": 33004,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+EA60-EA88,U+EA8A-EA8C,U+EA8F-EAC7,U+EAC9,U+EACC-EAFA,U+EAFC-EB09,U+EB0B-EB4E,U+EB50-EBFF"
+    },
+    {
+      "file": "maple-7.9-italic-076-94e02ecc03.woff2",
+      "bytes": 40580,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+EC00-EC1E,U+ED00-EDFF"
+    },
+    {
+      "file": "maple-7.9-italic-077-32c536ab6b.woff2",
+      "bytes": 61856,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+EE00-EFCE"
+    },
+    {
+      "file": "maple-7.9-italic-078-18256447bd.woff2",
+      "bytes": 49016,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F000-F1FF"
+    },
+    {
+      "file": "maple-7.9-italic-079-7a735e61cf.woff2",
+      "bytes": 62852,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F200-F381"
+    },
+    {
+      "file": "maple-7.9-italic-07a-2b57a6a905.woff2",
+      "bytes": 27620,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F400-F533"
+    },
+    {
+      "file": "maple-7.9-italic-07d-8ba1bbfb50.woff2",
+      "bytes": 1224,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+FB00"
+    },
+    {
+      "file": "maple-7.9-italic-07f-0240d80c69.woff2",
+      "bytes": 2952,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+FE62,U+FEFF,U+FF01,U+FF08-FF09,U+FF0C,U+FF0E,U+FF1A-FF1B,U+FF1F,U+FF3B,U+FF3D,U+FF5B-FF5E,U+FFE0-FFE1,U+FFE5,U+FFEE,U+FFFD"
+    },
+    {
+      "file": "maple-7.9-italic-0fc-e5b20a692e.woff2",
+      "bytes": 1112,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+1F850-1F859"
+    },
+    {
+      "file": "maple-7.9-italic-780-093cc90a9b.woff2",
+      "bytes": 26424,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F0001-F01FF"
+    },
+    {
+      "file": "maple-7.9-italic-781-f6ec357f6d.woff2",
+      "bytes": 28696,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F0200-F0387,U+F0389-F03FF"
+    },
+    {
+      "file": "maple-7.9-italic-782-5ca2ef4ddd.woff2",
+      "bytes": 32836,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F0400-F043C,U+F043E-F0508,U+F050A-F05FB,U+F05FD-F05FF"
+    },
+    {
+      "file": "maple-7.9-italic-783-7450baabee.woff2",
+      "bytes": 30168,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F0600-F0764,U+F0767-F07FF"
+    },
+    {
+      "file": "maple-7.9-italic-784-14a93cc4bd.woff2",
+      "bytes": 32064,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F0800-F08CF,U+F08D1-F09FF"
+    },
+    {
+      "file": "maple-7.9-italic-785-d62fb8b4d7.woff2",
+      "bytes": 30608,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F0A00-F0B38,U+F0B3A-F0BFF"
+    },
+    {
+      "file": "maple-7.9-italic-786-1d2959dc83.woff2",
+      "bytes": 32148,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F0C00-F0C9D,U+F0CA0-F0DFF"
+    },
+    {
+      "file": "maple-7.9-italic-787-70ae947136.woff2",
+      "bytes": 33648,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F0E00-F0FFF"
+    },
+    {
+      "file": "maple-7.9-italic-788-cf1f156ebf.woff2",
+      "bytes": 35088,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F1000-F1087,U+F1089-F108B,U+F108D-F1090,U+F1092-F11FF"
+    },
+    {
+      "file": "maple-7.9-italic-789-f0b79f9680.woff2",
+      "bytes": 33572,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F1200-F13A5,U+F13A7-F13FF"
+    },
+    {
+      "file": "maple-7.9-italic-78a-5a53fd7870.woff2",
+      "bytes": 32120,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F1400-F15FF"
+    },
+    {
+      "file": "maple-7.9-italic-78b-40be093bfd.woff2",
+      "bytes": 32892,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F1600-F17FF"
+    },
+    {
+      "file": "maple-7.9-italic-78c-3b11646f8e.woff2",
+      "bytes": 37192,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F1800-F189F,U+F18A1-F18EF,U+F18F1-F19FF"
+    },
+    {
+      "file": "maple-7.9-italic-78d-b13ed8c48b.woff2",
+      "bytes": 17468,
+      "weight": 400,
+      "style": "italic",
+      "coverage": "U+F1A00-F1AF0"
+    },
+    {
+      "file": "maple-7.9-bolditalic-latin-96412d165b.woff2",
+      "bytes": 57852,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+0,U+D,U+20-7E,U+A0-AC,U+AE-17F,U+18F-190,U+192,U+19B,U+1A0-1A1,U+1AF-1B0,U+1CD-1D4,U+1D6,U+1D8,U+1DA,U+1DC,U+1E6-1E7,U+1EA-1EB,U+1F4-1F5,U+1FC-1FF,U+218-21B,U+21E-21F,U+232-233,U+237,U+251-252,U+254,U+258-259,U+25B-25C,U+261,U+26A,U+279,U+283,U+28A,U+28C,U+292,U+2B0,U+2B9-2BA,U+2BC,U+2C6-2C9,U+2CC,U+2D0-2D1,U+2D8-2DD,U+2F3,U+2F7,U+300-304,U+306-30C,U+30F,U+312,U+31B,U+323,U+325-328,U+336-338,U+374-375,U+37E,U+384-38A,U+38C,U+38E-3A1,U+3A3-3CF,U+3D5-3D7,U+401-40C,U+40E-44F,U+451-45C,U+45E-45F,U+490-493,U+496-497,U+49A-49B,U+4A2-4A3,U+4AE-4B3,U+4B6-4B7,U+4BA-4BB,U+4D8-4D9,U+4DC-4DF,U+4E4-4E9,U+4EF,U+4F1,U+4F3-4F5,U+4FD,U+4FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-005-d59fef8639.woff2",
+      "bytes": 856,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+AEA"
+    },
+    {
+      "file": "maple-7.9-bolditalic-00f-1bbda7af69.woff2",
+      "bytes": 5220,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+1E80-1E85,U+1E9E,U+1EA0-1EF9"
+    },
+    {
+      "file": "maple-7.9-bolditalic-010-5cdd4b46a7.woff2",
+      "bytes": 10184,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+2001,U+200B,U+2010,U+2013-2014,U+2016,U+2018-2024,U+2026-2027,U+2030,U+2032-2034,U+2039-203A,U+203C-203F,U+2044-2046,U+204F,U+2070-2071,U+2074-2089,U+20A3,U+20A6,U+20A9,U+20AB-20AC,U+20B9-20BA,U+20BD,U+20BF,U+2103,U+2109,U+2113,U+2116,U+2122,U+212E,U+2140,U+2160-216B,U+2170-217B,U+218A-218B,U+2190-2199,U+219D-219E,U+21A0,U+21A2-21A7,U+21A9-21AA,U+21AD,U+21B0-21B3,U+21BE,U+21C4,U+21C6,U+21C9,U+21D0-21D4,U+21DA-21DB,U+21DE-21DF,U+21E4-21EA"
+    },
+    {
+      "file": "maple-7.9-bolditalic-011-0d1f1ae687.woff2",
+      "bytes": 4304,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+2200,U+2202-2205,U+2208-220D,U+220F-2212,U+2215,U+2219-221A,U+221E,U+2223,U+2227-222B,U+2234-2236,U+2248,U+2260,U+2264-2265,U+2282-2285,U+2295-2299,U+22C0-22C3,U+2302,U+23BE-23BF,U+23CB-23CC,U+23FB-23FE"
+    },
+    {
+      "file": "maple-7.9-bolditalic-012-4ceb000b2e.woff2",
+      "bytes": 3624,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+24BE,U+24E7,U+2500-25A1,U+25AA-25AB,U+25B2-25CC,U+25CE-25CF,U+25D4-25D5,U+25E6-25EB,U+25EF,U+25F6"
+    },
+    {
+      "file": "maple-7.9-bolditalic-013-ad0a4f4313.woff2",
+      "bytes": 2800,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+2610-2612,U+2630,U+2665,U+266D,U+266F,U+26A0-26A1,U+2713-2715,U+2717-2718,U+2736,U+276E-2771,U+2794,U+279C-279E,U+27C5-27C6,U+27DC,U+27E6-27EB,U+27F5-27F7"
+    },
+    {
+      "file": "maple-7.9-bolditalic-014-94d54b71b3.woff2",
+      "bytes": 2624,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+2801-28FF,U+2916,U+294A,U+2987-2988"
+    },
+    {
+      "file": "maple-7.9-bolditalic-015-7aede280da.woff2",
+      "bytes": 996,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+2A00,U+2A05-2A06,U+2B58"
+    },
+    {
+      "file": "maple-7.9-bolditalic-018-f21221b1c2.woff2",
+      "bytes": 44552,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+3000-3003,U+3005-3011,U+3014-301C,U+3021-3029,U+3031-303B,U+3041-3096,U+3099-30FF,U+3105-312F"
+    },
+    {
+      "file": "maple-7.9-bolditalic-027-d23d0e80a4.woff2",
+      "bytes": 109124,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+4E00-4FFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-028-23bd6f24df.woff2",
+      "bytes": 153500,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+5000-51FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-029-c481c0ad50.woff2",
+      "bytes": 141708,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+5200-53FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-02a-1c134be68e.woff2",
+      "bytes": 131324,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+5400-55FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-02b-3feb29ecfd.woff2",
+      "bytes": 155212,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+5600-57FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-02c-de8cc5a063.woff2",
+      "bytes": 158228,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+5800-59FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-02d-ea25c21fad.woff2",
+      "bytes": 179504,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+5A00-5BFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-02e-e68d6bd335.woff2",
+      "bytes": 151144,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+5C00-5DFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-02f-c88d1e92dc.woff2",
+      "bytes": 151060,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+5E00-5FFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-030-f26fefe87e.woff2",
+      "bytes": 170180,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+6000-61FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-031-f2aa1b8e22.woff2",
+      "bytes": 139324,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+6200-63FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-032-c4fafc4aa6.woff2",
+      "bytes": 188948,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+6400-65FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-033-288a1639ca.woff2",
+      "bytes": 136032,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+6600-67FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-034-7c982125bc.woff2",
+      "bytes": 159896,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+6800-69FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-035-fd1575dea2.woff2",
+      "bytes": 200376,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+6A00-6BFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-036-f6bf406353.woff2",
+      "bytes": 137776,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+6C00-6DFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-037-8ac1466916.woff2",
+      "bytes": 187564,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+6E00-6FFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-038-e9f7fed6a6.woff2",
+      "bytes": 191444,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+7000-71FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-039-6f90d42310.woff2",
+      "bytes": 165868,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+7200-73FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-03a-30c9409a7e.woff2",
+      "bytes": 171120,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+7400-75FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-03b-4f1741e9e9.woff2",
+      "bytes": 168492,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+7600-77FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-03c-6551c74e78.woff2",
+      "bytes": 158684,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+7800-79FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-03d-c8e2b07106.woff2",
+      "bytes": 180716,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+7A00-7BFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-03e-c3e98613d4.woff2",
+      "bytes": 201824,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+7C00-7DFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-03f-f1c580bad4.woff2",
+      "bytes": 210824,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+7E00-7FFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-040-32e8260076.woff2",
+      "bytes": 163808,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+8000-81FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-041-39805a0ed7.woff2",
+      "bytes": 139456,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+8200-83FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-042-13b4d84cd3.woff2",
+      "bytes": 176588,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+8400-85FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-043-d85780d0bd.woff2",
+      "bytes": 188940,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+8600-87FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-044-1b5eb624d7.woff2",
+      "bytes": 195480,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+8800-89FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-045-ad0b4f8762.woff2",
+      "bytes": 158584,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+8A00-8BFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-046-9966021b3a.woff2",
+      "bytes": 169872,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+8C00-8DFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-047-100d4f6f4e.woff2",
+      "bytes": 166788,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+8E00-8FFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-048-a0a1e8b29c.woff2",
+      "bytes": 170524,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+9000-91FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-049-0806f9b3cc.woff2",
+      "bytes": 172640,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+9200-93FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-04a-28fdef78b3.woff2",
+      "bytes": 181380,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+9400-95FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-04b-6e93ef0086.woff2",
+      "bytes": 170244,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+9600-97FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-04c-50b8da6282.woff2",
+      "bytes": 187004,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+9800-99FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-04d-f93277723d.woff2",
+      "bytes": 201272,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+9A00-9BFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-04e-72e2644690.woff2",
+      "bytes": 202940,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+9C00-9DFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-04f-4f234f1802.woff2",
+      "bytes": 211936,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+9E00-9FEF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-070-a3658a8a23.woff2",
+      "bytes": 8476,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+E000-E00A,U+E0A0-E0A3,U+E0B0-E0C8,U+E0CA,U+E0CC-E0D2,U+E0D4,U+E0D6-E0D7"
+    },
+    {
+      "file": "maple-7.9-bolditalic-071-4987e49732.woff2",
+      "bytes": 53504,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+E200-E2A9,U+E300-E3E3"
+    },
+    {
+      "file": "maple-7.9-bolditalic-072-e587fa72cd.woff2",
+      "bytes": 1440,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+E5FA-E5FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-073-2aca01fdf6.woff2",
+      "bytes": 102756,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+E600-E6B8,U+E700-E7FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-074-ae89f99a60.woff2",
+      "bytes": 67048,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+E800-E8EF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-075-5a77191665.woff2",
+      "bytes": 32968,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+EA60-EA88,U+EA8A-EA8C,U+EA8F-EAC7,U+EAC9,U+EACC-EAFA,U+EAFC-EB09,U+EB0B-EB4E,U+EB50-EBFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-076-4c54a87277.woff2",
+      "bytes": 40544,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+EC00-EC1E,U+ED00-EDFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-077-e47dce25ee.woff2",
+      "bytes": 61860,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+EE00-EFCE"
+    },
+    {
+      "file": "maple-7.9-bolditalic-078-b0b720dab6.woff2",
+      "bytes": 49008,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F000-F1FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-079-316ee96f6a.woff2",
+      "bytes": 62812,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F200-F381"
+    },
+    {
+      "file": "maple-7.9-bolditalic-07a-b10ccb8107.woff2",
+      "bytes": 27616,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F400-F533"
+    },
+    {
+      "file": "maple-7.9-bolditalic-07d-5667cb3be1.woff2",
+      "bytes": 1256,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+FB00"
+    },
+    {
+      "file": "maple-7.9-bolditalic-07f-2ac6735ff8.woff2",
+      "bytes": 3124,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+FE62,U+FEFF,U+FF01,U+FF08-FF09,U+FF0C,U+FF0E,U+FF1A-FF1B,U+FF1F,U+FF3B,U+FF3D,U+FF5B-FF5E,U+FFE0-FFE1,U+FFE5,U+FFEE,U+FFFD"
+    },
+    {
+      "file": "maple-7.9-bolditalic-0fc-52171ca01e.woff2",
+      "bytes": 1140,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+1F850-1F859"
+    },
+    {
+      "file": "maple-7.9-bolditalic-780-3c090c5f89.woff2",
+      "bytes": 26496,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F0001-F01FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-781-ca4077b4fa.woff2",
+      "bytes": 28696,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F0200-F0387,U+F0389-F03FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-782-42c3d52206.woff2",
+      "bytes": 32788,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F0400-F043C,U+F043E-F0508,U+F050A-F05FB,U+F05FD-F05FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-783-d72840dd37.woff2",
+      "bytes": 30148,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F0600-F0764,U+F0767-F07FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-784-b9ca097e50.woff2",
+      "bytes": 32108,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F0800-F08CF,U+F08D1-F09FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-785-b81dec6af9.woff2",
+      "bytes": 30640,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F0A00-F0B38,U+F0B3A-F0BFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-786-76c266f6f5.woff2",
+      "bytes": 32124,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F0C00-F0C9D,U+F0CA0-F0DFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-787-403bd73766.woff2",
+      "bytes": 33644,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F0E00-F0FFF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-788-71a4b8c2c5.woff2",
+      "bytes": 35084,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F1000-F1087,U+F1089-F108B,U+F108D-F1090,U+F1092-F11FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-789-94527f3fa4.woff2",
+      "bytes": 33600,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F1200-F13A5,U+F13A7-F13FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-78a-81918568b8.woff2",
+      "bytes": 32132,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F1400-F15FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-78b-d0302b4bfe.woff2",
+      "bytes": 32888,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F1600-F17FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-78c-e864792049.woff2",
+      "bytes": 37208,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F1800-F189F,U+F18A1-F18EF,U+F18F1-F19FF"
+    },
+    {
+      "file": "maple-7.9-bolditalic-78d-105ff69bf4.woff2",
+      "bytes": 17496,
+      "weight": 700,
+      "style": "italic",
+      "coverage": "U+F1A00-F1AF0"
+    }
+  ]
+}

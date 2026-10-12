@@ -10,6 +10,9 @@ export function copyText(options: { label?: string; format?: 'text' | 'raw' | 's
 export function highlightSelection(options: { label?: string; color?: string; style?: 'background' | 'underline' | 'dotted' | 'wavy' } = {}): SelectionAction {
   return {
     id: 'highlight', label: options.label ?? 'Highlight',
-    run: ({ selection, addHighlight }) => { for (const range of selection.raw.ranges) addHighlight({ id: `highlight-${crypto.randomUUID()}`, range, color: options.color, style: options.style }); },
+    run: ({ selection, addHighlight, clearSelection }) => {
+      for (const range of selection.raw.ranges) addHighlight({ id: `highlight-${crypto.randomUUID()}`, range, color: options.color, style: options.style });
+      clearSelection();
+    },
   };
 }

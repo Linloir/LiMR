@@ -25,7 +25,9 @@ const warning = defineBlock({
 :::
 ```
 
-组件接收 `node`（含 attributes/children/原文 position）、`children`、`source`、`pending` 和 `renderChildren(nodes)`。后者直接渲染已解析子树，不需要重新解析字符串。按需渲染答案/提示时可保留对应节点，以原始坐标交还给 `renderChildren`。
+组件接收 `node`（含 attributes/children/原文 position）、`children`、`source`、`pending` 和 `renderChildren(nodes)`。后者直接渲染已解析子树，不需要重新解析字符串。按需渲染答案/提示时可保留对应节点，以原始坐标交还给 `renderChildren`。字面量节点（如 code/inlineCode）使用 `renderValue(tokens?)` 保留源码映射和装饰；token 只需提供正文 `content`、相对 node.value 的 UTF-16 `offset` 和可选 `style`。
+
+属性中的可见文字使用 `renderAttribute('title')`：内置 JSX/指令适配器保留属性值的原文位置（不含引号），因此标题同样支持部分选择、高亮和角注，实体解码后仍能回到原始坐标。直接输出 `node.attributes.title` 则只会得到普通文字。自定义解析器可提供 `node.attributeNodes[name]`（带 `value` / `position` 的文本节点）接入同一链路。
 
 需要行内标签、全新 token 或 AST 改写时用 `defineExtension()`：
 
@@ -52,13 +54,15 @@ const badge = defineExtension({
 | `definition({component?})` / `definition` | `<definition>`，title 属性或 `<title>`，可选 `<content>` |
 | `question({component?})` / `question` | 问题正文、提示、答案、选择题 |
 | `extras({component?})` / `extras` | `<extras><extra title="..." url="..." desc="..." /></extras>` |
-| `video({component?, resolveUrl?})` / `video` | `<video>` / `<md-video>`，native / youtube / bilibili |
+| `video({component?, resolveUrl?, loading?})` / `video` | `<video>` / `<md-video>`，自动识别 native / youtube / bilibili |
 | `figures()` / `figures` | `<figure>` / `<figcaption>` |
 | `citation(annotationTypeOverrides?)` / `citation` | `<ref>` / `<citation>`，citation 角注类型 |
 
 问题的子标签为 `question-content`、`question-hint`、`question-answer`、`question-sel-grp` 和 `question-sel`。选择组用 `answer="[0,2]"` 配置从 0 开始的正确选项编号，`multi="true"` 开启多选。它们是内容组件，不包含提问/聊天角注或服务连接。
 
-视频使用 `url` 或 `src`，provider 默认 native；嵌入式播放器明确配置 `provider="youtube"` 等。不会在点击前请求第三方播放器。未知标签不执行 HTML；组件对自己的远程请求和 URL 处理负责。
+视频使用 `url` 或 `src`，默认从 URL 识别平台，也可显式指定 `provider="youtube"`、`"bilibili"`、`"native"`。支持 YouTube watch/短链接/embed/shorts/live 地址及起始时间、Bilibili BV/av 地址及分 P。播放器靠近视口 200px 时才挂载真实 iframe/原生 video，不自动播放；可用 `video({ loading: 'click' })` 或单个标签的 `loading="click"` 改成点击后加载，`"eager"` 则立即加载。视频居中、默认最大宽 560px，16:9；右上角复用公式复制按钮，复制原始 Markdown。
+
+YouTube 使用标准 `youtube.com/embed` 地址，iframe 的 `referrerPolicy="strict-origin-when-cross-origin"` 保留来源站点。播放器的来源要求见 [YouTube 官方文档](https://developers.google.com/youtube/iframe_api_reference#Events)（缺少来源身份可能报 153）。远程平台仍决定视频能否嵌入；本地回归使用请求拦截验证 URL、加载时机和 iframe 参数，不代替真实播放验收。未知标签不执行 HTML；自定义组件对自己的远程请求和 URL 处理负责。
 
 ## 角注类型
 
@@ -74,7 +78,74 @@ const glossary = defineAnnotation<{ title: string; body: string }>({
 
 注册类型与放置角注是独立操作。类型定义 icon、可选 Marker 组件、内容组件和可选的数据加载器；数据通过 annotations、文档命令或自定义语法 transform 生成。
 
+`icon` / `Marker` 只负责图形；按钮、点击、悬浮、可访问标签和大小由 LiMR 管理。推荐带方形 `viewBox`、`currentColor` 的 SVG，图形在 viewBox 中居中，不需要写外层按钮、sup 或尺寸。图标槽会限制超大 SVG/图片、嵌套组件的尺寸与溢出，统一普通和插件角标的尺寸，并重置装饰性 HTML 包裹层的字体基线。复杂自定义图形仍应在自己的 viewBox 内留出边界；槽位不能修复 SVG 内部画偏或留白不对称。可通过 `--limr-mark-size` 修改整套角标尺寸。
+
 `Content` 接收 `annotation`、`data`、`presentation`（preview/expanded/sidebar）、`expanded`、`loading`、`error`、`retry`。可以按展示模式显示摘要或完整 UI。`load(annotation, {signal})` 只在需要展示内容时调用，必须遵守 signal；同一注释在侧栏和浮层之间共享请求和结果。更换不可变 annotation 对象会换资源标识；显式 `invalidateAnnotation(id)` 或 `retry()` 可重新加载。缓存按阅读器隔离，结果采用有限 LRU；不会把一个应用用户的数据共享给另一阅读器。
+
+`color` 同时作为角标、默认侧栏标题/装饰条/淡色背景及公共浮层标题的主题色，未激活的装饰条也保留主题色。`sidebar.color`、`borderColor`、`titleColor`、`textColor`、`excerptColor`、`previewColor` 可分别覆盖侧栏主题色、未激活装饰条、标题、正文、关联文本和标题下的预览；不指定正文颜色时沿用阅读器正文色，支持 CSS 颜色和变量。`Content` 和 `Preview` 可以给局部元素单独设置颜色，不会被骨架强制覆盖。多条注释共用一张卡片时，首条注释决定卡片主题，各条目的内部富文本仍由模块控制。
+
+默认侧栏卡片顶部始终显示灰色的关联文本区（`.limr-sidebar-reference`），单行省略，完整文本放在 `title` 中。选区角注展示关联范围的可读文本，去掉 Markdown 标记并解码实体；嵌入式 `<ref>` 展示所在段落。它由 LiMR 根据 occurrence 生成，展开后仍保留，模块无需在 Content 内重复渲染。页面级 `renderCard` 接管时可自行选择是否提供关联区域。
+
+收起时，标题下面的摘要由模块的 `sidebar.Preview` 组件渲染。它接收 `AnnotationSidebarPreviewProps<T>`：`annotation`、`data`（本地 `annotation.data`）、`occurrence`、同组的 `annotations` 和上方的 `referenceText`。同组首条注释的模块负责整组预览，可以自行合并摘要或显示数量。默认最多两行，`sidebar.previewLines` 可设置正整数行数；展开后预览收起，改为显示完整 `Content`。设 `Preview: false` 或组件返回 `null` 可关闭预览，不留下空白间距。未配置预览的模块保持只显示标题。
+
+预览不会触发 `load`，也不需要挂载完整内容。远程模块应随本地注释携带摘要字段；摘要更新后预览跟随 `updateAnnotation()` 更新。建议使用简短文字或轻量富文本，不要在 Preview 里启动完整会话或远程加载。返回链接、按钮时，它们保留自身交互，其余预览区域点击展开卡片。
+
+```tsx
+defineAnnotation<{ question: string; answer: string }>({
+  type: 'assistant', label: '询问助手', color: '#8b5cf6',
+  Content: ({ data }) => <AnnotationMarkdown source={data?.answer ?? ''} />,
+  sidebar: {
+    Preview: ({ data }) => data?.question ? <span title={data.question}>{data.question}</span> : null,
+    previewLines: 2,
+    textColor: 'var(--limr-text, #1a1a1a)',
+    previewColor: 'var(--limr-secondary, #7b756e)',
+  },
+});
+```
+
+Citation 的默认预览依次使用 `summary`、`description`、安全 URL、标题；摘要和描述去掉 Markdown 标记并解码实体，同组引用按顺序拼接。`summary` 可通过注释 data 或 `<citation summary="简短摘要" ... />` 提供；有 description 时，展开显示完整 description。`citation({ sidebar: { Preview: MyPreview, previewLines: 3 } })` 可替换展示，`Preview: false` 可关闭。只覆盖颜色或行数会保留默认预览。
+
+**模块内容边距约定：** 默认卡片由灰色关联区和 `.limr-sidebar-card-body` 两块组成，中间保留 `1px` 分隔（`--limr-sidebar-reference-gap`）。两区共享 `--limr-sidebar-padding-inline`，默认 `10px`，关联文本、标题、预览和展开正文的文字起点必须对齐；不要在模块根节点再加水平 padding、margin 或 text-indent。修改横向留白应调整共享变量，不要分别改两区。逻辑方向属性保证 RTL 使用同一约定。
+
+骨架负责标题到预览/正文的间隔；通用内容区底部比顶部多 2px，补足文字基线带来的视觉差异。模块只负责内部段落间距，不要再给 `Content` 或 `Preview` 根节点添加卡片 padding 或用于补偿底部的空段落。骨架清除内容根节点首尾 margin；自定义包裹层中的段落边距由模块处理，Markdown 内容推荐使用 `AnnotationMarkdown`，它会清除末段 margin，包含 source-binding 包裹层和绘制层的情况。不同字体的视觉留白仍需按实际字形检查。
+
+Citation 保留专用间距：多条目的底部补偿及条目间隔不受通用骨架的 2px 调整影响；单条目展开时底部比多条目少 2px。请分别验证带描述/不带描述、单条/多条、普通文本/Markdown、加载中/流式回答和浅色/深色，不要通过统一增减所有卡片的底部 padding 修正某一种内容。
+
+模块通过 `overlay.Card` 接管悬浮和展开卡片的全部内部 UI，包括标题、正文、操作和底栏。`AnnotationOverlayCardProps<T>` 提供 `annotation`、`occurrence`、`presentation`、`expanded`、`pinned`、`canExpand`、`expand()`、`collapse()`、`close()`，以及已经接入各条目 `Content` 和缓存的 `children`。LiMR 只保留浮层定位、挂载、动画和焦点管理。自定义正文可用 `data-limr-card-body` 标记淡入区域。
+
+可以选用公共布局组件，标题仍由模块决定：
+
+```tsx
+import { AnnotationCard, type AnnotationOverlayCardProps } from 'limr';
+
+function ConversationCard(props: AnnotationOverlayCardProps) {
+  return <AnnotationCard {...props} title="询问助手" />;
+}
+```
+
+不需要默认布局时直接返回自己的 header、正文和操作按钮即可。`Card` 使用同一个组件处理两种 presentation，避免切换时丢失输入状态。兼容旧的仅 `Content` 定义时，默认布局以类型 `label` 作为标题。
+
+浮层是否允许展开、展开的布局由角注模块声明，默认不展开。点击没有展开能力的角标会固定预览，触屏也可滚动阅读、点击关闭；Citation 默认采用此行为。
+
+```tsx
+defineAnnotation({
+  type: 'conversation', label: '对话', Content: Conversation,
+  overlay: { Card: ConversationCard, expand: { placement: 'center', width: 680, height: '80dvh' } },
+  sidebar: { collapseOnContentClick: false },
+});
+
+defineAnnotation({
+  type: 'detail', label: '详细说明', Content: Detail,
+  overlay: { expand: { placement: 'anchor' } },
+  sidebar: { collapseOnContentClick: true },
+});
+```
+
+`overlay.expand` 可以是 `false`、`AnnotationExpansion`，也可以是 `(annotation) => false | AnnotationExpansion`，按数据选择。`placement: 'anchor'` 保持预览靠近角标的一侧边缘，在原地按内容增高；`'center'` 在整个页面的 visual viewport 居中，不受正文列宽或内部滚动容器限制。可设 `width`、`height`、`maxHeight`（数字为 px，字符串为 CSS 长度）；省略 height 时按内容高度，省略 width 时 anchor 保持预览宽度、center 使用 640px。`overlay.previewWidth` 可单独设置预览宽度。尺寸始终受可视区域限制，包括移动键盘。
+
+展开从脚注预览的位置和尺寸放大，关闭缩回该位置和尺寸并淡出；触摸和工具栏直接打开时会先隐式测量实际预览。外壳独立变形，文字和控件保持正常比例。展开、收起复用同一组件与请求，模块可根据 `presentation` 改变内容；关闭动画可被重新打开打断，完成后才卸载。
+
+`sidebar.collapseOnContentClick` 默认 false，Citation 也保持 false。Citation 条目悬浮时显示下划线，有 URL 时点击标题或说明可以跳转；标题栏负责展开/收起。自定义模块启用该选项后，展开卡片的普通文字/空白区域可点击收起，链接、按钮、输入框、选中文本和 `[data-limr-card-interactive]` 区域保留自身交互。模块仍可用 `useLiMR().activateAnnotation(null)` 自行关闭。多个角注共用一个角标时，首个角注决定浮层 Card 和布局，`children` 保留所有条目各自的 Content；侧栏仅在所有角注类型均启用后才允许点击内容收起；页面级 `renderCard` 可完全替换侧栏卡片行为。
 
 自定义语法可以生成 `annotationDefinition` 节点，其 `annotation` 字段为完整数据；生成 `annotationReference` 节点，其 `annotationIds` 为引用的 ID 数组，position 对应角标位置。也可以完全不添加语法，直接给用户选中的范围添加外部 annotation。
 
@@ -89,6 +160,16 @@ const glossary = defineAnnotation<{ title: string; body: string }>({
 5. 自定义 Content 使用 `AnnotationMarkdown streaming` 渲染回答。
 6. Reader 卸载时中止请求，动作不再更新已卸载的文档。
 
+示例支持 `prompt(selection)` 生成首个问题，保存到 `data.question` 并传给 `adapter.answer({ selection, question, signal })`。`sidebar.Preview` 显示这个问题，流式回答只更新答案，不覆盖问题；中文页面可配置 `prompt: selection => \`请解释「${selection.text}」。\``。接入已有对话时，应用也可提供自己的 Preview 展示首条用户消息。
+
 示例只从 `limr` 的公共入口导入，可以复制到应用中使用。真实 Codex 集成可以实现同一个 adapter，也可以自行实现更复杂的组件、对话状态、输入框和动作。LiMR 不把助手的传输、认证、问题/答案 schema 写入内核。
 
 插件任务的取消信号来自动作的生命周期上下文。若业务还需要“停止生成”、重试、切换会话等控制，可由插件自己的 AbortController 与 context.signal 联动。角标保留哪个历史回答、是否保存、如何鉴权，也由应用决定。
+
+## 作为独立包分发
+
+插件导出一个返回 `RendererExtension` 的工厂，消费者通过 `plugins={[yourPlugin(options)]}` 添加即可。`plugins` 会追加到 `extensions`（未指定时为 `standard()`），无须消费者重复列出默认模块。以 `limr` 和 `react` 为 peerDependencies，导出 ESM 和类型声明；不要把另一份 React 或 LiMR 打包进插件。
+
+[`examples/packages/reading-tools`](../examples/packages/reading-tools) 演示一个同时提供语法、角注内容和选区动作的独立包，[`paper-theme`](../examples/packages/paper-theme) 是独立 CSS 包。`pnpm test:package` 会先打包，再在仓库外安装这些包与 LiMR，验证 React 18/19 的类型、SSR、浏览器交互和 portal 样式。示例包名未发布到 npm；发布自己的包时替换 name、version，并移除 private。
+
+仅样式包无需 React 或解析器依赖。使用 `appearance` 属性选择作用域，使多个阅读器和浮层使用正确主题；详见[样式指南](styles.md)。

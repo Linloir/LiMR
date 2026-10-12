@@ -1,9 +1,10 @@
 import { useContext, useEffect, useRef } from 'react';
-import { DocumentProvider, RuntimeContext, useDocument, useIsomorphicLayoutEffect, useRuntime, useStoreSelector, type DocumentProviderProps } from './context';
+import { useAppearance, DocumentProvider, RuntimeContext, useDocument, useIsomorphicLayoutEffect, useRuntime, useStoreSelector, type DocumentProviderProps } from './context';
 import { BlockView, Footnotes } from './render';
 import { useSelectionTracking } from './selection';
 import type { StyledProps } from './types';
 import { emptyDecorations } from './runtime';
+import { SelectionPaint } from './selection-paint';
 
 export interface MarkdownProps extends Omit<DocumentProviderProps, 'children'>, StyledProps {
   interactive?: boolean;
@@ -19,8 +20,10 @@ export function Markdown({ className, style, interactive = true, followOutput = 
 function MarkdownBody({ className, style, interactive, followOutput }: StyledProps & { interactive: boolean; followOutput: boolean }) {
   const runtime = useRuntime();
   const document = useDocument();
+  const appearance = useAppearance();
   const theme = useStoreSelector(runtime.configuration, config => config.theme ?? 'light');
   const scrollRoot = useStoreSelector(runtime.configuration, config => config.scrollRoot);
+  const offset = useStoreSelector(runtime.documentOffset, value => value);
   const components = useStoreSelector(runtime.configuration, config => config.components);
   const extensions = useStoreSelector(runtime.configuration, config => config.extensions);
   const decorations = useStoreSelector(runtime.decorations, state => state.byBlock);
@@ -44,8 +47,9 @@ function MarkdownBody({ className, style, interactive, followOutput }: StyledPro
     const frame = requestAnimationFrame(() => runtime.scrollTo(scrollRoot?.scrollHeight ?? window.document.documentElement.scrollHeight, 'instant'));
     return () => cancelAnimationFrame(frame);
   }, [document, runtime, followOutput, scrollRoot]);
-  return <article ref={ref} className={`limr-prose ${className ?? ''}`} style={style} data-limr-theme={theme} data-limr-document={document.id}>
+  return <article ref={ref} className={`limr-prose ${className ?? ''}`} style={{ ...style, translate: offset ? `0 ${offset}px` : style?.translate }} data-limr-theme={theme} data-limr-appearance={appearance} data-limr-document={document.id}>
     {document.blocks.map(block => <BlockView key={block.id} block={block} runtime={runtime} components={components} extensions={extensions} decorations={decorations.get(block.id) ?? emptyDecorations} />)}
     <Footnotes />
+    <SelectionPaint runtime={runtime} />
   </article>;
 }

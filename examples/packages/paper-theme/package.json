@@ -1,0 +1,7 @@
+{
+  "name": "@limr-example/paper-theme",
+  "version": "0.0.0",
+  "private": true,
+  "exports": { ".": "./index.css" },
+  "sideEffects": ["**/*.css"]
+}

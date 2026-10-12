@@ -47,7 +47,7 @@ export function bindCompactText(element: HTMLElement, nodes: readonly MarkdownNo
     acceptNode(node) {
       if (node.nodeType === Node.ELEMENT_NODE) {
         const element = node as Element;
-        return element.hasAttribute('data-limr-ignore') || runtime.bindings.get(element)?.atomic ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_SKIP;
+        return element.hasAttribute('data-limr-ignore') || element.hasAttribute('data-limr-text') || runtime.bindings.get(element)?.atomic ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_SKIP;
       }
       return NodeFilter.FILTER_ACCEPT;
     },

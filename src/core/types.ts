@@ -14,6 +14,8 @@ export interface MarkdownNode {
   value?: string;
   name?: string;
   attributes?: Record<string, string | boolean | number>;
+  /** Source-mapped attribute values, available to custom text renderers. */
+  attributeNodes?: Record<string, MarkdownNode>;
   inline?: boolean;
   selection?: 'content' | 'atomic';
   [key: string]: unknown;

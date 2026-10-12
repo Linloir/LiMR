@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-12T04:33:53.307Z",
+  "date": "2026-10-12T09:32:24.107Z",
   "browser": "156.0.8078.4",
   "measurement": "Synchronous React update plus forced layout, production Vite build. Each trial has an isolated page, font-ready warmup and alternating renderer order. Streaming updates spaced by one animation frame; idle frame time excluded.",
   "results": [
@@ -9,35 +9,35 @@
       "median": {
         "characters": 87381,
         "updates": 1,
-        "totalMs": 108.10000002384186,
-        "p95Ms": 108.10000002384186,
-        "maxMs": 108.10000002384186,
-        "elements": 4001
+        "totalMs": 126.10000002384186,
+        "p95Ms": 126.10000002384186,
+        "maxMs": 126.10000002384186,
+        "elements": 4002
       },
       "samples": [
         {
           "characters": 87381,
           "updates": 1,
-          "totalMs": 106.59999996423721,
-          "p95Ms": 106.59999996423721,
-          "maxMs": 106.59999996423721,
-          "elements": 4001
+          "totalMs": 124.69999998807907,
+          "p95Ms": 124.69999998807907,
+          "maxMs": 124.69999998807907,
+          "elements": 4002
         },
         {
           "characters": 87381,
           "updates": 1,
-          "totalMs": 108.10000002384186,
-          "p95Ms": 108.10000002384186,
-          "maxMs": 108.10000002384186,
-          "elements": 4001
+          "totalMs": 126.10000002384186,
+          "p95Ms": 126.10000002384186,
+          "maxMs": 126.10000002384186,
+          "elements": 4002
         },
         {
           "characters": 87381,
           "updates": 1,
-          "totalMs": 123.80000001192093,
-          "p95Ms": 123.80000001192093,
-          "maxMs": 123.80000001192093,
-          "elements": 4001
+          "totalMs": 147.5,
+          "p95Ms": 147.5,
+          "maxMs": 147.5,
+          "elements": 4002
         }
       ]
     },
@@ -47,34 +47,34 @@
       "median": {
         "characters": 87381,
         "updates": 1,
-        "totalMs": 109.79999995231628,
-        "p95Ms": 109.79999995231628,
-        "maxMs": 109.79999995231628,
+        "totalMs": 134,
+        "p95Ms": 134,
+        "maxMs": 134,
         "elements": 3601
       },
       "samples": [
         {
           "characters": 87381,
           "updates": 1,
-          "totalMs": 107.69999998807907,
-          "p95Ms": 107.69999998807907,
-          "maxMs": 107.69999998807907,
+          "totalMs": 122.40000003576279,
+          "p95Ms": 122.40000003576279,
+          "maxMs": 122.40000003576279,
           "elements": 3601
         },
         {
           "characters": 87381,
           "updates": 1,
-          "totalMs": 109.79999995231628,
-          "p95Ms": 109.79999995231628,
-          "maxMs": 109.79999995231628,
+          "totalMs": 134,
+          "p95Ms": 134,
+          "maxMs": 134,
           "elements": 3601
         },
         {
           "characters": 87381,
           "updates": 1,
-          "totalMs": 111.19999998807907,
-          "p95Ms": 111.19999998807907,
-          "maxMs": 111.19999998807907,
+          "totalMs": 142.39999997615814,
+          "p95Ms": 142.39999997615814,
+          "maxMs": 142.39999997615814,
           "elements": 3601
         }
       ]
@@ -85,35 +85,35 @@
       "median": {
         "characters": 877782,
         "updates": 1,
-        "totalMs": 1249.199999988079,
-        "p95Ms": 1249.199999988079,
-        "maxMs": 1249.199999988079,
-        "elements": 40001
+        "totalMs": 1345.4000000357628,
+        "p95Ms": 1345.4000000357628,
+        "maxMs": 1345.4000000357628,
+        "elements": 40002
       },
       "samples": [
         {
           "characters": 877782,
           "updates": 1,
-          "totalMs": 1224.199999988079,
-          "p95Ms": 1224.199999988079,
-          "maxMs": 1224.199999988079,
-          "elements": 40001
+          "totalMs": 1337.699999988079,
+          "p95Ms": 1337.699999988079,
+          "maxMs": 1337.699999988079,
+          "elements": 40002
         },
         {
           "characters": 877782,
           "updates": 1,
-          "totalMs": 1249.199999988079,
-          "p95Ms": 1249.199999988079,
-          "maxMs": 1249.199999988079,
-          "elements": 40001
+          "totalMs": 1345.4000000357628,
+          "p95Ms": 1345.4000000357628,
+          "maxMs": 1345.4000000357628,
+          "elements": 40002
         },
         {
           "characters": 877782,
           "updates": 1,
-          "totalMs": 1293.800000011921,
-          "p95Ms": 1293.800000011921,
-          "maxMs": 1293.800000011921,
-          "elements": 40001
+          "totalMs": 1394.199999988079,
+          "p95Ms": 1394.199999988079,
+          "maxMs": 1394.199999988079,
+          "elements": 40002
         }
       ]
     },
@@ -123,34 +123,34 @@
       "median": {
         "characters": 877782,
         "updates": 1,
-        "totalMs": 1280,
-        "p95Ms": 1280,
-        "maxMs": 1280,
+        "totalMs": 1437.5999999642372,
+        "p95Ms": 1437.5999999642372,
+        "maxMs": 1437.5999999642372,
         "elements": 36001
       },
       "samples": [
         {
           "characters": 877782,
           "updates": 1,
-          "totalMs": 1181.5,
-          "p95Ms": 1181.5,
-          "maxMs": 1181.5,
+          "totalMs": 1308.1000000238419,
+          "p95Ms": 1308.1000000238419,
+          "maxMs": 1308.1000000238419,
           "elements": 36001
         },
         {
           "characters": 877782,
           "updates": 1,
-          "totalMs": 1280,
-          "p95Ms": 1280,
-          "maxMs": 1280,
+          "totalMs": 1437.5999999642372,
+          "p95Ms": 1437.5999999642372,
+          "maxMs": 1437.5999999642372,
           "elements": 36001
         },
         {
           "characters": 877782,
           "updates": 1,
-          "totalMs": 1339.5,
-          "p95Ms": 1339.5,
-          "maxMs": 1339.5,
+          "totalMs": 1481.3999999761581,
+          "p95Ms": 1481.3999999761581,
+          "maxMs": 1481.3999999761581,
           "elements": 36001
         }
       ]
@@ -162,35 +162,35 @@
       "median": {
         "characters": 34860,
         "updates": 138,
-        "totalMs": 287.799999833107,
-        "p95Ms": 2.800000011920929,
-        "maxMs": 34,
-        "elements": 1601
+        "totalMs": 306.09999972581863,
+        "p95Ms": 2.900000035762787,
+        "maxMs": 31.099999964237213,
+        "elements": 1602
       },
       "samples": [
         {
           "characters": 34860,
           "updates": 138,
-          "totalMs": 285.2000000476837,
-          "p95Ms": 2.699999988079071,
-          "maxMs": 30.19999998807907,
-          "elements": 1601
-        },
-        {
-          "characters": 34860,
-          "updates": 138,
-          "totalMs": 287.799999833107,
+          "totalMs": 298.60000014305115,
           "p95Ms": 2.800000011920929,
-          "maxMs": 34,
-          "elements": 1601
+          "maxMs": 31.80000001192093,
+          "elements": 1602
         },
         {
           "characters": 34860,
           "updates": 138,
-          "totalMs": 289.39999997615814,
-          "p95Ms": 2.699999988079071,
-          "maxMs": 34.39999997615814,
-          "elements": 1601
+          "totalMs": 306.09999972581863,
+          "p95Ms": 2.900000035762787,
+          "maxMs": 31.099999964237213,
+          "elements": 1602
+        },
+        {
+          "characters": 34860,
+          "updates": 138,
+          "totalMs": 317.099999666214,
+          "p95Ms": 3,
+          "maxMs": 31.600000023841858,
+          "elements": 1602
         }
       ]
     },
@@ -201,34 +201,34 @@
       "median": {
         "characters": 34860,
         "updates": 138,
-        "totalMs": 1844.9000004529953,
-        "p95Ms": 23.600000023841858,
-        "maxMs": 42.90000003576279,
+        "totalMs": 1864.100000321865,
+        "p95Ms": 23.69999998807907,
+        "maxMs": 32.80000001192093,
         "elements": 1441
       },
       "samples": [
         {
           "characters": 34860,
           "updates": 138,
-          "totalMs": 1770.7999995350838,
-          "p95Ms": 22.600000023841858,
-          "maxMs": 23.5,
+          "totalMs": 1842.2000004649162,
+          "p95Ms": 26,
+          "maxMs": 27.80000001192093,
           "elements": 1441
         },
         {
           "characters": 34860,
           "updates": 138,
-          "totalMs": 1844.9000004529953,
-          "p95Ms": 23.600000023841858,
-          "maxMs": 42.90000003576279,
+          "totalMs": 1864.100000321865,
+          "p95Ms": 23.69999998807907,
+          "maxMs": 32.80000001192093,
           "elements": 1441
         },
         {
           "characters": 34860,
           "updates": 138,
-          "totalMs": 1846.400000333786,
-          "p95Ms": 24.200000047683716,
-          "maxMs": 29,
+          "totalMs": 1893.8000000715256,
+          "p95Ms": 22.900000035762787,
+          "maxMs": 37.799999952316284,
           "elements": 1441
         }
       ]

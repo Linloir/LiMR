@@ -10,5 +10,5 @@ export default function MathContent({ value, display, options }: { value: string
     html = katex.renderToString(value, { ...options, macros: { ...options.macros }, displayMode: display, output: 'htmlAndMathml', throwOnError: false, trust: false });
     cache.set(key, html);
   }
-  return <span className={display ? 'limr-math-display' : 'limr-math-inline'} dangerouslySetInnerHTML={{ __html: html }} />;
+  return <span className={display ? 'limr-math-display' : 'limr-math-inline'} data-limr-selection-surface={display || undefined} dangerouslySetInnerHTML={{ __html: html }} />;
 }

@@ -1,0 +1,172 @@
+{
+  "date": "2026-10-12T09:33:03.875Z",
+  "browser": "156.0.8078.4",
+  "measurement": "Production browser, 90 real continuous pointer moves. Native selectionchange-to-overlay-mutation latency; updates and paints measured BEFORE pointerup. 3 isolated font-ready trials; median by gesture duration. Native baseline has no custom overlay metric. This is not hardware input latency or a real touch-device measurement.",
+  "results": [
+    {
+      "kind": "prose",
+      "sections": 2000,
+      "renderer": "limr",
+      "median": {
+        "nativeChanges": 91,
+        "updates": 75,
+        "dragging": 75,
+        "paints": 75,
+        "frameP95Ms": 16.799999999999727,
+        "maxFrameMs": 33.399999999999636,
+        "paintP95Ms": 25.19999998807907,
+        "longTasks": [],
+        "rectangles": 11,
+        "elapsedMs": 3231.100000023842
+      },
+      "samples": [
+        {
+          "nativeChanges": 91,
+          "updates": 75,
+          "dragging": 75,
+          "paints": 75,
+          "frameP95Ms": 16.799999999999727,
+          "maxFrameMs": 33.399999999999636,
+          "paintP95Ms": 25.19999998807907,
+          "longTasks": [],
+          "rectangles": 11,
+          "elapsedMs": 3231.100000023842
+        },
+        {
+          "nativeChanges": 91,
+          "updates": 75,
+          "dragging": 75,
+          "paints": 75,
+          "frameP95Ms": 16.800000000000182,
+          "maxFrameMs": 33.400000000000546,
+          "paintP95Ms": 26.19999998807907,
+          "longTasks": [],
+          "rectangles": 11,
+          "elapsedMs": 3219.099999964237
+        },
+        {
+          "nativeChanges": 91,
+          "updates": 77,
+          "dragging": 77,
+          "paints": 77,
+          "frameP95Ms": 16.800000000000182,
+          "maxFrameMs": 33.399999999999636,
+          "paintP95Ms": 28.5,
+          "longTasks": [],
+          "rectangles": 11,
+          "elapsedMs": 3587.599999964237
+        }
+      ]
+    },
+    {
+      "kind": "prose",
+      "sections": 2000,
+      "renderer": "react-markdown",
+      "median": {
+        "nativeChanges": 91,
+        "updates": 0,
+        "dragging": 0,
+        "paints": 0,
+        "frameP95Ms": 16.700000000000273,
+        "maxFrameMs": 16.800000000000182,
+        "paintP95Ms": 0,
+        "longTasks": [],
+        "rectangles": 0,
+        "elapsedMs": 1523.3999999761581
+      },
+      "samples": [
+        {
+          "nativeChanges": 91,
+          "updates": 0,
+          "dragging": 0,
+          "paints": 0,
+          "frameP95Ms": 16.700000000000273,
+          "maxFrameMs": 16.800000000000182,
+          "paintP95Ms": 0,
+          "longTasks": [],
+          "rectangles": 0,
+          "elapsedMs": 1523.3999999761581
+        },
+        {
+          "nativeChanges": 91,
+          "updates": 0,
+          "dragging": 0,
+          "paints": 0,
+          "frameP95Ms": 16.800000000000182,
+          "maxFrameMs": 16.800000000000182,
+          "paintP95Ms": 0,
+          "longTasks": [],
+          "rectangles": 0,
+          "elapsedMs": 1537.300000011921
+        },
+        {
+          "nativeChanges": 91,
+          "updates": 0,
+          "dragging": 0,
+          "paints": 0,
+          "frameP95Ms": 16.799999999999727,
+          "maxFrameMs": 16.800000000000182,
+          "paintP95Ms": 0,
+          "longTasks": [],
+          "rectangles": 0,
+          "elapsedMs": 1519.2999999523163
+        }
+      ]
+    },
+    {
+      "kind": "code",
+      "sections": 1000,
+      "renderer": "limr",
+      "median": {
+        "nativeChanges": 51,
+        "updates": 47,
+        "dragging": 47,
+        "paints": 47,
+        "frameP95Ms": 16.799999999999955,
+        "maxFrameMs": 16.800000000000182,
+        "paintP95Ms": 19.299999952316284,
+        "longTasks": [],
+        "rectangles": 12,
+        "elapsedMs": 1533.300000011921
+      },
+      "samples": [
+        {
+          "nativeChanges": 51,
+          "updates": 48,
+          "dragging": 48,
+          "paints": 48,
+          "frameP95Ms": 16.700000000000273,
+          "maxFrameMs": 16.799999999999955,
+          "paintP95Ms": 19.400000035762787,
+          "longTasks": [],
+          "rectangles": 12,
+          "elapsedMs": 1516
+        },
+        {
+          "nativeChanges": 51,
+          "updates": 47,
+          "dragging": 47,
+          "paints": 47,
+          "frameP95Ms": 16.799999999999955,
+          "maxFrameMs": 16.800000000000182,
+          "paintP95Ms": 19.299999952316284,
+          "longTasks": [],
+          "rectangles": 12,
+          "elapsedMs": 1533.300000011921
+        },
+        {
+          "nativeChanges": 51,
+          "updates": 47,
+          "dragging": 47,
+          "paints": 47,
+          "frameP95Ms": 16.799999999999727,
+          "maxFrameMs": 16.800000000000182,
+          "paintP95Ms": 18.899999976158142,
+          "longTasks": [],
+          "rectangles": 12,
+          "elapsedMs": 1533.6000000238419
+        }
+      ]
+    }
+  ]
+}

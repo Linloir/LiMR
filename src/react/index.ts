@@ -8,5 +8,6 @@ export * from '../components/Reader';
 export * from '../components/TableOfContents';
 export * from '../components/AnnotationSidebar';
 export * from '../components/AnnotationOverlay';
+export * from '../components/AnnotationCard';
 export * from '../components/AnnotationContent';
 export * from '../components/SelectionToolbar';

@@ -1,23 +1,32 @@
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
-import { autoUpdate, flip, FloatingFocusManager, FloatingOverlay, FloatingPortal, offset, shift, useDismiss, useFloating, useInteractions, useRole } from '@floating-ui/react';
-import { useLocale, useRuntime, useStoreSelector, useTheme } from '../react/context';
+import { autoUpdate, flip, FloatingFocusManager, FloatingOverlay, FloatingPortal, offset, shift, size, useDismiss, useFloating, useInteractions, useRole } from '@floating-ui/react';
+import { useAppearance, useIsomorphicLayoutEffect, useLocale, useRuntime, useStoreSelector, useTheme } from '../react/context';
 import { AnnotationGroup } from './AnnotationContent';
+import { useCardMotion } from './card-motion';
+import { AnnotationCard } from './AnnotationCard';
+import type { AnnotationOccurrence } from '../core';
+import type { AnnotationOverlayCardProps } from '../react/types';
 
 export interface AnnotationOverlayProps { disabled?: boolean; portalRoot?: HTMLElement | null; previewWidth?: number; maxHeight?: string }
+const length = (value: number | string) => typeof value === 'number' ? `${value}px` : value;
+const idleSubscribe = () => () => {};
 export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth = 340, maxHeight = '80dvh' }: AnnotationOverlayProps) {
   const runtime = useRuntime();
+  const appearance = useAppearance();
   const theme = useTheme(), locale = useLocale();
   const active = useStoreSelector(runtime.interaction, state => state.active);
   const hovered = useStoreSelector(runtime.interaction, state => state.hovered);
   const occurrences = useStoreSelector(runtime.decorations, state => state.occurrences);
   useSyncExternalStore(runtime.layout.subscribe, runtime.layout.get, runtime.layout.get);
   const [preview, setPreview] = useState<string | null>(null);
-  const [viewportTick, setViewportTick] = useState(0);
+  const [collapsedId, setCollapsedId] = useState<string | null>(null);
+  const [, setViewportTick] = useState(0);
   useEffect(() => {
+    if (active || disabled) { setPreview(null); return; }
     if (hovered) { setPreview(hovered); return; }
-    const timer = setTimeout(() => setPreview(null), 180);
+    const timer = setTimeout(() => setPreview(null), 90);
     return () => clearTimeout(timer);
-  }, [hovered]);
+  }, [hovered, active, disabled]);
   useEffect(() => {
     const update = () => setViewportTick(value => value + 1);
     window.visualViewport?.addEventListener('resize', update);
@@ -25,32 +34,106 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
     window.addEventListener('resize', update);
     return () => { window.visualViewport?.removeEventListener('resize', update); window.visualViewport?.removeEventListener('scroll', update); window.removeEventListener('resize', update); };
   }, []);
-  const id = active ?? preview;
-  const occurrence = occurrences.find(item => item.id === id);
-  const expanded = active !== null;
-  const open = !!occurrence && !disabled;
-  const close = () => { runtime.activate(null); runtime.hover(null); setPreview(null); };
-  const { refs, floatingStyles, context } = useFloating({ open, onOpenChange: next => { if (!next) close(); }, strategy: 'fixed', placement: 'bottom-start', whileElementsMounted: autoUpdate, middleware: [offset(8), flip({ padding: 12 }), shift({ padding: 12 })] });
-  useEffect(() => { refs.setReference(id ? runtime.anchors.get(id) ?? null : null); }, [id, runtime, refs, open]);
+  const wantedId = active ?? preview;
+  const wanted = occurrences.find(item => item.id === wantedId);
+  const [retained, setRetained] = useState<AnnotationOccurrence | null>(null);
+  const occurrence = wanted ?? retained;
+  const id = occurrence?.id;
+  const annotation = useStoreSelector(runtime.decorations, state => state.annotations.get(occurrence?.annotationIds[0] ?? ''));
+  const definition = useStoreSelector(runtime.configuration, () => runtime.annotationTypes.get(annotation?.type ?? 'citation'));
+  const policy = definition?.overlay?.expand;
+  const expansion = typeof policy === 'function' ? annotation && policy(annotation) : policy;
+  const pinned = active === id;
+  const expanded = pinned && !!expansion && collapsedId !== id;
+  const [lastExpanded, setLastExpanded] = useState(false);
+  const [lastPinned, setLastPinned] = useState(false);
+  const open = !!wanted && !disabled;
+  useSyncExternalStore(open ? runtime.viewport.subscribe : idleSubscribe, runtime.viewport.get, runtime.viewport.get);
+  useEffect(() => {
+    if (open) { setRetained(wanted!); setLastExpanded(expanded); setLastPinned(pinned); }
+  }, [wanted, open, expanded, pinned]);
+  const close = () => {
+    const anchor = id ? runtime.anchors.get(id) : null;
+    anchor?.focus({ preventScroll: true });
+    runtime.activate(null); runtime.hover(null); setPreview(null);
+  };
+  const anchor = id ? runtime.anchors.get(id) : undefined;
+  const [previewGeometry, setPreviewGeometry] = useState<{ id?: string; rect: DOMRect; placement: string } | null>(null);
+  const fromPreview = previewGeometry?.id === id ? previewGeometry : null;
+  const requestedExpanded = open ? expanded : lastExpanded;
+  // Even a toolbar/touch opening first measures the real module preview at
+  // its anchor. It stays hidden for this layout pass, and is never duplicated.
+  const measuringPreview = open && requestedExpanded && !fromPreview;
+  const shownExpanded = requestedExpanded && !measuringPreview;
+  const shownPinned = open ? pinned : lastPinned;
+  const centered = shownExpanded && expansion && expansion.placement === 'center';
+  const anchoredExpansion = shownExpanded && !centered && fromPreview;
+  const { refs, update, floatingStyles, context, isPositioned, placement, middlewareData } = useFloating({ open, elements: { reference: anchor ?? null }, onOpenChange: next => { if (!next) close(); }, strategy: 'fixed', transform: false, placement: 'bottom-start', whileElementsMounted: autoUpdate, middleware: [offset(8), flip({ padding: 12 }), shift({ padding: 12 }), size({ padding: 12, apply: ({ availableHeight, elements }) => {
+    if (!shownExpanded) elements.floating.style.maxHeight = `${Math.max(0, Math.floor(Math.min(360, availableHeight)))}px`;
+    else if (!centered && !fromPreview) elements.floating.style.maxHeight = `min(${length(expansion && expansion.maxHeight || maxHeight)}, ${Math.max(0, Math.floor(availableHeight))}px)`;
+  } }, [shownExpanded, !!centered, !!fromPreview, expansion && expansion.maxHeight, maxHeight]), {
+    name: 'limrAnchor',
+    options: shownExpanded,
+    fn: ({ elements }) => ({ data: { id: (elements.reference as HTMLElement).dataset?.limrAnchor, expanded: shownExpanded } }),
+  }] });
+  useIsomorphicLayoutEffect(() => {
+    // A retained surface never remounts when an exit is reversed. Floating UI
+    // resets isPositioned on close, so explicitly remeasure that same surface.
+    if (open && anchor) update();
+  }, [anchor, update, open, shownExpanded]);
   const dismiss = useDismiss(context, { escapeKey: true, outsidePress: true });
   const role = useRole(context, { role: 'dialog' });
   const { getFloatingProps } = useInteractions([dismiss, role]);
-  if (!open || !occurrence) return null;
-  const content = runtime.content?.getBoundingClientRect();
+  const ready = !!centered || !!anchoredExpansion || !open || isPositioned && middlewareData.limrAnchor?.id === id && middlewareData.limrAnchor?.expanded === shownExpanded;
+  const [surface, setSurface] = useState<HTMLDivElement | null>(null);
+  const edge = (shownExpanded ? fromPreview?.placement ?? 'bottom' : placement).startsWith('top') ? 'bottom' : 'top';
+  useCardMotion(surface, refs.floating.current, anchor, open, shownExpanded, ready && !measuringPreview, id, edge, fromPreview?.rect, () => { setRetained(null); setCollapsedId(null); setPreviewGeometry(null); });
+  useIsomorphicLayoutEffect(() => {
+    if (!shownExpanded && open && ready && refs.floating.current) {
+      const rect = refs.floating.current.getBoundingClientRect();
+      if (!fromPreview || fromPreview.placement !== placement || (['x', 'y', 'width', 'height'] as const).some(key => Math.abs(rect[key] - fromPreview.rect[key]) > .5)) setPreviewGeometry({ id, rect, placement });
+    }
+  });
+  if (!occurrence || disabled) return null;
   const visual = window.visualViewport;
-  const availableWidth = visual?.width ?? window.innerWidth;
-  const availableHeight = visual?.height ?? window.innerHeight;
-  const width = Math.min(expanded ? content?.width ?? 680 : previewWidth, availableWidth - 24);
-  const left = Math.max((visual?.offsetLeft ?? 0) + 12, Math.min(content?.left ?? 12, (visual?.offsetLeft ?? 0) + availableWidth - width - 12));
-  const insetTop = Math.max(12, availableHeight * .1);
-  const heightLimit = Math.max(0, availableHeight - insetTop - 12);
-  const style: CSSProperties = expanded ? { position: 'fixed', left, top: (visual?.offsetTop ?? 0) + insetTop, width, minHeight: Math.min(320, availableHeight * .4, heightLimit), maxHeight: `min(${maxHeight}, ${heightLimit}px)`, transform: 'none' } : { ...floatingStyles, width, maxHeight: Math.min(360, availableHeight - 24) };
-  const card = <FloatingFocusManager context={context} modal={expanded} disabled={!expanded} returnFocus>
-    <div ref={refs.setFloating} {...getFloatingProps()} className={`limr-annotation-overlay ${expanded ? 'limr-annotation-expanded' : 'limr-annotation-preview'}`} style={style} data-limr-theme={theme}
-      onPointerEnter={() => { if (!expanded) runtime.hover(occurrence.id); }} onPointerLeave={() => { if (!expanded) runtime.hover(null); }}>
-      <div className="limr-overlay-header"><span>{locale.annotations}</span>{expanded ? <button type="button" onClick={close} aria-label={locale.close}>×</button> : <button type="button" onClick={() => runtime.activate(occurrence.id)}>{locale.expand}</button>}</div>
-      <div className="limr-overlay-content"><AnnotationGroup occurrence={occurrence} presentation={expanded ? 'expanded' : 'preview'} expanded={expanded} /></div>
+  const viewLeft = visual?.offsetLeft ?? 0, viewTop = visual?.offsetTop ?? 0;
+  const availableWidth = visual?.width ?? window.innerWidth, availableHeight = visual?.height ?? window.innerHeight;
+  // Portalled dialogs belong to the whole visible page, including when the
+  // reader lives in an offset column or a nested scroll container.
+  const top = viewTop + 12;
+  const bottom = viewTop + availableHeight - 12;
+  const heightLimit = Math.max(0, bottom - top);
+  const settings = shownExpanded && expansion ? expansion : undefined;
+  const width = `min(${length(settings?.width ?? (centered ? 640 : definition?.overlay?.previewWidth ?? previewWidth))}, ${Math.max(0, availableWidth - 24)}px)`;
+  let style: CSSProperties = { ...floatingStyles, width, maxHeight: Math.min(360, availableHeight - 24) };
+  if (settings) {
+    style = { ...style, height: settings.height === undefined ? undefined : `min(${length(settings.height)}, ${heightLimit}px)`, maxHeight: `min(${length(settings.maxHeight ?? maxHeight)}, ${heightLimit}px)` };
+    if (centered) style = { ...style, left: viewLeft + availableWidth / 2, top: viewTop + availableHeight / 2, transform: 'translate(-50%, -50%)' };
+    else if (fromPreview) {
+      const upward = fromPreview.placement.startsWith('top');
+      const room = Math.max(0, upward ? fromPreview.rect.bottom - top : bottom - fromPreview.rect.top);
+      style = { ...style, left: fromPreview.rect.left, top: upward ? fromPreview.rect.bottom : fromPreview.rect.top, transform: upward ? 'translateY(-100%)' : 'none', maxWidth: viewLeft + availableWidth - 12 - fromPreview.rect.left, maxHeight: `min(${length(settings.maxHeight ?? maxHeight)}, ${room}px)` };
+    }
+  }
+  const Card = definition?.overlay?.Card;
+  const cardProps: AnnotationOverlayCardProps = {
+    annotation: annotation ?? { id: occurrence.annotationIds[0], type: 'unknown' }, occurrence,
+    presentation: shownExpanded ? 'expanded' : 'preview', expanded: shownExpanded, pinned: shownPinned,
+    canExpand: !!expansion,
+    expand: () => { setCollapsedId(null); runtime.activate(occurrence.id); },
+    collapse: () => { setCollapsedId(occurrence.id); runtime.activate(occurrence.id); },
+    close,
+    children: <AnnotationGroup occurrence={occurrence} presentation={shownExpanded ? 'expanded' : 'preview'} expanded={shownExpanded} />,
+  };
+  const modal = open && !!centered;
+  const card = <FloatingFocusManager context={context} modal={modal} disabled={!open || !pinned || measuringPreview} initialFocus={refs.floating} returnFocus={false}>
+    <div ref={refs.setFloating} {...getFloatingProps()} tabIndex={-1} aria-label={definition?.label ?? locale.annotations} className="limr-overlay-positioner" style={{ ...style, pointerEvents: open ? 'auto' : 'none', visibility: ready && !measuringPreview ? 'visible' : 'hidden' }}>
+      <div ref={setSurface} className={`limr-annotation-overlay ${shownExpanded ? 'limr-annotation-expanded' : 'limr-annotation-preview'}`} style={{ '--limr-annotation-color': definition?.color } as CSSProperties} data-type={annotation?.type} data-state={open ? 'open' : 'closing'} data-pinned={shownPinned || undefined} data-placement={centered ? 'center' : anchoredExpansion ? fromPreview.placement : placement} data-limr-theme={theme} data-limr-appearance={appearance}
+        onPointerEnter={event => { if (!pinned && event.pointerType !== 'touch') runtime.hover(occurrence.id); }} onPointerLeave={() => { if (!pinned) runtime.hover(null); }}>
+        <div className="limr-overlay-surface" aria-hidden="true" />
+        <div className="limr-overlay-card">{Card && annotation ? <Card {...cardProps} /> : <AnnotationCard {...cardProps} title={definition?.label ?? annotation?.type ?? locale.annotations} />}</div>
+      </div>
     </div>
   </FloatingFocusManager>;
-  return <FloatingPortal root={portalRoot}>{expanded ? <FloatingOverlay className="limr-backdrop" lockScroll>{card}</FloatingOverlay> : card}</FloatingPortal>;
+  return <FloatingPortal root={portalRoot}><FloatingOverlay className="limr-backdrop" data-expanded={modal || undefined} lockScroll={modal} style={{ pointerEvents: modal ? 'auto' : 'none' }}>{card}</FloatingOverlay></FloatingPortal>;
 }

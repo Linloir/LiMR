@@ -5,13 +5,34 @@ html[data-theme='dark'] body { background: #1b1a18; color: #e0ddd8; }
 .demo-brand { color: inherit; text-decoration: none; font-family: Georgia, serif; font-size: 26px; font-weight: 600; letter-spacing: -.5px; }
 .demo-brand span { font: 12px system-ui, sans-serif; color: #9b9590; letter-spacing: .02em; margin-left: 16px; }
 .demo-controls { display: flex; flex-wrap: wrap; gap: 8px; }
-.demo-controls button { background: transparent; color: inherit; border: 1px solid #87837833; border-radius: 4px; padding: 6px 12px; cursor: pointer; font: 12px system-ui, sans-serif; }
-.demo-controls button:hover { background: #87837810; }
-.demo-page { padding: 36px; margin: auto; max-width: 1512px; }
+.demo-controls :where(button,a) { background: transparent; color: inherit; border: 1px solid #87837833; border-radius: 4px; padding: 6px 12px; cursor: pointer; font: 12px system-ui, sans-serif; }
+.demo-controls :where(button,a):hover { background: #87837810; }
+.demo-page { padding: 36px; margin: auto; max-width: 1872px; }
 .demo-footer { padding: 60px 36px 32px; font-size: 11px; color: #9b9590; text-align: center; letter-spacing: .06em; }
-.demo-editor { display: block; width: calc(100% - 72px); margin: 24px 36px; min-height: 250px; border: 1px solid #87837833; background: transparent; color: inherit; padding: 16px; font: 13px/1.7 monospace; }
-@media (max-width: 700px) { .demo-header { padding: 20px; }.demo-brand span { display: none; }.demo-page { padding: 20px; }.demo-controls { gap: 5px; }.demo-controls button { padding: 5px 7px; } }
+.demo-reading,.demo-plugin-page { --limr-reader-bottom-space: 144px; }
+
+@media (max-width: 700px) { .demo-header { padding: 20px; }.demo-brand span { display: none; }.demo-page { padding: 20px; }.demo-controls { gap: 5px; }.demo-controls :where(button,a) { padding: 5px 7px; } }
 /* Explicit local demo font; the published component CSS never loads fonts. */
 :root { --limr-font-text: 'Noto Serif SC Variable', Georgia, serif; }
 body,.demo-controls button,.demo-controls a { font-family: system-ui, 'Noto Serif SC Variable', serif; }
-.demo-controls a { padding: 6px 8px; font-size: 12px; color: inherit; text-decoration: none; }
+.demo-controls a { display: inline-flex; align-items: center; text-decoration: none; }
+
+.demo-controls :where(button,a) { transition: background-color 200ms cubic-bezier(.16,1,.3,1), transform 200ms cubic-bezier(.16,1,.3,1); }
+.demo-controls :where(button,a):active { transform: scale(.96); }
+.demo-controls :where([aria-pressed='true'],[aria-current]) { background: #87837815; }
+.demo-workbench { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); height: calc(100dvh - 110px); min-height: 420px; margin: 20px; border: 1px solid #87837833; border-radius: 8px; overflow: hidden; }
+.demo-editor-pane,.demo-preview-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.demo-editor-pane { border-inline-end: 1px solid #87837833; }
+.demo-pane-label { display: flex; justify-content: space-between; flex: none; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #87837822; font-size: 11px; letter-spacing: .04em; color: #9b9590; }
+.demo-pane-label span { letter-spacing: 0; }
+.demo-editor { display: block; flex: 1; min-height: 0; width: 100%; resize: none; border: 0; outline: 0; background: #87837806; color: inherit; padding: 20px 16px; font: 13px/22px 'LiMR Maple Mono NF CN','SFMono-Regular',Consolas,monospace; tab-size: 2; }
+.demo-editor:focus-visible { box-shadow: inset 0 0 0 2px #8a786530; }
+.demo-preview-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.demo-preview-scroll .demo-page { padding: 20px 24px; }
+.demo-workbench + output + .demo-footer { display: none; }
+.demo-plugin-intro { max-width: 1800px; margin: 0 auto 28px; padding-bottom: 24px; border-bottom: 1px solid #87837822; }
+.demo-plugin-intro p { font: 14px/1.7 var(--limr-font-text,Georgia,serif); margin: 0 0 8px; }
+.demo-plugin-intro p + p { color: #9b9590; font-size: 12px; }
+.demo-plugin-intro .demo-controls { margin-top: 16px; align-items: center; }
+#adapter-status { font-size: 12px; color: #9b9590; }
+@media (max-width: 760px) { .demo-workbench { margin: 12px; height: auto; grid-template-columns: minmax(0,1fr); }.demo-editor-pane { height: 40dvh; border-inline-end: 0; border-bottom: 1px solid #87837833; }.demo-preview-pane { height: 65dvh; }.demo-preview-scroll .demo-page { padding: 20px; } }

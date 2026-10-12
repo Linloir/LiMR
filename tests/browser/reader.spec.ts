@@ -35,8 +35,8 @@ test('desktop rendering, selections, highlights and aligned citation cards', asy
     return { anchor: marker.top, card: card.top };
   });
   expect(Math.abs(geometry.anchor - geometry.card)).toBeLessThan(6);
-  await page.getByRole('button', { name: '提示', exact: true }).click();
-  await expect(page.locator('.limr-question-detail')).toBeVisible();
+  await page.locator('.limr-disclosure summary').filter({ hasText: '提示' }).click();
+  await expect(page.locator('.limr-disclosure').first().locator('.limr-question-detail')).toBeVisible();
   await page.locator('.limr-code-block').scrollIntoViewIfNeeded();
   await expect(page.locator('.shiki')).toBeAttached();
   await page.getByRole('button', { name: '深色', exact: true }).click();
@@ -65,16 +65,18 @@ test('TOC wraps, retains its title and follows active headings within scroll lim
   await expect.poll(async () => toc.locator('.limr-toc-scroll').evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeLessThan(2);
 });
 
-test('narrow pointer preview expands, fits the content column and restores focus', async ({ page }) => {
+test('narrow pointer preview expands in the page viewport and restores focus', async ({ page }) => {
   await page.setViewportSize({ width: 700, height: 800 });
-  await page.goto('/');
+  await page.goto('/?fixture=overlay');
   const marker = page.locator('.limr-mark').first();
   await marker.hover();
   await expect(page.locator('.limr-annotation-preview')).toBeVisible();
   await page.locator('.limr-annotation-preview').getByRole('button', { name: '展开' }).click();
   await expect(page.locator('.limr-annotation-expanded')).toBeVisible();
-  const rects = await page.evaluate(() => ({ card: document.querySelector('.limr-annotation-expanded')!.getBoundingClientRect().toJSON(), body: document.querySelector('.limr-reader-content')!.getBoundingClientRect().toJSON() }));
-  expect(Math.abs(rects.card.width - rects.body.width)).toBeLessThan(2);
+  await expect.poll(() => page.locator('.limr-annotation-expanded').evaluate(element => element.getAnimations().filter(animation => animation.playState === 'running').length)).toBe(0);
+  const rects = await page.evaluate(() => ({ card: document.querySelector('.limr-annotation-expanded')!.getBoundingClientRect().toJSON() }));
+  expect(rects.card.width).toBeCloseTo(640, 0);
+  expect(rects.card.left + rects.card.width / 2).toBeCloseTo(350, 0);
   expect(rects.card.left).toBeGreaterThanOrEqual(12);
   expect(rects.card.bottom).toBeLessThanOrEqual(800 - 12);
   await page.evaluate(() => {
@@ -95,10 +97,13 @@ test('application plugin adds its action and streams into its own annotation ren
   await page.getByRole('button', { name: '询问助手' }).click();
   await expect(page.locator('.limr-mark')).toHaveAttribute('aria-label', '询问助手');
   await expect(page.locator('.limr-annotation-expanded')).toBeVisible();
+  await expect(page.locator('.limr-overlay-header')).toContainText('询问助手');
   await expect(page.locator('.limr-annotation-expanded strong')).toHaveText('重要内容');
   await expect(page.locator('#adapter-status')).toHaveText('已完成');
   await expect(page.locator('.limr-annotation-expanded')).toContainText('并通过同一个插件持续更新。');
   await expect(page.getByRole('toolbar')).toHaveCount(0);
+  await page.locator('.limr-overlay-header').getByRole('button', { name: '收起', exact: true }).click();
+  await expect(page.locator('.limr-annotation-preview .limr-overlay-header')).toContainText('询问助手');
   expect(errors).toEqual([]);
 });
 
@@ -138,13 +143,16 @@ test('multiple readers scope heading IDs and radio groups', async ({ page }) => 
   await expect(page.locator('input:checked')).toHaveCount(2);
 });
 
-test('touch marker opens the expanded card directly', async ({ browser }) => {
+test('touch marker pins a citation without an expansion control', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
   await page.goto('http://127.0.0.1:4173/');
   await page.locator('.limr-mark').first().tap();
-  await expect(page.locator('.limr-annotation-expanded')).toBeVisible();
-  await expect(page.locator('.limr-annotation-preview')).toHaveCount(0);
+  await expect(page.locator('.limr-annotation-preview')).toHaveAttribute('data-pinned', 'true');
+  await expect(page.locator('.limr-annotation-expanded')).toHaveCount(0);
+  await expect(page.locator('.limr-annotation-preview').getByRole('button', { name: '展开' })).toHaveCount(0);
+  await page.locator('.limr-annotation-preview').getByRole('button', { name: '关闭' }).tap();
+  await expect(page.locator('.limr-annotation-overlay')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await context.close();
 });
@@ -206,7 +214,7 @@ test('annotation requests survive preview expansion, cache hits and payload inva
   expect(outside).toEqual([]);
 });
 
-test('native text bindings preserve entities, escapes, emoji and atomic selection', async ({ page }) => {
+test('native text bindings preserve entities, escapes, emoji and partial inline code', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: '编辑', exact: true }).click();
   await page.getByRole('textbox', { name: 'Markdown source' }).fill('A &amp; \\* 😀 plus **bold** and `code`.');
@@ -219,10 +227,10 @@ test('native text bindings preserve entities, escapes, emoji and atomic selectio
   await expect.poll(async () => JSON.parse(await page.locator('#selection-data').textContent() || '{}').raw?.sourceText).toBe('&amp; \\* 😀 plus **bo');
   expect(JSON.parse(await page.locator('#selection-data').textContent() || '{}').quality).toBe('exact');
   await page.locator('.limr-reader-content code').evaluate(code => {
-    const range = document.createRange(); range.setStart(code.firstChild!, 1); range.setEnd(code.firstChild!, 2);
+    const range = document.createRange(); const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT); const text = walker.nextNode()!; range.setStart(text, 1); range.setEnd(text, 2);
     const selection = window.getSelection()!; selection.removeAllRanges(); selection.addRange(range);
     document.dispatchEvent(new Event('selectionchange'));
   });
-  await expect.poll(async () => JSON.parse(await page.locator('#selection-data').textContent() || '{}').raw?.sourceText).toBe('`code`');
-  expect(JSON.parse(await page.locator('#selection-data').textContent() || '{}').quality).toBe('atomic');
+  await expect.poll(async () => JSON.parse(await page.locator('#selection-data').textContent() || '{}').raw?.sourceText).toBe('o');
+  expect(JSON.parse(await page.locator('#selection-data').textContent() || '{}').quality).toBe('exact');
 });

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { autoUpdate, flip, FloatingPortal, offset, shift, useFloating } from '@floating-ui/react';
-import { useRuntime, useSelection, useStoreSelector, useTheme } from '../react/context';
+import { useAppearance, useRuntime, useSelection, useStoreSelector, useTheme } from '../react/context';
 import type { ActionContext, SelectionAction } from '../react/types';
 
 export interface SelectionToolbarProps {
@@ -10,6 +10,7 @@ export interface SelectionToolbarProps {
 }
 export function SelectionToolbar({ actions = [], portalRoot, render }: SelectionToolbarProps) {
   const runtime = useRuntime();
+  const appearance = useAppearance();
   const theme = useTheme();
   const selection = useSelection();
   const extensions = useStoreSelector(runtime.configuration, config => config.extensions);
@@ -38,7 +39,7 @@ export function SelectionToolbar({ actions = [], portalRoot, render }: Selection
     finally { if (!runtime.signal.aborted) setBusy(null); }
   };
   if (!open || !context) return null;
-  return <FloatingPortal root={portalRoot}><div ref={refs.setFloating} className="limr-selection-toolbar" style={floatingStyles} role="toolbar" aria-label="Text actions" data-limr-selection-ui="true" data-limr-theme={theme}
+  return <FloatingPortal root={portalRoot}><div ref={refs.setFloating} className="limr-selection-toolbar" style={floatingStyles} role="toolbar" aria-label="Text actions" data-limr-selection-ui="true" data-limr-theme={theme} data-limr-appearance={appearance}
     onMouseDown={event => { if (!(event.target instanceof Element) || !event.target.closest('input,textarea,select')) event.preventDefault(); }}
     onKeyDown={event => {
       if (event.key === 'Escape') { runtime.clearSelection(); return; }

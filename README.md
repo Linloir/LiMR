@@ -79,6 +79,19 @@ const extensions = [
 
 同一模块也支持 `:::notice` 指令语法。`extensions` 是完整的扩展列表；传入 `[]` 得到基础 CommonMark。可以用 `.filter()` 移除默认模块，或 `replaceExtension()` 替换同名模块。保持配置引用稳定，例如在模块外定义或使用 `useMemo`。
 
+安装第三方扩展时，用 `plugins` **追加**到默认模块；样式包通过 CSS 导入和 `appearance` 选择：
+
+```tsx
+import { readingTools } from '@limr-example/reading-tools';
+import 'limr/styles.css';
+import '@limr-example/paper-theme';
+
+const plugins = [readingTools()];
+<Reader source={markdown} plugins={plugins} appearance="paper" />
+```
+
+这里的两个 `@limr-example` 包是仓库内的可打包示例，尚未发布。实际社区包可以使用同样的结构。见 [扩展打包](docs/extensions.md#作为独立包分发) 和 [样式指南](docs/styles.md)。
+
 常用标签：
 
 ```markdown
@@ -109,7 +122,7 @@ const actions = [
 <Reader source={markdown} locale={chinese} actions={actions} />
 ```
 
-工具菜单默认无应用动作。选区同时提供 `raw`、`syntax`、`blocks` 三种结果，所有范围都指向**未经改写的原始输入**，使用 UTF-16 偏移、右端不包含。`quality` 区分精确映射、公式/代码等原子节点和无法精确映射的内容。
+工具菜单默认无应用动作。选区同时提供 `raw`、`syntax`、`blocks` 三种结果，所有范围都指向**未经改写的原始输入**，使用 UTF-16 偏移、右端不包含。`quality` 区分精确映射、公式等原子节点和无法精确映射的内容。行内及围栏代码支持部分选择、高亮与角标；公式保持整体选择。
 
 插件可以在一个 `defineExtension()` 中提供 `actions`、`annotationTypes` 和语法模块。动作拿到选区、文档、`addAnnotation` / `updateAnnotation` / `activateAnnotation` 等命令和取消信号。卡片可以使用任意 React 组件，也可以用 `AnnotationMarkdown` 持续渲染 Markdown 回答。
 
@@ -121,7 +134,7 @@ const actions = [
 - 自定义 transform 默认按全文处理。只有声明 `scope: 'local'` 且满足局部性约定的模块才参与尾部增量解析。
 - 代码高亮接近视口时加载 Shiki、所需语言和主题；流式代码暂停更新后才重新高亮。公式按需加载 KaTeX。视频点击播放前不请求播放器。
 - 角注数据在卡片显示时才加载，同一阅读器内请求复用、取消和有限缓存；不同阅读器资源隔离。
-- 不注入第三方 CDN、字体或 CSS。中文衬线字体和代码字体使用本地回退，可通过 CSS 变量或应用自己的字体资源配置。
+- 不注入第三方 CDN。默认样式附带本地 Maple Mono NF CN 代码字体，按字形范围加载 WOFF2 子集，加载前使用系统等宽字体。正文衬线字体使用应用/系统回退，Playground 自行提供 Noto Serif SC。可使用不带字体的 `limr/styles/base.css`。缓存和覆盖方式见 [样式指南](docs/styles.md)。
 - 默认保留完整 DOM，支持原生查找、选择和打印；不使用会破坏这些行为的默认虚拟列表。
 
 SSR 支持 Node 环境。`renderToString` 中未加载的公式先输出源码回退；如需首次 HTML 包含完整公式，先 `await preloadMath()`，或者使用 React 流式 SSR。Shiki 高亮在客户端补充，代码文本会直接出现在 SSR HTML 中。使用 Next.js 等区分服务端/客户端组件的框架时，在应用的客户端边界内导入这些交互组件。

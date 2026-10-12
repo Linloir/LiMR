@@ -2,17 +2,18 @@ import { createDocument, ResourceCache, selectionFromRange } from '../core';
 import { intersects } from '../core/tree';
 import type { Annotation, AnnotationOccurrence, DocumentEngine, DocumentSnapshot, Highlight, SelectionSnapshot, SourceRange } from '../core';
 import type { AnnotationType, DocumentCommands, LiMRLocale, NodeRenderer, RendererExtension, ViewConfiguration } from './types';
+import { scrollWithMotion } from './motion';
 
 export const english: LiMRLocale = {
-  contents: 'Contents', annotations: 'Annotations', expand: 'Expand', close: 'Close', copy: 'Copy', copied: 'Copied',
+  contents: 'Contents', annotations: 'Annotations', expand: 'Expand', collapse: 'Collapse', close: 'Close', copy: 'Copy', copied: 'Copied',
   loading: 'Loading…', retry: 'Retry', unavailable: 'Content unavailable', footnotes: 'Footnotes',
-  definition: 'Definition', extra: 'Extended reading', hint: 'Hint', answer: 'Show answer', submit: 'Check answer',
+  definition: 'Definition', question: 'Question', note: 'Note', extra: 'Extended reading', hint: 'Hint', answer: 'Answer', submit: 'Submit',
   correct: 'Correct', incorrect: 'Try again', play: 'Play video',
 };
 export const chinese: LiMRLocale = {
-  contents: '目录', annotations: '注释', expand: '展开', close: '关闭', copy: '复制', copied: '已复制',
+  contents: '目录', annotations: '注释', expand: '展开', collapse: '收起', close: '关闭', copy: '复制', copied: '已复制',
   loading: '加载中…', retry: '重试', unavailable: '暂无内容', footnotes: '脚注',
-  definition: '释义', extra: '拓展阅读', hint: '提示', answer: '查看答案', submit: '检查答案',
+  definition: '释义', question: '提问', note: '注释', extra: '拓展阅读', hint: '提示', answer: '答案', submit: '提交',
   correct: '回答正确', incorrect: '再试一次', play: '播放视频',
 };
 
@@ -28,6 +29,8 @@ export interface InteractionState {
   activeHeading: string | null;
   hovered: string | null;
   active: string | null;
+  hoverSource?: 'marker' | 'sidebar' | null;
+  activeSource?: 'marker' | 'sidebar' | null;
 }
 export interface Decorations {
   annotations: ReadonlyMap<string, Annotation>;
@@ -50,6 +53,7 @@ export class ReaderRuntime {
   readonly interaction = new Store<InteractionState>({ selection: null, activeHeading: null, hovered: null, active: null });
   readonly layout = new Store(0);
   readonly viewport = new Store(0);
+  readonly documentOffset = new Store(0);
   readonly decorations = new Store<Decorations>({ annotations: new Map(), occurrences: [], byBlock: new Map() });
   readonly configuration: Store<ViewConfiguration>;
   readonly resources = new ResourceCache<unknown>(128);
@@ -57,6 +61,7 @@ export class ReaderRuntime {
   private resourceKeys = new Map<string, { annotation: Annotation; key: string }>();
   private nextResource = 0;
   readonly anchors = new Map<string, HTMLElement>();
+  readonly blocks = new Map<string, HTMLElement>();
   readonly headings = new Map<string, HTMLElement>();
   readonly bindings = new WeakMap<Node, SourceBinding>();
   readonly textBinders = new WeakMap<HTMLElement, () => void>();
@@ -161,12 +166,12 @@ export class ReaderRuntime {
     this.interaction.set({ ...old, ...patch });
     if ('selection' in patch) this.configuration.get().onSelectionChange?.(patch.selection ?? null);
   }
-  hover(id: string | null) {
-    this.updateInteraction({ hovered: id });
+  hover(id: string | null, source: 'marker' | 'sidebar' = 'marker') {
+    this.updateInteraction({ hovered: id, hoverSource: id ? source : null });
     this.configuration.get().onAnnotationHover?.(this.decorations.get().occurrences.find(item => item.id === id) ?? null);
   }
-  activate(id: string | null) {
-    this.updateInteraction({ active: id, hovered: null });
+  activate(id: string | null, source: 'marker' | 'sidebar' = 'marker') {
+    this.updateInteraction({ active: id, activeSource: id ? source : null, hovered: null, hoverSource: null });
     const occurrence = this.decorations.get().occurrences.find(item => item.id === id);
     if (occurrence) this.configuration.get().onAnnotationClick?.(occurrence);
   }
@@ -232,13 +237,19 @@ export class ReaderRuntime {
   }
   registerAnchor(id: string, element: HTMLElement | null) { if (element) this.anchors.set(id, element); else this.anchors.delete(id); this.requestLayout(); }
   registerHeading(id: string, element: HTMLElement | null) { if (element) this.headings.set(id, element); else this.headings.delete(id); this.requestLayout(); }
-  observeBlock(element: HTMLElement | null) { if (element) this.observer?.observe(element); }
-  unobserveBlock(element: HTMLElement) { this.observer?.unobserve(element); }
+  observeBlock(element: HTMLElement | null) { if (element) { if (element.dataset.limrBlock) this.blocks.set(element.dataset.limrBlock, element); this.observer?.observe(element); } }
+  unobserveBlock(element: HTMLElement) { if (element.dataset.limrBlock) this.blocks.delete(element.dataset.limrBlock); this.observer?.unobserve(element); }
   getScrollTop() { return this.configuration.get().scrollRoot?.scrollTop ?? (typeof window !== 'undefined' ? window.scrollY : 0); }
   getViewportTop() { return this.configuration.get().scrollRoot?.getBoundingClientRect().top ?? 0; }
+  getContentOffset() {
+    // Read the interpolated value during motion, not the destination offset.
+    const translate = this.content && getComputedStyle(this.content).translate;
+    return translate ? parseFloat(translate.split(' ')[1] ?? '0') || 0 : 0;
+  }
   scrollTo(top: number, behavior: ScrollBehavior = 'smooth') {
     const root = this.configuration.get().scrollRoot ?? window;
-    root.scrollTo({ top: Math.max(0, top), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : behavior });
+    if (behavior === 'smooth') scrollWithMotion(root, top);
+    else root.scrollTo({ top: Math.max(0, top), behavior });
   }
   scrollToHeading(id: string) {
     const element = this.headings.get(id);

@@ -17,7 +17,11 @@ export interface DocumentProviderProps extends ViewConfiguration {
 
 export function DocumentProvider({ children, source = '', streaming = false, documentId, ...options }: DocumentProviderProps) {
   const generatedId = useId();
-  const config: ViewConfiguration = { ...options, extensions: options.extensions ?? (defaults ??= standard()) };
+  const extensions = useMemo(() => {
+    const base = options.extensions ?? (defaults ??= standard());
+    return options.plugins?.length ? [...base, ...options.plugins] : base;
+  }, [options.extensions, options.plugins]);
+  const config: ViewConfiguration = { ...options, extensions };
   const [runtime] = useState(() => new ReaderRuntime(documentId ?? `limr-${generatedId.replace(/[^a-z\d_-]/gi, '')}`, source, streaming, config));
   const previous = useRef({ source, streaming, config });
   useIsomorphicLayoutEffect(() => {
@@ -63,6 +67,7 @@ export function useDocumentSelector<R>(select: (snapshot: DocumentSnapshot) => R
 }
 export function useSelection(): SelectionSnapshot | null { return useStoreSelector(useRuntime().interaction, state => state.selection); }
 export function useTheme() { return useStoreSelector(useRuntime().configuration, config => config.theme ?? 'light'); }
+export function useAppearance() { return useStoreSelector(useRuntime().configuration, config => config.appearance ?? 'classic'); }
 export function useLocale() {
   const runtime = useRuntime();
   useStoreSelector(runtime.configuration, config => config.locale);
