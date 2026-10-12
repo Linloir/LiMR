@@ -1,0 +1,98 @@
+{
+  "name": "limr",
+  "version": "0.1.0",
+  "description": "Linloir's limr Is a Markdown Renderer — extensible reading and streaming components for React",
+  "type": "module",
+  "license": "MIT",
+  "author": "Linloir",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "docs/*.md",
+    "examples/*.tsx",
+    "benchmarks/results/*.json"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.js"
+    },
+    "./extensions": {
+      "types": "./dist/extensions/index.d.ts",
+      "import": "./dist/extensions/index.js"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./math.css": "./dist/math.css",
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsup && node scripts/build-assets.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "test:package": "node scripts/package-smoke.mjs",
+    "bench": "tsx benchmarks/run.ts",
+    "bench:browser": "tsx benchmarks/browser.ts",
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "prepack": "pnpm build"
+  },
+  "peerDependencies": {
+    "react": "^18.3.0 || ^19.0.0",
+    "react-dom": "^18.3.0 || ^19.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.18.3",
+  "dependencies": {
+    "@floating-ui/react": "^0.27.20",
+    "katex": "^0.19.0",
+    "mdast-util-directive": "^3.1.1",
+    "mdast-util-from-markdown": "^2.1.0",
+    "mdast-util-gfm": "^3.1.0",
+    "mdast-util-math": "^3.0.0",
+    "mdast-util-mdx-jsx": "^3.2.0",
+    "micromark-extension-directive": "^4.0.0",
+    "micromark-extension-gfm": "^3.0.0",
+    "micromark-extension-math": "^3.1.0",
+    "micromark-extension-mdx-jsx": "^3.0.2",
+    "micromark-util-decode-string": "^2.0.1",
+    "micromark-util-types": "^2.0.3",
+    "shiki": "^4.5.0"
+  },
+  "devDependencies": {
+    "@fontsource-variable/noto-serif-sc": "^5.3.1",
+    "@playwright/test": "^1.64.0",
+    "@types/katex": "^0.16.8",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "react": "^19",
+    "react-dom": "^19",
+    "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.7",
+    "vitest": "^3.2.7"
+  }
+}

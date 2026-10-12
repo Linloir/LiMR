@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-12T04:34:56.348Z",
+  "node": "v20.19.5",
+  "mode": "production",
+  "platform": "linux 6.18.40.1-microsoft-standard-WSL2",
+  "cpu": "13th Gen Intel(R) Core(TM) i7-13700",
+  "results": [
+    {
+      "scenario": "static-gfm",
+      "characters": 87381,
+      "sections": 200,
+      "core": {
+        "medianMs": 114.64,
+        "minMs": 110.57,
+        "maxMs": 142.9
+      },
+      "mdast": {
+        "medianMs": 112.79,
+        "minMs": 107.87,
+        "maxMs": 162.73
+      },
+      "limrSSR": {
+        "medianMs": 109.64,
+        "minMs": 107.26,
+        "maxMs": 113.05
+      },
+      "reactMarkdownSSR": {
+        "medianMs": 115.6,
+        "minMs": 113.95,
+        "maxMs": 116.66
+      }
+    },
+    {
+      "scenario": "static-gfm",
+      "characters": 877782,
+      "sections": 2000,
+      "core": {
+        "medianMs": 2371.85,
+        "minMs": 2308.47,
+        "maxMs": 2689.28
+      },
+      "mdast": {
+        "medianMs": 2413.3,
+        "minMs": 2309.97,
+        "maxMs": 2465.78
+      },
+      "limrSSR": {
+        "medianMs": 2369.39,
+        "minMs": 2345.85,
+        "maxMs": 2555.66
+      },
+      "reactMarkdownSSR": {
+        "medianMs": 2586.03,
+        "minMs": 2535.33,
+        "maxMs": 2626.17
+      }
+    },
+    {
+      "scenario": "streaming-gfm",
+      "characters": 34860,
+      "chunkSize": 256,
+      "updates": 137,
+      "incremental": {
+        "medianMs": 159.99,
+        "minMs": 154.49,
+        "maxMs": 177.24
+      },
+      "fullParse": {
+        "medianMs": 2646.48,
+        "minMs": 2567.55,
+        "maxMs": 2654.57
+      }
+    }
+  ]
+}

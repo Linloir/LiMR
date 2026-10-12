@@ -1,0 +1,8 @@
+node_modules/
+dist/
+demo-dist/
+test-results/
+playwright-report/
+coverage/
+*.tgz
+.DS_Store

@@ -1,0 +1,17 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #fffefa; color: #3d3a36; font-family: system-ui, sans-serif; }
+html[data-theme='dark'] body { background: #1b1a18; color: #e0ddd8; }
+.demo-header { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 16px; padding: 24px 36px; border-bottom: 1px solid #87837822; }
+.demo-brand { color: inherit; text-decoration: none; font-family: Georgia, serif; font-size: 26px; font-weight: 600; letter-spacing: -.5px; }
+.demo-brand span { font: 12px system-ui, sans-serif; color: #9b9590; letter-spacing: .02em; margin-left: 16px; }
+.demo-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.demo-controls button { background: transparent; color: inherit; border: 1px solid #87837833; border-radius: 4px; padding: 6px 12px; cursor: pointer; font: 12px system-ui, sans-serif; }
+.demo-controls button:hover { background: #87837810; }
+.demo-page { padding: 36px; margin: auto; max-width: 1512px; }
+.demo-footer { padding: 60px 36px 32px; font-size: 11px; color: #9b9590; text-align: center; letter-spacing: .06em; }
+.demo-editor { display: block; width: calc(100% - 72px); margin: 24px 36px; min-height: 250px; border: 1px solid #87837833; background: transparent; color: inherit; padding: 16px; font: 13px/1.7 monospace; }
+@media (max-width: 700px) { .demo-header { padding: 20px; }.demo-brand span { display: none; }.demo-page { padding: 20px; }.demo-controls { gap: 5px; }.demo-controls button { padding: 5px 7px; } }
+/* Explicit local demo font; the published component CSS never loads fonts. */
+:root { --limr-font-text: 'Noto Serif SC Variable', Georgia, serif; }
+body,.demo-controls button,.demo-controls a { font-family: system-ui, 'Noto Serif SC Variable', serif; }
+.demo-controls a { padding: 6px 8px; font-size: 12px; color: inherit; text-decoration: none; }

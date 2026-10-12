@@ -1,0 +1,10 @@
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+const require = createRequire(import.meta.url);
+const katexDirectory = dirname(require.resolve('katex/package.json'));
+await mkdir('dist', { recursive: true });
+await cp('src/styles.css', 'dist/styles.css');
+await cp(join(katexDirectory, 'dist/katex.min.css'), 'dist/math.css');
+await cp(join(katexDirectory, 'dist/fonts'), 'dist/fonts', { recursive: true });
+await writeFile('dist/THIRD_PARTY_LICENSES.txt', await readFile(join(katexDirectory, 'LICENSE'), 'utf8'));
