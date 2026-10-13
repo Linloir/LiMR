@@ -44,6 +44,8 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsup && node scripts/build-assets.mjs",
+    "build:playground": "vite build --base=/LiMR/",
+    "preview:playground": "vite preview --host 127.0.0.1 --base=/LiMR/",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:browser": "playwright test",

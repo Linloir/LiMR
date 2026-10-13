@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Markdown, Reader, chinese, type Annotation, type SelectionSnapshot, type TranslationMode } from '../src';
 import { readingNotes } from '../examples/notes';
 
-const photo = '/papers/feature-channel.png';
+const photo = `${import.meta.env.BASE_URL}papers/feature-channel.png`;
 export const mediaSource = `# Figures and translations
 
 [Jump to figure](#target-figure) · Footnote[^note]
@@ -84,11 +84,11 @@ const annotationSource = `Before the figures.
 
 <figures id="annotation-grid" columns="2" responsive="false" max-width="300" max-height="300" min-width="80" min-height="60">
 
-<figure id="first-panel" src="/papers/feature-channel.png" caption="First panel caption." />
+<figure id="first-panel" src="${import.meta.env.BASE_URL}papers/feature-channel.png" caption="First panel caption." />
 
 <figure id="second-panel">
 
-![Wide panel](/papers/feature-diversity.png)
+![Wide panel](${import.meta.env.BASE_URL}papers/feature-diversity.png)
 
 <figcaption>Second **panel caption**.</figcaption>
 
@@ -98,7 +98,7 @@ const annotationSource = `Before the figures.
 
 </figures>
 
-<figure id="attribute-order" caption="Caption before source." src="/papers/feature-neuron.png" max-height="120" />
+<figure id="attribute-order" caption="Caption before source." src="${import.meta.env.BASE_URL}papers/feature-neuron.png" max-height="120" />
 
 After the figures.
 

@@ -50,9 +50,9 @@ Neural networks are, generally speaking, differentiable with respect to their in
 
 <figures id="fv-objectives" min-width="160" max-width="240" min-height="120" max-height="240">
 
-<figure src="/papers/feature-neuron.png" alt="针对单个神经元优化的图像" caption="(a) Neuron：固定空间位置与通道。" />
+<figure src="./papers/feature-neuron.png" alt="针对单个神经元优化的图像" caption="(a) Neuron：固定空间位置与通道。" />
 
-<figure src="/papers/feature-channel.png" alt="针对整个通道优化的图像" caption="(b) Channel：跨空间位置优化通道响应。" />
+<figure src="./papers/feature-channel.png" alt="针对整个通道优化的图像" caption="(b) Channel：跨空间位置优化通道响应。" />
 
 <figcaption>
 
@@ -106,9 +106,9 @@ Do our examples show us the full picture? When we create examples by optimizatio
 
 <figures id="fv-diversity" columns="2" rows="1" min-width="160" min-height="80" max-width="720" max-height="250">
 
-<figure src="/papers/feature-optimized.png" alt="mixed4a 通道 97 的一次优化结果" max-width="220" caption="(a) 单次优化得到的一种表现。" />
+<figure src="./papers/feature-optimized.png" alt="mixed4a 通道 97 的一次优化结果" max-width="220" caption="(a) 单次优化得到的一种表现。" />
 
-<figure src="/papers/feature-diversity.png" alt="mixed4a 通道 97 加入多样性目标后的四种结果" caption="(b) 多样性优化揭示四种弯曲结构。" />
+<figure src="./papers/feature-diversity.png" alt="mixed4a 通道 97 加入多样性目标后的四种结果" caption="(b) 多样性优化揭示四种弯曲结构。" />
 
 <figcaption>
 

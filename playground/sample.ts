@@ -111,8 +111,8 @@ const extensions = [
 
 <figures min-width="160" max-width="240" min-height="120" max-height="240">
 
-<figure src="/papers/feature-neuron.png" alt="单个神经元的优化图像" caption="单个神经元的响应。" />
-<figure src="/papers/feature-channel.png" alt="整个通道的优化图像" caption="整个通道的响应。" />
+<figure src="./papers/feature-neuron.png" alt="单个神经元的优化图像" caption="单个神经元的响应。" />
+<figure src="./papers/feature-channel.png" alt="整个通道的优化图像" caption="整个通道的响应。" />
 
 <figcaption>图像来自 Olah、Mordvintsev、Schubert 的 [Feature Visualization](https://distill.pub/2017/feature-visualization/)（2017），CC BY 4.0。更多图文示例在顶部“加载”菜单的论文中。</figcaption>
 

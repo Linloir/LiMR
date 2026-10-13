@@ -335,7 +335,7 @@
   .limr-sidebar-toggle:hover .limr-underline,.limr-sidebar-card-heading:focus-visible .limr-underline,.limr-overlay-header button:hover .limr-underline { background-size: 100% 1px; }
   .limr-sidebar-reference { flex: none; min-width: 0; margin-block-end: var(--limr-sidebar-reference-gap, 1px); padding: 5px var(--limr-sidebar-padding-inline, 10px); border-inline-start: 2px solid var(--limr-border-strong, #d5d0c8); background: color-mix(in srgb, var(--limr-muted, #9b9590) 10%, var(--limr-background, #fffefa)); }
   .limr-sidebar-excerpt { margin: 0; color: var(--limr-annotation-excerpt, var(--limr-secondary, #7b756e)); font-size: .9em; line-height: 1.5; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .limr-sidebar-preview:not(:empty) { margin-block-start: .5rem; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--limr-sidebar-preview-lines, 2); overflow: hidden; overflow-wrap: anywhere; font-size: .95em; line-height: 1.6; color: var(--limr-annotation-preview, var(--limr-secondary, #7b756e)); }
+  .limr-sidebar-preview:not(:empty) { margin-block-start: .5rem; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--limr-sidebar-preview-lines, 2); line-clamp: var(--limr-sidebar-preview-lines, 2); overflow: hidden; overflow-wrap: anywhere; font-size: .95em; line-height: 1.6; color: var(--limr-annotation-preview, var(--limr-secondary, #7b756e)); }
   .limr-sidebar-preview > :first-child { margin-block-start: 0; }
   .limr-sidebar-preview > :last-child { margin-block-end: 0; }
   .limr-sidebar-card-content { max-height: min(600px, 65dvh, 100%); overflow: auto; overscroll-behavior: contain; scrollbar-width: none; padding-top: .75rem; }

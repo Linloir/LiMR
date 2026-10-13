@@ -147,6 +147,8 @@ SSR 支持 Node 环境。`renderToString` 中未加载的公式先输出源码�
 
 ## 开发
 
+[在线 Playground](https://linloir.github.io/LiMR/)
+
 ```sh
 pnpm install
 pnpm dev
@@ -156,6 +158,24 @@ pnpm test:browser
 NODE_ENV=production pnpm bench
 ```
 
+### GitHub Pages 预览
+
+推送 `main` 后，[Deploy Playground 工作流](.github/workflows/pages.yml) 会构建 Playground，将静态产物更新到独立的 `pages` 分支，并通过 GitHub Actions 发布到 <https://linloir.github.io/LiMR/>。也可以在 Actions 中手动运行该工作流。`pages` 分支由构建生成，无需手工合并源码。
+
+首次部署需在仓库 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。工作流使用内置 `GITHUB_TOKEN`，无需额外配置发布密钥。
+
+本地检查与线上相同的 `/LiMR/` 路径：
+
+```sh
+pnpm build:playground
+pnpm preview:playground
+# 打开 http://127.0.0.1:4173/LiMR/
+```
+
+构建输出为 `demo-dist/`；`pnpm dev` 仍使用本地根路径。部署到其他仓库名时，需要同步修改两个 Playground 脚本中的 `--base`。
+
 其他入口：`limr/core`（无 React/DOM 运行时依赖）、`limr/react`、`limr/extensions`。详细 props、hooks、受控状态和主题配置见 [API 指南](docs/api.md)。
 
 MIT License.
+
+Developed with Codex.

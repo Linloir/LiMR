@@ -58,7 +58,7 @@ To make a semantic dictionary, we pair every neuron activation with a visualizat
 
 <figure id="bb-pca" max-width="none" max-height="360">
 
-![激活可视化、激活 PCA 与对应视觉基底](/papers/building-activation.png)
+![激活可视化、激活 PCA 与对应视觉基底](./papers/building-activation.png)
 
 <figcaption>
 
@@ -86,7 +86,7 @@ While we introduce semantic dictionaries in terms of neurons, they can be used w
 
 </translations>
 
-<figure id="bb-basis" src="/papers/building-vector.png" alt="同一个激活向量分别用主成分与神经元表示" max-width="none" max-height="240" caption="图 2 · 同一激活向量可以用主成分或神经元作为基底表示；不同的视觉词汇强调不同结构。© 原作者，CC BY 4.0。" />
+<figure id="bb-basis" src="./papers/building-vector.png" alt="同一个激活向量分别用主成分与神经元表示" max-width="none" max-height="240" caption="图 2 · 同一激活向量可以用主成分或神经元作为基底表示；不同的视觉词汇强调不同结构。© 原作者，CC BY 4.0。" />
 
 读图时可以把[图 1](#bb-pca)和[图 2](#bb-basis)联系起来：颜色压缩了高维信息，可视化基底则帮助读者理解这些颜色代表什么。
 
@@ -108,7 +108,7 @@ An alternate way to slice the cube is by channels instead of spatial locations. 
 
 </translations>
 
-<figure id="bb-attribution" src="/papers/building-attribution.png" alt="跨隐藏层的通道归因图" max-width="none" max-height="380">
+<figure id="bb-attribution" src="./papers/building-attribution.png" alt="跨隐藏层的通道归因图" max-width="none" max-height="380">
 
 <figcaption>
 
