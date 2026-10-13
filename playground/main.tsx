@@ -143,7 +143,10 @@ function App() {
         <button aria-pressed={justify} onClick={() => setJustify(value => !value)} title={justify ? '切换为左对齐' : '两端对齐，末行保持左对齐'}><span className="limr-underline">两端对齐</span></button><button className="demo-stream-button" disabled={!source.length} aria-pressed={streaming} onClick={() => {
         if (streaming) { setStreaming(false); setStatus('已结束演示，完整文本已恢复'); }
         else { setCursor(0); setStreaming(true); setEditor(false); setStatus(''); setSelection(null); setDocumentVersion(value => value + 1); }
-      }}><span className="limr-underline">{streaming ? '结束演示' : '流式演示'}</span></button></div>
+      }}><span className="limr-underline">{streaming ? '结束演示' : '流式演示'}</span></button>
+        <span className="demo-control-divider" aria-hidden="true" />
+        <a href="https://github.com/Linloir/LiMR" target="_blank" rel="noopener noreferrer"><span className="limr-underline">GitHub</span></a>
+      </div>
     </div>
     <div className="demo-context-line"><span>{editor ? '在左侧写作，在右侧看见变化。' : streaming ? '正在播放当前文本，随时可以结束。' : '选中文字，给想法一点颜色。悬浮色块调整样式，点击工具留下批注。'}</span><output aria-live="polite">{status || answerStatus || `${source.length.toLocaleString()} 字符 · ${annotations.filter(item => item.type === 'highlight').length} 处高亮 · ${annotations.filter(item => item.type !== 'highlight').length} 条注释`}</output></div>
     {streaming && <div className="demo-stream-progress" role="progressbar" aria-label="流式演示进度" aria-valuemin={0} aria-valuemax={source.length} aria-valuenow={cursor}><span style={{ width: `${cursor / Math.max(1, source.length) * 100}%` }} /></div>}

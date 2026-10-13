@@ -1,5 +1,7 @@
 # LiMR
 
+[![npm version](https://img.shields.io/npm/v/@linloir/limr.svg)](https://www.npmjs.com/package/@linloir/limr)
+
 **Linloir’s limr Is a Markdown Renderer.**
 
 一个可以独立使用，也可以组合成完整阅读界面的 React Markdown 渲染包。正文、目录、角注和选区使用同一份文档状态，面向长文阅读和 AI 流式输出。
@@ -7,6 +9,9 @@
 ## 使用
 
 ```sh
+npm install @linloir/limr
+
+# 或使用 pnpm
 pnpm add @linloir/limr
 ```
 
