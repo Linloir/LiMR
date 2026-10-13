@@ -1,0 +1,1152 @@
+{
+  "environment": {
+    "date": "2026-10-13T10:09:48.779Z",
+    "timezone": "Asia/Shanghai",
+    "node": "v20.19.5",
+    "platform": "linux 6.18.40.1-microsoft-standard-WSL2",
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13700",
+    "revision": "a4c9eb36c6ae36636ff37d5fcb5feb290c02fa55",
+    "sourceDiff": "",
+    "versions": {
+      "react": "19.3.0",
+      "react-dom": "19.3.0",
+      "markstream-react": "2.0.19",
+      "stream-diffs": "0.0.2",
+      "katex": "0.19.0",
+      "shiki": "4.5.0"
+    },
+    "liMR": "1.0.0",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "cpuThrottle": 1,
+    "network": "Local Vite production preview; no network emulation",
+    "browser": "156.0.8078.4"
+  },
+  "methodology": {
+    "fullDOM": "Production React. GFM only, native code, identical neutral CSS. No virtualisation, animation, highlight or deferred rendering. Fresh page per trial, two small warmups, alternating order. Each synchronous flushSync commit includes forced layout; one rAF between chunks; separate final=true commit included. CDP TaskDuration also captures asynchronous browser work. Final semantic DOM compared to react-markdown + remark-gfm outside timing. JS heap measured after CDP GC, not total process memory.",
+    "reading": "Independent cold browser context per renderer, production build, renderer default plugins/options and vendor CSS. LiMR default Markdown + full styles including Maple; Markstream default MarkdownRender + CSS with optional stream-diffs and KaTeX installed. Real local images; unique code/math. First readable frame is a two-rAF DOM-readiness proxy, not FCP/LCP. Compositor wheel gesture over 7 seconds, then middle/end seeks. Scroll rAF telemetry excludes snapshot scans and GC. Resource totals are measured local transfers, not npm installation or compressed bundle sizes."
+  },
+  "results": [
+    {
+      "suite": "default-reading",
+      "renderer": "limr",
+      "trial": 0,
+      "sourceSHA256": "856445b64328d764daed98aeb019e9914142569bd3e42f5466311691281bbcf7",
+      "readingPassed": true,
+      "initial": {
+        "characters": 831559,
+        "sections": 240,
+        "firstFrameMs": 1172.199999988079,
+        "readableFrameMs": 1172.199999988079,
+        "readableFromNavigationMs": 1241.199999988079,
+        "state": {
+          "elements": 25294,
+          "shadowElements": 0,
+          "height": 665647.625,
+          "headings": 240,
+          "firstHeading": "Reading section 1",
+          "lastHeading": "Reading section 240",
+          "visibleHeadings": [
+            "Long technical reading session",
+            "Reading section 1"
+          ],
+          "visibleContentElements": 5,
+          "blankViewport": false,
+          "codeBlocks": 240,
+          "highlightedCodeBlocks": 0,
+          "visibleCodeBlocks": 1,
+          "visibleHighlightedCodeBlocks": 0,
+          "math": 0,
+          "mathFallbacks": 480,
+          "visibleMathFallbacks": 2,
+          "visibleUnrenderedMath": 2,
+          "placeholders": 0,
+          "visiblePlaceholders": 0,
+          "images": 30,
+          "loadedImages": 1,
+          "hasEnd": true,
+          "endVisible": false,
+          "scrollY": 0
+        }
+      },
+      "initialSettle": {
+        "settled": true,
+        "elapsedMs": 1341.800000011921,
+        "state": {
+          "elements": 63688,
+          "shadowElements": 0,
+          "height": 686591.375,
+          "headings": 240,
+          "firstHeading": "Reading section 1",
+          "lastHeading": "Reading section 240",
+          "visibleHeadings": [
+            "Long technical reading session",
+            "Reading section 1"
+          ],
+          "visibleContentElements": 5,
+          "blankViewport": false,
+          "codeBlocks": 240,
+          "highlightedCodeBlocks": 1,
+          "visibleCodeBlocks": 1,
+          "visibleHighlightedCodeBlocks": 1,
+          "math": 480,
+          "mathFallbacks": 0,
+          "visibleMathFallbacks": 0,
+          "visibleUnrenderedMath": 0,
+          "placeholders": 0,
+          "visiblePlaceholders": 0,
+          "images": 30,
+          "loadedImages": 1,
+          "hasEnd": true,
+          "endVisible": false,
+          "scrollY": 0
+        }
+      },
+      "initialTelemetry": {
+        "phase": "initial",
+        "frames": 38,
+        "frameP95Ms": 383.3000000000002,
+        "frameP99Ms": 833.3,
+        "frameMaxMs": 833.3,
+        "framesOver33Ms": 7,
+        "longTasks": [
+          {
+            "at": 70.19999998807907,
+            "duration": 559,
+            "phase": "initial"
+          },
+          {
+            "at": 629.5999999642372,
+            "duration": 293,
+            "phase": "initial"
+          },
+          {
+            "at": 924.3999999761581,
+            "duration": 96,
+            "phase": "initial"
+          },
+          {
+            "at": 1023.5999999642372,
+            "duration": 200,
+            "phase": "initial"
+          },
+          {
+            "at": 1381.8999999761581,
+            "duration": 90,
+            "phase": "initial"
+          },
+          {
+            "at": 1596.7999999523163,
+            "duration": 326,
+            "phase": "initial"
+          },
+          {
+            "at": 1934.3999999761581,
+            "duration": 385,
+            "phase": "initial"
+          }
+        ],
+        "layoutShifts": [
+          {
+            "at": 1218,
+            "value": 0.0002190634645061728,
+            "recentInput": false,
+            "phase": "initial"
+          },
+          {
+            "at": 1913.0999999642372,
+            "value": 0.02202901957947531,
+            "recentInput": false,
+            "phase": "initial"
+          },
+          {
+            "at": 2295.599999964237,
+            "value": 0.010636284035681369,
+            "recentInput": false,
+            "phase": "initial"
+          }
+        ]
+      },
+      "initialResources": {
+        "count": 20,
+        "transferBytes": 749823,
+        "decodedBytes": 2103559,
+        "entries": [
+          {
+            "name": "/assets/index-Cv8KVUpX.js",
+            "type": "script",
+            "bytes": 69536,
+            "duration": 11
+          },
+          {
+            "name": "/assets/index-2yxqoOT2.js",
+            "type": "other",
+            "bytes": 3876,
+            "duration": 6.800000011920929
+          },
+          {
+            "name": "/assets/index-DC_6Bxaz.js",
+            "type": "other",
+            "bytes": 1745,
+            "duration": 7.199999988079071
+          },
+          {
+            "name": "/assets/limr-DWGDGIjo.js",
+            "type": "script",
+            "bytes": 67757,
+            "duration": 11.399999976158142
+          },
+          {
+            "name": "/assets/index-CZM8leeQ.js",
+            "type": "script",
+            "bytes": 952,
+            "duration": 4
+          },
+          {
+            "name": "/assets/index-BipX8723.js",
+            "type": "script",
+            "bytes": 823,
+            "duration": 7.5
+          },
+          {
+            "name": "/assets/styles-CuiGpr6A.css",
+            "type": "link",
+            "bytes": 97956,
+            "duration": 6.399999976158142
+          },
+          {
+            "name": "/assets/katex-DdZNUVNG.css",
+            "type": "link",
+            "bytes": 8394,
+            "duration": 3
+          },
+          {
+            "name": "/assets/math-renderer-CFqVmnke.js",
+            "type": "script",
+            "bytes": 886,
+            "duration": 2.5
+          },
+          {
+            "name": "/assets/katex-cpmb43yU.js",
+            "type": "script",
+            "bytes": 78216,
+            "duration": 7.800000011920929
+          },
+          {
+            "name": "/assets/maple-7.9-regular-latin-59c752ba1d-Df3dk6QM.woff2",
+            "type": "css",
+            "bytes": 48372,
+            "duration": 234.10000002384186
+          },
+          {
+            "name": "/diagram.svg",
+            "type": "img",
+            "bytes": 893,
+            "duration": 3.899999976158142
+          },
+          {
+            "name": "/assets/index-Bf0C3E9Q.js",
+            "type": "script",
+            "bytes": 69005,
+            "duration": 6.199999988079071
+          },
+          {
+            "name": "/assets/wasm-CG6Dc4jp.js",
+            "type": "script",
+            "bytes": 230593,
+            "duration": 18.599999964237213
+          },
+          {
+            "name": "/assets/github-light-DAi9KRSo.js",
+            "type": "script",
+            "bytes": 2808,
+            "duration": 3
+          },
+          {
+            "name": "/assets/github-dark-DHJKELXO.js",
+            "type": "script",
+            "bytes": 2852,
+            "duration": 3.199999988079071
+          },
+          {
+            "name": "/assets/typescript-BPQ3VLAy.js",
+            "type": "script",
+            "bytes": 16339,
+            "duration": 4
+          },
+          {
+            "name": "/assets/KaTeX_Math-Italic-t53AETM-.woff2",
+            "type": "css",
+            "bytes": 16740,
+            "duration": 203.4000000357628
+          },
+          {
+            "name": "/assets/KaTeX_Main-Regular-B22Nviop.woff2",
+            "type": "css",
+            "bytes": 26572,
+            "duration": 203.69999998807907
+          },
+          {
+            "name": "/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2",
+            "type": "css",
+            "bytes": 5508,
+            "duration": 203.60000002384186
+          }
+        ]
+      },
+      "initialHeapBytes": 44133172,
+      "scrolling": {
+        "phase": "scroll",
+        "frames": 426,
+        "frameP95Ms": 16.700000000000728,
+        "frameP99Ms": 16.80000000000109,
+        "frameMaxMs": 33.399999999999636,
+        "framesOver33Ms": 0,
+        "longTasks": [],
+        "layoutShifts": [],
+        "state": {
+          "elements": 65686,
+          "shadowElements": 0,
+          "height": 686591.375,
+          "headings": 240,
+          "firstHeading": "Reading section 1",
+          "lastHeading": "Reading section 240",
+          "visibleHeadings": [],
+          "visibleContentElements": 3,
+          "blankViewport": false,
+          "codeBlocks": 240,
+          "highlightedCodeBlocks": 6,
+          "visibleCodeBlocks": 1,
+          "visibleHighlightedCodeBlocks": 1,
+          "math": 480,
+          "mathFallbacks": 0,
+          "visibleMathFallbacks": 0,
+          "visibleUnrenderedMath": 0,
+          "placeholders": 0,
+          "visiblePlaceholders": 0,
+          "images": 30,
+          "loadedImages": 1,
+          "hasEnd": true,
+          "endVisible": false,
+          "scrollY": 9000
+        },
+        "mainThreadMs": 1120.4389999999999
+      },
+      "seeks": [
+        {
+          "fraction": 0.5,
+          "settled": true,
+          "elapsedMs": 327.0999999642372,
+          "state": {
+            "elements": 66160,
+            "shadowElements": 0,
+            "height": 686591.375,
+            "headings": 240,
+            "firstHeading": "Reading section 1",
+            "lastHeading": "Reading section 240",
+            "visibleHeadings": [
+              "Reading section 121"
+            ],
+            "visibleContentElements": 6,
+            "blankViewport": false,
+            "codeBlocks": 240,
+            "highlightedCodeBlocks": 7,
+            "visibleCodeBlocks": 1,
+            "visibleHighlightedCodeBlocks": 1,
+            "math": 480,
+            "mathFallbacks": 0,
+            "visibleMathFallbacks": 0,
+            "visibleUnrenderedMath": 0,
+            "placeholders": 0,
+            "visiblePlaceholders": 0,
+            "images": 30,
+            "loadedImages": 2,
+            "hasEnd": true,
+            "endVisible": false,
+            "scrollY": 342870
+          },
+          "telemetry": {
+            "phase": "seek-0.5",
+            "frames": 20,
+            "frameP95Ms": 16.80000000000109,
+            "frameP99Ms": 33.399999999999636,
+            "frameMaxMs": 33.399999999999636,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "layoutShifts": []
+          }
+        },
+        {
+          "fraction": 1,
+          "settled": true,
+          "elapsedMs": 316,
+          "state": {
+            "elements": 66160,
+            "shadowElements": 0,
+            "height": 686591.375,
+            "headings": 240,
+            "firstHeading": "Reading section 1",
+            "lastHeading": "Reading section 240",
+            "visibleHeadings": [],
+            "visibleContentElements": 6,
+            "blankViewport": false,
+            "codeBlocks": 240,
+            "highlightedCodeBlocks": 7,
+            "visibleCodeBlocks": 0,
+            "visibleHighlightedCodeBlocks": 0,
+            "math": 480,
+            "mathFallbacks": 0,
+            "visibleMathFallbacks": 0,
+            "visibleUnrenderedMath": 0,
+            "placeholders": 0,
+            "visiblePlaceholders": 0,
+            "images": 30,
+            "loadedImages": 2,
+            "hasEnd": true,
+            "endVisible": true,
+            "scrollY": 685739
+          },
+          "telemetry": {
+            "phase": "seek-1",
+            "frames": 19,
+            "frameP95Ms": 16.799999999999272,
+            "frameP99Ms": 16.799999999999272,
+            "frameMaxMs": 16.799999999999272,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "layoutShifts": []
+          }
+        },
+        {
+          "fraction": 0,
+          "settled": true,
+          "elapsedMs": 316.2999999523163,
+          "state": {
+            "elements": 66160,
+            "shadowElements": 0,
+            "height": 686591.375,
+            "headings": 240,
+            "firstHeading": "Reading section 1",
+            "lastHeading": "Reading section 240",
+            "visibleHeadings": [
+              "Long technical reading session",
+              "Reading section 1"
+            ],
+            "visibleContentElements": 5,
+            "blankViewport": false,
+            "codeBlocks": 240,
+            "highlightedCodeBlocks": 7,
+            "visibleCodeBlocks": 1,
+            "visibleHighlightedCodeBlocks": 1,
+            "math": 480,
+            "mathFallbacks": 0,
+            "visibleMathFallbacks": 0,
+            "visibleUnrenderedMath": 0,
+            "placeholders": 0,
+            "visiblePlaceholders": 0,
+            "images": 30,
+            "loadedImages": 2,
+            "hasEnd": true,
+            "endVisible": false,
+            "scrollY": 0
+          },
+          "telemetry": {
+            "phase": "seek-0",
+            "frames": 19,
+            "frameP95Ms": 16.799999999999272,
+            "frameP99Ms": 16.799999999999272,
+            "frameMaxMs": 16.799999999999272,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "layoutShifts": []
+          }
+        }
+      ],
+      "heapAfterBytes": 49298536,
+      "resourcesAfter": {
+        "count": 22,
+        "transferBytes": 760336,
+        "decodedBytes": 2176335,
+        "entries": [
+          {
+            "name": "/assets/index-Cv8KVUpX.js",
+            "type": "script",
+            "bytes": 69536,
+            "duration": 11
+          },
+          {
+            "name": "/assets/index-2yxqoOT2.js",
+            "type": "other",
+            "bytes": 3876,
+            "duration": 6.800000011920929
+          },
+          {
+            "name": "/assets/index-DC_6Bxaz.js",
+            "type": "other",
+            "bytes": 1745,
+            "duration": 7.199999988079071
+          },
+          {
+            "name": "/assets/limr-DWGDGIjo.js",
+            "type": "script",
+            "bytes": 67757,
+            "duration": 11.399999976158142
+          },
+          {
+            "name": "/assets/index-CZM8leeQ.js",
+            "type": "script",
+            "bytes": 952,
+            "duration": 4
+          },
+          {
+            "name": "/assets/index-BipX8723.js",
+            "type": "script",
+            "bytes": 823,
+            "duration": 7.5
+          },
+          {
+            "name": "/assets/styles-CuiGpr6A.css",
+            "type": "link",
+            "bytes": 97956,
+            "duration": 6.399999976158142
+          },
+          {
+            "name": "/assets/katex-DdZNUVNG.css",
+            "type": "link",
+            "bytes": 8394,
+            "duration": 3
+          },
+          {
+            "name": "/assets/math-renderer-CFqVmnke.js",
+            "type": "script",
+            "bytes": 886,
+            "duration": 2.5
+          },
+          {
+            "name": "/assets/katex-cpmb43yU.js",
+            "type": "script",
+            "bytes": 78216,
+            "duration": 7.800000011920929
+          },
+          {
+            "name": "/assets/maple-7.9-regular-latin-59c752ba1d-Df3dk6QM.woff2",
+            "type": "css",
+            "bytes": 48372,
+            "duration": 234.10000002384186
+          },
+          {
+            "name": "/diagram.svg",
+            "type": "img",
+            "bytes": 893,
+            "duration": 3.899999976158142
+          },
+          {
+            "name": "/assets/index-Bf0C3E9Q.js",
+            "type": "script",
+            "bytes": 69005,
+            "duration": 6.199999988079071
+          },
+          {
+            "name": "/assets/wasm-CG6Dc4jp.js",
+            "type": "script",
+            "bytes": 230593,
+            "duration": 18.599999964237213
+          },
+          {
+            "name": "/assets/github-light-DAi9KRSo.js",
+            "type": "script",
+            "bytes": 2808,
+            "duration": 3
+          },
+          {
+            "name": "/assets/github-dark-DHJKELXO.js",
+            "type": "script",
+            "bytes": 2852,
+            "duration": 3.199999988079071
+          },
+          {
+            "name": "/assets/typescript-BPQ3VLAy.js",
+            "type": "script",
+            "bytes": 16339,
+            "duration": 4
+          },
+          {
+            "name": "/assets/KaTeX_Math-Italic-t53AETM-.woff2",
+            "type": "css",
+            "bytes": 16740,
+            "duration": 203.4000000357628
+          },
+          {
+            "name": "/assets/KaTeX_Main-Regular-B22Nviop.woff2",
+            "type": "css",
+            "bytes": 26572,
+            "duration": 203.69999998807907
+          },
+          {
+            "name": "/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2",
+            "type": "css",
+            "bytes": 5508,
+            "duration": 203.60000002384186
+          },
+          {
+            "name": "/assets/python-B6aJPvgy.js",
+            "type": "script",
+            "bytes": 9433,
+            "duration": 2.600000023841858
+          },
+          {
+            "name": "/assets/json-Cp-IABpG.js",
+            "type": "script",
+            "bytes": 1080,
+            "duration": 2.100000023841858
+          }
+        ]
+      },
+      "errors": []
+    },
+    {
+      "suite": "default-reading",
+      "renderer": "markstream",
+      "trial": 0,
+      "sourceSHA256": "856445b64328d764daed98aeb019e9914142569bd3e42f5466311691281bbcf7",
+      "readingPassed": false,
+      "initial": {
+        "characters": 831559,
+        "sections": 240,
+        "firstFrameMs": 1044.0999999642372,
+        "readableFrameMs": null,
+        "readableFromNavigationMs": null,
+        "state": {
+          "elements": 7053,
+          "shadowElements": 0,
+          "height": 113988.09375,
+          "headings": 20,
+          "firstHeading": "Reading section 221",
+          "lastHeading": "Reading section 240",
+          "visibleHeadings": [],
+          "visibleContentElements": 0,
+          "blankViewport": true,
+          "codeBlocks": 21,
+          "highlightedCodeBlocks": 0,
+          "visibleCodeBlocks": 0,
+          "visibleHighlightedCodeBlocks": 0,
+          "math": 0,
+          "mathFallbacks": 0,
+          "visibleMathFallbacks": 0,
+          "visibleUnrenderedMath": 0,
+          "placeholders": 0,
+          "visiblePlaceholders": 0,
+          "images": 2,
+          "loadedImages": 2,
+          "hasEnd": true,
+          "endVisible": false,
+          "scrollY": 0
+        }
+      },
+      "initialSettle": {
+        "settled": false,
+        "elapsedMs": 15017.800000011921,
+        "state": {
+          "elements": 10266,
+          "shadowElements": 13069,
+          "height": 520559.4375,
+          "headings": 20,
+          "firstHeading": "Reading section 221",
+          "lastHeading": "Reading section 240",
+          "visibleHeadings": [],
+          "visibleContentElements": 0,
+          "blankViewport": true,
+          "codeBlocks": 21,
+          "highlightedCodeBlocks": 21,
+          "visibleCodeBlocks": 0,
+          "visibleHighlightedCodeBlocks": 0,
+          "math": 42,
+          "mathFallbacks": 0,
+          "visibleMathFallbacks": 0,
+          "visibleUnrenderedMath": 0,
+          "placeholders": 0,
+          "visiblePlaceholders": 0,
+          "images": 2,
+          "loadedImages": 2,
+          "hasEnd": true,
+          "endVisible": false,
+          "scrollY": 0
+        }
+      },
+      "initialTelemetry": {
+        "phase": "initial",
+        "frames": 884,
+        "frameP95Ms": 16.799999999999272,
+        "frameP99Ms": 50,
+        "frameMaxMs": 800,
+        "framesOver33Ms": 11,
+        "longTasks": [
+          {
+            "at": 66.5,
+            "duration": 760,
+            "phase": "initial"
+          },
+          {
+            "at": 826.6999999880791,
+            "duration": 66,
+            "phase": "initial"
+          },
+          {
+            "at": 963.4000000357628,
+            "duration": 136,
+            "phase": "initial"
+          },
+          {
+            "at": 1273.800000011921,
+            "duration": 68,
+            "phase": "initial"
+          },
+          {
+            "at": 1396.300000011921,
+            "duration": 114,
+            "phase": "initial"
+          },
+          {
+            "at": 1519.300000011921,
+            "duration": 62,
+            "phase": "initial"
+          }
+        ],
+        "layoutShifts": []
+      },
+      "initialResources": {
+        "count": 21,
+        "transferBytes": 675078,
+        "decodedBytes": 2298458,
+        "entries": [
+          {
+            "name": "/assets/index-Cv8KVUpX.js",
+            "type": "script",
+            "bytes": 69536,
+            "duration": 9.099999964237213
+          },
+          {
+            "name": "/assets/index-2yxqoOT2.js",
+            "type": "other",
+            "bytes": 3876,
+            "duration": 4.300000011920929
+          },
+          {
+            "name": "/assets/index-DC_6Bxaz.js",
+            "type": "other",
+            "bytes": 1745,
+            "duration": 4.5
+          },
+          {
+            "name": "/assets/markstream-D8k56C1o.js",
+            "type": "script",
+            "bytes": 213670,
+            "duration": 18.19999998807907
+          },
+          {
+            "name": "/assets/index-CZM8leeQ.js",
+            "type": "script",
+            "bytes": 952,
+            "duration": 3.199999988079071
+          },
+          {
+            "name": "/assets/index-5UFe2KjX.css",
+            "type": "link",
+            "bytes": 11780,
+            "duration": 3.400000035762787
+          },
+          {
+            "name": "/assets/katex-DdZNUVNG.css",
+            "type": "link",
+            "bytes": 8394,
+            "duration": 2.599999964237213
+          },
+          {
+            "name": "/diagram.svg",
+            "type": "img",
+            "bytes": 893,
+            "duration": 2.300000011920929
+          },
+          {
+            "name": "/assets/markstream-BSHpJbDZ.js",
+            "type": "script",
+            "bytes": 8095,
+            "duration": 2.199999988079071
+          },
+          {
+            "name": "/assets/katex-cpmb43yU.js",
+            "type": "script",
+            "bytes": 78216,
+            "duration": 12.199999988079071
+          },
+          {
+            "name": "/assets/index-C18eAYLg.js",
+            "type": "script",
+            "bytes": 120548,
+            "duration": 15.700000047683716
+          },
+          {
+            "name": "/assets/index-Bf0C3E9Q.js",
+            "type": "script",
+            "bytes": 69005,
+            "duration": 8.699999988079071
+          },
+          {
+            "name": "/assets/index-BipX8723.js",
+            "type": "script",
+            "bytes": 823,
+            "duration": 1.699999988079071
+          },
+          {
+            "name": "/assets/mhchem-yho8SFgP.js",
+            "type": "script",
+            "bytes": 8537,
+            "duration": 3.200000047683716
+          },
+          {
+            "name": "/assets/KaTeX_Math-Italic-t53AETM-.woff2",
+            "type": "css",
+            "bytes": 16740,
+            "duration": 26.600000023841858
+          },
+          {
+            "name": "/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2",
+            "type": "css",
+            "bytes": 5508,
+            "duration": 26.899999976158142
+          },
+          {
+            "name": "/assets/KaTeX_Main-Regular-B22Nviop.woff2",
+            "type": "css",
+            "bytes": 26572,
+            "duration": 26.80000001192093
+          },
+          {
+            "name": "/assets/json-Cp-IABpG.js",
+            "type": "script",
+            "bytes": 1080,
+            "duration": 2.200000047683716
+          },
+          {
+            "name": "/assets/vitesse-light-CVO1_9PV.js",
+            "type": "script",
+            "bytes": 3336,
+            "duration": 2.399999976158142
+          },
+          {
+            "name": "/assets/typescript-BPQ3VLAy.js",
+            "type": "script",
+            "bytes": 16339,
+            "duration": 3.199999988079071
+          },
+          {
+            "name": "/assets/python-B6aJPvgy.js",
+            "type": "script",
+            "bytes": 9433,
+            "duration": 1.9000000357627869
+          }
+        ]
+      },
+      "initialHeapBytes": 34506472,
+      "scrolling": {
+        "phase": "scroll",
+        "frames": 430,
+        "frameP95Ms": 16.700000000000728,
+        "frameP99Ms": 16.799999999999272,
+        "frameMaxMs": 16.80000000000291,
+        "framesOver33Ms": 0,
+        "longTasks": [],
+        "layoutShifts": [],
+        "state": {
+          "elements": 10266,
+          "shadowElements": 13069,
+          "height": 520559.4375,
+          "headings": 20,
+          "firstHeading": "Reading section 221",
+          "lastHeading": "Reading section 240",
+          "visibleHeadings": [],
+          "visibleContentElements": 0,
+          "blankViewport": true,
+          "codeBlocks": 21,
+          "highlightedCodeBlocks": 21,
+          "visibleCodeBlocks": 0,
+          "visibleHighlightedCodeBlocks": 0,
+          "math": 42,
+          "mathFallbacks": 0,
+          "visibleMathFallbacks": 0,
+          "visibleUnrenderedMath": 0,
+          "placeholders": 0,
+          "visiblePlaceholders": 0,
+          "images": 2,
+          "loadedImages": 2,
+          "hasEnd": true,
+          "endVisible": false,
+          "scrollY": 9000
+        },
+        "mainThreadMs": 199.233
+      },
+      "seeks": [
+        {
+          "fraction": 0.5,
+          "settled": false,
+          "elapsedMs": 8041.800000011921,
+          "state": {
+            "elements": 10266,
+            "shadowElements": 13069,
+            "height": 520559.4375,
+            "headings": 20,
+            "firstHeading": "Reading section 221",
+            "lastHeading": "Reading section 240",
+            "visibleHeadings": [],
+            "visibleContentElements": 0,
+            "blankViewport": true,
+            "codeBlocks": 21,
+            "highlightedCodeBlocks": 21,
+            "visibleCodeBlocks": 0,
+            "visibleHighlightedCodeBlocks": 0,
+            "math": 42,
+            "mathFallbacks": 0,
+            "visibleMathFallbacks": 0,
+            "visibleUnrenderedMath": 0,
+            "placeholders": 0,
+            "visiblePlaceholders": 0,
+            "images": 2,
+            "loadedImages": 2,
+            "hasEnd": true,
+            "endVisible": false,
+            "scrollY": 259854
+          },
+          "telemetry": {
+            "phase": "seek-0.5",
+            "frames": 483,
+            "frameP95Ms": 16.700000000000728,
+            "frameP99Ms": 16.799999999999272,
+            "frameMaxMs": 16.80000000000291,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "layoutShifts": []
+          }
+        },
+        {
+          "fraction": 1,
+          "settled": true,
+          "elapsedMs": 302.19999998807907,
+          "state": {
+            "elements": 10266,
+            "shadowElements": 13069,
+            "height": 520559.4375,
+            "headings": 20,
+            "firstHeading": "Reading section 221",
+            "lastHeading": "Reading section 240",
+            "visibleHeadings": [],
+            "visibleContentElements": 12,
+            "blankViewport": false,
+            "codeBlocks": 21,
+            "highlightedCodeBlocks": 21,
+            "visibleCodeBlocks": 0,
+            "visibleHighlightedCodeBlocks": 0,
+            "math": 42,
+            "mathFallbacks": 0,
+            "visibleMathFallbacks": 0,
+            "visibleUnrenderedMath": 0,
+            "placeholders": 0,
+            "visiblePlaceholders": 0,
+            "images": 2,
+            "loadedImages": 2,
+            "hasEnd": true,
+            "endVisible": true,
+            "scrollY": 519707
+          },
+          "telemetry": {
+            "phase": "seek-1",
+            "frames": 18,
+            "frameP95Ms": 16.80000000000291,
+            "frameP99Ms": 16.80000000000291,
+            "frameMaxMs": 16.80000000000291,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "layoutShifts": []
+          }
+        },
+        {
+          "fraction": 0,
+          "settled": false,
+          "elapsedMs": 8045.5,
+          "state": {
+            "elements": 10266,
+            "shadowElements": 13069,
+            "height": 520559.4375,
+            "headings": 20,
+            "firstHeading": "Reading section 221",
+            "lastHeading": "Reading section 240",
+            "visibleHeadings": [],
+            "visibleContentElements": 0,
+            "blankViewport": true,
+            "codeBlocks": 21,
+            "highlightedCodeBlocks": 21,
+            "visibleCodeBlocks": 0,
+            "visibleHighlightedCodeBlocks": 0,
+            "math": 42,
+            "mathFallbacks": 0,
+            "visibleMathFallbacks": 0,
+            "visibleUnrenderedMath": 0,
+            "placeholders": 0,
+            "visiblePlaceholders": 0,
+            "images": 2,
+            "loadedImages": 2,
+            "hasEnd": true,
+            "endVisible": false,
+            "scrollY": 0
+          },
+          "telemetry": {
+            "phase": "seek-0",
+            "frames": 483,
+            "frameP95Ms": 16.700000000004366,
+            "frameP99Ms": 16.80000000000291,
+            "frameMaxMs": 16.80000000000291,
+            "framesOver33Ms": 0,
+            "longTasks": [],
+            "layoutShifts": []
+          }
+        }
+      ],
+      "heapAfterBytes": 34823556,
+      "resourcesAfter": {
+        "count": 21,
+        "transferBytes": 675078,
+        "decodedBytes": 2298458,
+        "entries": [
+          {
+            "name": "/assets/index-Cv8KVUpX.js",
+            "type": "script",
+            "bytes": 69536,
+            "duration": 9.099999964237213
+          },
+          {
+            "name": "/assets/index-2yxqoOT2.js",
+            "type": "other",
+            "bytes": 3876,
+            "duration": 4.300000011920929
+          },
+          {
+            "name": "/assets/index-DC_6Bxaz.js",
+            "type": "other",
+            "bytes": 1745,
+            "duration": 4.5
+          },
+          {
+            "name": "/assets/markstream-D8k56C1o.js",
+            "type": "script",
+            "bytes": 213670,
+            "duration": 18.19999998807907
+          },
+          {
+            "name": "/assets/index-CZM8leeQ.js",
+            "type": "script",
+            "bytes": 952,
+            "duration": 3.199999988079071
+          },
+          {
+            "name": "/assets/index-5UFe2KjX.css",
+            "type": "link",
+            "bytes": 11780,
+            "duration": 3.400000035762787
+          },
+          {
+            "name": "/assets/katex-DdZNUVNG.css",
+            "type": "link",
+            "bytes": 8394,
+            "duration": 2.599999964237213
+          },
+          {
+            "name": "/diagram.svg",
+            "type": "img",
+            "bytes": 893,
+            "duration": 2.300000011920929
+          },
+          {
+            "name": "/assets/markstream-BSHpJbDZ.js",
+            "type": "script",
+            "bytes": 8095,
+            "duration": 2.199999988079071
+          },
+          {
+            "name": "/assets/katex-cpmb43yU.js",
+            "type": "script",
+            "bytes": 78216,
+            "duration": 12.199999988079071
+          },
+          {
+            "name": "/assets/index-C18eAYLg.js",
+            "type": "script",
+            "bytes": 120548,
+            "duration": 15.700000047683716
+          },
+          {
+            "name": "/assets/index-Bf0C3E9Q.js",
+            "type": "script",
+            "bytes": 69005,
+            "duration": 8.699999988079071
+          },
+          {
+            "name": "/assets/index-BipX8723.js",
+            "type": "script",
+            "bytes": 823,
+            "duration": 1.699999988079071
+          },
+          {
+            "name": "/assets/mhchem-yho8SFgP.js",
+            "type": "script",
+            "bytes": 8537,
+            "duration": 3.200000047683716
+          },
+          {
+            "name": "/assets/KaTeX_Math-Italic-t53AETM-.woff2",
+            "type": "css",
+            "bytes": 16740,
+            "duration": 26.600000023841858
+          },
+          {
+            "name": "/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2",
+            "type": "css",
+            "bytes": 5508,
+            "duration": 26.899999976158142
+          },
+          {
+            "name": "/assets/KaTeX_Main-Regular-B22Nviop.woff2",
+            "type": "css",
+            "bytes": 26572,
+            "duration": 26.80000001192093
+          },
+          {
+            "name": "/assets/json-Cp-IABpG.js",
+            "type": "script",
+            "bytes": 1080,
+            "duration": 2.200000047683716
+          },
+          {
+            "name": "/assets/vitesse-light-CVO1_9PV.js",
+            "type": "script",
+            "bytes": 3336,
+            "duration": 2.399999976158142
+          },
+          {
+            "name": "/assets/typescript-BPQ3VLAy.js",
+            "type": "script",
+            "bytes": 16339,
+            "duration": 3.199999988079071
+          },
+          {
+            "name": "/assets/python-B6aJPvgy.js",
+            "type": "script",
+            "bytes": 9433,
+            "duration": 1.9000000357627869
+          }
+        ]
+      },
+      "errors": []
+    }
+  ]
+}

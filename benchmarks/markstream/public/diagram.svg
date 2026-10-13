@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="180" viewBox="0 0 720 180">
+  <rect width="720" height="180" rx="12" fill="#f2f4f8"/>
+  <g fill="#fff" stroke="#536982" stroke-width="2"><rect x="30" y="50" width="180" height="80" rx="8"/><rect x="270" y="50" width="180" height="80" rx="8"/><rect x="510" y="50" width="180" height="80" rx="8"/><path d="M210 90h60m180 0h60"/></g>
+  <g fill="#25364b" font-size="20" font-family="sans-serif" text-anchor="middle"><text x="120" y="97">Markdown</text><text x="360" y="97">Parser</text><text x="600" y="97">React / DOM</text></g>
+</svg>
