@@ -18,7 +18,8 @@
 | 调整主题、字体、KP 排版、动画与图表样式 | [样式与字体](styles.md) |
 | 查询组件 props、hooks 和核心 API | [API 参考](api.md) |
 | 理解解析、状态和资源边界 | [架构与行为](architecture.md) |
-| 了解性能数据和验证范围 | [性能与限制](performance.md) |
+| 对比三种渲染器、流式、内存和阅读体验 | [渲染器性能报告](performance.md) |
+| 了解 KP 算法、滚动、变宽与正确性 | [KP 算法性能报告](knuth-plass-performance.md) |
 | 让 AI 使用 LiMR 或开发插件 | [AI Skills](ai-skills.md) |
 
 先接入 `Reader`，需要定制布局时再拆分组件；需要应用功能时优先添加插件。Playground 中的本地保存、导入导出和模拟问答是演示应用功能，不是 Reader 自带的服务。

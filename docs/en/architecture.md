@@ -22,7 +22,7 @@ Public source always retains the original input. Internally, the parser inserts 
 
 ## Typography and source mapping
 
-Standard mode uses browser layout by default. KP loads on the client: preparation caches glyph measurements, hyphenation, legal breakpoints, and prefix sums; solving runs TeX paragraph dynamic programming. Stable paragraphs near the viewport take priority and retain their DOM offscreen. Width changes reuse preparation and text containers. Selected paragraphs keep their native Range and defer layout until selection clears. Original source offsets and annotations remain unchanged; see [styles](styles.md) and [performance](performance.md).
+Standard mode uses browser layout by default. KP loads on the client: preparation caches glyph measurements, hyphenation, legal breakpoints, and prefix sums; solving runs TeX paragraph dynamic programming. Stable paragraphs near the viewport take priority and retain their DOM offscreen. Width changes reuse preparation and text containers. Selected paragraphs keep their native Range and defer layout until selection clears. Original source offsets and annotations remain unchanged; see [styles](styles.md) and [KP performance](knuth-plass-performance.md).
 
 Atomic selection text serializes complete original source; surrounding ordinary text retains its rendered spelling and explicit line breaks. Mapped attributes, children, and nested atoms follow the enclosing plugin block’s atomic selection contract.
 

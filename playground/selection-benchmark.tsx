@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Markdown, codeHighlight, gfm, type SelectionSnapshot } from '../src';
-import { fixture } from '../benchmarks/fixture';
+import { fixture } from '../benchmarks/shared/fixture';
 
 declare global {
   interface Window { selectionProbe: { updates: number; dragging: number; last: SelectionSnapshot | null } }

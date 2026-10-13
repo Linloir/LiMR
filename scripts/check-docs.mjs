@@ -13,7 +13,7 @@ async function files(directory) {
     return entry.isDirectory() ? files(path) : path.endsWith('.md') ? [path] : [];
   }))).flat();
 }
-const markdownFiles = [join(root, 'README.md'), join(root, 'README.en.md'), ...await files(join(root, 'docs')), ...await files(join(root, 'skills'))];
+const markdownFiles = [join(root, 'README.md'), join(root, 'README.en.md'), ...await files(join(root, 'docs')), ...await files(join(root, 'skills')), ...await files(join(root, 'benchmarks'))];
 const failures = [];
 const snippets = [];
 let links = 0;

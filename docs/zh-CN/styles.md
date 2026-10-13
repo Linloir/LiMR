@@ -92,7 +92,7 @@ Mermaid 图像支持拖拽平移、触摸和触控板滚动、方向键、Page U
 
 `knuthPlass` 可配置 `pretolerance`、`tolerance`、`linePenalty`、`hyphenPenalty`、`adjacentDemerits`、`doubleHyphenDemerits`、`finalHyphenDemerits`、`emergencyStretch`（CSS 像素）、`looseness` 和 `hyphenate`（`false` 或返回单词分段的函数）。核心段落参数沿用 TeX 常用默认值，额外提供 16px 应急伸展量；浏览器适配器默认按字号换算为 3em，仅参与断行评估，可用 `knuthPlass.emergencyStretch` 显式覆盖。`pretty` / `normal` 保留为可选的旧版 CSS 模式。
 
-KP 按需加载，对视口附近的稳定段落排版；离开视口后保留 DOM，宽度变化时复用测量结果与前缀和，更新前保护原生选区。窗口缩小时，屏外缓存行暂时裁切横向溢出，进入视口后完成精确排版；仍被选中的段落暂时允许换行并保留原生选区。流式尾段稳定后再排版，不改变源码、标注位置或复制内容。滚动和缩放对照见[性能](performance.md)，算法依据见 [TeX 源码](https://github.com/TeX-Live/texlive-source/blob/trunk/texk/web2c/tex.web)。测量准备与断行分离的设计也参考了 [Typst 的增量排版实现](https://github.com/typst/typst/tree/main/crates/typst-layout/src/inline)。
+KP 按需加载，对视口附近的稳定段落排版；离开视口后保留 DOM，宽度变化时复用测量结果与前缀和，更新前保护原生选区。窗口缩小时，屏外缓存行暂时裁切横向溢出，进入视口后完成精确排版；仍被选中的段落暂时允许换行并保留原生选区。流式尾段稳定后再排版，不改变源码、标注位置或复制内容。滚动和缩放对照见[KP 算法性能报告](knuth-plass-performance.md)，算法依据见 [TeX 源码](https://github.com/TeX-Live/texlive-source/blob/trunk/texk/web2c/tex.web)。测量准备与断行分离的设计也参考了 [Typst 的增量排版实现](https://github.com/typst/typst/tree/main/crates/typst-layout/src/inline)。
 
 默认 loading 使用固定 32×32 viewBox、22px 显示尺寸、粗轨道和伸缩弧线；旋转、增长、收缩均为非线性缓动，围绕固定圆心运动，颜色跟随 `--limr-secondary`。新增文字与特殊块只做透明度淡入，不增加背景色，段落结束时不再次播放出现动画。插件可用 `streaming.effect` 替换共享动画，Reader 可用 `streamEffect` 单独覆盖。
 

@@ -10,7 +10,6 @@ import { readingNotes } from '../examples/notes';
 import { sample } from './sample';
 import { presets } from './presets';
 import { MultipleFixture, PluginFixture, ResourceFixture, ScrollFixture, SidebarFixture } from './fixtures';
-import { BenchmarkFixture } from './benchmark';
 import { HydrationFixture } from './hydration';
 import '../src/styles.css';
 import 'katex/dist/katex.min.css';
@@ -201,4 +200,4 @@ function App() {
 }
 const fixture = new URLSearchParams(location.search).get('fixture');
 if (fixture === 'hydrate') hydrateRoot(document.getElementById('root')!, <HydrationFixture />, { onRecoverableError: error => { document.documentElement.dataset.hydrationError = String(error); } });
-else createRoot(document.getElementById('root')!).render(fixture === 'streaming' ? <StreamingFixture /> : fixture === 'media-annotations' ? <MediaAnnotationFixture /> : fixture === 'translation-details' ? <TranslationDetailsFixture /> : fixture === 'media' ? <MediaFixture /> : fixture === 'toolbar' ? <ToolbarFixture /> : fixture === 'assistant-test' ? <PluginFixture /> : fixture === 'sidebar' ? <SidebarFixture /> : fixture === 'selection-bench' ? <SelectionBenchmarkFixture /> : fixture === 'video' ? <VideoFixture /> : fixture === 'overlay' ? <OverlayFixture /> : fixture === 'markers' ? <MarkerFixture /> : fixture === 'visual' ? <VisualFixture /> : fixture === 'scroll' ? <ScrollFixture /> : fixture === 'multiple' ? <MultipleFixture /> : fixture === 'bench' ? <BenchmarkFixture /> : fixture === 'resource' ? <ResourceFixture /> : <App />);
+else createRoot(document.getElementById('root')!).render(fixture === 'streaming' ? <StreamingFixture /> : fixture === 'media-annotations' ? <MediaAnnotationFixture /> : fixture === 'translation-details' ? <TranslationDetailsFixture /> : fixture === 'media' ? <MediaFixture /> : fixture === 'toolbar' ? <ToolbarFixture /> : fixture === 'assistant-test' ? <PluginFixture /> : fixture === 'sidebar' ? <SidebarFixture /> : fixture === 'selection-bench' ? <SelectionBenchmarkFixture /> : fixture === 'video' ? <VideoFixture /> : fixture === 'overlay' ? <OverlayFixture /> : fixture === 'markers' ? <MarkerFixture /> : fixture === 'visual' ? <VisualFixture /> : fixture === 'scroll' ? <ScrollFixture /> : fixture === 'multiple' ? <MultipleFixture /> : fixture === 'resource' ? <ResourceFixture /> : <App />);

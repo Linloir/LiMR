@@ -1,0 +1,570 @@
+{
+  "environment": {
+    "date": "2026-10-13T17:31:01.385Z",
+    "timezone": "Asia/Shanghai",
+    "node": "v20.19.5",
+    "mode": "production",
+    "platform": "linux 6.18.40.1-microsoft-standard-WSL2",
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13700",
+    "logicalCPUs": 24,
+    "memoryBytes": 33457602560,
+    "freeMemoryBytes": 6463090688,
+    "loadAverage": [
+      1.71,
+      1.81,
+      1.94
+    ],
+    "revision": "1e318ea408fb743fe15ca831e59ac7ccfe85c4e0",
+    "sourceSHA256": "8a09189f783dc1888446e0f0c96b2059db30142a6a545e769777ce0325fee4a1",
+    "harnessSHA256": "cfbba7765c59555b06fa921c28cf20f9ab4320713db6a4ee3301879b69741d1f",
+    "lockSHA256": "c3264f2e09b17af4097cd38e194844fc8e8143a84e939f0978ff415ad0562ee4",
+    "versions": {
+      "react": "19.3.0",
+      "react-dom": "19.3.0",
+      "react-markdown": "10.1.0",
+      "remark-gfm": "4.0.1",
+      "remark-math": "6.0.0",
+      "rehype-katex": "7.0.1",
+      "markstream-react": "2.0.19",
+      "stream-diffs": "0.0.2",
+      "katex": "0.19.0",
+      "shiki": "4.5.0"
+    },
+    "liMR": "1.0.1",
+    "cpuThrottle": 1,
+    "network": "Local production preview; no network or CPU throttling",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "browser": "156.0.8078.4"
+  },
+  "configuration": {
+    "trials": 3,
+    "readingTrials": 3,
+    "sections": 240,
+    "suite": "full"
+  },
+  "methodology": {
+    "fullDOM": "Production React. GFM only, native code, identical neutral CSS. No virtualisation, animation, highlight or deferred rendering. Fresh page per trial, two small warmups, cyclic/reversed renderer order. Each synchronous flushSync commit includes forced layout; one rAF between chunks; separate final=true commit included. CDP TaskDuration also captures asynchronous browser work. Final semantic DOM compared to react-markdown + remark-gfm outside timing. JS heap measured after CDP GC, not total process memory.",
+    "reading": "Independent cold browser context per renderer, production build. LiMR and Markstream retain default plugins/options and vendor CSS; react-markdown uses remark-gfm, remark-math, rehype-katex and an async Shiki component, neutral article CSS. LiMR default Markdown + full styles including Maple; Markstream default MarkdownRender + CSS with optional stream-diffs and KaTeX installed. Real local images; unique code/math. First readable frame is a two-rAF DOM-readiness proxy, not FCP/LCP. Compositor wheel gesture over 7 seconds, then middle/end seeks. Scroll rAF telemetry excludes snapshot scans and GC. Resource totals are measured local transfers, not npm installation or compressed bundle sizes."
+  },
+  "results": [
+    {
+      "suite": "full-dom",
+      "scenario": "static-large",
+      "sourceSHA256": "ccf323a0f1272d6a5605f0f3f12c9bf0de1f791f191991583c48abdf47963a4c",
+      "renderer": "limr",
+      "trial": 0,
+      "characters": 877782,
+      "updates": 1,
+      "totalMs": 1172.6000000238419,
+      "p95Ms": 1172.6000000238419,
+      "maxMs": 1172.6000000238419,
+      "finalMs": 1172.6000000238419,
+      "wallMs": 1220.5,
+      "telemetry": {
+        "phase": "full-dom",
+        "frames": 3,
+        "frameSamplesMs": [
+          3.299999952316284,
+          1200,
+          16.59999999999991
+        ],
+        "frameP95Ms": 1200,
+        "frameP99Ms": 1200,
+        "frameMaxMs": 1200,
+        "framesOver33Ms": 1,
+        "longTasks": [
+          {
+            "at": 282.7000000476837,
+            "duration": 1183,
+            "phase": "full-dom"
+          }
+        ],
+        "layoutShifts": []
+      },
+      "samples": [
+        1172.6000000238419
+      ],
+      "mainThreadMs": 1233.654,
+      "layoutMs": 135.156,
+      "retainedHeapBytes": 59825504,
+      "heapBefore": 3018108,
+      "heapAfter": 62843612,
+      "validation": {
+        "elements": 40002,
+        "textCharacters": 721783,
+        "height": 615476,
+        "headings": 2000,
+        "rows": 4000,
+        "codeBlocks": 0,
+        "valid": true,
+        "mismatch": []
+      },
+      "errors": []
+    },
+    {
+      "suite": "full-dom",
+      "scenario": "static-large",
+      "sourceSHA256": "ccf323a0f1272d6a5605f0f3f12c9bf0de1f791f191991583c48abdf47963a4c",
+      "renderer": "react-markdown",
+      "trial": 0,
+      "characters": 877782,
+      "updates": 1,
+      "totalMs": 1096.699999988079,
+      "p95Ms": 1096.699999988079,
+      "maxMs": 1096.699999988079,
+      "finalMs": 1096.699999988079,
+      "wallMs": 1139.1000000238419,
+      "telemetry": {
+        "phase": "full-dom",
+        "frames": 3,
+        "frameSamplesMs": [
+          5.3000000238418465,
+          1116.7,
+          16.5
+        ],
+        "frameP95Ms": 1116.7,
+        "frameP99Ms": 1116.7,
+        "frameMaxMs": 1116.7,
+        "framesOver33Ms": 1,
+        "longTasks": [
+          {
+            "at": 271.19999998807907,
+            "duration": 1107,
+            "phase": "full-dom"
+          }
+        ],
+        "layoutShifts": []
+      },
+      "samples": [
+        1096.699999988079
+      ],
+      "mainThreadMs": 1152.528,
+      "layoutMs": 107.627,
+      "retainedHeapBytes": 13726316,
+      "heapBefore": 3596356,
+      "heapAfter": 17322672,
+      "validation": {
+        "elements": 36001,
+        "textCharacters": 735782,
+        "height": 615476,
+        "headings": 2000,
+        "rows": 4000,
+        "codeBlocks": 0,
+        "valid": true,
+        "mismatch": []
+      },
+      "errors": []
+    },
+    {
+      "suite": "full-dom",
+      "scenario": "static-large",
+      "sourceSHA256": "ccf323a0f1272d6a5605f0f3f12c9bf0de1f791f191991583c48abdf47963a4c",
+      "renderer": "markstream",
+      "trial": 0,
+      "characters": 877782,
+      "updates": 1,
+      "totalMs": 770.5,
+      "p95Ms": 770.5,
+      "maxMs": 770.5,
+      "finalMs": 770.5,
+      "wallMs": 910.5,
+      "telemetry": {
+        "phase": "full-dom",
+        "frames": 3,
+        "frameSamplesMs": [
+          2.9000000238418693,
+          833.3,
+          66.70000000000005
+        ],
+        "frameP95Ms": 833.3,
+        "frameP99Ms": 833.3,
+        "frameMaxMs": 833.3,
+        "framesOver33Ms": 2,
+        "longTasks": [
+          {
+            "at": 278.19999998807907,
+            "duration": 792,
+            "phase": "full-dom"
+          },
+          {
+            "at": 1070.300000011921,
+            "duration": 59,
+            "phase": "full-dom"
+          },
+          {
+            "at": 1129.5,
+            "duration": 68,
+            "phase": "full-dom"
+          }
+        ],
+        "layoutShifts": []
+      },
+      "samples": [
+        770.5
+      ],
+      "mainThreadMs": 922.688,
+      "layoutMs": 168.221,
+      "retainedHeapBytes": 132475500,
+      "heapBefore": 3974748,
+      "heapAfter": 136450248,
+      "validation": {
+        "elements": 152001,
+        "textCharacters": 721783,
+        "height": 615476,
+        "headings": 2000,
+        "rows": 4000,
+        "codeBlocks": 0,
+        "valid": true,
+        "mismatch": []
+      },
+      "errors": []
+    },
+    {
+      "suite": "full-dom",
+      "scenario": "static-large",
+      "sourceSHA256": "ccf323a0f1272d6a5605f0f3f12c9bf0de1f791f191991583c48abdf47963a4c",
+      "renderer": "react-markdown",
+      "trial": 1,
+      "characters": 877782,
+      "updates": 1,
+      "totalMs": 1146.4000000357628,
+      "p95Ms": 1146.4000000357628,
+      "maxMs": 1146.4000000357628,
+      "finalMs": 1146.4000000357628,
+      "wallMs": 1187.9000000357628,
+      "telemetry": {
+        "phase": "full-dom",
+        "frames": 3,
+        "frameSamplesMs": [
+          4.400000011920952,
+          1166.6,
+          16.59999999999991
+        ],
+        "frameP95Ms": 1166.6,
+        "frameP99Ms": 1166.6,
+        "frameMaxMs": 1166.6,
+        "framesOver33Ms": 1,
+        "longTasks": [
+          {
+            "at": 255,
+            "duration": 1158,
+            "phase": "full-dom"
+          }
+        ],
+        "layoutShifts": []
+      },
+      "samples": [
+        1146.4000000357628
+      ],
+      "mainThreadMs": 1201.288,
+      "layoutMs": 115.13499999999999,
+      "retainedHeapBytes": 13792920,
+      "heapBefore": 3597212,
+      "heapAfter": 17390132,
+      "validation": {
+        "elements": 36001,
+        "textCharacters": 735782,
+        "height": 615476,
+        "headings": 2000,
+        "rows": 4000,
+        "codeBlocks": 0,
+        "valid": true,
+        "mismatch": []
+      },
+      "errors": []
+    },
+    {
+      "suite": "full-dom",
+      "scenario": "static-large",
+      "sourceSHA256": "ccf323a0f1272d6a5605f0f3f12c9bf0de1f791f191991583c48abdf47963a4c",
+      "renderer": "markstream",
+      "trial": 1,
+      "characters": 877782,
+      "updates": 1,
+      "totalMs": 763.7000000476837,
+      "p95Ms": 763.7000000476837,
+      "maxMs": 763.7000000476837,
+      "finalMs": 763.7000000476837,
+      "wallMs": 905,
+      "telemetry": {
+        "phase": "full-dom",
+        "frames": 3,
+        "frameSamplesMs": [
+          -0.30000000000001137,
+          816.5999999999999,
+          83.29999999999995
+        ],
+        "frameP95Ms": 816.5999999999999,
+        "frameP99Ms": 816.5999999999999,
+        "frameMaxMs": 816.5999999999999,
+        "framesOver33Ms": 2,
+        "longTasks": [
+          {
+            "at": 281.89999997615814,
+            "duration": 788,
+            "phase": "full-dom"
+          },
+          {
+            "at": 1070.300000011921,
+            "duration": 56,
+            "phase": "full-dom"
+          },
+          {
+            "at": 1127.0999999642372,
+            "duration": 69,
+            "phase": "full-dom"
+          }
+        ],
+        "layoutShifts": []
+      },
+      "samples": [
+        763.7000000476837
+      ],
+      "mainThreadMs": 919.063,
+      "layoutMs": 174.639,
+      "retainedHeapBytes": 132472728,
+      "heapBefore": 3974472,
+      "heapAfter": 136447200,
+      "validation": {
+        "elements": 152001,
+        "textCharacters": 721783,
+        "height": 615476,
+        "headings": 2000,
+        "rows": 4000,
+        "codeBlocks": 0,
+        "valid": true,
+        "mismatch": []
+      },
+      "errors": []
+    },
+    {
+      "suite": "full-dom",
+      "scenario": "static-large",
+      "sourceSHA256": "ccf323a0f1272d6a5605f0f3f12c9bf0de1f791f191991583c48abdf47963a4c",
+      "renderer": "limr",
+      "trial": 1,
+      "characters": 877782,
+      "updates": 1,
+      "totalMs": 1224.4000000357628,
+      "p95Ms": 1224.4000000357628,
+      "maxMs": 1224.4000000357628,
+      "finalMs": 1224.4000000357628,
+      "wallMs": 1274.199999988079,
+      "telemetry": {
+        "phase": "full-dom",
+        "frames": 3,
+        "frameSamplesMs": [
+          4.6999999761581535,
+          1250,
+          16.700000000000045
+        ],
+        "frameP95Ms": 1250,
+        "frameP99Ms": 1250,
+        "frameMaxMs": 1250,
+        "framesOver33Ms": 1,
+        "longTasks": [
+          {
+            "at": 263.60000002384186,
+            "duration": 1235,
+            "phase": "full-dom"
+          }
+        ],
+        "layoutShifts": []
+      },
+      "samples": [
+        1224.4000000357628
+      ],
+      "mainThreadMs": 1287.249,
+      "layoutMs": 120.99700000000001,
+      "retainedHeapBytes": 59823860,
+      "heapBefore": 3018028,
+      "heapAfter": 62841888,
+      "validation": {
+        "elements": 40002,
+        "textCharacters": 721783,
+        "height": 615476,
+        "headings": 2000,
+        "rows": 4000,
+        "codeBlocks": 0,
+        "valid": true,
+        "mismatch": []
+      },
+      "errors": []
+    },
+    {
+      "suite": "full-dom",
+      "scenario": "static-large",
+      "sourceSHA256": "ccf323a0f1272d6a5605f0f3f12c9bf0de1f791f191991583c48abdf47963a4c",
+      "renderer": "markstream",
+      "trial": 2,
+      "characters": 877782,
+      "updates": 1,
+      "totalMs": 882.9000000357628,
+      "p95Ms": 882.9000000357628,
+      "maxMs": 882.9000000357628,
+      "finalMs": 882.9000000357628,
+      "wallMs": 1031.8999999761581,
+      "telemetry": {
+        "phase": "full-dom",
+        "frames": 3,
+        "frameSamplesMs": [
+          0.8000000000000114,
+          950,
+          66.70000000000005
+        ],
+        "frameP95Ms": 950,
+        "frameP99Ms": 950,
+        "frameMaxMs": 950,
+        "framesOver33Ms": 2,
+        "longTasks": [
+          {
+            "at": 303.5,
+            "duration": 904,
+            "phase": "full-dom"
+          },
+          {
+            "at": 1208.0999999642372,
+            "duration": 62,
+            "phase": "full-dom"
+          },
+          {
+            "at": 1270.7999999523163,
+            "duration": 73,
+            "phase": "full-dom"
+          }
+        ],
+        "layoutShifts": []
+      },
+      "samples": [
+        882.9000000357628
+      ],
+      "mainThreadMs": 1044.1019999999999,
+      "layoutMs": 187.648,
+      "retainedHeapBytes": 132462156,
+      "heapBefore": 3979472,
+      "heapAfter": 136441628,
+      "validation": {
+        "elements": 152001,
+        "textCharacters": 721783,
+        "height": 615476,
+        "headings": 2000,
+        "rows": 4000,
+        "codeBlocks": 0,
+        "valid": true,
+        "mismatch": []
+      },
+      "errors": []
+    },
+    {
+      "suite": "full-dom",
+      "scenario": "static-large",
+      "sourceSHA256": "ccf323a0f1272d6a5605f0f3f12c9bf0de1f791f191991583c48abdf47963a4c",
+      "renderer": "limr",
+      "trial": 2,
+      "characters": 877782,
+      "updates": 1,
+      "totalMs": 1357.7000000476837,
+      "p95Ms": 1357.7000000476837,
+      "maxMs": 1357.7000000476837,
+      "finalMs": 1357.7000000476837,
+      "wallMs": 1408.800000011921,
+      "telemetry": {
+        "phase": "full-dom",
+        "frames": 3,
+        "frameSamplesMs": [
+          5.200000023841881,
+          1383.3000000000002,
+          16.699999999999818
+        ],
+        "frameP95Ms": 1383.3000000000002,
+        "frameP99Ms": 1383.3000000000002,
+        "frameMaxMs": 1383.3000000000002,
+        "framesOver33Ms": 1,
+        "longTasks": [
+          {
+            "at": 270.39999997615814,
+            "duration": 1368,
+            "phase": "full-dom"
+          }
+        ],
+        "layoutShifts": []
+      },
+      "samples": [
+        1357.7000000476837
+      ],
+      "mainThreadMs": 1421.498,
+      "layoutMs": 129.07,
+      "retainedHeapBytes": 59812788,
+      "heapBefore": 3017916,
+      "heapAfter": 62830704,
+      "validation": {
+        "elements": 40002,
+        "textCharacters": 721783,
+        "height": 615476,
+        "headings": 2000,
+        "rows": 4000,
+        "codeBlocks": 0,
+        "valid": true,
+        "mismatch": []
+      },
+      "errors": []
+    },
+    {
+      "suite": "full-dom",
+      "scenario": "static-large",
+      "sourceSHA256": "ccf323a0f1272d6a5605f0f3f12c9bf0de1f791f191991583c48abdf47963a4c",
+      "renderer": "react-markdown",
+      "trial": 2,
+      "characters": 877782,
+      "updates": 1,
+      "totalMs": 1264.8999999761581,
+      "p95Ms": 1264.8999999761581,
+      "maxMs": 1264.8999999761581,
+      "finalMs": 1264.8999999761581,
+      "wallMs": 1321.4000000357628,
+      "telemetry": {
+        "phase": "full-dom",
+        "frames": 3,
+        "frameSamplesMs": [
+          4.199999999999989,
+          1300,
+          16.59999999999991
+        ],
+        "frameP95Ms": 1300,
+        "frameP99Ms": 1300,
+        "frameMaxMs": 1300,
+        "framesOver33Ms": 1,
+        "longTasks": [
+          {
+            "at": 266.69999998807907,
+            "duration": 1275,
+            "phase": "full-dom"
+          }
+        ],
+        "layoutShifts": []
+      },
+      "samples": [
+        1264.8999999761581
+      ],
+      "mainThreadMs": 1329.6999999999998,
+      "layoutMs": 125.203,
+      "retainedHeapBytes": 13729732,
+      "heapBefore": 3596304,
+      "heapAfter": 17326036,
+      "validation": {
+        "elements": 36001,
+        "textCharacters": 735782,
+        "height": 615476,
+        "headings": 2000,
+        "rows": 4000,
+        "codeBlocks": 0,
+        "valid": true,
+        "mismatch": []
+      },
+      "errors": []
+    }
+  ]
+}

@@ -4,7 +4,7 @@ import { Reader, ToolIcon, chinese, english, safeUrl, type NodeRendererProps } f
 export type DocsLanguage = 'zh-CN' | 'en';
 export interface DocsRoute { language: DocsLanguage; page: string; heading?: string }
 const documents = import.meta.glob<string>('../docs/{zh-CN,en}/*.md', { query: '?raw', import: 'default', eager: true });
-const assets = import.meta.glob<string>('../docs/assets/*.svg', { query: '?url', import: 'default', eager: true });
+const assets = import.meta.glob<string>('../docs/assets/**/*.{svg,png}', { query: '?url', import: 'default', eager: true });
 const entries = [
   ['README', '文档概览', 'Overview'],
   ['getting-started', '快速开始', 'Getting started'],
@@ -17,7 +17,8 @@ const entries = [
   ['styles', '样式与字体', 'Styles and fonts'],
   ['api', 'API 参考', 'API reference'],
   ['architecture', '架构与行为', 'Architecture and behavior'],
-  ['performance', '性能与限制', 'Performance and limits'],
+  ['performance', '渲染器性能报告', 'Renderer performance'],
+  ['knuth-plass-performance', 'KP 算法性能报告', 'Knuth–Plass performance'],
   ['ai-skills', 'AI Skills', 'AI Skills'],
 ] as const;
 

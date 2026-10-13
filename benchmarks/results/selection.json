@@ -1,6 +1,40 @@
 {
-  "date": "2026-10-12T09:33:03.875Z",
-  "browser": "156.0.8078.4",
+  "environment": {
+    "date": "2026-10-13T17:30:05.924Z",
+    "timezone": "Asia/Shanghai",
+    "node": "v20.19.5",
+    "mode": "production",
+    "platform": "linux 6.18.40.1-microsoft-standard-WSL2",
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13700",
+    "logicalCPUs": 24,
+    "memoryBytes": 33457602560,
+    "freeMemoryBytes": 6399868928,
+    "loadAverage": [
+      1.59,
+      1.79,
+      1.93
+    ],
+    "revision": "1e318ea408fb743fe15ca831e59ac7ccfe85c4e0",
+    "sourceSHA256": "8a09189f783dc1888446e0f0c96b2059db30142a6a545e769777ce0325fee4a1",
+    "harnessSHA256": "cfbba7765c59555b06fa921c28cf20f9ab4320713db6a4ee3301879b69741d1f",
+    "lockSHA256": "c3264f2e09b17af4097cd38e194844fc8e8143a84e939f0978ff415ad0562ee4",
+    "versions": {
+      "react": "19.3.0",
+      "react-dom": "19.3.0",
+      "react-markdown": "10.1.0",
+      "remark-gfm": "4.0.1",
+      "remark-math": "6.0.0",
+      "rehype-katex": "7.0.1",
+      "markstream-react": "2.0.19",
+      "stream-diffs": "0.0.2",
+      "katex": "0.19.0",
+      "shiki": "4.5.0"
+    },
+    "liMR": "1.0.1",
+    "cpuThrottle": 1,
+    "network": "Local production preview; no network or CPU throttling",
+    "browser": "156.0.8078.4"
+  },
   "measurement": "Production browser, 90 real continuous pointer moves. Native selectionchange-to-overlay-mutation latency; updates and paints measured BEFORE pointerup. 3 isolated font-ready trials; median by gesture duration. Native baseline has no custom overlay metric. This is not hardware input latency or a real touch-device measurement.",
   "results": [
     {
@@ -12,25 +46,25 @@
         "updates": 75,
         "dragging": 75,
         "paints": 75,
-        "frameP95Ms": 16.799999999999727,
+        "frameP95Ms": 16.800000000000182,
         "maxFrameMs": 33.399999999999636,
-        "paintP95Ms": 25.19999998807907,
+        "paintP95Ms": 28.19999998807907,
         "longTasks": [],
-        "rectangles": 11,
-        "elapsedMs": 3231.100000023842
+        "rectangles": 10,
+        "elapsedMs": 3619
       },
       "samples": [
         {
           "nativeChanges": 91,
-          "updates": 75,
-          "dragging": 75,
-          "paints": 75,
-          "frameP95Ms": 16.799999999999727,
-          "maxFrameMs": 33.399999999999636,
-          "paintP95Ms": 25.19999998807907,
+          "updates": 82,
+          "dragging": 82,
+          "paints": 82,
+          "frameP95Ms": 16.799999999999272,
+          "maxFrameMs": 33.19999999999982,
+          "paintP95Ms": 4.699999988079071,
           "longTasks": [],
-          "rectangles": 11,
-          "elapsedMs": 3231.100000023842
+          "rectangles": 10,
+          "elapsedMs": 3526.100000023842
         },
         {
           "nativeChanges": 91,
@@ -38,23 +72,23 @@
           "dragging": 75,
           "paints": 75,
           "frameP95Ms": 16.800000000000182,
-          "maxFrameMs": 33.400000000000546,
-          "paintP95Ms": 26.19999998807907,
+          "maxFrameMs": 33.399999999999636,
+          "paintP95Ms": 28.19999998807907,
           "longTasks": [],
-          "rectangles": 11,
-          "elapsedMs": 3219.099999964237
+          "rectangles": 10,
+          "elapsedMs": 3619
         },
         {
           "nativeChanges": 91,
-          "updates": 77,
-          "dragging": 77,
-          "paints": 77,
+          "updates": 86,
+          "dragging": 86,
+          "paints": 86,
           "frameP95Ms": 16.800000000000182,
-          "maxFrameMs": 33.399999999999636,
-          "paintP95Ms": 28.5,
+          "maxFrameMs": 33.40000000000009,
+          "paintP95Ms": 5.199999988079071,
           "longTasks": [],
-          "rectangles": 11,
-          "elapsedMs": 3587.599999964237
+          "rectangles": 10,
+          "elapsedMs": 3909.600000023842
         }
       ]
     },
@@ -67,12 +101,12 @@
         "updates": 0,
         "dragging": 0,
         "paints": 0,
-        "frameP95Ms": 16.700000000000273,
+        "frameP95Ms": 16.799999999999727,
         "maxFrameMs": 16.800000000000182,
         "paintP95Ms": 0,
         "longTasks": [],
         "rectangles": 0,
-        "elapsedMs": 1523.3999999761581
+        "elapsedMs": 1521.199999988079
       },
       "samples": [
         {
@@ -81,23 +115,11 @@
           "dragging": 0,
           "paints": 0,
           "frameP95Ms": 16.700000000000273,
-          "maxFrameMs": 16.800000000000182,
+          "maxFrameMs": 16.799999999999727,
           "paintP95Ms": 0,
           "longTasks": [],
           "rectangles": 0,
-          "elapsedMs": 1523.3999999761581
-        },
-        {
-          "nativeChanges": 91,
-          "updates": 0,
-          "dragging": 0,
-          "paints": 0,
-          "frameP95Ms": 16.800000000000182,
-          "maxFrameMs": 16.800000000000182,
-          "paintP95Ms": 0,
-          "longTasks": [],
-          "rectangles": 0,
-          "elapsedMs": 1537.300000011921
+          "elapsedMs": 1521.0999999642372
         },
         {
           "nativeChanges": 91,
@@ -109,7 +131,19 @@
           "paintP95Ms": 0,
           "longTasks": [],
           "rectangles": 0,
-          "elapsedMs": 1519.2999999523163
+          "elapsedMs": 1521.199999988079
+        },
+        {
+          "nativeChanges": 91,
+          "updates": 0,
+          "dragging": 0,
+          "paints": 0,
+          "frameP95Ms": 16.799999999999727,
+          "maxFrameMs": 16.800000000000182,
+          "paintP95Ms": 0,
+          "longTasks": [],
+          "rectangles": 0,
+          "elapsedMs": 1537.699999988079
         }
       ]
     },
@@ -122,49 +156,49 @@
         "updates": 47,
         "dragging": 47,
         "paints": 47,
-        "frameP95Ms": 16.799999999999955,
+        "frameP95Ms": 16.700000000000273,
         "maxFrameMs": 16.800000000000182,
-        "paintP95Ms": 19.299999952316284,
+        "paintP95Ms": 19.600000023841858,
         "longTasks": [],
         "rectangles": 12,
-        "elapsedMs": 1533.300000011921
+        "elapsedMs": 1533.3999999761581
       },
       "samples": [
+        {
+          "nativeChanges": 51,
+          "updates": 47,
+          "dragging": 47,
+          "paints": 47,
+          "frameP95Ms": 16.700000000000273,
+          "maxFrameMs": 16.800000000000182,
+          "paintP95Ms": 19.600000023841858,
+          "longTasks": [],
+          "rectangles": 12,
+          "elapsedMs": 1533.3999999761581
+        },
         {
           "nativeChanges": 51,
           "updates": 48,
           "dragging": 48,
           "paints": 48,
           "frameP95Ms": 16.700000000000273,
-          "maxFrameMs": 16.799999999999955,
-          "paintP95Ms": 19.400000035762787,
+          "maxFrameMs": 33.299999999999955,
+          "paintP95Ms": 20.19999998807907,
           "longTasks": [],
           "rectangles": 12,
-          "elapsedMs": 1516
+          "elapsedMs": 1532.9000000357628
         },
         {
           "nativeChanges": 51,
-          "updates": 47,
-          "dragging": 47,
-          "paints": 47,
-          "frameP95Ms": 16.799999999999955,
-          "maxFrameMs": 16.800000000000182,
-          "paintP95Ms": 19.299999952316284,
+          "updates": 48,
+          "dragging": 48,
+          "paints": 48,
+          "frameP95Ms": 16.700000000000273,
+          "maxFrameMs": 33.19999999999993,
+          "paintP95Ms": 19.399999976158142,
           "longTasks": [],
           "rectangles": 12,
-          "elapsedMs": 1533.300000011921
-        },
-        {
-          "nativeChanges": 51,
-          "updates": 47,
-          "dragging": 47,
-          "paints": 47,
-          "frameP95Ms": 16.799999999999727,
-          "maxFrameMs": 16.800000000000182,
-          "paintP95Ms": 18.899999976158142,
-          "longTasks": [],
-          "rectangles": 12,
-          "elapsedMs": 1533.6000000238419
+          "elapsedMs": 1533.800000011921
         }
       ]
     }

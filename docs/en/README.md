@@ -18,7 +18,8 @@ These pages describe the current repository implementation, including the new st
 | Customize themes, fonts, KP layout, animation, and diagrams | [Styles and fonts](styles.md) |
 | Look up component props, hooks, and core APIs | [API reference](api.md) |
 | Understand parsing, state, and resource boundaries | [Architecture and behavior](architecture.md) |
-| Understand measurements and validation boundaries | [Performance and limits](performance.md) |
+| Compare renderer, streaming, memory and reading behavior | [Renderer performance report](performance.md) |
+| Inspect KP solving, scrolling, resizing and correctness | [Knuth–Plass performance report](knuth-plass-performance.md) |
 | Have an AI use LiMR or develop plugins | [AI Skills](ai-skills.md) |
 
 Start with `Reader`, split components when a custom layout is needed, and add plugins for application features. Local persistence, import/export, and simulated assistant responses in the Playground belong to the demo application, not to Reader itself.

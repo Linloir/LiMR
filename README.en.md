@@ -70,7 +70,7 @@ Default modules also support `::` directives: for example, `::definition{title="
 
 ## Typography and streaming
 
-`typography` accepts `standard` (default), `knuth-plass`, or `justify`. KP uses TeX's box/glue/penalty paragraph optimization and Knuth–Liang English hyphenation, caches measurements and prepared breakpoints, and retains typeset nodes while scrolling. Browser font measurements do not guarantee pixel-identical TeX PDF output. The [performance report](docs/en/performance.md) includes Scikit Learn scroll/resize comparisons and measurement boundaries.
+`typography` accepts `standard` (default), `knuth-plass`, or `justify`. KP uses TeX's box/glue/penalty paragraph optimization and Knuth–Liang English hyphenation, caches measurements and prepared breakpoints, and retains typeset nodes while scrolling. Browser font measurements do not guarantee pixel-identical TeX PDF output. The [KP performance report](docs/en/knuth-plass-performance.md) covers solving, Scikit Learn scrolling/resizing and measurement boundaries; the [renderer report](docs/en/performance.md) compares react-markdown and Markstream.
 
 Streaming defers incomplete syntax markers. Default modules can show loading states, while code and math display usable intermediate content. New text and special blocks fade in through opacity; existing controls and selections stay stable. Plugins can customize `streaming.Loading` and `streaming.effect`; hosts can override the animation with `streamEffect` or disable it with `false`.
 

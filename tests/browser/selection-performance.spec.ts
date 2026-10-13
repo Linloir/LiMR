@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dragSelection } from '../../benchmarks/selection-probe';
+import { dragSelection } from '../../benchmarks/interaction/selection-probe';
 
 test('continuous selection paints while dragging a long document, within a frame budget', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });

@@ -1,0 +1,289 @@
+{
+  "environment": {
+    "date": "2026-10-13T17:09:56.106Z",
+    "timezone": "Asia/Shanghai",
+    "node": "v20.19.5",
+    "mode": "production",
+    "platform": "linux 6.18.40.1-microsoft-standard-WSL2",
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13700",
+    "logicalCPUs": 24,
+    "memoryBytes": 33457602560,
+    "freeMemoryBytes": 6270599168,
+    "loadAverage": [
+      1.27,
+      1.88,
+      1.73
+    ],
+    "revision": "1e318ea408fb743fe15ca831e59ac7ccfe85c4e0",
+    "sourceSHA256": "8a09189f783dc1888446e0f0c96b2059db30142a6a545e769777ce0325fee4a1",
+    "harnessSHA256": "debad4600252e73881cac4cfe0e62430a1a0f5b5ca562f1375017e6468f39170",
+    "lockSHA256": "c3264f2e09b17af4097cd38e194844fc8e8143a84e939f0978ff415ad0562ee4",
+    "versions": {
+      "react": "19.3.0",
+      "react-dom": "19.3.0",
+      "react-markdown": "10.1.0",
+      "remark-gfm": "4.0.1",
+      "remark-math": "6.0.0",
+      "rehype-katex": "7.0.1",
+      "markstream-react": "2.0.19",
+      "stream-diffs": "0.0.2",
+      "katex": "0.19.0",
+      "shiki": "4.5.0"
+    },
+    "liMR": "1.0.1",
+    "cpuThrottle": 1,
+    "network": "Local production preview; no network or CPU throttling"
+  },
+  "methodology": "Production Node. GFM only; no highlighting, math, styles, hydration or browser layout. One warmup, five cyclic/reversed trials per case, raw samples retained. Markstream uses explicit full-DOM options. SSR counts and tail text checked outside timing; parser timings are not renderer timings.",
+  "results": [
+    {
+      "scenario": "static-gfm",
+      "sections": 20,
+      "characters": 8700,
+      "sourceSHA256": "ac78fda3bb6b00b7faf91e08f21642785d5e25c400769dd934af19d59f3e97e3",
+      "validity": {
+        "limr-ssr": true,
+        "react-markdown-ssr": true,
+        "markstream-ssr": true
+      },
+      "measurements": {
+        "limr-core": {
+          "count": 5,
+          "medianMs": 9.002303999999981,
+          "p95Ms": 22.12491399999999,
+          "minMs": 7.6530409999999165,
+          "maxMs": 22.12491399999999,
+          "samples": [
+            9.505306000000019,
+            22.12491399999999,
+            9.002303999999981,
+            7.6530409999999165,
+            8.739107999999987
+          ]
+        },
+        "mdast-gfm": {
+          "count": 5,
+          "medianMs": 8.175752999999986,
+          "p95Ms": 9.018373999999994,
+          "minMs": 7.162334000000101,
+          "maxMs": 9.018373999999994,
+          "samples": [
+            8.062730999999985,
+            9.018373999999994,
+            8.175752999999986,
+            8.7229769999999,
+            7.162334000000101
+          ]
+        },
+        "limr-ssr": {
+          "count": 5,
+          "medianMs": 12.208382000000029,
+          "p95Ms": 15.983580999999958,
+          "minMs": 9.70864400000005,
+          "maxMs": 15.983580999999958,
+          "samples": [
+            12.293638999999985,
+            10.81705700000009,
+            12.208382000000029,
+            15.983580999999958,
+            9.70864400000005
+          ]
+        },
+        "react-markdown-ssr": {
+          "count": 5,
+          "medianMs": 10.48845300000005,
+          "p95Ms": 11.50338099999999,
+          "minMs": 9.322046999999884,
+          "maxMs": 11.50338099999999,
+          "samples": [
+            11.50338099999999,
+            10.443192999999951,
+            11.483730000000037,
+            10.48845300000005,
+            9.322046999999884
+          ]
+        },
+        "markstream-ssr": {
+          "count": 5,
+          "medianMs": 6.589662000000089,
+          "p95Ms": 9.521892999999977,
+          "minMs": 5.625941000000012,
+          "maxMs": 9.521892999999977,
+          "samples": [
+            8.92479400000002,
+            5.931728000000021,
+            5.625941000000012,
+            9.521892999999977,
+            6.589662000000089
+          ]
+        }
+      }
+    },
+    {
+      "scenario": "static-gfm",
+      "sections": 200,
+      "characters": 87381,
+      "sourceSHA256": "ce631177252ced9eb0e7ac118a0fe7cbca1a87825bab549d230e276bd6b3fd98",
+      "validity": {
+        "limr-ssr": true,
+        "react-markdown-ssr": true,
+        "markstream-ssr": true
+      },
+      "measurements": {
+        "limr-core": {
+          "count": 5,
+          "medianMs": 108.15623600000026,
+          "p95Ms": 131.82878500000015,
+          "minMs": 89.6218060000001,
+          "maxMs": 131.82878500000015,
+          "samples": [
+            109.01114600000005,
+            131.82878500000015,
+            93.84607599999981,
+            108.15623600000026,
+            89.6218060000001
+          ]
+        },
+        "mdast-gfm": {
+          "count": 5,
+          "medianMs": 91.16541099999995,
+          "p95Ms": 109.49406799999997,
+          "minMs": 86.74759700000004,
+          "maxMs": 109.49406799999997,
+          "samples": [
+            109.49406799999997,
+            86.74759700000004,
+            90.66561499999989,
+            91.30874399999993,
+            91.16541099999995
+          ]
+        },
+        "limr-ssr": {
+          "count": 5,
+          "medianMs": 129.55582099999992,
+          "p95Ms": 163.07780599999978,
+          "minMs": 103.86721200000011,
+          "maxMs": 163.07780599999978,
+          "samples": [
+            163.07780599999978,
+            129.55582099999992,
+            109.61774300000025,
+            103.86721200000011,
+            132.0459139999998
+          ]
+        },
+        "react-markdown-ssr": {
+          "count": 5,
+          "medianMs": 107.19147199999998,
+          "p95Ms": 131.5841150000001,
+          "minMs": 99.0725550000002,
+          "maxMs": 131.5841150000001,
+          "samples": [
+            107.19147199999998,
+            122.97962899999993,
+            99.0725550000002,
+            131.5841150000001,
+            102.57010499999978
+          ]
+        },
+        "markstream-ssr": {
+          "count": 5,
+          "medianMs": 36.45902100000012,
+          "p95Ms": 45.333864000000176,
+          "minMs": 29.566069999999854,
+          "maxMs": 45.333864000000176,
+          "samples": [
+            36.3268979999998,
+            36.45902100000012,
+            36.59897499999988,
+            45.333864000000176,
+            29.566069999999854
+          ]
+        }
+      }
+    },
+    {
+      "scenario": "static-gfm",
+      "sections": 2000,
+      "characters": 877782,
+      "sourceSHA256": "ccf323a0f1272d6a5605f0f3f12c9bf0de1f791f191991583c48abdf47963a4c",
+      "validity": {
+        "limr-ssr": true,
+        "react-markdown-ssr": true,
+        "markstream-ssr": true
+      },
+      "measurements": {
+        "limr-core": {
+          "count": 5,
+          "medianMs": 2395.182636000005,
+          "p95Ms": 2511.848084000001,
+          "minMs": 2291.8128450000004,
+          "maxMs": 2511.848084000001,
+          "samples": [
+            2291.8128450000004,
+            2511.848084000001,
+            2403.9870779999983,
+            2373.9218709999986,
+            2395.182636000005
+          ]
+        },
+        "mdast-gfm": {
+          "count": 5,
+          "medianMs": 2354.2750499999966,
+          "p95Ms": 2513.622696000002,
+          "minMs": 2207.035576000002,
+          "maxMs": 2513.622696000002,
+          "samples": [
+            2207.035576000002,
+            2513.622696000002,
+            2496.0326419999983,
+            2241.7191569999995,
+            2354.2750499999966
+          ]
+        },
+        "limr-ssr": {
+          "count": 5,
+          "medianMs": 2508.8777560000017,
+          "p95Ms": 2523.5507450000005,
+          "minMs": 2452.2950029999993,
+          "maxMs": 2523.5507450000005,
+          "samples": [
+            2521.1776900000004,
+            2477.576493999997,
+            2452.2950029999993,
+            2508.8777560000017,
+            2523.5507450000005
+          ]
+        },
+        "react-markdown-ssr": {
+          "count": 5,
+          "medianMs": 2602.542315999999,
+          "p95Ms": 2721.585984000001,
+          "minMs": 2510.0914940000002,
+          "maxMs": 2721.585984000001,
+          "samples": [
+            2721.585984000001,
+            2602.542315999999,
+            2510.0914940000002,
+            2581.2437440000067,
+            2620.4074340000006
+          ]
+        },
+        "markstream-ssr": {
+          "count": 5,
+          "medianMs": 378.8300869999948,
+          "p95Ms": 419.0272079999995,
+          "minMs": 351.91455600000336,
+          "maxMs": 419.0272079999995,
+          "samples": [
+            419.0272079999995,
+            375.0284449999999,
+            378.8300869999948,
+            351.91455600000336,
+            390.8363329999993
+          ]
+        }
+      }
+    }
+  ]
+}

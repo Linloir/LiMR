@@ -70,7 +70,7 @@ export function Answer({ text, generating }: { text: string; generating: boolean
 
 ## 排版与流式行为
 
-`typography` 支持 `standard`（默认）、`knuth-plass`、`justify`。KP 使用 TeX 的 box/glue/penalty 段落优化和 Knuth–Liang 英文断词，缓存测量及断行准备结果，滚动保留已排版节点。浏览器字体测量与 TeX PDF 不保证逐像素相同；[性能报告](docs/zh-CN/performance.md)包含 Scikit Learn 滚动/窗口变化对照及测量边界。
+`typography` 支持 `standard`（默认）、`knuth-plass`、`justify`。KP 使用 TeX 的 box/glue/penalty 段落优化和 Knuth–Liang 英文断词，缓存测量及断行准备结果，滚动保留已排版节点。浏览器字体测量与 TeX PDF 不保证逐像素相同；[KP 算法性能报告](docs/zh-CN/knuth-plass-performance.md)包含求解器、Scikit Learn 滚动/窗口变化与测量边界；[渲染器性能报告](docs/zh-CN/performance.md)对比 react-markdown 和 Markstream。
 
 流式输出暂缓不完整的语法标记；默认模块可显示 loading，代码和公式可直接展示可用中间态。新增文字和特殊块只做透明度淡入，既有控件和选区保持稳定。插件可通过 `streaming.Loading`、`streaming.effect` 自定义行为，宿主可用 `streamEffect` 覆盖动画或设为 `false`。
 

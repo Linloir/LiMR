@@ -15,6 +15,8 @@ const archive = (await readdir(temporary)).find(name => name.endsWith('.tgz'));
 if (!archive) throw new Error('Package archive was not created');
 const contents = new Set(run('tar', ['-tzf', join(temporary, archive)], process.cwd()).trim().split('\n'));
 for (const path of ['README.md', 'README.en.md', 'docs/zh-CN/modules.md', 'docs/en/modules.md', 'docs/assets/source.svg',
+  'docs/zh-CN/performance.md', 'docs/en/performance.md', 'docs/zh-CN/knuth-plass-performance.md', 'docs/en/knuth-plass-performance.md',
+  'docs/assets/performance/limr-midpoint.png', 'docs/assets/performance/markstream-midpoint.png', 'benchmarks/README.md', 'benchmarks/results/renderers.json',
   'skills/limr-use/SKILL.md', 'skills/limr-plugin-development/SKILL.md', 'skills/limr-plugin-development/assets/plugin-template/package.json']) {
   if (!contents.has(`package/${path}`)) throw new Error(`Missing package resource: ${path}`);
 }
