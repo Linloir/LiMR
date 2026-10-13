@@ -1,0 +1,40 @@
+Distill paper illustrations. Downloaded 2026-10-13. Original files, unmodified.
+License: Creative Commons Attribution 4.0 International
+https://creativecommons.org/licenses/by/4.0/
+
+Feature Visualization (2017): Chris Olah, Alexander Mordvintsev, Ludwig Schubert.
+https://distill.pub/2017/feature-visualization/
+
+The Building Blocks of Interpretability (2018): Chris Olah, Arvind Satyanarayan, Ian Johnson, Shan Carter, Ludwig Schubert, Katherine Ye, Alexander Mordvintsev.
+https://distill.pub/2018/building-blocks/
+
+The Markdown presets excerpt and reformat the papers, add Chinese translations and edited captions. Original image pixels are unchanged.
+These assets belong to the playground, not the published LiMR package.
+
+feature-neuron.png
+https://distill.pub/2017/feature-visualization/images/objectives/neuron.png
+SHA256 25834d8501d321c43da060f43c778e60b5ae38f276afc51b0a9a8234da8761b5
+
+feature-channel.png
+https://distill.pub/2017/feature-visualization/images/objectives/channel.png
+SHA256 ae2d64e985a97d702ef2be241a8090e63b8efd718287627e68725b4747b14907
+
+feature-optimized.png
+https://distill.pub/2017/feature-visualization/images/diversity/mixed4a_97_optimized.png
+SHA256 782bc7cbefad546b1397111a8c54a3efe5fe6959fe49696271c1dee8df6ee923
+
+feature-diversity.png
+https://distill.pub/2017/feature-visualization/images/diversity/mixed4a_97_diversity.png
+SHA256 967d064a3d3d4df31b12af4745413d222d6c7a243fe10be925850e1685c997d6
+
+building-activation.png
+https://distill.pub/2018/building-blocks/images/activation-pca.png
+SHA256 57487a706b4688a931568b327b79795d368d3a91e5013319e8bb94847e72260c
+
+building-vector.png
+https://distill.pub/2018/building-blocks/images/vector-eq-full.png
+SHA256 53e566aa3f26c9770169261850c17b6f5ac86f452f0cf4d9547d73b4e51de7dd
+
+building-attribution.png
+https://distill.pub/2018/building-blocks/images/attribution-channels.png
+SHA256 17d7a619c9b35ab5fc83fa8c274ca1ca58666142d1dd4406db99a1604caa9747
