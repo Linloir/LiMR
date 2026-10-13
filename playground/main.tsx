@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
-import { Reader, ToolIcon, chinese, type Annotation, type SelectionSnapshot, type TranslationMode } from '../src';
+import { Reader, ToolIcon, chinese, english, type Annotation, type SelectionSnapshot, type TranslationMode } from '../src';
 import { Dropdown } from './Dropdown';
+import { Documentation, docsHref, readDocsRoute } from './Documentation';
 import { MediaAnnotationFixture, MediaFixture, TranslationDetailsFixture } from './media-fixture';
 import { assistant } from '../examples/assistant';
 import { readingNotes } from '../examples/notes';
@@ -20,6 +21,11 @@ import { SelectionBenchmarkFixture } from './selection-benchmark';
 import { ToolbarFixture } from './toolbar-fixture';
 
 const storageKey = 'limr-playground-document';
+const localeStorageKey = 'limr-playground-locale';
+function savedLocale(): 'zh-CN' | 'en' {
+  try { return localStorage.getItem(localeStorageKey) === 'en' ? 'en' : 'zh-CN'; }
+  catch { return 'zh-CN'; }
+}
 function savedDocument(): { source: string; annotations: readonly Annotation[] } | null {
   try {
     const data = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
@@ -35,6 +41,8 @@ function App() {
   const [streaming, setStreaming] = useState(false);
   const [cursor, setCursor] = useState(0);
   const [dark, setDark] = useState(false);
+  const [localeName, setLocaleName] = useState(savedLocale);
+  const [docsRoute, setDocsRoute] = useState(() => readDocsRoute(savedLocale()));
   const [justify, setJustify] = useState(false);
   const [translationMode, setTranslationMode] = useState<TranslationMode | undefined>();
   const [editor, setEditor] = useState(false);
@@ -44,7 +52,7 @@ function App() {
   const [preview, setPreview] = useState<HTMLDivElement | null>(null);
   const [notesEnabled, setNotesEnabled] = useState(true);
   const [assistantEnabled, setAssistantEnabled] = useState(true);
-  const [menu, setMenu] = useState<'load' | 'plugins' | 'translation' | null>(null);
+  const [menu, setMenu] = useState<'load' | 'plugins' | 'translation' | 'locale' | null>(null);
   const [status, setStatus] = useState('');
   const [answerStatus, setAnswerStatus] = useState('');
   const [documentVersion, setDocumentVersion] = useState(0);
@@ -53,15 +61,18 @@ function App() {
   const loadRoot = useRef<HTMLDivElement>(null);
   const pluginRoot = useRef<HTMLDivElement>(null);
   const translationRoot = useRef<HTMLDivElement>(null);
+  const localeRoot = useRef<HTMLDivElement>(null);
+  const locales = [{ value: 'zh-CN', label: '中文' }, { value: 'en', label: 'English' }] as const;
   const translationModes = [{ value: undefined, label: '随段落' }, { value: 'origin', label: '原文' }, { value: 'translation', label: '译文' }, { value: 'both', label: '对照' }] as const;
   useScrollSync(textarea, preview, source);
   const plugins = useMemo(() => {
     const notes = readingNotes();
-    const ai = assistant({ label: '询问助手', icon: <ToolIcon name="sparkles" />, color: '#B39DDB', prompt: selection => `请解释「${selection.text}」。`,
+    const zh = localeName === 'zh-CN';
+    const ai = assistant({ label: zh ? '询问助手' : 'Ask assistant', icon: <ToolIcon name="sparkles" />, color: '#B39DDB', prompt: selection => zh ? `请解释「${selection.text}」。` : `Explain “${selection.text}”.`,
       adapter: { async *answer({ selection, signal }) {
-        setAnswerStatus('回答中');
+        setAnswerStatus(zh ? '回答中' : 'Answering…');
         try {
-          for (const chunk of ['关于 **', selection.text, '** 的思考。\n\n', '先试着用自己的话概括这段内容，', '再找一个生活中的例子与它联系起来。\n\n', '> 这是一段本地模拟回答，用于体验插件的流式交互。']) {
+          for (const chunk of (zh ? ['关于 **', selection.text, '** 的思考。\n\n', '先试着用自己的话概括这段内容，', '再找一个生活中的例子与它联系起来。\n\n', '> 这是一段本地模拟回答，用于体验插件的流式交互。'] : ['Thoughts on **', selection.text, '**.\n\n', 'Try summarizing the passage in your own words, ', 'then connect it to an everyday example.\n\n', '> This is a local simulated response demonstrating streaming plugin interaction.'])) {
             await new Promise<void>((resolve, reject) => {
               if (signal.aborted) { reject(signal.reason); return; }
               const abort = () => { clearTimeout(timer); reject(signal.reason); };
@@ -70,23 +81,39 @@ function App() {
             });
             yield chunk;
           }
-          setAnswerStatus('回答已完成');
-        } catch (error) { setAnswerStatus(signal.aborted ? '' : '回答失败'); throw error; }
+          setAnswerStatus(zh ? '回答已完成' : 'Answer complete');
+        } catch (error) { setAnswerStatus(signal.aborted ? '' : zh ? '回答失败' : 'Answer failed'); throw error; }
       } },
     });
     // Keep renderers installed so disabling an entry never hides saved notes.
     return [{ ...notes, actions: notesEnabled && !streaming ? notes.actions : [] }, { ...ai, actions: assistantEnabled && !streaming ? ai.actions : [] }];
-  }, [notesEnabled, assistantEnabled, streaming]);
+  }, [notesEnabled, assistantEnabled, streaming, localeName]);
   useEffect(() => {
     if (!streaming) return;
     let position = 0;
     const interval = setInterval(() => { position = Math.min(source.length, position + 24); setCursor(position); if (position === source.length) { setStreaming(false); setStatus('流式演示完成，文本已保留'); } }, 25);
     return () => clearInterval(interval);
   }, [streaming, source]);
+  useEffect(() => {
+    const navigate = () => {
+      const route = readDocsRoute(savedLocale());
+      setDocsRoute(route);
+      if (route) { setLocaleName(route.language); setStreaming(false); }
+      setMenu(null);
+      setSelection(null);
+    };
+    navigate();
+    window.addEventListener('hashchange', navigate);
+    return () => window.removeEventListener('hashchange', navigate);
+  }, []);
   useEffect(() => { document.documentElement.dataset.theme = dark ? 'dark' : 'light'; }, [dark]);
   useEffect(() => {
+    try { localStorage.setItem(localeStorageKey, localeName); }
+    catch { /* The current locale still works when storage is unavailable. */ }
+  }, [localeName]);
+  useEffect(() => {
     if (!menu) return;
-    const root = menu === 'load' ? loadRoot : menu === 'plugins' ? pluginRoot : translationRoot;
+    const root = menu === 'load' ? loadRoot : menu === 'plugins' ? pluginRoot : menu === 'locale' ? localeRoot : translationRoot;
     const outside = (event: PointerEvent) => { if (event.target instanceof Node && !root.current?.contains(event.target)) setMenu(null); };
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { setMenu(null); root.current?.querySelector('button')?.focus(); } };
     document.addEventListener('pointerdown', outside); document.addEventListener('keydown', escape);
@@ -111,7 +138,14 @@ function App() {
     setTimeout(() => URL.revokeObjectURL(url), 1000); setStatus('已下载 Markdown'); setMenu(null);
   };
   return <>
-    <header className="demo-header" data-limr-appearance="classic"><a className="demo-brand" href={import.meta.env.BASE_URL}>LiMR <span>Linloir’s limr Is a Markdown Renderer</span></a><div className="demo-header-end"><span className="demo-edition">PLAYGROUND</span><button className="demo-theme" onClick={() => setDark(!dark)} aria-label={dark ? '浅色' : '深色'} title={dark ? '切换到浅色' : '切换到深色'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{dark ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5" /></> : <path d="M20 14.2A8.4 8.4 0 0 1 9.8 4 8.5 8.5 0 1 0 20 14.2Z" />}</svg><span className="limr-underline">{dark ? '浅色' : '深色'}</span></button></div></header>
+    <header className="demo-header" data-limr-appearance="classic"><a className="demo-brand" href={import.meta.env.BASE_URL}>LiMR <span>Linloir’s limr Is a Markdown Renderer</span></a><div className="demo-header-end"><nav className="demo-controls demo-mode-nav" aria-label="页面 / Pages"><a href="#/playground" aria-current={!docsRoute ? 'page' : undefined}><span className="limr-underline">Playground</span></a><a href={docsHref(localeName, docsRoute?.page)} aria-current={docsRoute ? 'page' : undefined}><span className="limr-underline">Docs</span></a><a href="https://github.com/Linloir/LiMR" target="_blank" rel="noopener noreferrer"><span className="limr-underline">GitHub</span></a></nav><div className="demo-controls demo-header-settings">        <div className="demo-dropdown" ref={localeRoot}>
+          <button aria-label="界面语言 / Reader language" title="切换阅读器内置文案 / Reader UI language" aria-expanded={menu === 'locale'} aria-controls="demo-locale-menu" onClick={() => setMenu(value => value === 'locale' ? null : 'locale')}><span className="limr-underline">{locales.find(item => item.value === localeName)!.label}</span><ToolIcon name="chevron" /></button>
+          <Dropdown open={menu === 'locale'} id="demo-locale-menu" role="group" aria-label="界面语言 / Reader language">
+            {locales.map(item => <button key={item.value} lang={item.value} aria-pressed={localeName === item.value} onClick={() => { setLocaleName(item.value); if (docsRoute) location.hash = docsHref(item.value, docsRoute.page); setMenu(null); localeRoot.current?.querySelector('button')?.focus(); }}><span className="limr-underline">{item.label}</span></button>)}
+          </Dropdown>
+        </div>
+<button className="demo-theme" onClick={() => setDark(!dark)} aria-label={dark ? '浅色' : '深色'} title={dark ? '切换到浅色' : '切换到深色'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{dark ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5" /></> : <path d="M20 14.2A8.4 8.4 0 0 1 9.8 4 8.5 8.5 0 1 0 20 14.2Z" />}</svg><span className="limr-underline">{dark ? '浅色' : '深色'}</span></button></div></div></header>
+    {docsRoute ? <Documentation route={docsRoute} theme={dark ? 'dark' : 'light'} /> : <>
     <div className="demo-commandbar" data-limr-appearance="classic">
       <nav className="demo-controls demo-document-controls" aria-label="文本操作">
         <button onClick={() => { setStreaming(false); setEditor(!editor); setMenu(null); if (editor) setStatus('已自动保存到此浏览器'); }}><span className="limr-underline">{editor ? '保存' : '编辑'}</span></button>
@@ -144,8 +178,6 @@ function App() {
         if (streaming) { setStreaming(false); setStatus('已结束演示，完整文本已恢复'); }
         else { setCursor(0); setStreaming(true); setEditor(false); setStatus(''); setSelection(null); setDocumentVersion(value => value + 1); }
       }}><span className="limr-underline">{streaming ? '结束演示' : '流式演示'}</span></button>
-        <span className="demo-control-divider" aria-hidden="true" />
-        <a href="https://github.com/Linloir/LiMR" target="_blank" rel="noopener noreferrer"><span className="limr-underline">GitHub</span></a>
       </div>
     </div>
     <div className="demo-context-line"><span>{editor ? '在左侧写作，在右侧看见变化。' : streaming ? '正在播放当前文本，随时可以结束。' : '选中文字，给想法一点颜色。悬浮色块调整样式，点击工具留下批注。'}</span><output aria-live="polite">{status || answerStatus || `${source.length.toLocaleString()} 字符 · ${annotations.filter(item => item.type === 'highlight').length} 处高亮 · ${annotations.filter(item => item.type !== 'highlight').length} 条注释`}</output></div>
@@ -153,10 +185,11 @@ function App() {
     <div className={editor ? 'demo-workbench' : 'demo-reading'}>
       {editor && <section className="demo-editor-pane"><div className="demo-pane-label">Markdown <span>直接编辑 · 双向滚动同步</span></div><textarea ref={setTextarea} wrap="off" spellCheck={false} className="demo-editor" aria-label="Markdown source" value={source} onChange={event => { setStreaming(false); setSource(event.target.value); setPreset(''); setAnnotations([]); setStatus(''); }} /></section>}
       <section className={editor ? 'demo-preview-pane' : undefined}>{editor && <div className="demo-pane-label">实时预览 <span>选区工具同样可用</span></div>}<div ref={editor ? setPreview : undefined} className={editor ? 'demo-preview-scroll' : undefined}>
-        <div className="demo-page"><Reader key={documentVersion} source={streaming ? source.slice(0, cursor) : source} streaming={streaming} theme={dark ? 'dark' : 'light'} justify={justify} parameters={{ translationMode, onTranslationModeChange: setTranslationMode }} locale={chinese} scrollRoot={editor ? preview : null} toc={!editor} sidebar={!editor} actions={streaming ? [] : undefined} plugins={plugins} annotations={annotations} onAnnotationsChange={setAnnotations} onSelectionChange={setSelection} documentId="demo" /></div>
+        <div className="demo-page"><Reader key={documentVersion} source={streaming ? source.slice(0, cursor) : source} streaming={streaming} theme={dark ? 'dark' : 'light'} justify={justify} parameters={{ translationMode, onTranslationModeChange: setTranslationMode }} locale={localeName === 'zh-CN' ? chinese : english} scrollRoot={editor ? preview : null} toc={!editor} sidebar={!editor} actions={streaming ? [] : undefined} plugins={plugins} annotations={annotations} onAnnotationsChange={setAnnotations} onSelectionChange={setSelection} documentId="demo" /></div>
       </div></section>
     </div>
     <output id="selection-data" hidden>{selection ? JSON.stringify(selection) : ''}</output>
+    </>}
     <footer className="demo-footer">LiMR · A quiet place for words.</footer>
   </>;
 }

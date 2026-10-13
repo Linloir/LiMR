@@ -30,9 +30,9 @@ test('desktop rendering, selections, highlights and aligned citation cards', asy
   await marker.click();
   await expect(page.locator('.limr-sidebar-card[data-active]')).toHaveCount(1);
   const geometry = await page.evaluate(() => {
-    const marker = document.querySelector('.limr-mark')!.getBoundingClientRect();
+    const range = document.createRange(); range.selectNodeContents(document.querySelector('.limr-mark')!.closest('p')!);
     const card = document.querySelector('.limr-sidebar-card')!.getBoundingClientRect();
-    return { anchor: marker.top, card: card.top };
+    return { anchor: range.getClientRects()[0].top, card: card.top };
   });
   expect(Math.abs(geometry.anchor - geometry.card)).toBeLessThan(6);
   await page.locator('.limr-disclosure summary').filter({ hasText: '提示' }).click();
@@ -133,7 +133,8 @@ test('custom scroll root keeps TOC and sidebar aligned with the body', async ({ 
     const card = document.querySelector(`[data-occurrence="${marker.getAttribute('data-limr-anchor')}"]`);
     if (!card) return 999;
     const rail = card.closest('.limr-sidebar')!.getBoundingClientRect(), bounds = card.getBoundingClientRect();
-    return Math.abs(Math.max(rail.top, Math.min(marker.getBoundingClientRect().top, rail.bottom - bounds.height)) - bounds.top);
+    const range = document.createRange(); range.selectNodeContents(marker.closest('p')!);
+    return Math.abs(Math.max(rail.top, Math.min(range.getClientRects()[0].top, rail.bottom - bounds.height)) - bounds.top);
   }));
   expect(Math.max(...offsets)).toBeLessThan(6);
 });

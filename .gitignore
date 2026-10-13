@@ -6,4 +6,5 @@ playwright-report/
 coverage/
 *.tgz
 artifacts/
+playground/public/downloads/
 .DS_Store

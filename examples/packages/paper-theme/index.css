@@ -20,7 +20,6 @@
 /* The same appearance selector is applied to portalled toolbars. */
 .limr-selection-toolbar[data-limr-appearance='paper'] {
   --limr-toolbar-radius: 3px;
-  --limr-toolbar-panel-width: 240px;
   --limr-toolbar-panel-max-height: 190px;
   --limr-toolbar-accent: var(--limr-accent);
 }

@@ -268,7 +268,10 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trail
 export const BlockView = memo(function BlockView({ block, runtime, components, extensions, decorations, footnoteId }: { block: Block; runtime: ReaderRuntime; decorations: BlockDecorations; footnoteId?: string } & Pick<ViewConfiguration, 'components' | 'extensions'>) {
   const element = useRef<HTMLElement | null>(null);
   const clearBindings = useRef<(() => void) | undefined>(undefined);
-  const { occurrences, highlights } = decorations;
+  const { occurrences } = decorations;
+  // Transient reference paint belongs to the shared paint layer. It must not
+  // split text, add editable <mark> elements, or appear in SSR/print output.
+  const highlights = useMemo(() => decorations.highlights.filter(highlight => !highlight.occurrenceId), [decorations.highlights]);
   const root = useMemo(() => footnoteId ? { ...block.node, type: 'listItem' } : block.node, [block, footnoteId]);
   const texts = useMemo(() => compactTextNodes(root, runtime.components), [root, runtime, components, extensions]);
   const compact = !!texts && !occurrences.length && !highlights.length;

@@ -43,11 +43,11 @@ test('notes open directly in the sidebar, share highlights, and support editing 
   await expect(hint).not.toBeVisible();
   await toolbar.getByRole('button', { name: '隐藏高亮', exact: true }).click();
   await expect(toolbar.getByRole('button', { name: '显示高亮', exact: true })).toBeVisible();
-  await expect(page.locator('.limr-highlight-layer [data-paint]')).toHaveAttribute('data-muted', '');
+  await expect(page.locator('.limr-highlight-layer [data-paint]:not([data-reference])')).toHaveAttribute('data-muted', '');
   await toolbar.getByRole('button', { name: '显示高亮', exact: true }).click();
   await toolbar.getByRole('button', { name: '删除', exact: true }).click();
   await expect(card).toHaveCount(0); await expect(note).toHaveCount(0);
-  await expect(page.locator('.limr-highlight-layer [data-paint]')).toHaveCount(0);
+  await expect(page.locator('.limr-highlight-layer [data-paint]:not([data-reference])')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

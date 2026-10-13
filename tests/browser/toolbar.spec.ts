@@ -175,7 +175,9 @@ test('an external skin reaches the portalled toolbar and overrides its panel con
   await expect(toolbar).toHaveAttribute('data-limr-appearance', 'paper');
   await expect(toolbar.locator('.limr-toolbar-surface')).toHaveCSS('border-radius', '3px');
   await toolbar.getByRole('button', { name: '调整高亮', exact: true }).hover();
-  await expect(toolbar.locator('.limr-toolbar-panel .limr-overlay-scroll-inner')).toHaveCSS('width', '240px');
+  const contentWidth = await toolbar.locator('.limr-toolbar-panel .limr-overlay-scroll-inner').evaluate(element => element.getBoundingClientRect().width);
+  const panelWidth = await toolbar.locator('.limr-toolbar-panel').evaluate(element => element.getBoundingClientRect().width);
+  expect(contentWidth).toBeCloseTo(panelWidth - 18, 0);
   await expect(toolbar.locator('.limr-toolbar-panel')).toHaveCSS('max-height', '190px');
   await expect(toolbar.locator('[data-action-id="highlight-palette"]')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   await expect(toolbar.locator('.limr-toolbar-expand')).toHaveCount(0);

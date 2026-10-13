@@ -1,10 +1,11 @@
-import { createDocument, defaultHighlight, resolveAnnotationAnchors, sameRange, ResourceCache, selectionFromRange } from '../core';
+import { annotationReferenceRange, createDocument, defaultHighlight, resolveAnnotationAnchors, sameRange, ResourceCache, selectionFromRange } from '../core';
 import { intersects } from '../core/tree';
 import type { Annotation, AnnotationOccurrence, DocumentEngine, DocumentSnapshot, HighlightData, SelectionSnapshot, SourceRange } from '../core';
 import type { AnnotationType, DocumentCommands, LiMRLocale, NodeRenderer, RendererExtension, ViewConfiguration } from './types';
 import { scrollWithMotion } from './motion';
 
 export const english: LiMRLocale = {
+  language: 'en', citation: 'Citation',
   contents: 'Contents', annotations: 'Annotations', expand: 'Expand', collapse: 'Collapse', close: 'Close', copy: 'Copy', copied: 'Copied',
   copyFailed: 'Copy failed', copyImage: 'Copy image URL', copyFigures: 'Copy figures Markdown',
   loading: 'Loading…', retry: 'Retry', unavailable: 'Content unavailable', footnotes: 'Footnotes',
@@ -16,6 +17,7 @@ export const english: LiMRLocale = {
   deleteAnnotations: 'Delete', deleteAnnotationsHint: 'Deletes {count} annotations on this text and any highlight.',
 };
 export const chinese: LiMRLocale = {
+  language: 'zh-CN', citation: '引用',
   contents: '目录', annotations: '注释', expand: '展开', collapse: '收起', close: '关闭', copy: '复制', copied: '已复制',
   copyFailed: '复制失败', copyImage: '复制图片 URL', copyFigures: '复制图组 Markdown',
   loading: '加载中…', retry: '重试', unavailable: '暂无内容', footnotes: '脚注',
@@ -45,11 +47,16 @@ export interface InteractionState {
   hoverSource?: 'marker' | 'sidebar' | null;
   activeSource?: 'marker' | 'sidebar' | null;
 }
-export interface PaintHighlight extends HighlightData { id: string; annotationId: string; range: SourceRange }
+export interface PaintHighlight extends HighlightData {
+  id: string; annotationId: string; range: SourceRange;
+  /** Derived hover feedback, never persisted or edited as a user highlight. */
+  occurrenceId?: string;
+}
 export interface Decorations {
   annotations: ReadonlyMap<string, Annotation>;
   highlights: ReadonlyMap<string, PaintHighlight>;
   occurrences: readonly AnnotationOccurrence[];
+  referenceRanges: ReadonlyMap<string, SourceRange>;
   byBlock: ReadonlyMap<string, BlockDecorations>;
 }
 export interface BlockDecorations { occurrences: readonly AnnotationOccurrence[]; highlights: readonly PaintHighlight[] }
@@ -63,13 +70,14 @@ export interface SourceBinding {
 
 const EMPTY: readonly never[] = Object.freeze([]);
 export const emptyDecorations: BlockDecorations = Object.freeze({ occurrences: EMPTY, highlights: EMPTY });
+type ResolvedAnnotationType = Omit<AnnotationType<any>, 'label'> & { label: string };
 export class ReaderRuntime {
   readonly document: DocumentEngine;
   readonly interaction = new Store<InteractionState>({ selection: null, activeHeading: null, hovered: null, active: null, editing: null, activeHighlight: null, hoveredHighlight: null });
   readonly layout = new Store(0);
   readonly viewport = new Store(0);
   readonly documentOffset = new Store(0);
-  readonly decorations = new Store<Decorations>({ annotations: new Map(), highlights: new Map(), occurrences: [], byBlock: new Map() });
+  readonly decorations = new Store<Decorations>({ annotations: new Map(), highlights: new Map(), occurrences: [], referenceRanges: new Map(), byBlock: new Map() });
   readonly configuration: Store<ViewConfiguration>;
   readonly resources = new ResourceCache<unknown>(128);
   readonly resourceVersions = new Store<ReadonlyMap<string, number>>(new Map());
@@ -81,7 +89,8 @@ export class ReaderRuntime {
   readonly bindings = new WeakMap<Node, SourceBinding>();
   readonly textBinders = new WeakMap<HTMLElement, () => void>();
   components: Readonly<Record<string, NodeRenderer>> = {};
-  annotationTypes = new Map<string, AnnotationType>();
+  annotationTypes = new Map<string, ResolvedAnnotationType>();
+  private resolvedTypes = new WeakMap<AnnotationType<any>, ResolvedAnnotationType>();
   locale = english;
   content: HTMLElement | null = null;
   selectionRange: Range | null = null;
@@ -99,7 +108,7 @@ export class ReaderRuntime {
     addAnnotation: (annotation, options = {}) => {
       this.changeAnnotations(items => {
         const next = [...items.filter(item => item.id !== annotation.id), annotation];
-        if (annotation.type !== 'highlight' && options.highlight !== false) {
+        if (annotation.type !== 'highlight' && options.highlight !== false && (options.highlight !== undefined || this.annotationTypes.get(annotation.type)?.highlight !== 'hover')) {
           const doc = this.document.getSnapshot();
           for (const anchor of resolveAnnotationAnchors(annotation, doc)) {
             if (anchor.range.start === anchor.range.end || next.some(item => item.type === 'highlight' && resolveAnnotationAnchors(item, doc).some(other => sameRange(other.range, anchor.range)))) continue;
@@ -172,10 +181,17 @@ export class ReaderRuntime {
     });
   }
   private installConfiguration(config: ViewConfiguration) {
+    this.locale = { ...english, ...config.locale };
     this.components = Object.assign({}, ...(config.extensions ?? []).map(ext => ext.components), config.components);
     const annotationTypes = [...(config.extensions ?? []).flatMap(ext => [...ext.annotationTypes ?? []]), ...config.annotationTypes ?? []];
-    this.annotationTypes = new Map(annotationTypes.map(type => [type.type, type]));
-    this.locale = { ...english, ...config.locale };
+    this.annotationTypes = new Map(annotationTypes.map(type => {
+      if (typeof type.label === 'string') return [type.type, type as ResolvedAnnotationType];
+      const label = type.label(this.locale);
+      const previous = this.resolvedTypes.get(type);
+      const resolved = previous?.label === label ? previous : { ...type, label };
+      this.resolvedTypes.set(type, resolved);
+      return [type.type, resolved];
+    }));
   }
   configure(config: ViewConfiguration) {
     const old = this.configuration.get();
@@ -183,7 +199,7 @@ export class ReaderRuntime {
     this.installConfiguration(config);
     this.configuration.set(config);
     if (old.extensions !== config.extensions) this.document.setExtensions(config.extensions ?? []);
-    if (old.annotations !== config.annotations) this.rebuildDecorations();
+    else if (old.annotations !== config.annotations || old.annotationTypes !== config.annotationTypes) this.rebuildDecorations();
     if (old.annotationTypes !== config.annotationTypes || old.extensions !== config.extensions) this.resources.invalidate();
   }
   updateInteraction(patch: Partial<InteractionState>) {
@@ -243,11 +259,23 @@ export class ReaderRuntime {
           const id = index ? `${annotation.id}:${index}` : annotation.id;
           const value = { ...(annotation.data as HighlightData), id, annotationId: annotation.id, range: anchor.range };
           const old = previous.highlights.get(id);
-          allHighlights.push(old && sameRange(old.range, value.range) && old.color === value.color && old.style === value.style && old.hidden === value.hidden ? old : value);
+          allHighlights.push(old && !old.occurrenceId && sameRange(old.range, value.range) && old.color === value.color && old.style === value.style && old.hidden === value.hidden ? old : value);
         } else occurrences.push({ ...anchor, id: anchor.id ?? `${doc.id}-${annotation.id}-${index}`, annotationIds: [annotation.id] });
       });
     }
     occurrences.sort((a, b) => a.range.end - b.range.end || a.id.localeCompare(b.id));
+    const referenceRanges = new Map(occurrences.map(occurrence => [occurrence.id, annotationReferenceRange(doc, occurrence)]));
+    for (const occurrence of occurrences) {
+      const annotation = annotations.get(occurrence.annotationIds[0]);
+      const definition = annotation && this.annotationTypes.get(annotation.type);
+      if (!annotation || definition?.highlight !== 'hover') continue;
+      const range = referenceRanges.get(occurrence.id)!;
+      if (range.start === range.end) continue;
+      const id = `reference-${occurrence.id}`;
+      const value: PaintHighlight = { id, annotationId: annotation.id, occurrenceId: occurrence.id, range, color: definition.color ?? defaultHighlight.color, style: 'background' };
+      const old = previous.highlights.get(id);
+      allHighlights.push(old && old.occurrenceId === value.occurrenceId && old.annotationId === value.annotationId && sameRange(old.range, range) && old.color === value.color ? old : value);
+    }
     const byBlock = new Map<string, BlockDecorations>();
     for (const block of occurrences.length || allHighlights.length ? doc.blocks : []) {
       const marks = occurrences.filter(item => !item.embedded && item.range.end > block.range.start && item.range.end <= block.range.end);
@@ -261,7 +289,7 @@ export class ReaderRuntime {
     }
     const sameBlocks = byBlock.size === previous.byBlock.size && [...byBlock].every(([id, value]) => previous.byBlock.get(id) === value);
     const highlights = new Map(allHighlights.map(item => [item.id, item]));
-    this.decorations.set({ annotations, highlights, occurrences, byBlock: sameBlocks ? previous.byBlock : byBlock });
+    this.decorations.set({ annotations, highlights, occurrences, referenceRanges, byBlock: sameBlocks ? previous.byBlock : byBlock });
     const state = this.interaction.get();
     if (state.editing && !annotations.has(state.editing) && this.pendingOpen !== state.editing) this.updateInteraction({ editing: null });
     if (state.activeHighlight && !highlights.has(state.activeHighlight)) this.activateHighlight(null);

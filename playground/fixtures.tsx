@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AnnotationOverlay, AnnotationSidebar, DocumentProvider, Markdown, Reader, SelectionToolbar, TableOfContents, chinese, standard, useLiMR, type Annotation, type AnnotationContentProps, type AnnotationType, type SelectionSnapshot } from '../src';
+import { AnnotationOverlay, AnnotationSidebar, DocumentProvider, Markdown, Reader, SelectionToolbar, TableOfContents, chinese, citation, standard, useLiMR, type Annotation, type AnnotationContentProps, type AnnotationType, type SelectionSnapshot } from '../src';
 import { assistant } from '../examples/assistant';
 
 function wait(milliseconds: number, signal: AbortSignal) {
@@ -49,16 +49,32 @@ const paletteTypes: AnnotationType[] = [{
     Preview: ({ data }) => data === 'hide' ? null : <p>Module preview <span style={{ color: '#b45309' }}>Inline preview</span> {'Long subtitle for configurable preview lines. '.repeat(12)}</p> },
   Content: () => <p>Module text <span style={{ color: '#0369a1' }}>Inline color</span></p>,
 }];
+const citationHoverSource = '# Citation hover\n\n' + 'Readable **rich text** and `inline code` with $x+1$, followed by more words. '.repeat(6)
+  + '<ref id="single" /><ref ids="one,two" /><ref id="single" />\n\nA saved highlight and a hidden highlight.\n\nA **selected passage** with a ranged citation.\n\nReused source in another paragraph<ref id="single" />.\n\n'
+  + '<citation id="single" title="Single citation" description="A compact description." />\n\n<citation id="one" title="First citation" />\n\n<citation id="two" title="Second citation" />';
+const citationHoverAnnotations: Annotation[] = [
+  { id: 'saved', type: 'highlight', range: { start: citationHoverSource.indexOf('saved highlight'), end: citationHoverSource.indexOf('saved highlight') + 15 }, data: { color: '#F2C744' } },
+  { id: 'hidden', type: 'highlight', range: { start: citationHoverSource.indexOf('hidden highlight'), end: citationHoverSource.indexOf('hidden highlight') + 16 }, data: { color: '#81B29A', hidden: true } },
+  { id: 'ranged', type: 'citation', range: { start: citationHoverSource.indexOf('selected passage'), end: citationHoverSource.indexOf('selected passage') + 16 }, data: { title: 'Ranged citation' } },
+];
+const citationViewportSource = '# Offscreen references\n\n'
+  + Array.from({ length: 16 }, (_, index) => `Referenced passage ${index + 1}<ref id="single" />.`).join('\n\n')
+  + '\n\n' + 'More reading content after the references. '.repeat(160)
+  + '\n\n<citation id="single" title="Repeated citation" description="A short citation description." />';
 export function SidebarFixture() {
-  const [annotations, setAnnotations] = useState<readonly Annotation[]>(sidebarAnnotations);
+  const citations = new URLSearchParams(location.search).has('citations');
+  const citationViewport = citations && new URLSearchParams(location.search).has('viewport');
+  const [annotations, setAnnotations] = useState<readonly Annotation[]>(citationViewport ? [] : citations ? citationHoverAnnotations : sidebarAnnotations);
+  const [citationColor, setCitationColor] = useState('#6366f1');
+  const citationTypes = useMemo(() => citations ? citation({ color: citationColor }).annotationTypes : undefined, [citations, citationColor]);
   const [long, setLong] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [preview, setPreview] = useState<'custom' | 'disabled' | 'empty'>('custom');
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
   const nested = new URLSearchParams(location.search).has('nested');
   const previewExamples = new URLSearchParams(location.search).has('previews') ? '\n\n摘要<ref id="summary" />，链接<ref id="url" />，标题<ref id="title" />。\n\n<citation id="summary" summary="简短**摘要** &amp; 示例" description="完整描述不覆盖摘要。" url="https://example.com/full" />\n\n<citation id="url" url="https://example.com/reference" />\n\n<citation id="title" title="Title fallback" />' : '';
-  const source = long ? sidebarSource + '\n\n' + Array.from({ length: 12 }, (_, index) => `## Section ${index}\n\n${'正文跟随页面滚动。'.repeat(30)}\n\n引用<ref id="single" />。`).join('\n\n') : sidebarSource + previewExamples;
-  const content = <Reader documentId="sidebar-fixture" source={source} annotations={annotations} onAnnotationsChange={setAnnotations} plugins={sidebarPlugins} theme={theme} locale={chinese} scrollRoot={scrollRoot} />;
+  const source = citationViewport ? citationViewportSource : citations ? citationHoverSource : long ? sidebarSource + '\n\n' + Array.from({ length: 12 }, (_, index) => `## Section ${index}\n\n${'正文跟随页面滚动。'.repeat(30)}\n\n引用<ref id="single" />。`).join('\n\n') : sidebarSource + previewExamples;
+  const content = <Reader documentId="sidebar-fixture" source={source} annotations={annotations} annotationTypes={citationTypes} onAnnotationsChange={setAnnotations} plugins={sidebarPlugins} theme={theme} locale={chinese} scrollRoot={scrollRoot} />;
   return <div className="demo-page">
     <div className="demo-controls">
       <button onClick={() => setAnnotations(values => [...values, { ...sidebarAnnotations[0], id: `added-${values.length}` }])}>Add annotation</button>
@@ -66,6 +82,7 @@ export function SidebarFixture() {
       <button onClick={() => setLong(value => !value)}>Toggle long document</button>
       <button onClick={() => setTheme(value => value === 'light' ? 'dark' : 'light')}>Theme</button>
       <button onClick={() => setPreview(value => value === 'custom' ? 'disabled' : value === 'disabled' ? 'empty' : 'custom')}>Toggle preview</button>
+      {citations && <button onClick={() => setCitationColor('#0d9488')}>Citation color</button>}
     </div>
     {nested ? <div id="sidebar-scroll-root" ref={setScrollRoot} style={{ height: 520, overflow: 'auto', border: '1px solid #aaa' }}>{content}</div> : content}
     <Reader documentId="palette-fixture" source={'# 颜色配置\n\nModule palette.\n\n第二段正文。\n\n第三段正文。'} annotationTypes={preview === 'disabled' ? [{ ...paletteTypes[0], sidebar: { ...paletteTypes[0].sidebar, Preview: false } }] : paletteTypes} annotations={[{ id: 'palette', type: 'palette', data: preview === 'empty' ? 'hide' : undefined, range: { start: 8, end: 14 } }]} toc={false} theme={theme} />

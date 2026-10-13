@@ -1,0 +1,4 @@
+interface:
+  display_name: "Develop LiMR Plugins"
+  short_description: "Build and integrate LiMR extension packages"
+  default_prompt: "Use $limr-plugin-development to build a LiMR plugin package and import it into this application."

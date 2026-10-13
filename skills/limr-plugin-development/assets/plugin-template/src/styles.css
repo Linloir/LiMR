@@ -1,0 +1,9 @@
+.example-reading-tip {
+  padding: 1rem;
+  border-inline-start: 3px solid var(--limr-accent, #548b74);
+  background: var(--limr-surface, #f3f1ee);
+  color: var(--limr-text, #3d3a36);
+}
+.example-reading-tip > header { font-weight: 600; }
+.example-reading-tip > :first-child { margin-block-start: 0; }
+.example-reading-tip > :last-child { margin-block-end: 0; }

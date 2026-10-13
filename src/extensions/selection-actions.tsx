@@ -40,7 +40,7 @@ function HighlightSettings({ context, options }: { context: ToolbarActionContext
   };
   return <div className="limr-highlight-settings">
     <fieldset disabled={context.busy}><legend>{locale.highlightStyle}</legend>
-      <div className="limr-highlight-styles">{styles.map(([value, label]) => <button key={value} type="button" aria-pressed={style === value} onClick={() => change(color, value)}><ToolIcon name={value} /><span className="limr-underline">{label}</span></button>)}</div>
+      <div className="limr-highlight-styles">{styles.map(([value, label]) => <button key={value} type="button" aria-pressed={style === value} onClick={() => change(color, value)}><ToolIcon name={value} /><span className="limr-highlight-style-label"><span className="limr-underline">{label}</span></span></button>)}</div>
     </fieldset>
     <fieldset disabled={context.busy}><legend>{locale.highlightColor}</legend>
       <div className="limr-highlight-colors">{(options.colors ?? highlightColors).map(item => <button key={item.color} type="button" className="limr-color-swatch" aria-label={locale.highlight === '高亮' ? item.labelZh ?? item.label : item.label} title={locale.highlight === '高亮' ? item.labelZh ?? item.label : item.label} aria-pressed={color.toLowerCase() === item.color.toLowerCase()} style={{ '--swatch': item.color } as CSSProperties} onClick={() => change(item.color, style)}><ToolIcon name="check" /></button>)}</div>

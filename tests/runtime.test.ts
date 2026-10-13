@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ReaderRuntime } from '../src/react/runtime';
+import { citation } from '../src/extensions';
 
 describe('application plugin commands and resource identity', () => {
   it('adds, activates, streams and removes arbitrary annotation types', () => {
@@ -64,6 +65,56 @@ describe('application plugin commands and resource identity', () => {
     expect(runtime.decorations.get().highlights.get('one')).toMatchObject({ color: '#81B29A', style: 'dotted' });
     const readonly = new ReaderRuntime('readonly', 'Text', false, { annotations: accepted });
     expect(() => readonly.commands.updateAnnotation('one', { data: { color: 'red' } })).toThrow('onAnnotationsChange');
+  });
+});
+
+describe('citation hover highlights', () => {
+  const source = 'First **passage**<ref ids="one,two" /> and more<ref id="one" />.\n\nSecond passage<ref id="one" />.\n\n<citation id="one" title="One" />\n\n<citation id="two" title="Two" />';
+
+  it('derives one highlight per occurrence with shared excerpt ranges and the module color without persisting it', () => {
+    const onAnnotationsChange = vi.fn();
+    const runtime = new ReaderRuntime('citations', source, false, { extensions: [citation({ color: '#14b8a6' })], annotations: [], onAnnotationsChange });
+    const { occurrences, highlights, referenceRanges, annotations } = runtime.decorations.get();
+    expect(occurrences).toHaveLength(3);
+    expect(highlights.size).toBe(3);
+    expect(referenceRanges.get(occurrences[0].id)).toEqual(referenceRanges.get(occurrences[1].id));
+    expect(referenceRanges.get(occurrences[2].id)).not.toEqual(referenceRanges.get(occurrences[0].id));
+    for (const occurrence of occurrences) expect(highlights.get(`reference-${occurrence.id}`)).toMatchObject({ occurrenceId: occurrence.id, color: '#14b8a6', range: referenceRanges.get(occurrence.id) });
+    runtime.hover(occurrences[1].id);
+    runtime.hover(occurrences[2].id, 'sidebar');
+    runtime.hover(null);
+    expect(annotations.size).toBe(2);
+    expect(onAnnotationsChange).not.toHaveBeenCalled();
+  });
+
+  it('refreshes colors, source ranges and opt-out behavior when configuration or source changes', () => {
+    const extensions = [citation()];
+    const runtime = new ReaderRuntime('citations', source, false, { extensions });
+    const occurrence = runtime.decorations.get().occurrences[0];
+    const range = runtime.decorations.get().referenceRanges.get(occurrence.id)!;
+    runtime.document.update(source.replace(' and more', ' and even more'));
+    expect(runtime.decorations.get().referenceRanges.get(occurrence.id)?.end).toBe(range.end + 5);
+    runtime.configure({ extensions, annotationTypes: citation({ color: 'var(--custom-citation)' }).annotationTypes });
+    expect([...runtime.decorations.get().highlights.values()].every(highlight => highlight.color === 'var(--custom-citation)')).toBe(true);
+    runtime.configure({ extensions, annotationTypes: citation({ highlight: false }).annotationTypes });
+    expect(runtime.decorations.get().highlights.size).toBe(0);
+    expect(runtime.decorations.get().occurrences).toHaveLength(3);
+  });
+
+  it('supports ranged citations while preserving explicit saved and hidden highlights', () => {
+    const runtime = new ReaderRuntime('citations', 'One passage', false, { extensions: [citation()] });
+    const range = { start: 0, end: 3 };
+    runtime.commands.addAnnotation({ id: 'one', type: 'citation', range });
+    expect(runtime.decorations.get().annotations.size).toBe(1);
+    expect([...runtime.decorations.get().highlights.values()]).toMatchObject([{ range, occurrenceId: 'citations-one-0' }]);
+    runtime.commands.addAnnotation({ id: 'hidden', type: 'highlight', range, data: { color: '#F2C744', hidden: true } });
+    runtime.hover('citations-one-0');
+    expect(runtime.decorations.get().highlights.get('hidden')).toMatchObject({ hidden: true });
+    runtime.commands.removeAnnotation('one');
+    expect([...runtime.decorations.get().highlights.keys()]).toEqual(['hidden']);
+    expect(runtime.interaction.get().hovered).toBeNull();
+    runtime.commands.addAnnotation({ id: 'two', type: 'citation', range: { start: 4, end: 11 } }, { highlight: { color: '#81B29A' } });
+    expect([...runtime.decorations.get().annotations.values()].filter(annotation => annotation.type === 'highlight')).toHaveLength(2);
   });
 });
 

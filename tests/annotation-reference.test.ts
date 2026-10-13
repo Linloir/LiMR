@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { createDocument } from '../src/core';
+import { annotationReferenceRange, createDocument } from '../src/core';
 import { standard } from '../src/extensions';
 import { annotationReferenceText } from '../src/components/annotation-reference';
 
@@ -16,4 +16,17 @@ test('embedded citation excerpts use the surrounding paragraph without reference
   const document = createDocument(source, { extensions: standard() }).getSnapshot();
   for (const occurrence of document.occurrences) expect(annotationReferenceText(document, occurrence)).toBe('关联 内容 与更多内容。');
   expect(document.occurrences).toHaveLength(2);
+});
+
+test('embedded references resolve the nearest paragraph, heading or table cell while retaining marker ranges', () => {
+  const source = '# Heading<ref id="one" />\n\n- First paragraph.\n\n  Second **paragraph**<ref id="one" />.\n\n| Left | Right |\n| --- | --- |\n| Cell<ref id="one" /> | Other cell |\n\n<citation id="one" title="One" />';
+  const document = createDocument(source, { extensions: standard() }).getSnapshot();
+  const expected = ['# Heading<ref id="one" />', 'Second **paragraph**<ref id="one" />.', '| Cell<ref id="one" /> '];
+  expect(document.occurrences).toHaveLength(expected.length);
+  document.occurrences.forEach((occurrence, index) => {
+    const range = annotationReferenceRange(document, occurrence);
+    expect(source.slice(range.start, range.end)).toBe(expected[index]);
+    expect(source.slice(occurrence.range.start, occurrence.range.end)).toBe('<ref id="one" />');
+  });
+  expect(document.occurrences.map(occurrence => annotationReferenceText(document, occurrence))).toEqual(['Heading', 'Second paragraph.', 'Cell']);
 });

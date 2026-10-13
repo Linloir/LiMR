@@ -9,10 +9,10 @@ import { annotationReferenceText } from './annotation-reference';
 import { sourceRangeStartRect } from '../react/source-geometry';
 import { useOverflowFade } from '../react/overflow-fade';
 
-/** anchorTop is the first anchored text line, or the marker for embedded references. */
+/** anchorTop is the first referenced text line, falling back to the marker. */
 export interface SidebarItem { id: string; anchorTop: number; height: number }
-export type SidebarPositioner = (items: readonly SidebarItem[], context: { activeId: string | null; gap: number; height?: number }) => ReadonlyMap<string, number>;
-export const alignSidebar: SidebarPositioner = (items, { activeId, gap, height }) => {
+export type SidebarPositioner = (items: readonly SidebarItem[], context: { activeId: string | null; gap: number; height?: number; prioritizeActive?: boolean }) => ReadonlyMap<string, number>;
+export const alignSidebar: SidebarPositioner = (items, { activeId, gap, height, prioritizeActive }) => {
   const positions = items.map(item => item.anchorTop);
   const activeIndex = items.findIndex(item => item.id === activeId);
   const pivot = activeIndex < 0 ? 0 : activeIndex;
@@ -23,10 +23,12 @@ export const alignSidebar: SidebarPositioner = (items, { activeId, gap, height }
   // would push a late active card away from its anchor in a short document.
   for (let i = pivot + 1; i < items.length; i++) positions[i] = Math.max(items[i].anchorTop, positions[i - 1] + items[i - 1].height + gap);
   if (height !== undefined && items.reduce((sum, item) => sum + item.height, gap * (items.length - 1)) <= height) {
-    // With enough total room, borrow unused space above the final cards. Then
-    // restore the top boundary, preserving order and gaps throughout the rail.
-    for (let i = items.length - 1; i >= 0; i--) positions[i] = Math.min(positions[i], (i === items.length - 1 ? height : positions[i + 1] - gap) - items[i].height);
-    for (let i = 0; i < items.length; i++) positions[i] = Math.max(positions[i], i === 0 ? 0 : positions[i - 1] + items[i - 1].height + gap);
+    // With enough total room, borrow unused space above the final cards.
+    // Earlier cards intentionally clipped by the focused pivot must stay there:
+    // restoring the top boundary would push that card away from its reference.
+    const start = prioritizeActive && activeIndex >= 0 ? pivot + 1 : 0;
+    for (let i = items.length - 1; i >= start; i--) positions[i] = Math.min(positions[i], (i === items.length - 1 ? height : positions[i + 1] - gap) - items[i].height);
+    if (start || activeIndex < 0 || positions[0] >= 0) for (let i = start; i < items.length; i++) positions[i] = Math.max(positions[i], i === 0 ? 0 : positions[i - 1] + items[i - 1].height + gap);
   }
   return new Map(items.map((item, index) => [item.id, positions[index]]));
 };
@@ -53,12 +55,16 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
   const rail = useRef<HTMLElement>(null);
   const cards = useRef(new Map<string, HTMLDivElement>());
   const [sizes, setSizes] = useState<Map<string, number>>(new Map());
+  const [minimumSizes, setMinimumSizes] = useState<Map<string, number>>(new Map());
   const [anchorTops, setAnchorTops] = useState<Map<string, number>>(new Map());
   const [railHeight, setRailHeight] = useState(0);
-  const measured = useRef({ sizes: new Map<string, number>(), height: 0 });
+  const measured = useRef({ sizes: new Map<string, number>(), minimum: new Map<string, number>(), height: 0 });
   const resizeFrame = useRef(0);
   const [viewportTop, setViewportTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
   const [cardLock, setCardLock] = useState<{ id: string; top: number } | null>(null);
+  const lastFocus = useRef<{ id: string; top?: number } | null>(null);
+  const [release, setRelease] = useState<{ id: string; top?: number; progress: number } | null>(null);
   const occurrences = useMemo(() => {
     const values = [...decorations.occurrences].sort((a, b) => a.range.start - b.range.start || a.range.end - b.range.end || a.id.localeCompare(b.id));
     if (sync === 'none') for (const annotation of decorations.annotations.values()) if (annotation.type !== 'highlight' && !values.some(item => item.annotationIds.includes(annotation.id))) values.push({ id: `unanchored-${annotation.id}`, range: { start: 0, end: 0 }, annotationIds: [annotation.id] });
@@ -68,14 +74,20 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
   const annotationGroups = useMemo(() => new Map(occurrences.map(occurrence => [occurrence.id, occurrence.annotationIds.flatMap(id => { const annotation = decorations.annotations.get(id); return annotation ? [annotation] : []; })])), [decorations, occurrences]);
   const measure = useCallback((beforePaint = false) => {
     const next = new Map<string, number>();
-    cards.current.forEach((element, id) => next.set(id, element.getBoundingClientRect().height));
+    const minimum = new Map<string, number>();
+    cards.current.forEach((element, id) => {
+      const height = element.getBoundingClientRect().height;
+      next.set(id, height);
+      const panels = [...element.querySelectorAll<HTMLElement>(':scope > .limr-sidebar-card-body > .limr-collapse')];
+      minimum.set(id, height - panels.reduce((sum, panel) => sum + panel.getBoundingClientRect().height, 0));
+    });
     // Keep the rail and card bounds in the same subpixel coordinate system.
     // Rounded clientHeight can put a bottom-aligned card outside the mask.
     const height = rail.current?.getBoundingClientRect().height ?? 0;
     const old = measured.current;
-    if (old.height === height && old.sizes.size === next.size && [...next].every(([id, size]) => size === old.sizes.get(id))) return;
-    measured.current = { sizes: next, height };
-    const update = () => { setSizes(next); setRailHeight(height); };
+    if (old.height === height && old.sizes.size === next.size && [...next].every(([id, size]) => size === old.sizes.get(id) && Math.abs(minimum.get(id)! - (old.minimum.get(id) ?? 0)) < .5)) return;
+    measured.current = { sizes: next, minimum, height };
+    const update = () => { setSizes(next); setMinimumSizes(minimum); setRailHeight(height); };
     if (!beforePaint) { update(); return; }
     // The heights already contain the collapse animation's easing. Applying a
     // second top transition makes neighbors chase them and overlap the card.
@@ -105,13 +117,19 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
     for (const occurrence of occurrences) {
       const marker = runtime.anchors.get(occurrence.id);
       if (!marker || marker.closest('[inert]')) continue;
-      const rect = !occurrence.embedded && sourceRangeStartRect(runtime, occurrence.range);
+      const rect = sourceRangeStartRect(runtime, decorations.referenceRanges.get(occurrence.id) ?? occurrence.range);
       values.set(occurrence.id, (rect || marker.getBoundingClientRect()).top - top - displacement);
     }
     setAnchorTops(old => old.size === values.size && [...values].every(([id, value]) => Math.abs(value - (old.get(id) ?? -Infinity)) < .5) ? old : values);
-  }, [runtime, occurrences, layout, sync]);
+  }, [runtime, decorations.referenceRanges, occurrences, layout, sync]);
   useIsomorphicLayoutEffect(() => {
-    if (sync === 'document' && rail.current) setViewportTop(Math.max(0, runtime.getViewportTop() - rail.current.getBoundingClientRect().top + (runtime.configuration.get().scrollOffset ?? 24)));
+    if (sync !== 'document' || !rail.current) return;
+    const root = runtime.configuration.get().scrollRoot;
+    const bounds = rail.current.getBoundingClientRect();
+    const top = Math.max(bounds.top, runtime.getViewportTop() + (root?.clientTop ?? 0), window.visualViewport?.offsetTop ?? 0);
+    const bottom = Math.min(bounds.bottom, root ? runtime.getViewportTop() + root.clientTop + root.clientHeight : Infinity, (window.visualViewport?.offsetTop ?? 0) + (window.visualViewport?.height ?? innerHeight));
+    setViewportTop(Math.max(0, top - bounds.top + (runtime.configuration.get().scrollOffset ?? 24)));
+    setViewportHeight(Math.max(0, bottom - top));
   }, [runtime, layout, viewport, sync]);
   useEffect(() => {
     const dismiss = (event: PointerEvent) => {
@@ -142,17 +160,45 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
   if (sync !== 'none') items.sort((a, b) => (anchorTops.get(a.id) ?? 0) - (anchorTops.get(b.id) ?? 0));
   const readingId = items.find(item => (anchorTops.get(item.id) ?? 0) >= viewportTop)?.id ?? items.at(-1)?.id ?? null;
   const alignmentId = hovered ?? active ?? readingId;
+  const focusedId = hovered ?? active;
   const source = hovered ? hoverSource : active ? activeSource : null;
   const locked = source === 'sidebar' && cardLock?.id === alignmentId ? cardLock : null;
+  const lockedTop = locked?.top;
+  useIsomorphicLayoutEffect(() => {
+    const previous = lastFocus.current;
+    lastFocus.current = focusedId ? { id: focusedId, top: lockedTop } : null;
+    if (focusedId || sync !== 'document' || !rail.current || matchMedia('(prefers-reduced-motion: reduce)').matches) { setRelease(null); return; }
+    if (!previous) return;
+    const style = getComputedStyle(rail.current), value = style.getPropertyValue('--limr-motion-slow').trim();
+    const milliseconds = parseFloat(value) * (value.endsWith('ms') ? 1 : 1000);
+    const duration = Number.isFinite(milliseconds) ? Math.max(0, milliseconds) : 460;
+    if (!duration) { setRelease(null); return; }
+    // Use the skin's timing as a clock. Interpolate two layouts computed with
+    // the SAME current card heights, so collapse and repacking share an easing
+    // without a second CSS top transition making neighbors collide.
+    const motion = rail.current.animate([{}, {}], { duration, easing: style.getPropertyValue('--limr-ease').trim() || 'ease-out' });
+    setRelease({ ...previous, progress: 0 });
+    let frame = 0;
+    const step = () => {
+      if (motion.playState === 'finished') { setRelease(null); return; }
+      setRelease({ ...previous, progress: motion.effect?.getComputedTiming().progress ?? 0 });
+      frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => { cancelAnimationFrame(frame); motion.cancel(); };
+  }, [focusedId, lockedTop, sync]);
   const sidebarItems = items.map(item => ({ id: item.id, anchorTop: anchorTops.get(item.id) ?? 0, height: sizes.get(item.id) ?? 80 }));
-  const positionContext = { activeId: alignmentId, gap, height: sync === 'document' && railHeight > 0 ? railHeight : undefined };
-  const positions = positioner(locked ? sidebarItems.map(item => item.id === locked.id ? { ...item, anchorTop: locked.top } : item) : sidebarItems, positionContext);
+  const positionContext = { activeId: alignmentId, gap, height: sync === 'document' && railHeight > 0 ? railHeight : undefined, prioritizeActive: !!(hovered || active) };
+  const positions = new Map(positioner(locked ? sidebarItems.map(item => item.id === locked.id ? { ...item, anchorTop: locked.top } : item) : sidebarItems, positionContext));
+  const releasing = !focusedId && release;
+  if (releasing) {
+    const origin = positioner(sidebarItems.map(item => item.id === releasing.id && releasing.top !== undefined ? { ...item, anchorTop: releasing.top } : item), { ...positionContext, activeId: releasing.id, prioritizeActive: true });
+    for (const [id, top] of positions) positions.set(id, top + ((origin.get(id) ?? top) - top) * (1 - releasing.progress));
+  }
   const lockedAnchor = locked ? anchorTops.get(locked.id) ?? locked.top : 0;
-  const anchorFits = lockedAnchor >= 0 && lockedAnchor + (sizes.get(locked?.id ?? '') ?? 80) <= railHeight;
-  // At a rail boundary, visibility takes priority over exact hover alignment.
-  // Moving the document to chase an intentionally raised card is disorienting.
-  const lockFits = locked && (positions.get(locked.id) ?? locked.top) >= locked.top - .5;
-  const displacement = sync === 'document' && locked && anchorFits && lockFits ? (positions.get(locked.id) ?? locked.top) - lockedAnchor : 0;
+  // Footer packing must not disable reverse alignment. Keep the hovered card
+  // under the pointer and move its referenced text, even at the rail boundary.
+  const displacement = sync === 'document' && locked ? (positions.get(locked.id) ?? locked.top) - lockedAnchor : 0;
   useIsomorphicLayoutEffect(() => { if (sync === 'document') runtime.documentOffset.set(displacement); }, [runtime, displacement, sync]);
   const lockCard = (id: string) => {
     // Keep the original resting position while this card is hovered or active.
@@ -163,20 +209,22 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
     if (card && rail.current) {
       const origin = rail.current.getBoundingClientRect().top;
       const top = card.getBoundingClientRect().top - origin;
-      const anchorTop = anchorTops.get(id) ?? top;
-      const boundedTop = positioner(sidebarItems, { ...positionContext, activeId: id }).get(id) ?? anchorTop;
-      // Footer packing is a live constraint on the source anchor, not a new
-      // resting position. This also covers a card raised by another open card.
-      setCardLock({ id, top: boundedTop < anchorTop - .5 ? anchorTop : top });
+      setCardLock({ id, top });
     }
   };
-  return <aside ref={rail} aria-label={locale.annotations} className={`limr-sidebar ${className ?? ''}`} data-sync={sync} data-limr-theme={theme} data-limr-appearance={appearance} style={style}>
+  return <aside ref={rail} aria-label={locale.annotations} className={`limr-sidebar ${className ?? ''}`} data-sync={sync} data-releasing={releasing ? '' : undefined} data-limr-theme={theme} data-limr-appearance={appearance} style={style}>
     {items.map(occurrence => {
       const annotation = decorations.annotations.get(occurrence.annotationIds[0]);
       const definition = runtime.annotationTypes.get(annotation?.type ?? 'citation');
       const isActive = active === occurrence.id;
       const palette = definition?.sidebar;
       const Preview = palette?.Preview;
+      // A marker at the end of the article can align its collapsed card by
+      // giving the reference/title priority over the optional summary. Expanded
+      // content is bounded by the viewport and scrolls inside the card.
+      const available = source === 'marker' && alignmentId === occurrence.id && !isActive
+        ? Math.max(minimumSizes.get(occurrence.id) ?? 80, railHeight - (anchorTops.get(occurrence.id) ?? 0)) : railHeight;
+      const cardHeight = isActive ? Math.min(available, Math.max(minimumSizes.get(occurrence.id) ?? 80, viewportHeight || railHeight)) : available;
       const cardStyle = {
         '--limr-annotation-color': palette?.color ?? definition?.color,
         '--limr-annotation-border': palette?.borderColor,
@@ -187,7 +235,7 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
         '--limr-sidebar-preview-lines': String(Math.max(1, Math.floor(palette?.previewLines ?? 2))),
         ...(sync === 'document' ? {
           position: 'absolute', top: positions.get(occurrence.id) ?? 0, insetInline: 0,
-          '--limr-sidebar-card-height': `${railHeight}px`,
+          '--limr-sidebar-card-height': `${cardHeight}px`,
         } : { marginBlockEnd: gap }),
       } as CSSProperties & { [token: `--${string}`]: string | undefined };
       // A mixed card must not dismiss a conversation because a citation opted in.

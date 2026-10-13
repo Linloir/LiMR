@@ -1,16 +1,17 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { referenceTop } from './annotation-geometry';
 
 const reader = (page: Page) => page.locator('.limr-reader').first();
 const lastAnswer = (page: Page) => reader(page).getByRole('button', { name: '询问助手', exact: true }).last();
 async function alignedCard(page: Page, marker: Locator) {
   const id = await marker.getAttribute('data-limr-anchor');
   const card = reader(page).locator(`[data-occurrence="${id}"]`);
-  // Fixture assistants bind “重要内容”; embedded citations only have a marker.
+  // Fixture assistants bind “重要内容”; embedded citations quote a paragraph.
   const ranged = await card.getAttribute('data-type') === 'assistant';
   await expect.poll(async () => {
     const top = ranged ? await reader(page).locator('.limr-reader-content strong').first().evaluate(element => {
       const range = document.createRange(); range.selectNodeContents(element); return range.getClientRects()[0].top;
-    }) : (await marker.boundingBox())!.y;
+    }) : await referenceTop(marker);
     const bounds = (await card.boundingBox())!, rail = (await reader(page).locator('.limr-sidebar').boundingBox())!;
     // Boundary cards move upward instead of being forced through the rail end.
     const expected = Math.max(rail.y, Math.min(top, rail.y + rail.height - bounds.height));
@@ -76,7 +77,9 @@ test('dense notes stay inside a short document through hover, toggles, additions
   card = await alignedCard(page, lastAnswer(page));
   const body = card.locator('.limr-sidebar-card-content');
   await expect.poll(() => body.evaluate(element => element.scrollHeight - element.clientHeight)).toBeGreaterThan(500);
-  expect((await card.boundingBox())!.y + (await card.boundingBox())!.height).toBeLessThanOrEqual((await reader(page).boundingBox())!.y + before.reader + 1);
+  // Read both animated edges in the same frame; separate protocol reads can
+  // combine an earlier top with the height from a later expansion frame.
+  expect(await card.evaluate(element => element.getBoundingClientRect().bottom - element.closest('.limr-reader')!.getBoundingClientRect().bottom)).toBeLessThanOrEqual(1);
   expect(await pageGeometry(page)).toEqual(before);
   await expect(reader(page).locator('.limr-sidebar')).toHaveCSS('overflow-y', 'clip');
   await expect(body).toHaveCSS('scrollbar-width', 'none');
@@ -120,7 +123,7 @@ test('marker collapse preserves hover, and blank space clears the marker and car
 });
 
 test('single and grouped citations keep separate bottom spacing and assistant uses the common inset', async ({ page }) => {
-  const citations = reader(page).locator('.limr-reader-content .limr-mark[aria-label="Citation"]');
+  const citations = reader(page).locator('.limr-reader-content .limr-mark[aria-label="引用"]');
   const insets: number[] = [];
   for (let i = 0; i < 2; i++) {
     await citations.nth(i).click();
@@ -205,7 +208,7 @@ test('reference strips show rendered anchored text above the title in collapsed 
   expect((await reference.boundingBox())!.y).toBeLessThan((await card.locator('.limr-sidebar-card-heading').boundingBox())!.y);
   await card.getByRole('button').click();
   await expect(reference).toHaveText('重要内容');
-  const citation = reader(page).locator('.limr-reader-content .limr-mark[aria-label="Citation"]').first();
+  const citation = reader(page).locator('.limr-reader-content .limr-mark[aria-label="引用"]').first();
   await citation.click();
   const citationCard = await alignedCard(page, citation);
   await expect(citationCard.locator('.limr-sidebar-reference')).toHaveText('单条引用与多条引用。');
@@ -262,7 +265,7 @@ test('assistant questions survive answer streaming and citations provide readabl
   await expect(assistant.locator('.limr-sidebar-preview')).toHaveCSS('-webkit-line-clamp', '2');
   await page.getByRole('button', { name: 'Stream answer', exact: true }).click();
   await expect(assistant.locator('.limr-sidebar-preview')).toHaveText('问题 1：请解释这段内容，并给出一个具体的例子。');
-  const markers = reader(page).locator('.limr-reader-content .limr-mark[aria-label="Citation"]');
+  const markers = reader(page).locator('.limr-reader-content .limr-mark[aria-label="引用"]');
   const expected = ['Markdown 的语法与参考示例。支持 富文本 描述。', '第一条引用的描述。 · Markdown 的语法与参考示例。支持 富文本 描述。', '简短摘要 & 示例', 'https://example.com/reference', 'Title fallback'];
   for (let i = 0; i < expected.length; i++) {
     await markers.nth(i).hover();
@@ -324,7 +327,7 @@ test('collapsing a hovered card returns later cards without moving the pointer',
 for (const kind of ['assistant', 'citation'] as const) test(`${kind} sidebar motion keeps text visible and neighboring cards separated through reversals`, async ({ page }) => {
   const cards = reader(page).locator('.limr-sidebar-card');
   const card = kind === 'assistant' ? cards.nth(1) : reader(page).locator('.limr-sidebar-card[data-type="citation"]').first();
-  if (kind === 'citation') await reader(page).locator('.limr-reader-content .limr-mark[aria-label="Citation"]').first().hover();
+  if (kind === 'citation') await reader(page).locator('.limr-reader-content .limr-mark[aria-label="引用"]').first().hover();
   await card.locator('.limr-sidebar-card-heading').hover();
   const rail = reader(page).locator('.limr-sidebar');
   await expect.poll(() => rail.evaluate(element => element.getAnimations({ subtree: true }).filter(animation => animation.playState === 'running').length)).toBe(0);

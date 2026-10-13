@@ -45,7 +45,7 @@ test('mixed inline selections share line geometry; markers require text on both 
   const background = await marker.evaluate(e => getComputedStyle(e).backgroundColor);
   expect(background).not.toBe('rgba(0, 0, 0, 0)');
   await page.getByRole('button', { name: '添加高亮', exact: true }).click();
-  await expect(page.locator('.limr-paint-background[data-marker]')).toHaveCount(1);
+  await expect(page.locator('.limr-paint-background[data-marker]:not([data-reference])')).toHaveCount(1);
   await expect(page.locator('.limr-paint-selection')).toHaveCount(0);
   await page.locator('.limr-reader-content > article > p code').evaluate(code => {
     const text = document.createTreeWalker(code, NodeFilter.SHOW_TEXT).nextNode()!;
@@ -70,7 +70,7 @@ test('formula selection and persistent highlight retain the formula surface and 
   expect(actual.width).toBeCloseTo(expected.rect.width, 1);
   expect(actual.height).toBeCloseTo(expected.rect.height, 1);
   await page.getByRole('button', { name: '添加高亮', exact: true }).click();
-  const highlight = page.locator('.limr-highlight-layer > [data-atomic]');
+  const highlight = page.locator('.limr-highlight-layer > [data-atomic]:not([data-reference])');
   await expect(highlight).toHaveClass(/limr-paint-background/);
   await expect(highlight).toHaveCSS('border-radius', expected.radius);
   await expect(highlight.locator('..')).toHaveCSS('z-index', '-1');

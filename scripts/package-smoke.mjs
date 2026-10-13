@@ -1,4 +1,4 @@
-import { cp, mkdtemp, mkdir, readdir, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
@@ -13,7 +13,26 @@ function run(command, args, cwd) {
 run('pnpm', ['pack', '--pack-destination', temporary], process.cwd());
 const archive = (await readdir(temporary)).find(name => name.endsWith('.tgz'));
 if (!archive) throw new Error('Package archive was not created');
+const contents = new Set(run('tar', ['-tzf', join(temporary, archive)], process.cwd()).trim().split('\n'));
+for (const path of ['README.md', 'README.en.md', 'docs/zh-CN/modules.md', 'docs/en/modules.md', 'docs/assets/source.svg',
+  'skills/limr-use/SKILL.md', 'skills/limr-plugin-development/SKILL.md', 'skills/limr-plugin-development/assets/plugin-template/package.json']) {
+  if (!contents.has(`package/${path}`)) throw new Error(`Missing package resource: ${path}`);
+}
+// Build the distributed template from the archive, independent of repository aliases.
+const unpacked = join(temporary, 'unpacked'); await mkdir(unpacked);
+run('tar', ['-xzf', join(temporary, archive), '-C', unpacked], process.cwd());
+const template = join(unpacked, 'package/skills/limr-plugin-development/assets/plugin-template');
+const templatePackage = JSON.parse(await readFile(join(template, 'package.json'), 'utf8'));
+templatePackage.devDependencies = { ...templatePackage.devDependencies, '@linloir/limr': `file:${join(temporary, archive)}`, react: '^19', 'react-dom': '^19' };
+await writeFile(join(template, 'package.json'), JSON.stringify(templatePackage));
+run('pnpm', ['install', '--ignore-scripts'], template);
+run('pnpm', ['typecheck'], template);
+const templateOutput = join(temporary, 'template'); await mkdir(templateOutput);
+run('pnpm', ['pack', '--pack-destination', templateOutput], template);
+const templateArchive = (await readdir(templateOutput)).find(name => name.endsWith('.tgz'));
+if (!templateArchive) throw new Error('Skill plugin template did not produce an archive');
 const plugins = {};
+plugins[templatePackage.name] = `file:${join(templateOutput, templateArchive)}`;
 for (const [directory, name] of [['reading-tools', '@limr-example/reading-tools'], ['paper-theme', '@limr-example/paper-theme']]) {
   const destination = join(temporary, directory); await mkdir(destination);
   run('pnpm', ['pack', '--pack-destination', destination], join(process.cwd(), 'examples/packages', directory));
@@ -26,9 +45,12 @@ for (const version of ['18.3.1', '19']) {
   run('pnpm', ['install', '--ignore-scripts'], directory);
   await writeFile(join(directory, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, skipLibCheck: false, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', jsx: 'react-jsx', noEmit: true }, include: ['consumer.tsx'] }));
   await writeFile(join(directory, 'consumer.tsx'), `
-import { Reader, Markdown, DocumentProvider, standard, defineAnnotation, AnnotationCard, AnnotationMarkdown, ToolIcon, InlineMarker, useRendererParameter, type RendererExtension, type SelectionAction } from '@linloir/limr';
+import { Reader, Markdown, DocumentProvider, standard, defineAnnotation, AnnotationCard, AnnotationMarkdown, ToolIcon, InlineMarker, useLocale, useRendererParameter, type RendererExtension, type SelectionAction } from '@linloir/limr';
 import { createDocument } from '@linloir/limr/core';
 import { readingTools } from '@limr-example/reading-tools';
+import { readingTools as templateTools } from '@example/limr-reading-tools';
+const templateApp = <Reader source="Template" plugins={[templateTools()]} />;
+const localized = defineAnnotation({ type: 'localized', label: locale => locale.citation ?? 'Citation', overlay: { Card: props => <AnnotationCard {...props} title={useLocale().citation} /> } });
 const extension = defineAnnotation<{text: string}>({ type: 'custom', label: 'Custom', overlay: { Card: props => <AnnotationCard {...props} title={props.annotation.data?.text ?? 'Custom card'} />, expand: { placement: 'center', width: 640 } }, Content: ({data}) => <AnnotationMarkdown source={data?.text ?? ''} streaming /> });
 const actions: SelectionAction[] = [{ id: 'ask', label: 'Ask', icon: <ToolIcon name="note" />, run(context) { context.addAnnotation({id:'a', type:'custom', range:context.selection.raw.ranges[0]}, {edit:true}); }, renderExpanded: context => <button onClick={() => void context.run(current => { if (current.highlight) current.updateAnnotation(current.highlight.id, {data: {...current.highlight.data, style: 'wavy'}}); })}>Change style</button> }];
 const app = <Reader source="# hello" extensions={[...standard(), extension]} plugins={[readingTools()]} appearance="paper" actions={actions} justify />;
@@ -71,15 +93,18 @@ console.log('SSR, extension entry and local math/Maple assets passed');
   await writeFile(join(directory, 'browser.js'), `
 import { createElement as h, Fragment } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Reader } from '@linloir/limr';
+import { Reader, chinese } from '@linloir/limr';
 import { readingTools } from '@limr-example/reading-tools';
+import { readingTools as templateTools } from '@example/limr-reading-tools';
 import '@linloir/limr/styles.css';
 import '@linloir/limr/math.css';
 import '@limr-example/paper-theme';
+import '@example/limr-reading-tools/styles.css';
 const plugins = [readingTools()];
 createRoot(document.getElementById('root')).render(h(Fragment, null,
   h(Reader, { source: '# Package consumer\\n\\nChoose **this passage** with $x^2$.\\n\\n<reading-tip>\\n\\nA plugin **tip**.\\n\\n</reading-tip>', plugins, appearance: 'paper', toc: false, sidebar: false }),
-  h(Reader, { source: 'Independent classic reader.', toc: false, sidebar: false })
+  h(Reader, { source: 'Independent classic reader.', toc: false, sidebar: false }),
+  h(Reader, { documentId: 'template', source: 'A **template passage**.\\n\\n<reading-tip title="Template">\\n\\nA template tip.\\n\\n</reading-tip>', plugins: [templateTools()], locale: chinese, toc: false, sidebar: false })
 ));
 `);
   // Serve the actual installed tarballs, never an alias back into the repo.
@@ -100,7 +125,7 @@ createRoot(document.getElementById('root')).render(h(Fragment, null,
     await expect(page.locator('.reading-tip')).toContainText('A plugin tip.');
     await expect(page.locator('.katex')).toHaveCount(1);
     await expect(page.locator('.limr-reader[data-limr-appearance="paper"]')).toHaveCSS('background-color', 'rgb(252, 250, 244)');
-    await expect(page.locator('.limr-reader[data-limr-appearance="classic"]')).not.toHaveCSS('background-color', 'rgb(252, 250, 244)');
+    await expect(page.locator('.limr-reader[data-limr-appearance="classic"]').first()).not.toHaveCSS('background-color', 'rgb(252, 250, 244)');
     await page.locator('.limr-reader strong').first().evaluate(element => {
       const range = document.createRange(); range.selectNodeContents(element);
       getSelection().removeAllRanges(); getSelection().addRange(range);
@@ -111,8 +136,18 @@ createRoot(document.getElementById('root')).render(h(Fragment, null,
     await expect(page.locator('.limr-annotation-expanded')).toHaveAttribute('data-limr-appearance', 'paper');
     await expect(page.locator('.limr-annotation-expanded .limr-overlay-surface')).toHaveCSS('background-color', 'rgb(252, 250, 244)');
     await expect(page.locator('.limr-selection-toolbar')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.example-reading-tip')).toContainText('A template tip.');
+    await expect(page.locator('.example-reading-tip')).toHaveCSS('border-left-style', 'solid');
+    await page.locator('.limr-reader-content strong').filter({ hasText: 'template passage' }).evaluate(element => {
+      const range = document.createRange(); range.selectNodeContents(element);
+      getSelection().removeAllRanges(); getSelection().addRange(range);
+    });
+    await page.getByRole('button', { name: '阅读笔记', exact: true }).click();
+    await expect(page.locator('.limr-annotation-expanded')).toContainText('阅读笔记');
+    await expect(page.locator('.limr-annotation-expanded')).toContainText('template passage');
     if (errors.length) throw new Error(errors.join('\n'));
-    console.log(`React ${version}: packed syntax/action/annotation plugin and scoped CSS package passed in Chromium`);
+    console.log(`React ${version}: packed syntax/action/annotation plugin, scoped CSS, and the built skill template passed in Chromium`);
   } finally { await browser?.close(); server.kill('SIGTERM'); }
 }
 await mkdir('artifacts', { recursive: true });

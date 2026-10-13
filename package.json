@@ -1,6 +1,6 @@
 {
   "name": "@linloir/limr",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Linloir's limr Is a Markdown Renderer — extensible reading and streaming components for React",
   "type": "module",
   "license": "MIT",
@@ -23,9 +23,11 @@
   "files": [
     "dist",
     "README.md",
+    "README.en.md",
     "LICENSE",
-    "docs/*.md",
-    "examples/*.tsx",
+    "docs",
+    "skills",
+    "examples",
     "benchmarks/results/*.json"
   ],
   "exports": {
@@ -54,14 +56,16 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
+    "dev": "pnpm pack:skills && vite --host 127.0.0.1",
     "build": "tsup && node scripts/build-assets.mjs",
-    "build:playground": "vite build --base=/LiMR/",
+    "build:playground": "pnpm pack:skills && vite build --base=/LiMR/",
     "preview:playground": "vite preview --host 127.0.0.1 --base=/LiMR/",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:browser": "playwright test",
     "test:package": "node scripts/package-smoke.mjs",
+    "test:docs": "node scripts/check-docs.mjs",
+    "pack:skills": "python3 scripts/package-skills.py",
     "bench": "tsx benchmarks/run.ts",
     "bench:browser": "tsx benchmarks/browser.ts",
     "bench:selection": "tsx benchmarks/selection.ts",

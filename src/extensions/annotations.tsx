@@ -32,7 +32,7 @@ export function citation(options: Partial<AnnotationType<CitationData>> = {}): R
   }
   function Card(props: AnnotationOverlayCardProps<CitationData>) {
     const locale = useLocale();
-    return <AnnotationCard {...props} title={locale.annotations} />;
+    return <AnnotationCard {...props} title={locale.citation ?? locale.annotations} />;
   }
   function Content({ data }: AnnotationContentProps<CitationData>) {
     const runtime = useRuntime();
@@ -49,7 +49,7 @@ export function citation(options: Partial<AnnotationType<CitationData>> = {}): R
   }
   return {
     name: 'citation', tags: ['citation', 'ref'], scope: 'local',
-    annotationTypes: [{ type: 'citation', label: 'Citation', icon: CitationIcon, color: '#6366f1', Content, ...options, sidebar: { Preview, collapseOnContentClick: false, ...options.sidebar }, overlay: { Card, expand: false, ...options.overlay } }],
+    annotationTypes: [{ type: 'citation', label: locale => locale.citation ?? 'Citation', icon: CitationIcon, color: '#6366f1', highlight: 'hover', Content, ...options, sidebar: { Preview, collapseOnContentClick: false, ...options.sidebar }, overlay: { Card, expand: false, ...options.overlay } }],
     transform(root) {
       walk(root, node => {
         if (node.type !== 'component') return;

@@ -62,9 +62,12 @@ export interface AnnotationOverlayCardProps<T = unknown> {
 }
 export interface AnnotationType<T = unknown> {
   type: string;
-  label: string;
+  /** Resolve labels from the reader locale without recreating the plugin. */
+  label: string | ((locale: LiMRLocale) => string);
   icon?: ReactNode | ComponentType;
   color?: string;
+  /** Highlight referenced text in the marker color while hovered or active. */
+  highlight?: 'hover' | false;
   Content?: ComponentType<AnnotationContentProps<T>>;
   Marker?: ComponentType<{ annotation: Annotation<T>; active: boolean }>;
   overlay?: {
@@ -106,7 +109,8 @@ export interface RendererExtension extends SyntaxExtension {
 /** Open to module augmentation; parameter names and semantics belong to plugins. */
 export interface RendererParameters {}
 export interface DocumentCommands {
-  /** Content annotations get a shared highlight unless explicitly disabled. */
+  /** Content annotations get a shared highlight unless disabled or their type
+   * uses hover highlighting. An explicit appearance still creates a saved highlight. */
   addAnnotation: (annotation: Annotation, options?: { highlight?: HighlightData | false; edit?: boolean }) => void;
   updateAnnotation: (id: string, update: Partial<Annotation>) => void;
   removeAnnotation: (id: string) => void;
@@ -156,6 +160,9 @@ export interface SelectionAction {
   render?: (context: ToolbarActionContext) => ReactNode;
 }
 export interface LiMRLocale {
+  /** Optional language tag for plugin-owned translations. */
+  language?: string;
+  citation?: string;
   contents: string; annotations: string; expand: string; collapse: string; close: string; copy: string;
   copied: string; copyFailed: string; copyImage: string; copyFigures: string; loading: string; retry: string; unavailable: string; footnotes: string;
   definition: string; question: string; note: string; extra: string; hint: string; answer: string; submit: string;

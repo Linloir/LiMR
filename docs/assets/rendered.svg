@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="240" viewBox="0 0 480 240" role="img" aria-label="Rendered document">
+  <rect width="480" height="240" rx="12" fill="#eef2ec"/>
+  <g fill="#364633" font-family="Georgia,serif">
+    <text x="32" y="60" font-size="32" font-weight="bold">Markdown</text>
+    <text x="32" y="108" font-size="24" font-weight="bold">Readable source</text>
+    <text x="32" y="156" font-size="24">• Write</text>
+    <text x="32" y="196" font-size="24">• Read</text>
+  </g>
+</svg>

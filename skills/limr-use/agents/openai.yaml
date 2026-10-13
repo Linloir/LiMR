@@ -1,0 +1,4 @@
+interface:
+  display_name: "Use LiMR"
+  short_description: "Integrate LiMR readers and existing plugins"
+  default_prompt: "Use $limr-use to integrate LiMR into this React application."

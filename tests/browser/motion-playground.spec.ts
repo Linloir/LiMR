@@ -93,6 +93,9 @@ test('edge placement and rapid marker changes reveal from the current marker on 
   await page.goto('/?fixture=visual'); await page.evaluate(() => document.fonts.ready);
   const first = page.locator('.limr-reader-content .limr-mark').nth(0), second = page.locator('.limr-reader-content .limr-mark').nth(1);
   // Keep the synthetic fixed markers inside the reader's clipped content area.
+  // Reference paint isolates the text flow; raise this synthetic flow too so
+  // a marker moved over a later formula is not covered by that formula's box.
+  await first.evaluate(element => { element.closest('p')!.style.zIndex = '5'; });
   await first.evaluate(element => Object.assign(element.style, { position: 'fixed', left: '24px', top: '160px', transition: 'none', zIndex: '5' }));
   await second.evaluate(element => Object.assign(element.style, { position: 'fixed', left: '650px', top: '450px', transition: 'none', zIndex: '5' }));
   await first.hover();

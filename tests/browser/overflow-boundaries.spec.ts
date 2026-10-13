@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { referenceTop } from './annotation-geometry';
 
 async function paper(page: Page, title = 'Feature Visualization') {
   await page.setViewportSize({ width: 1800, height: 1000 });
@@ -9,7 +10,7 @@ async function paper(page: Page, title = 'Feature Visualization') {
   await page.locator('.limr-reader-content > article > [data-limr-block]').last().scrollIntoViewIfNeeded();
 }
 
-test('footer reference cards use free space above without clipping or forcing the document to align', async ({ page }) => {
+test('footer cards pack into free space at rest and retain reverse alignment on hover', async ({ page }) => {
   await paper(page);
   const rail = page.locator('.limr-sidebar'), cards = rail.locator('.limr-sidebar-card');
   const last = cards.last(), previous = cards.nth(await cards.count() - 2);
@@ -18,12 +19,11 @@ test('footer reference cards use free space above without clipping or forcing th
     return a.y >= r.y && b.y + b.height <= r.y + r.height + 1 && a.y + a.height + 13 <= b.y;
   }).toBe(true);
   const article = page.locator('.limr-reader-content > article');
-  const offset = () => article.evaluate(element => element.getBoundingClientRect().top - element.parentElement!.getBoundingClientRect().top);
-  const before = await offset();
+  const marker = page.locator(`[data-limr-anchor="${await last.getAttribute('data-occurrence')}"]`);
+  const before = await page.evaluate(() => ({ height: document.documentElement.scrollHeight, top: scrollY }));
   await last.locator('.limr-sidebar-card-heading').hover();
   await expect(last).toHaveAttribute('data-active', 'true');
-  await expect.poll(() => article.evaluate(element => getComputedStyle(element).translate)).toBe('none');
-  expect(await offset()).toBeCloseTo(before, 0);
+  await expect.poll(async () => Math.abs((await last.boundingBox())!.y - await referenceTop(marker))).toBeLessThan(1);
   await last.locator('.limr-sidebar-card-heading').click();
   await expect(last).toHaveAttribute('data-expanded', 'true');
   await expect.poll(async () => {
@@ -35,9 +35,12 @@ test('footer reference cards use free space above without clipping or forcing th
     const card = (await last.boundingBox())!, r = (await rail.boundingBox())!;
     return card.y + card.height - r.y - r.height;
   }).toBeLessThan(1);
+  await page.mouse.click(10, 10);
+  await expect(article).toHaveCSS('translate', 'none');
+  expect(await page.evaluate(() => ({ height: document.documentElement.scrollHeight, top: scrollY }))).toEqual(before);
 });
 
-for (const lowerState of ['collapsed', 'expanded', 'expanding'] as const) test(`footer collapse returns downward without a hover-release jump with the lower card ${lowerState}`, async ({ page }) => {
+for (const lowerState of ['collapsed', 'expanded', 'expanding'] as const) test(`focused footer collapse stays bounded and separates neighbors with the lower card ${lowerState}`, async ({ page }) => {
   await paper(page, '可解释性的基础积木');
   await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
   const rail = page.locator('.limr-sidebar'), cards = rail.locator('.limr-sidebar-card');
@@ -50,19 +53,25 @@ for (const lowerState of ['collapsed', 'expanded', 'expanding'] as const) test(`
     if (lowerState === 'expanded') await settled();
     else await page.waitForTimeout(80);
   }
+  let lockedTop: number;
   if (lowerState === 'expanding') {
     // Click while both the preceding card and the lower expansion still move.
     await upper.locator('.limr-sidebar-card-heading').hover({ force: true });
+    lockedTop = (await upper.boundingBox())!.y;
     await upper.locator('.limr-sidebar-card-heading').evaluate((button: HTMLButtonElement) => button.click());
-  } else await upper.locator('.limr-sidebar-card-heading').click();
+  } else {
+    await upper.locator('.limr-sidebar-card-heading').hover();
+    lockedTop = (await upper.boundingBox())!.y;
+    await upper.locator('.limr-sidebar-card-heading').click();
+  }
   await settled();
   const expanded = (await upper.boundingBox())!;
-  expect(expanded.y).toBeLessThan(initial.y - 20);
+  expect(expanded.height).toBeGreaterThan(initial.height + 20);
   for (const leaveDuringCollapse of [false, true]) {
-    // Keep the pointer in the shared bottom portion, so staying hovered and
+    // Keep the pointer in the shared portion, so staying hovered and
     // intentionally leaving during the animation exercise distinct paths.
     const bounds = (await upper.boundingBox())!;
-    await upper.hover({ position: { x: 15, y: bounds.height - 12 } });
+    await upper.hover({ position: { x: 15, y: Math.max(lockedTop, bounds.y) - bounds.y + initial.height / 2 } });
     const sampling = upper.evaluate(async element => {
       const button = element.querySelector<HTMLButtonElement>('.limr-sidebar-card-heading')!;
       button.click();
@@ -70,18 +79,18 @@ for (const lowerState of ['collapsed', 'expanded', 'expanding'] as const) test(`
       for (let i = 0; i < 35; i++) {
         await new Promise<void>(resolve => requestAnimationFrame(() => { setTimeout(resolve, 0); }));
         const rect = element.getBoundingClientRect(), next = element.nextElementSibling!.getBoundingClientRect();
-        frames.push({ top: rect.top, bottom: rect.bottom, height: rect.height, gap: next.top - rect.bottom, hovered: element.matches(':hover') });
+        frames.push({ top: rect.top, bottom: rect.bottom, height: rect.height, gap: next.top - rect.bottom, hovered: element.matches(':hover'), overflow: rect.bottom - element.parentElement!.getBoundingClientRect().bottom });
       }
       return frames;
     });
     if (leaveDuringCollapse) { await page.waitForTimeout(80); await page.mouse.move(10, 10); }
     const frames = await sampling;
-    expect(frames.some(frame => frame.height > initial.height + 5 && frame.top > expanded.y + 5)).toBe(true);
-    // Boundary packing keeps this edge fixed through the entire collapse,
-    // including the frame where hover is released, without a second easing.
-    expect(Math.max(...frames.map(frame => Math.abs(frame.bottom - (initial.y + initial.height))))).toBeLessThan(1);
+    expect(frames.some(frame => frame.height > initial.height + 5 && frame.height < expanded.height - 5)).toBe(true);
+    expect(Math.max(...frames.map(frame => frame.overflow))).toBeLessThan(1);
     expect(Math.min(...frames.map(frame => frame.gap))).toBeGreaterThanOrEqual(13);
-    expect(frames.at(-1)!.top).toBeCloseTo(initial.y, 0);
+    // Switching from the lower expansion can lock this card above its resting
+    // position. Preserve that actual hit area until the pointer leaves.
+    expect(frames.at(-1)!.top).toBeCloseTo(leaveDuringCollapse ? initial.y : lockedTop, 0);
     if (!leaveDuringCollapse) expect(frames.every(frame => frame.hovered)).toBe(true);
     await upper.locator('.limr-sidebar-card-heading').click();
     await settled();

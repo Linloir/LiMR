@@ -57,6 +57,24 @@ it('packs footer cards upward into spare rail space while retaining order and ga
   expect(positions.get('c')).toBe(410);
 });
 
+it('preserves focused alignment near the top even when all cards could fit in the rail', () => {
+  const items = [{ id: 'a', anchorTop: 80, height: 100 }, { id: 'b', anchorTop: 80, height: 90 }, { id: 'c', anchorTop: 80, height: 90 }];
+  const positions = alignSidebar(items, { activeId: 'b', gap: 14, height: 700 });
+  expect(positions.get('a')).toBe(-34);
+  expect(positions.get('b')).toBe(80);
+  expect(positions.get('c')).toBe(184);
+});
+
+it('prioritizes the hovered footer item over fitting every neighboring card', () => {
+  const items = [{ id: 'a', anchorTop: 320, height: 100 }, { id: 'b', anchorTop: 380, height: 90 }, { id: 'c', anchorTop: 430, height: 70 }];
+  const resting = alignSidebar(items, { activeId: 'b', gap: 14, height: 500 });
+  const focused = alignSidebar(items, { activeId: 'b', gap: 14, height: 500, prioritizeActive: true });
+  expect(resting.get('b')).toBeLessThan(380);
+  expect(focused.get('b')).toBe(380);
+  expect(focused.get('a')! + 114).toBeLessThanOrEqual(380);
+  expect(focused.get('c')).toBe(484);
+});
+
 it('keeps the focused card visible when the complete stack cannot fit', () => {
   const items = Array.from({ length: 8 }, (_, index) => ({ id: String(index), anchorTop: 220 + index, height: 100 }));
   const positions = alignSidebar(items, { activeId: '6', gap: 14, height: 300 });

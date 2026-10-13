@@ -127,7 +127,7 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
   useEffect(() => {
     const container = runtime.content, paint = layer.current;
     if (!container || !paint) return;
-    let frame = 0;
+    let frame = 0, translating = false;
     let leavesCache = new WeakMap<HTMLElement, Leaf[]>();
     type Metric = { ascent: number; descent: number; height: number };
     let metrics = new WeakMap<HTMLElement, Metric>();
@@ -145,9 +145,18 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
     const highlightRects = (id: string) => [...highlightLayers.values()].flatMap(layer => Array.from(layer.children).filter(item => (item as HTMLElement).dataset.paint === id).map(item => item.getBoundingClientRect()));
     const focusedRange = () => {
       const state = runtime.interaction.get(), decorations = runtime.decorations.get();
-      return decorations.occurrences.find(item => item.id === state.hovered)?.range
+      return decorations.referenceRanges.get(state.hovered ?? '')
         ?? (state.activeHighlight ? decorations.highlights.get(state.activeHighlight)?.range : undefined)
-        ?? decorations.occurrences.find(item => item.id === state.active)?.range;
+        ?? decorations.referenceRanges.get(state.active ?? '');
+    };
+    const referenceActive = (occurrenceId: string) => {
+      const state = runtime.interaction.get(), decorations = runtime.decorations.get();
+      if (occurrenceId === state.hovered) return true;
+      if (occurrenceId !== state.active) return false;
+      // Two occurrences can quote the same paragraph. Keep it lightly painted
+      // once when a pinned reference and another hovered reference coincide.
+      const hovered = decorations.highlights.get(`reference-${state.hovered}`);
+      return !hovered?.occurrenceId || !sameRange(hovered.range, decorations.referenceRanges.get(occurrenceId)!);
     };
     const feedback = () => {
       const state = runtime.interaction.get();
@@ -156,6 +165,12 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       for (const layer of highlightLayers.values()) for (const item of layer.children as HTMLCollectionOf<HTMLElement>) {
         item.toggleAttribute('data-hovered', item.dataset.paint === state.hoveredHighlight);
         const highlight = decorations.highlights.get(item.dataset.paint ?? '');
+        if (highlight?.occurrenceId) {
+          const active = referenceActive(highlight.occurrenceId);
+          item.toggleAttribute('data-active', active);
+          item.toggleAttribute('data-muted', !active);
+          continue;
+        }
         item.toggleAttribute('data-active', item.dataset.paint === state.activeHighlight || !!focused && !!highlight && sameRange(focused, highlight.range));
         item.toggleAttribute('data-muted', !!highlight?.hidden || !!focused && !!highlight && !sameRange(focused, highlight.range));
       }
@@ -220,7 +235,7 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       viewport.top = Math.max(viewport.top, origin.top);
       viewport.bottom = Math.min(viewport.bottom, origin.bottom);
       const scrollLeft = container.scrollLeft, scrollTop = container.scrollTop;
-      const output: { rect: PaintRect; task: { id: string; color?: string; style?: PaintHighlight['style']; selection?: boolean } }[] = [];
+      const output: { rect: PaintRect; task: { id: string; color?: string; style?: PaintHighlight['style']; occurrenceId?: string; selection?: boolean } }[] = [];
       const clips = new Map<HTMLElement, { left: number; right: number; top: number; bottom: number }>();
       const clipFor = (flow: HTMLElement) => {
         const saved = clips.get(flow); if (saved) return saved;
@@ -235,7 +250,7 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       for (let index = lo; index < blocks.length; index++) {
         const block = blocks[index];
         if (block.element.getBoundingClientRect().top > viewport.bottom + 32) break;
-        const tasks: { id: string; range: SourceRange; color?: string; style?: PaintHighlight['style']; selection?: boolean }[] = [...decorations.get(block.id)?.highlights ?? []];
+        const tasks: { id: string; range: SourceRange; color?: string; style?: PaintHighlight['style']; occurrenceId?: string; selection?: boolean }[] = [...decorations.get(block.id)?.highlights ?? []];
         for (const range of selections) if (intersects(range, block.range)) tasks.push({ id: 'selection', range, selection: true });
         if (!tasks.length) continue;
         let leaves = leavesCache.get(block.element);
@@ -291,6 +306,7 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
         const className = `limr-paint-rect limr-paint-${task.selection ? 'selection' : task.style ?? 'background'}`;
         if (item.className !== className) item.className = className;
         item.dataset.paint = task.id;
+        item.toggleAttribute('data-reference', !!task.occurrenceId);
         if (rect.marker) item.dataset.marker = rect.marker; else delete item.dataset.marker;
         if (rect.atomic) item.dataset.atomic = 'true'; else delete item.dataset.atomic;
         if (rect.image) item.dataset.media = 'image'; else delete item.dataset.media;
@@ -298,6 +314,11 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
         const css = `left:${left}px;top:${top}px;width:${rect.width}px;height:${rect.height}px;border-radius:${rect.radius ?? '0'};`;
         if (item.dataset.geometry !== css) { item.style.cssText = css; item.dataset.geometry = css; }
         if (!task.selection) item.style.setProperty('--limr-highlight', task.color ?? '#F2C744');
+        if (task.occurrenceId) {
+          const active = referenceActive(task.occurrenceId);
+          item.toggleAttribute('data-active', active);
+          item.toggleAttribute('data-muted', !active);
+        }
         if (!item.parentNode) target.append(item);
       });
       for (const layer of [paint, ...highlightLayers.values()]) while (layer.children.length > (counts.get(layer) ?? 0)) layer.lastChild!.remove();
@@ -306,8 +327,23 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       const active = runtime.interaction.get().activeHighlight;
       if (active && !hits.some(hit => hit.id === active)) runtime.clearSelection();
       feedback();
+      // Sidebar alignment translates the prose without scroll/resize events.
+      // Repaint newly visible text throughout that transition, including when
+      // it reverses, rather than retaining only the starting viewport's paint.
+      if (translating) {
+        translating = container.getAnimations().some(animation => animation instanceof CSSTransition && animation.transitionProperty === 'translate' && animation.playState === 'running');
+        if (translating) schedule();
+      }
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(render); };
+    const translate = (event: TransitionEvent) => {
+      if (event.target !== container || event.propertyName !== 'translate') return;
+      translating = true;
+      schedule();
+    };
+    container.addEventListener('transitionrun', translate);
+    container.addEventListener('transitionend', translate);
+    container.addEventListener('transitioncancel', translate);
     const invalidate = () => { blocks = undefined; metrics = new WeakMap(); schedule(); };
     const fontsChanged = () => { fontMetrics.clear(); invalidate(); };
     const unsubscribers = [runtime.interaction.subscribe(() => {
@@ -323,7 +359,7 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       const decorations = runtime.decorations.get().byBlock;
       if (decorations === lastDecorations) return;
       lastDecorations = decorations; leavesCache = new WeakMap(); schedule();
-    }), runtime.layout.subscribe(invalidate), runtime.configuration.subscribe(invalidate)];
+    }), runtime.layout.subscribe(invalidate), runtime.documentOffset.subscribe(schedule), runtime.configuration.subscribe(invalidate)];
     const observer = new MutationObserver(records => {
       let changed = false;
       for (const record of records) {
@@ -349,7 +385,7 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       for (let index = hits.length - 1; index >= 0; index--) {
         const { rect, id } = hits[index];
         const highlight = decorations.highlights.get(id);
-        if (highlight?.hidden || focused && highlight && !sameRange(focused, highlight.range)) continue;
+        if (highlight?.occurrenceId || highlight?.hidden || focused && highlight && !sameRange(focused, highlight.range)) continue;
         if (event.clientX >= rect.left && event.clientX <= rect.left + rect.width && event.clientY >= rect.top && event.clientY <= rect.top + rect.height) return id;
       }
       return null;
@@ -395,7 +431,7 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       container.addEventListener('pointerdown', pointerDown); container.addEventListener('click', click);
     }
     container.dataset.limrPainted = 'true'; schedule();
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); unsubscribers.forEach(unsubscribe => unsubscribe()); document.removeEventListener('scroll', scroll, true); window.visualViewport?.removeEventListener('resize', schedule); window.visualViewport?.removeEventListener('scroll', schedule); document.fonts?.removeEventListener('loadingdone', fontsChanged); container.removeEventListener('pointermove', move); container.removeEventListener('pointerleave', leave); container.removeEventListener('pointerdown', pointerDown); container.removeEventListener('click', click); delete container.dataset.limrPainted; clear(); };
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); unsubscribers.forEach(unsubscribe => unsubscribe()); document.removeEventListener('scroll', scroll, true); window.visualViewport?.removeEventListener('resize', schedule); window.visualViewport?.removeEventListener('scroll', schedule); document.fonts?.removeEventListener('loadingdone', fontsChanged); container.removeEventListener('transitionrun', translate); container.removeEventListener('transitionend', translate); container.removeEventListener('transitioncancel', translate); container.removeEventListener('pointermove', move); container.removeEventListener('pointerleave', leave); container.removeEventListener('pointerdown', pointerDown); container.removeEventListener('click', click); delete container.dataset.limrPainted; clear(); };
   }, [runtime, interactive]);
   return <div ref={layer} className="limr-paint-layer" data-limr-ignore="true" aria-hidden="true" />;
 }

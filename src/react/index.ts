@@ -1,5 +1,5 @@
 export * from './types';
-export { DocumentProvider, useDocument, useDocumentSelector, useSelection, useAnnotation, useAnnotations, useAnnotationState, useAnchor, useLiMR, useRendererParameter } from './context';
+export { DocumentProvider, useDocument, useDocumentSelector, useSelection, useAnnotation, useAnnotations, useAnnotationState, useAnchor, useLiMR, useRendererParameter, useLocale } from './context';
 export type { DocumentProviderProps } from './context';
 export { Markdown } from './Markdown';
 export type { MarkdownProps } from './Markdown';
