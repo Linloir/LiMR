@@ -1,6 +1,6 @@
 # LiMR
 
-[![npm version](https://img.shields.io/npm/v/@linloir/limr.svg)](https://www.npmjs.com/package/@linloir/limr)
+[![package version](https://img.shields.io/badge/version-1.0.1-blue.svg)](package.json)
 
 [简体中文](README.md) · **English**
 
