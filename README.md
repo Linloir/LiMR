@@ -160,9 +160,9 @@ NODE_ENV=production pnpm bench
 
 ### GitHub Pages 预览
 
-推送 `main` 后，[Deploy Playground 工作流](.github/workflows/pages.yml) 会构建 Playground，将静态产物更新到独立的 `pages` 分支，并通过 GitHub Actions 发布到 <https://linloir.github.io/LiMR/>。也可以在 Actions 中手动运行该工作流。`pages` 分支由构建生成，无需手工合并源码。
+`main` 保存源码，独立的 `pages` 分支保存 Playground 构建后的静态产物，通过 SSH 推送到 GitHub。`pages` 分支由构建生成，无需手工合并源码。预览地址为 <https://linloir.github.io/LiMR/>。
 
-首次部署需在仓库 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。工作流使用内置 `GITHUB_TOKEN`，无需额外配置发布密钥。
+首次部署在仓库 **Settings → Pages → Build and deployment** 中设置 **Source: Deploy from a branch**、**Branch: pages**、目录 **/(root)**，然后保存。后续推送 `pages` 分支会更新站点。
 
 本地检查与线上相同的 `/LiMR/` 路径：
 
@@ -172,7 +172,7 @@ pnpm preview:playground
 # 打开 http://127.0.0.1:4173/LiMR/
 ```
 
-构建输出为 `demo-dist/`；`pnpm dev` 仍使用本地根路径。部署到其他仓库名时，需要同步修改两个 Playground 脚本中的 `--base`。
+构建输出为 `demo-dist/`，包含跳过 Jekyll 处理的 `.nojekyll` 文件。更新预览时，重新构建并将该目录的内容提交、推送到 `pages` 分支。`pnpm dev` 仍使用本地根路径。部署到其他仓库名时，需要同步修改两个 Playground 脚本中的 `--base`。
 
 其他入口：`limr/core`（无 React/DOM 运行时依赖）、`limr/react`、`limr/extensions`。详细 props、hooks、受控状态和主题配置见 [API 指南](docs/api.md)。
 
