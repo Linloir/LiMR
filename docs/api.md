@@ -140,7 +140,7 @@ const [annotations, setAnnotations] = useState<Annotation[]>([
 `useDocument()` 获取源文档快照；`useAnnotation(id)` 和 `useAnnotations()` 获取合并了源文档、外部数据和插件新增内容的角注数据，后者返回 annotations Map 与 occurrences 数组；`useDocumentSelector(select)` 只订阅选择出的值；`useAnnotationState()` 获取 active/hovered occurrence 和修改方法；`useAnchor(id)` 获取定位信息。频繁变化的布局、滚动、选区和文档使用不同订阅通道。
 
 ```ts
-import { createDocument, selectionFromRange } from 'limr/core';
+import { createDocument, selectionFromRange } from '@linloir/limr/core';
 
 const engine = createDocument('', { streaming: true });
 const unsubscribe = engine.subscribe(() => consume(engine.getSnapshot()));

@@ -8,7 +8,7 @@ import type { NodeRendererProps, RendererExtension } from '../react/types';
 export type TranslationMode = 'origin' | 'translation' | 'both';
 export interface TranslationsOptions { defaultMode?: TranslationMode }
 
-declare module 'limr' {
+declare module '@linloir/limr' {
   interface RendererParameters {
     /** Overrides every translations block. Undefined restores each block's local mode. */
     translationMode?: TranslationMode;

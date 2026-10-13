@@ -1,9 +1,9 @@
 # 样式与交互外观
 
-`limr/styles.css` 提供默认 classic 样式和代码字体。所有默认规则位于 `@layer limr`；应用或样式包的普通 CSS 可以直接覆盖，无须提高选择器优先级。`appearance="paper"` 会传播到正文、目录、侧栏、选区工具栏和 portal 浮层，适合同页存在多个阅读器的场景。
+`@linloir/limr/styles.css` 提供默认 classic 样式和代码字体。所有默认规则位于 `@layer limr`；应用或样式包的普通 CSS 可以直接覆盖，无须提高选择器优先级。`appearance="paper"` 会传播到正文、目录、侧栏、选区工具栏和 portal 浮层，适合同页存在多个阅读器的场景。
 
 ```tsx
-import 'limr/styles.css';
+import '@linloir/limr/styles.css';
 import '@your-scope/limr-theme-paper';
 <Reader source={markdown} appearance="paper" theme="dark" />
 ```
@@ -77,8 +77,8 @@ import '@your-scope/limr-theme-paper';
 完全使用自己的字体时：
 
 ```tsx
-import 'limr/styles/base.css'; // 默认排版/交互样式，不引入 Maple
-// 可单独 import 'limr/fonts.css'，或载入应用自己的字体。
+import '@linloir/limr/styles/base.css'; // 默认排版/交互样式，不引入 Maple
+// 可单独 import '@linloir/limr/fonts.css'，或载入应用自己的字体。
 ```
 
 ## 选区、高亮与移动端

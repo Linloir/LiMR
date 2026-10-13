@@ -142,9 +142,9 @@ const [mode, setMode] = useState<TranslationMode | undefined>();
 插件参数是通用能力，不需要修改 LiMR 内核：
 
 ```tsx
-import { useRendererParameter, type RendererExtension } from 'limr';
+import { useRendererParameter, type RendererExtension } from '@linloir/limr';
 
-declare module 'limr' {
+declare module '@linloir/limr' {
   interface RendererParameters { glossaryDetail?: 'short' | 'full' }
 }
 
@@ -216,7 +216,7 @@ Citation 保留专用间距：多条目的底部补偿及条目间隔不受通�
 可以选用公共布局组件，标题仍由模块决定：
 
 ```tsx
-import { AnnotationCard, type AnnotationOverlayCardProps } from 'limr';
+import { AnnotationCard, type AnnotationOverlayCardProps } from '@linloir/limr';
 
 function ConversationCard(props: AnnotationOverlayCardProps) {
   return <AnnotationCard {...props} title="询问助手" />;
@@ -254,7 +254,7 @@ defineAnnotation({
 工具栏默认包含高亮和复制。插件将 `SelectionAction` 放入 `actions` 即可追加入口；`icon` 是必填字段，推荐 `currentColor`、圆润线端和方形 viewBox。LiMR 将 SVG、图片或嵌套图形限制到统一的图标槽中；内部图形的留白和视觉重量仍需由插件作者控制。内置的 `ToolIcon` 提供同一设计语言的常用图形。
 
 ```tsx
-import { ToolIcon, defineExtension, type ToolbarActionContext } from 'limr';
+import { ToolIcon, defineExtension, type ToolbarActionContext } from '@linloir/limr';
 
 function Settings({ context }: { context: ToolbarActionContext }) {
   return <button disabled={context.busy} onClick={() => void context.run(current => {
@@ -296,13 +296,13 @@ const noteTool = defineExtension({
 
 示例支持 `prompt(selection)` 生成首个问题，保存到 `data.question` 并传给 `adapter.answer({ selection, question, signal })`。`sidebar.Preview` 显示这个问题，流式回答只更新答案，不覆盖问题；中文页面可配置 `prompt: selection => \`请解释「${selection.text}」。\``。接入已有对话时，应用也可提供自己的 Preview 展示首条用户消息。
 
-示例只从 `limr` 的公共入口导入，可以复制到应用中使用。真实 Codex 集成可以实现同一个 adapter，也可以自行实现更复杂的组件、对话状态、输入框和动作。LiMR 不把助手的传输、认证、问题/答案 schema 写入内核。
+示例只从 `@linloir/limr` 的公共入口导入，可以复制到应用中使用。真实 Codex 集成可以实现同一个 adapter，也可以自行实现更复杂的组件、对话状态、输入框和动作。LiMR 不把助手的传输、认证、问题/答案 schema 写入内核。
 
 插件任务的取消信号来自动作的生命周期上下文。若业务还需要“停止生成”、重试、切换会话等控制，可由插件自己的 AbortController 与 context.signal 联动。角标保留哪个历史回答、是否保存、如何鉴权，也由应用决定。
 
 ## 作为独立包分发
 
-插件导出一个返回 `RendererExtension` 的工厂，消费者通过 `plugins={[yourPlugin(options)]}` 添加即可。`plugins` 会追加到 `extensions`（未指定时为 `standard()`），无须消费者重复列出默认模块。以 `limr` 和 `react` 为 peerDependencies，导出 ESM 和类型声明；不要把另一份 React 或 LiMR 打包进插件。
+插件导出一个返回 `RendererExtension` 的工厂，消费者通过 `plugins={[yourPlugin(options)]}` 添加即可。`plugins` 会追加到 `extensions`（未指定时为 `standard()`），无须消费者重复列出默认模块。以 `@linloir/limr` 和 `react` 为 peerDependencies，导出 ESM 和类型声明；不要把另一份 React 或 LiMR 打包进插件。
 
 [`examples/packages/reading-tools`](../examples/packages/reading-tools) 演示一个同时提供语法、角注内容和选区动作的独立包，[`paper-theme`](../examples/packages/paper-theme) 是独立 CSS 包。`pnpm test:package` 会先打包，再在仓库外安装这些包与 LiMR，验证 React 18/19 的类型、SSR、浏览器交互和 portal 样式。示例包名未发布到 npm；发布自己的包时替换 name、version，并移除 private。
 

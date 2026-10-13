@@ -12,7 +12,7 @@
     "isolatedModules": true,
     "noEmit": true,
     "types": ["node", "vite/client"],
-    "paths": { "limr": ["./src/index.ts"] }
+    "paths": { "@linloir/limr": ["./src/index.ts"] }
   },
   "include": ["src", "tests", "playground", "benchmarks", "*.ts"]
 }

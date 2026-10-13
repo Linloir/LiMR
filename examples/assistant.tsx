@@ -1,4 +1,4 @@
-import { AnnotationCard, AnnotationMarkdown, defineExtension, type AnnotationContentProps, type AnnotationOverlayCardProps, type AnnotationSidebarPreviewProps, type RendererExtension, type SelectionSnapshot } from 'limr';
+import { AnnotationCard, AnnotationMarkdown, defineExtension, type AnnotationContentProps, type AnnotationOverlayCardProps, type AnnotationSidebarPreviewProps, type RendererExtension, type SelectionSnapshot } from '@linloir/limr';
 import type { ReactNode } from 'react';
 
 /** Your application owns transport, authentication and conversation storage. */

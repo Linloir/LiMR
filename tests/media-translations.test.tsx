@@ -4,7 +4,7 @@ import { createDocument, walk, rangeOf } from '../src/core';
 import { Markdown, standard, useRendererParameter, type RendererExtension } from '../src';
 import { defaultFigureLimits, figureColumns } from '../src/extensions/figure-layout';
 
-declare module 'limr' { interface RendererParameters { exampleDensity?: number } }
+declare module '@linloir/limr' { interface RendererParameters { exampleDensity?: number } }
 
 describe('figure layout', () => {
   const square = { ratio: 1, limits: defaultFigureLimits };

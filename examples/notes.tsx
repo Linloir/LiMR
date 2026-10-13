@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { AnnotationMarkdown, ToolIcon, defineExtension, useLiMR, type AnnotationContentProps, type RendererExtension } from 'limr';
+import { AnnotationMarkdown, ToolIcon, defineExtension, useLiMR, type AnnotationContentProps, type RendererExtension } from '@linloir/limr';
 
 interface NoteData { text: string; draft?: string }
 const kinds = [

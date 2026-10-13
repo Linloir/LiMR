@@ -33,7 +33,7 @@ $$
 $$
 
 \`\`\`typescript
-import { Reader, standard, defineBlock } from 'limr';
+import { Reader, standard, defineBlock } from '@linloir/limr';
 
 const extensions = [
   ...standard(),

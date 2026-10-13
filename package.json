@@ -1,10 +1,22 @@
 {
-  "name": "limr",
+  "name": "@linloir/limr",
   "version": "0.1.0",
   "description": "Linloir's limr Is a Markdown Renderer — extensible reading and streaming components for React",
   "type": "module",
   "license": "MIT",
   "author": "Linloir",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Linloir/LiMR.git"
+  },
+  "homepage": "https://linloir.github.io/LiMR/",
+  "bugs": {
+    "url": "https://github.com/Linloir/LiMR/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "sideEffects": [
     "**/*.css"
   ],

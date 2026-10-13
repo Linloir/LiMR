@@ -91,9 +91,9 @@ print(trajectory[-1])
 一个阅读界面需要同时照顾连续阅读与局部操作。代码、公式和表格属于文章的论证，旁注与高亮属于读者的理解过程。两者放在同一个坐标系统里，才容易在以后重新找到关联。
 
 ```tsx
-import { Reader } from 'limr';
+import { Reader } from '@linloir/limr';
 import { useState } from 'react';
-import type { Annotation } from 'limr';
+import type { Annotation } from '@linloir/limr';
 
 export function ReadingRoom({ source }: { source: string }) {
   const [annotations, setAnnotations] = useState<readonly Annotation[]>([]);

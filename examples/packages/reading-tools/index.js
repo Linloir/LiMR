@@ -1,5 +1,5 @@
 import { createElement as h } from 'react';
-import { AnnotationCard, AnnotationMarkdown, defineBlock, defineExtension } from 'limr';
+import { AnnotationCard, AnnotationMarkdown, defineBlock, defineExtension } from '@linloir/limr';
 
 // No renderer internals or application services are needed by an npm plugin.
 export function readingTools() {
