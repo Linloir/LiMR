@@ -4,12 +4,14 @@ import { mdxJsxFromMarkdown } from 'mdast-util-mdx-jsx';
 import { directive } from 'micromark-extension-directive';
 import { directiveFromMarkdown } from 'mdast-util-directive';
 import { lineStarts, sourcePoint, walk } from './tree';
+import { concealIncomplete, prepareSource } from './streaming';
 import type { Diagnostic, MarkdownNode, ParseContext, SourcePosition, SyntaxExtension } from './types';
 
 export function validateExtensions(extensions: readonly SyntaxExtension[]): void {
   const names = new Set<string>();
   const tags = new Set<string>();
   const directives = new Set<string>();
+  const owners = new Map<string, SyntaxExtension>();
   for (const extension of extensions) {
     if (names.has(extension.name)) throw new Error(`Duplicate LiMR extension: ${extension.name}. Use replaceExtension() to replace it explicitly.`);
     names.add(extension.name);
@@ -19,21 +21,31 @@ export function validateExtensions(extensions: readonly SyntaxExtension[]): void
         known.add(name);
       }
     }
+    for (const name of [...extension.tags ?? [], ...extension.directives ?? []]) {
+      if (owners.has(name) && owners.get(name) !== extension) throw new Error(`Duplicate LiMR component syntax: ${name}`);
+      owners.set(name, extension);
+    }
   }
 }
 
 export function createParser(extensions: readonly SyntaxExtension[]) {
   validateExtensions(extensions);
   const tagDefinitions = new Map(extensions.flatMap(ext => (ext.tags ?? []).map(name => [name, ext] as const)));
-  const directiveDefinitions = new Map(extensions.flatMap(ext => (ext.directives ?? []).map(name => [name, ext] as const)));
+  const directiveDefinitions = new Map(extensions.flatMap(ext => [...new Set([...ext.tags ?? [], ...ext.directives ?? []])].map(name => [name, ext] as const)));
+  const names = new Set(directiveDefinitions.keys()), tags = new Set(tagDefinitions.keys());
+  const literals = new Set([...directiveDefinitions].filter(([, definition]) => definition.literal).map(([name]) => name));
   const syntax = extensions.flatMap(ext => [...ext.micromark ?? []]);
   const mdast = extensions.flatMap(ext => [...ext.mdast ?? []]);
+  const plainSyntax = [...syntax], plainMdast = [...mdast];
   if (directiveDefinitions.size) { syntax.push(directive()); mdast.push(directiveFromMarkdown()); }
   // CommonMark's HTML blocks otherwise swallow same-line native tag names such
   // as <figcaption>**caption**</figcaption> before the JSX adapter can see them.
   // Unknown JSX remains inert through the whitelist below; recovery keeps HTML.
   const jsxSyntax = tagDefinitions.size ? [...syntax, { disable: { null: ['htmlFlow', 'htmlText'] } }, mdxJsx()] : syntax;
   const jsxMdast = tagDefinitions.size ? [...mdast, mdxJsxFromMarkdown()] : mdast;
+  const plainJsxSyntax = [...plainSyntax, { disable: { null: ['htmlFlow', 'htmlText'] } }, mdxJsx()];
+  const plainJsxMdast = [...plainMdast, mdxJsxFromMarkdown()];
+  let literalCache: { fragment: string; offset: number; node: MarkdownNode; fence: string; content: number } | undefined;
 
   return (fragment: string, offset: number, context: ParseContext, lines: readonly number[], environment = '') => {
     // Definitions are a parsing environment, never part of the stored source.
@@ -41,28 +53,48 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
     // A neutral paragraph closes footnote containers. Without it, an indented
     // suffix can be consumed as part of a synthetic footnote definition.
     const prefix = environment ? `${environment}\n\nlimr-definition-boundary\n\n` : '';
-    const input = prefix + fragment;
+    const cached = literalCache;
+    const canAppendLiteral = context.streaming && cached && !prefix && cached.offset === offset && fragment.startsWith(cached.fragment)
+      && !new RegExp(`(?:^|[\\r\\n]) {0,3}${cached.fence[0]}{${cached.fence.length},}[ \\t]*(?=[\\r\\n]|$)`).test(fragment.slice(Math.max(cached.content, cached.fragment.lastIndexOf('\n') + 1, cached.fragment.lastIndexOf('\r') + 1)));
+    const prepared = canAppendLiteral
+      ? { value: fragment, original: (at: number) => at, incomplete: new Set([0]), recoveryOffset: 0, hidden: undefined }
+      : prepareSource(fragment, names, tags, context.streaming, literals);
+    const input = prefix + prepared.value;
+    // Ordinary prose need not install component tokenizers on every append.
+    // Colon-prefixed names and '<' are required even for partial constructs.
+    const hasDirectives = directiveDefinitions.size > 0 && /:[a-zA-Z]/.test(input);
+    const hasJsx = tagDefinitions.size > 0 && input.includes('<');
+    const activeSyntax = hasDirectives ? syntax : plainSyntax, activeMdast = hasDirectives ? mdast : plainMdast;
+    const mappedOffset = (at: number) => offset + prepared.original(Math.max(0, at - prefix.length));
+    const mappedLines = lines.length ? lines : lineStarts(context.source);
     const diagnostics: Diagnostic[] = [];
     let attributeLines: readonly number[] | undefined;
     const attributePoint = (at: number) => sourcePoint(at, lines.length ? lines : attributeLines ??= lineStarts(context.source));
-    let recoveryOffset: number | undefined;
+    let recoveryOffset = prepared.recoveryOffset === undefined ? undefined : offset + prepared.recoveryOffset;
     let root: MarkdownNode;
     try {
-      root = fromMarkdown(input, { extensions: jsxSyntax, mdastExtensions: jsxMdast }) as unknown as MarkdownNode;
+      root = canAppendLiteral ? { type: 'root', children: [{ ...cached.node,
+        value: fragment.slice(cached.content).replace(/(?:\r\n|\r|\n)$/, ''),
+        position: { start: { offset: 0, line: 1, column: 1 }, end: { offset: fragment.length, line: 0, column: 0 } },
+      }] } : fromMarkdown(input, { extensions: hasJsx ? hasDirectives ? jsxSyntax : plainJsxSyntax : activeSyntax, mdastExtensions: hasJsx ? hasDirectives ? jsxMdast : plainJsxMdast : activeMdast }) as unknown as MarkdownNode;
     } catch (error) {
       // Incomplete JSX is common during streaming. Preserve readable Markdown,
       // treat HTML as inert source and retry the final block on the next append.
-      root = fromMarkdown(input, { extensions: syntax, mdastExtensions: mdast }) as unknown as MarkdownNode;
+      root = fromMarkdown(input, { extensions: activeSyntax, mdastExtensions: activeMdast }) as unknown as MarkdownNode;
       recoveryOffset = offset;
       diagnostics.push({ message: error instanceof Error ? error.message : String(error), offset });
     }
     root.children = root.children?.filter(node => (node.position?.start.offset ?? 0) >= prefix.length);
-    if (offset || prefix.length || tagDefinitions.size || directiveDefinitions.size) walk(root, node => {
-      if (node.position && (offset || prefix.length)) {
-        const start = Math.max(0, node.position.start.offset - prefix.length + offset);
-        const end = Math.max(start, node.position.end.offset - prefix.length + offset);
-        node.position = { start: sourcePoint(start, lines), end: sourcePoint(end, lines) };
+    const only = root.children?.length === 1 ? root.children[0] : undefined;
+    const fence = !prefix && only?.type === 'code' && prepared.incomplete.has(0) && /^(`{3,}|~{3,})[^\r\n]*(?:\r\n|\r|\n)/.exec(fragment);
+    literalCache = fence ? { fragment, offset, node: { ...only! }, fence: fence[1], content: fence[0].length } : undefined;
+    if (offset || prefix.length || tagDefinitions.size || directiveDefinitions.size || context.streaming) walk(root, node => {
+      if (node.position && (offset || prefix.length || prepared.value !== fragment || canAppendLiteral)) {
+        const start = mappedOffset(node.position.start.offset);
+        const end = Math.max(start, mappedOffset(node.position.end.offset));
+        node.position = { start: sourcePoint(start, mappedLines), end: sourcePoint(end, mappedLines) };
       }
+      if (node.position && prepared.incomplete.has(node.position.start.offset - offset)) node.incomplete = true;
       if (node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement') {
         const definition = tagDefinitions.get(node.name ?? '');
         const rawAttributes = node.attributes as unknown as { type: string; name: string; value: unknown; position?: SourcePosition }[];
@@ -72,8 +104,8 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
           if (attr.type === 'mdxJsxAttribute' && (typeof attr.value === 'string' || attr.value === null)) {
             attributes[attr.name] = attr.value ?? true;
             if (definition && typeof attr.value === 'string' && attr.position) {
-              const start = attr.position.start.offset - prefix.length + offset;
-              const end = attr.position.end.offset - prefix.length + offset;
+              const start = mappedOffset(attr.position.start.offset);
+              const end = mappedOffset(attr.position.end.offset);
               const raw = context.source.slice(start, end), opening = raw.search(/["']/);
               if (opening >= 0) attributeNodes[attr.name] = { type: 'text', value: attr.value, verbatimEscapes: true, position: { start: attributePoint(start + opening + 1), end: attributePoint(end - 1) } };
             }
@@ -118,7 +150,16 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
         }
       }
     });
-    if (offset || prefix.length) root.position = { start: sourcePoint(offset, lines), end: sourcePoint(offset + fragment.length, lines) };
+    if (prepared.hidden) {
+      const start = offset + prepared.hidden.start;
+      // A withheld inline header can still belong to the preceding paragraph.
+      // Retry that host too instead of retaining a prematurely split block.
+      recoveryOffset = Math.min(recoveryOffset ?? start, root.children?.at(-1)?.position?.start.offset ?? start);
+      root.children?.push({ type: prepared.hidden.name ? 'component' : 'streamPending', name: prepared.hidden.name, incomplete: true,
+        position: { start: sourcePoint(start, mappedLines), end: sourcePoint(offset + fragment.length, mappedLines) }, children: [], attributes: {} });
+    }
+    if (context.streaming) concealIncomplete(root, context.source, mappedLines);
+    if (offset || prefix.length) root.position = { start: sourcePoint(offset, mappedLines), end: sourcePoint(offset + fragment.length, mappedLines) };
     for (const extension of extensions) {
       try { extension.transform?.(root, context); }
       catch (error) { diagnostics.push({ message: error instanceof Error ? error.message : String(error), extension: extension.name }); }

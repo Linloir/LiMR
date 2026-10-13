@@ -2,11 +2,14 @@ import type { PaintHighlight } from './runtime';
 import { cloneElement, Component, createElement, Fragment, isValidElement, memo, useCallback, useMemo, useRef, type ComponentType, type CSSProperties, type ErrorInfo, type ReactElement, type ReactNode } from 'react';
 import { mapText, rangeOf, safeUrl, walk, type AnnotationOccurrence, type Block, type MarkdownNode, type TextMapping } from '../core';
 import { intersects } from '../core/tree';
-import { useDocumentSelector, useRuntime, useStoreSelector } from './context';
+import { useDocumentSelector, useIsomorphicLayoutEffect, useRuntime, useStoreSelector } from './context';
 import { emptyDecorations, emptyList, type BlockDecorations, type ReaderRuntime } from './runtime';
 import type { TextToken, ViewConfiguration } from './types';
 import { bindCompactText, compactTextNodes } from './text-binding';
 import { literalValue, mapLiteral } from './literal';
+import { StreamText } from './stream-text';
+import { StreamEntrance } from './stream-effect';
+import { KnuthPlassBoundary } from './knuth-plass-boundary';
 
 interface RenderContext {
   runtime: ReaderRuntime;
@@ -17,6 +20,9 @@ interface RenderContext {
   occurrences: readonly AnnotationOccurrence[];
   tightList?: boolean;
   compact?: boolean;
+  live?: boolean;
+  revealFrom: number;
+  ancestors?: readonly MarkdownNode[];
   blockElement?: BlockElement;
 }
 interface BlockElement { id: string; range: Block['range']; pending: boolean; ref: (element: HTMLElement | null) => void }
@@ -56,7 +62,7 @@ export function AnnotationMarker({ occurrence }: { occurrence: AnnotationOccurre
   </button></span>;
 }
 
-function Text({ node, context, mapping: literalMapping, marks: literalMarks, style, className }: { node: MarkdownNode; context: RenderContext; mapping?: TextMapping; marks?: readonly AnnotationOccurrence[]; style?: CSSProperties; className?: string }) {
+function Text({ node, context, mapping: literalMapping, marks: literalMarks, style, className }: { node: MarkdownNode; context: RenderContext; mapping?: TextMapping | (() => TextMapping); marks?: readonly AnnotationOccurrence[]; style?: CSSProperties; className?: string }) {
   const { runtime } = context;
   const value = node.value ?? '';
   const range = rangeOf(node);
@@ -65,7 +71,7 @@ function Text({ node, context, mapping: literalMapping, marks: literalMarks, sty
     let mapping: ReturnType<typeof mapText> | undefined;
     const raw = source.slice(range.start, range.end);
     return () => {
-      if (literalMapping) return literalMapping;
+      if (literalMapping) return typeof literalMapping === 'function' ? literalMapping() : literalMapping;
       if (!mapping) {
         const relative = mapText(raw, value, { start: 0, end: raw.length }, { escapes: node.verbatimEscapes !== true });
         mapping = { starts: relative.starts.map(offset => offset + range.start), ends: relative.ends.map(offset => offset + range.start), exact: relative.exact };
@@ -85,7 +91,7 @@ function Text({ node, context, mapping: literalMapping, marks: literalMarks, sty
         get exact() { return direct || mapped().exact; },
         resolve: (offset, edge) => direct ? Math.max(range.start, Math.min(range.end, range.start + offset)) : edge === 'start' ? mapped().starts[offset] ?? range.end : mapped().ends[offset - 1] ?? range.start,
       });
-    }}>{value}</span>;
+    }}>{context.live ? <StreamText value={value} animateInitial={range.end > context.revealFrom} /> : value}</span>;
   }
   const mapping = mapped();
   const markerAt = new Map<number, AnnotationOccurrence[]>();
@@ -105,7 +111,7 @@ function Text({ node, context, mapping: literalMapping, marks: literalMarks, sty
     const start = points[index];
     const segmentRange = { start: mapping.starts[start] ?? range.start, end: mapping.ends[end - 1] ?? range.end };
     const styles = highlights.filter(highlight => intersects(highlight.range, segmentRange));
-    let text: ReactNode = value.slice(start, end);
+    let text: ReactNode = context.live ? <StreamText value={value.slice(start, end)} animateInitial={segmentRange.end > context.revealFrom} /> : value.slice(start, end);
     for (const highlight of styles) text = <mark key={highlight.id} data-limr-highlight={highlight.id} data-hidden={highlight.hidden || undefined} className={`limr-highlight limr-highlight-${highlight.style ?? 'background'}`} style={{ '--limr-highlight': highlight.color ?? '#f3ce7380' } as CSSProperties}>{text}</mark>;
     return <span key={start} style={style} className={className} ref={element => {
       if (element) runtime.bindings.set(element, { range: segmentRange, atomic: false, exact: mapping.exact, resolve: (offset, edge) => {
@@ -120,9 +126,11 @@ function Text({ node, context, mapping: literalMapping, marks: literalMarks, sty
 
 function LiteralValue({ node, context, tokens }: { node: MarkdownNode; context: RenderContext; tokens?: readonly TextToken[] }) {
   const source = context.runtime.document.getSnapshot().source;
-  const mapping = useMemo(() => mapLiteral(source, node), [node]);
+  const mapped = useMemo(() => { let value: TextMapping | undefined; return () => value ??= mapLiteral(source, node); }, [node]);
   const value = literalValue(node);
   const marks = context.marks.get(node) ?? emptyList;
+  if (!tokens?.length) return <Text key={0} node={{ ...node, type: 'text', value }} context={context} mapping={mapped} marks={marks} />;
+  const mapping = mapped();
   const segments = tokens?.length ? tokens : [{ content: value, offset: 0 }];
   return <>{segments.map((token, index) => {
     const start = token.offset, end = start + token.content.length;
@@ -190,10 +198,12 @@ function containsBlock(node: MarkdownNode): boolean {
 
 function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trailing?: ReactNode): ReactNode {
   const { runtime } = context;
-  if (node.type === 'text' && context.compact) return node.value ?? '';
+  if (node.type === 'text' && context.compact) return context.live ? <StreamText key={`text-${node.position?.start.offset ?? index}`} value={node.value ?? ''} animateInitial={rangeOf(node).end > context.revealFrom} /> : node.value ?? '';
+  if (node.type === 'streamPending') return null;
   const blockElement = node === context.block.node ? context.blockElement : undefined;
   const key = `${node.type}-${node.position?.start.offset ?? index}-${index}`;
-  const childContext = node.type === 'list' ? { ...context, tightList: !node.spread } : context;
+  let childContext = node.type === 'list' ? { ...context, tightList: !node.spread } : context;
+  if (runtime.rendererOverrides.size) childContext = { ...childContext, ancestors: [...context.ancestors ?? [], node] };
   const renderChildren = (nodes: readonly MarkdownNode[], options?: { trailing?: ReactNode }) => {
     let last = -1;
     nodes.forEach((child, i) => { if (!['definition', 'footnoteDefinition', 'annotationDefinition'].includes(child.type)) last = i; });
@@ -203,7 +213,11 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trail
   const children = node.type === 'table' ? [] : node.type === 'listItem' && context.tightList
     ? (node.children ?? []).flatMap((child, index) => child.type === 'paragraph' ? renderChildren(child.children ?? []) : renderNode(child, context, index))
     : renderChildren(node.children ?? []);
-  const Renderer = runtime.components[node.type === 'component' ? node.name ?? '' : node.type];
+  const componentName = node.type === 'component' ? node.name ?? '' : node.type;
+  const rules = runtime.rendererOverrides.get(componentName);
+  const override = rules?.slice().reverse().find(rule => !rule.when || rule.when(node, { pending: context.block.pending, incomplete: !!node.incomplete, ancestors: context.ancestors ?? [] }));
+  const owner = node.incomplete && !override ? runtime.configuration.get().extensions?.slice().reverse().find(extension => extension.components?.[componentName]) : undefined;
+  const Renderer = override?.component ?? (node.incomplete && owner?.streaming?.Loading || runtime.components[componentName]);
   let element: ReactNode;
   if (Renderer) {
     const range = rangeOf(node);
@@ -213,7 +227,7 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trail
       const range = rangeOf(attribute);
       return <Text node={attribute} context={context} marks={context.occurrences.filter(item => item.range.end > range.start && item.range.end <= range.end)} />;
     };
-    element = <ExtensionBoundary key={key} fallback={runtime.document.getSnapshot().source.slice(range.start, range.end)}><Renderer node={node} children={children} pending={context.block.pending} source={runtime.document.getSnapshot().source.slice(range.start, range.end)} renderChildren={renderChildren} renderValue={tokens => <LiteralValue node={node} context={context} tokens={tokens} />} renderAttribute={renderAttribute} /></ExtensionBoundary>;
+    element = <ExtensionBoundary key={key} fallback={runtime.document.getSnapshot().source.slice(range.start, range.end)}><Renderer node={node} children={children} pending={context.block.pending} incomplete={!!node.incomplete} source={runtime.document.getSnapshot().source.slice(range.start, range.end)} renderChildren={renderChildren} renderValue={tokens => <LiteralValue node={node} context={context} tokens={tokens} />} renderAttribute={renderAttribute} /></ExtensionBoundary>;
   } else {
     switch (node.type) {
       case 'text': return <Fragment key={key}>{context.compact ? node.value ?? '' : <Text node={node} context={context} />}{trailing}</Fragment>;
@@ -233,7 +247,7 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trail
       case 'linkReference': element = <Reference node={node} image={false}>{children}</Reference>; break;
       case 'imageReference': element = <Reference node={node} image>{children}</Reference>; break;
       case 'thematicBreak': element = <hr />; break;
-      case 'break': element = <br />; break;
+      case 'break': element = <br data-limr-break="" data-source-start={rangeOf(node).start} data-source-end={rangeOf(node).end} />; break;
       case 'table': {
         const rows = node.children ?? [], alignment = node.align as (string | null)[];
         element = <div className="limr-table-scroll"><table><thead>{rows.slice(0, 1).map((row, i) => <tr key={i}>{row.children?.map((cell, j) => <th key={j} style={{ textAlign: alignment?.[j] as CSSProperties['textAlign'] }}>{renderChildren(cell.children ?? [])}</th>)}</tr>)}</thead><tbody>{rows.slice(1).map((row, i) => <tr key={i}>{row.children?.map((cell, j) => <td key={j} style={{ textAlign: alignment?.[j] as CSSProperties['textAlign'] }}>{renderChildren(cell.children ?? [])}</td>)}</tr>)}</tbody></table></div>; break;
@@ -252,7 +266,11 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trail
   const atomic = node.selection === 'atomic' || ['math', 'inlineMath', 'image', 'imageReference', 'html'].includes(node.type);
   const corner = atomic && (!node.inline && !['inlineCode', 'inlineMath', 'html'].includes(node.type) || ['image', 'imageReference'].includes(node.type) || node.name === 'img');
   const after = corner ? undefined : context.afterMarks.get(node);
-  const withMarkers = (element: ReactNode) => after?.length || trailing ? <Fragment key={key}>{element}{after?.map(occurrence => <AnnotationMarker key={occurrence.id} occurrence={occurrence} />)}{trailing}</Fragment> : element;
+  const withMarkers = (element: ReactNode) => {
+    const result = after?.length || trailing ? <Fragment key={key}>{element}{after?.map(occurrence => <AnnotationMarker key={occurrence.id} occurrence={occurrence} />)}{trailing}</Fragment> : element;
+    return context.live && !node.inline && (node.type === 'component' || ['code', 'math', 'mermaid', 'callout', 'blockquote', 'table'].includes(node.type))
+      ? <StreamEntrance key={key} state={node.type === 'component' ? !!node.incomplete : true}>{result}</StreamEntrance> : result;
+  };
   if (atomic) return withMarkers(<Atomic key={key} node={node} context={context} blockElement={blockElement} inline={node.inline || ['inlineCode', 'inlineMath', 'image', 'imageReference', 'html'].includes(node.type)}>{element}</Atomic>);
   if (blockElement) {
     const attributes = { ...blockAttributes(blockElement), ref: blockElement.ref };
@@ -265,16 +283,24 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trail
   return withMarkers(isValidElement(element) ? cloneElement(element, { key }) : <Fragment key={key}>{element}</Fragment>);
 }
 
-export const BlockView = memo(function BlockView({ block, runtime, components, extensions, decorations, footnoteId }: { block: Block; runtime: ReaderRuntime; decorations: BlockDecorations; footnoteId?: string } & Pick<ViewConfiguration, 'components' | 'extensions'>) {
+export const BlockView = memo(function BlockView({ block, runtime, components, extensions, rendererOverrides, decorations, footnoteId }: { block: Block; runtime: ReaderRuntime; decorations: BlockDecorations; footnoteId?: string } & Pick<ViewConfiguration, 'components' | 'extensions' | 'rendererOverrides'>) {
+  const streamed = useRef(runtime.document.getSnapshot().streaming);
+  if (block.pending) streamed.current = true;
+  const revealed = useRef(block.range.start);
+  const revealFrom = revealed.current;
+  useIsomorphicLayoutEffect(() => { revealed.current = Math.max(revealed.current, block.range.end); }, [block.range.end]);
   const element = useRef<HTMLElement | null>(null);
+  const getElement = useCallback(() => element.current, []);
+  const typography = useStoreSelector(runtime.configuration, config => config.typography);
+  const knuthPlass = useStoreSelector(runtime.configuration, config => config.knuthPlass);
   const clearBindings = useRef<(() => void) | undefined>(undefined);
   const { occurrences } = decorations;
   // Transient reference paint belongs to the shared paint layer. It must not
   // split text, add editable <mark> elements, or appear in SSR/print output.
   const highlights = useMemo(() => decorations.highlights.filter(highlight => !highlight.occurrenceId), [decorations.highlights]);
   const root = useMemo(() => footnoteId ? { ...block.node, type: 'listItem' } : block.node, [block, footnoteId]);
-  const texts = useMemo(() => compactTextNodes(root, runtime.components), [root, runtime, components, extensions]);
-  const compact = !!texts && !occurrences.length && !highlights.length;
+  const texts = useMemo(() => compactTextNodes(root, runtime.components, runtime.rendererOverrides), [root, runtime, components, extensions, rendererOverrides]);
+  const compact = typography !== 'knuth-plass' && !!texts && !occurrences.length && !highlights.length;
   const observe = useCallback((next: HTMLElement | null) => {
     clearBindings.current?.(); clearBindings.current = undefined;
     if (element.current) runtime.textBinders.delete(element.current);
@@ -315,9 +341,9 @@ export const BlockView = memo(function BlockView({ block, runtime, components, e
     return { marks: map, afterMarks: after };
   }, [block, occurrences]);
   if (!footnoteId && ['definition', 'footnoteDefinition', 'annotationDefinition'].includes(block.node.type)) return null;
-  const context: RenderContext = { runtime, block, marks, afterMarks, highlights, occurrences, compact, blockElement: { id: block.id, range: block.range, pending: block.pending, ref: observe } };
-  if (footnoteId) return <li id={`${runtime.document.id}-fn-${encodeURIComponent(footnoteId)}`} {...blockAttributes(context.blockElement)} ref={observe}>{block.node.children?.map((child, index) => renderNode(child, { ...context, blockElement: undefined }, index))}</li>;
-  return renderNode(block.node, context);
+  const context: RenderContext = { runtime, block, marks, afterMarks, highlights, occurrences, compact, live: streamed.current, revealFrom, blockElement: { id: block.id, range: block.range, pending: block.pending, ref: observe } };
+  const content = footnoteId ? <li id={`${runtime.document.id}-fn-${encodeURIComponent(footnoteId)}`} {...blockAttributes(context.blockElement)} ref={observe}>{block.node.children?.map((child, index) => renderNode(child, { ...context, blockElement: undefined }, index))}</li> : renderNode(block.node, context);
+  return <KnuthPlassBoundary element={getElement} runtime={runtime} enabled={typography === 'knuth-plass'} pending={block.pending} options={knuthPlass}>{content}</KnuthPlassBoundary>;
 });
 
 export function Footnotes() {
@@ -325,6 +351,7 @@ export function Footnotes() {
   const doc = useDocumentSelector(snapshot => snapshot);
   const components = useStoreSelector(runtime.configuration, config => config.components);
   const extensions = useStoreSelector(runtime.configuration, config => config.extensions);
+  const rendererOverrides = useStoreSelector(runtime.configuration, config => config.rendererOverrides);
   const decorations = useStoreSelector(runtime.decorations, state => state.byBlock);
   const blocks = useMemo(() => new Map(doc.blocks.filter(block => block.node.type === 'footnoteDefinition').map(block => [String(block.node.identifier), block])), [doc.blocks]);
   if (!doc.footnoteOrder.length) return null;
@@ -332,6 +359,6 @@ export function Footnotes() {
     const node = doc.footnotes.get(id);
     if (!node) return null;
     const block: Block = blocks.get(id) ?? { id: `${doc.id}-fn-${id}`, range: rangeOf(node), node, pending: false };
-    return <BlockView key={id} block={block} runtime={runtime} components={components} extensions={extensions} footnoteId={id} decorations={decorations.get(block.id) ?? emptyDecorations} />;
+    return <BlockView key={id} block={block} runtime={runtime} components={components} extensions={extensions} rendererOverrides={rendererOverrides} footnoteId={id} decorations={decorations.get(block.id) ?? emptyDecorations} />;
   })}</ol></section>;
 }

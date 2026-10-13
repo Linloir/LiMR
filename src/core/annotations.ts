@@ -7,6 +7,7 @@ export const sameRange = (a: SourceRange, b: SourceRange) => a.start === b.start
 /** Embedded references quote their nearest text block; keep the marker's own
  * range intact for source mapping, insertion and selection. */
 export function annotationReferenceRange(document: DocumentSnapshot, occurrence: AnnotationOccurrence): SourceRange {
+  if (occurrence.referenceRange) return occurrence.referenceRange;
   if (!occurrence.embedded) return occurrence.range;
   let reference = occurrence.range;
   const visit = (node: MarkdownNode) => {

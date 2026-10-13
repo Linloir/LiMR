@@ -4,6 +4,7 @@ import { mathFromMarkdown } from 'mdast-util-math';
 import type { KatexOptions } from 'katex';
 import type { NodeRendererProps, RendererExtension } from '../react/types';
 import { CopyButton } from '../components/CopyButton';
+import { literalDirective } from './literal-directive';
 
 let loaded: ComponentType<{ value: string; display: boolean; options: MathOptions }> | undefined;
 let loading: Promise<typeof import('./math-renderer')> | undefined;
@@ -21,5 +22,5 @@ export function math(options: MathOptions = {}): RendererExtension {
     const content = <Suspense fallback={fallback}><Renderer value={node.value ?? ''} display={display} options={options} /></Suspense>;
     return display ? <div className="limr-math-block">{content}<CopyButton className="limr-math-copy" variant="glass" label="Copy LaTeX" value={`$$\n${node.value ?? ''}\n$$`} /></div> : content;
   }
-  return { name: 'math', micromark: [syntax()], mdast: [mathFromMarkdown()], scope: 'local', components: { math: MathNode, inlineMath: MathNode } };
+  return { name: 'math', directives: ['math'], literal: true, micromark: [syntax()], mdast: [mathFromMarkdown()], scope: 'local', components: { math: MathNode, inlineMath: MathNode }, transform: (root, context) => literalDirective(root, context.source, 'math') };
 }

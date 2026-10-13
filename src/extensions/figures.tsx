@@ -1,3 +1,4 @@
+import { BlockLoading } from '../components/LoadingRing';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { safeUrl, type MarkdownNode } from '../core';
 import { CopyButton } from '../components/CopyButton';
@@ -90,7 +91,7 @@ export function figures(options: FiguresOptions = {}): RendererExtension {
   }
   const Caption = ({ children }: NodeRendererProps) => <figcaption>{children}</figcaption>;
   return {
-    name: 'figures', tags: ['figures', 'figure', 'figcaption', 'caption', 'img'], directives: ['figures', 'figure', 'figcaption'], scope: 'local', display: 'block',
+    name: 'figures', streaming: { Loading: BlockLoading }, tags: ['figures', 'figure', 'figcaption', 'caption', 'img'], directives: ['figures', 'figure', 'figcaption'], scope: 'local', display: 'block',
     components: { figures: Figures, figure: Figure, figcaption: Caption, caption: Caption,
       img: ({ node }) => <img src={safeUrl(node.attributes?.src, true)} alt={String(node.attributes?.alt ?? '')} loading="lazy" decoding="async" /> },
     transform(root) {

@@ -45,13 +45,14 @@ export function Answer({ text, generating }: { text: string; generating: boolean
 
 | Scenario | Features |
 | --- | --- |
-| Reading | CommonMark, GFM tables/tasks/footnotes, math, Shiki code highlighting |
-| Rich content | Images, figure groups, captions, video, definitions, exercises, further reading, citations, original/translated/parallel text |
-| Interaction | Responsive contents, desktop annotation sidebar, narrow-screen overlays, copying, four highlight styles |
+| Reading | CommonMark, GFM tables/tasks, math, Shiki code highlighting, Mermaid diagrams |
+| Rich content | Images, figure groups, captions, video, definitions, exercises, nested quotes and Obsidian callouts, citations, original/translated/parallel text |
+| Interaction | Responsive contents, annotation sidebar/overlays, complete atomic copying, four highlight styles, `==highlights==` and footnote cards |
+| Layout and streaming | Standard, Knuth–Plass, justified; incomplete-syntax states, increment fades, stable selections |
 | Integration | Controlled annotations, original UTF-16 offsets, isolated readers, nested scroll containers, SSR |
-| Extensions | Custom syntax, React renderers, annotation types, selection actions, parameters, CSS theme packages |
+| Extensions | Custom syntax, conditional renderer replacement, annotation types, selection actions, streaming effects, parameters, CSS theme packages |
 
-The default content annotation type is `citation`; `highlight` provides persistent highlighting. Notes, questions, and chat annotations belong to application plugins. The default `question()` extension renders exercises in the document. See the [syntax reference](docs/en/syntax.md).
+Defaults include `citation` and Markdown footnote cards. `highlight` supports editable application annotations; `==text==` creates read-only source highlights. `[^id]` and `^[body]` use comment markers with sidebar/overlay cards, including immediately after highlights. Notes, questions, and chat annotations belong to application plugins; `question()` renders exercises. See the [syntax reference](docs/en/syntax.md).
 
 ```markdown
 <definition title="Definition">
@@ -64,6 +65,16 @@ This passage has a source<ref id="paper" />.
 
 <citation id="paper" title="Reference" url="https://example.com/paper" summary="Short summary" />
 ```
+
+Default modules also support `::` directives: for example, `::definition{title="Definition"}` followed by its body and a standalone closing `::`. Tags and `:::` containers remain supported. Mermaid accepts `mermaid` code fences or `::mermaid`; diagram mode supports zoom, drag panning, and keyboard/wheel navigation.
+
+## Typography and streaming
+
+`typography` accepts `standard` (default), `knuth-plass`, or `justify`. KP uses TeX's box/glue/penalty paragraph optimization and Knuth–Liang English hyphenation, caches measurements and prepared breakpoints, and retains typeset nodes while scrolling. Browser font measurements do not guarantee pixel-identical TeX PDF output. The [performance report](docs/en/performance.md) includes Scikit Learn scroll/resize comparisons and measurement boundaries.
+
+Streaming defers incomplete syntax markers. Default modules can show loading states, while code and math display usable intermediate content. New text and special blocks fade in through opacity; existing controls and selections stay stable. Plugins can customize `streaming.Loading` and `streaming.effect`; hosts can override the animation with `streamEffect` or disable it with `false`.
+
+Formulas and diagrams select as atomic units. Selection-toolbar copying retains their complete original source and delimiters, including both `$` signs around inline math. A single block anchors its toolbar below it; copy feedback and button width use nonlinear transitions. See [annotations and selection](docs/en/annotations.md) and [styles](docs/en/styles.md).
 
 ## Composition and extensions
 
@@ -84,6 +95,8 @@ export function Notice() {
 
 `plugins` appends to the defaults. `extensions` replaces the entire list; `extensions={[]}` uses basic CommonMark. Replace a named extension explicitly with `replaceExtension()`. Keep configuration references stable.
 
+To replace only a content renderer, use `rendererOverrides` with `type`, `component`, and `when` to restrict by language, ancestors, or streaming state. Host rules take precedence. This scopes rendering rules; it is not a security sandbox for third-party code.
+
 Plugins can own the complete card UI (`overlay.Card`), collapsed sidebar summary (`sidebar.Preview`), async loading, and selection actions. Use the [plugin development Skill](skills/limr-plugin-development/SKILL.md) or [package guide](docs/en/plugin-packages.md) to build an installable extension and add it through `plugins`. Examples cover [notes](examples/notes.tsx), a [streaming assistant](examples/assistant.tsx), a [standalone plugin](examples/packages/reading-tools/index.js), and a [CSS theme](examples/packages/paper-theme/index.css). The `@limr-example/*` packages are unpublished local examples.
 
 ## AI Skills
@@ -99,8 +112,8 @@ Skills ship in the npm package and can also be downloaded from this repository. 
 
 - `styles.css` includes light/dark styling and local Maple code fonts. `styles/base.css` provides the same styling without loading Maple. Font assets remain in the npm download. Choose one stylesheet.
 - `appearance` scopes CSS themes across the reader and portalled controls. Applications or system fonts supply body typography.
-- Code highlighting and math load on demand. Video loads near the viewport by default, with a click-to-load option. Remote media may contact its source site.
-- The full DOM remains available for browser search, native selection, and printing. Streaming appends reuse stable blocks and finish with a full parse; not every edit is incremental.
+- Code highlighting, math, Mermaid, and KP load on demand. Mermaid draws on the client; unclosed streamed diagrams show loading first. Video loads near the viewport by default, with a click-to-load option. Remote media may contact its source site.
+- The full DOM remains available for browser search, native selection, and printing. Appends and eligible finalization reuse stable prefixes; definition changes, middle edits, or document-scoped transforms can still require a full parse.
 - Unregistered HTML is displayed as text. Markdown-supplied JavaScript expressions are never executed. Custom renderers own their data and remote requests.
 
 See [styles and fonts](docs/en/styles.md), [API](docs/en/api.md), and [performance and limits](docs/en/performance.md).
@@ -118,6 +131,21 @@ pnpm test:browser
 
 Local development uses Python 3 to generate downloadable Skill archives. The header switches between Playground and LiMR-rendered, bilingual Docs.
 
+Refreshing the Playground restores the default document and standard typography, without automatically restoring the previous document or edits. Save explicitly stores a draft; use Load saved text to reopen it. Language preference is retained separately. The typography dropdown offers all three modes; the streaming demo adds up to five UTF-16 units every 90ms.
+
 The local Playground runs at `http://127.0.0.1:4173`. Use `@linloir/limr/core` for parsing without React/DOM. Other entry points are `@linloir/limr/react` and `@linloir/limr/extensions`.
+
+## Build and publish Pages
+
+`main` contains source; `pages` contains only generated files. GitHub Pages uses **Deploy from a branch → pages → /(root)**. Pushing `main` does not automatically build the site.
+
+```sh
+pnpm test:docs
+pnpm build:playground
+pnpm preview:playground --port 4174
+# http://127.0.0.1:4174/LiMR/
+```
+
+The output is `demo-dist/`, including `.nojekyll`, bilingual Docs, examples, and updated Skill ZIPs. After verification, sync that directory into a separate `pages` worktree, commit, and push both source and artifact branches. Change the build/preview `--base` when deploying under another repository name. README and docs describe repository source; check your installed npm version's exports/types, or use `pnpm pack` to consume the current source.
 
 [MIT License](LICENSE). Developed with Codex.

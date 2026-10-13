@@ -37,6 +37,10 @@ Reader、Markdown 与 DocumentProvider 接受：
 | appearance | classic，传播到 portal 的样式作用域 |
 | locale | english，可传 chinese 或 Partial&lt;LiMRLocale&gt; |
 | justify | false，段落/列表两端对齐 |
+| typography | standard（默认）、knuth-plass 或 justify；保留旧 CSS 模式 pretty / normal |
+| knuthPlass | TeX 段落参数，见[样式](styles.md) |
+| rendererOverrides | 按顺序匹配的渲染规则：type、component 和可选 when 条件，仅作用于当前 Reader |
+| streamEffect | 覆盖流式增量动画；false 关闭 |
 | scrollRoot | null / 未指定表示窗口 |
 | scrollOffset | 24px |
 | onDocumentChange | 文档更新后的 DocumentSnapshot |
@@ -63,7 +67,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 | AnnotationGroup | occurrence、presentation、expanded=true、enabled=true |
 | AnnotationMarkdown | MarkdownProps，source 必填；默认 interactive=false |
 | InlineMarker | label 必填，color、children 和 button 属性/ref |
-| ToolIcon | name 与 SVG 属性；如 note、copy、sparkles、highlight |
+| ToolIcon | name 与 SVG 属性；如 note、copy、highlight、comment、zoom-in、zoom-out、source、image |
 
 除独立 Markdown 和 Reader 外，共享组件/hooks 应位于 Provider 内。AnnotationCard 是浮层内容模板，不负责自建 portal。sidebar.renderCard 接收 `{ occurrence, active, activate }`；toolbar.render 接收 `{ context, actions, run }`。
 
@@ -105,3 +109,7 @@ createDocument(source?, { id?, extensions?, streaming? }) 返回 DocumentEngine�
 DocumentSnapshot 包含 id、revision、source、streaming、blocks、headings、definitions、footnotes、footnoteOrder、annotations、occurrences、diagnostics、metrics。这里 annotations 是**源内解析得到的数据**；外部受控数据使用 useAnnotations，不要混淆两个集合。
 
 其他核心导出包括 walk、textContent、rangeOf、intersects、safeUrl、mapText、selectionFromRange、replaceExtension、resolveAnnotationAnchors、annotationReferenceRange、sameRange、defaultHighlight、LruCache、ResourceCache。ResourceCache.acquire 返回 promise/release；invalidate 可按 key 或全部失效。
+
+`inlineHighlights({ color?, component? })` 与 `footnotes(annotationTypeOptions?)` 都在 `standard()` 中。`HighlightData.readOnly` 限制默认高亮工具栏为复制与提示；`AnnotationOccurrence.referenceRange` 可将角标的源位置与它引用的文字范围分开。
+
+核心还导出 `knuthPlass(items, lengths, options?)`、`prepareKnuthPlass(items)`、`texBadness` 及对应类型。准备后的函数可按不同宽度求解同一段落，复用前缀和。

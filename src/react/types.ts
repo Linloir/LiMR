@@ -1,10 +1,14 @@
 import type { ComponentType, CSSProperties, ReactNode } from 'react';
 import type { Annotation, AnnotationOccurrence, DocumentSnapshot, HighlightData, MarkdownNode, SelectionSnapshot, SourceRange, SyntaxExtension } from '../core/types';
+import type { KnuthPlassOptions } from '../core/knuth-plass';
+export type { KnuthPlassOptions } from '../core/knuth-plass';
 
 export interface NodeRendererProps {
   node: MarkdownNode;
   children: ReactNode;
   pending: boolean;
+  /** True only for this unclosed construct, not every child of a growing block. */
+  incomplete?: boolean;
   source: string;
   /** Render an existing subtree without parsing strings again. */
   renderChildren: (nodes: readonly MarkdownNode[], options?: { trailing?: ReactNode }) => ReactNode;
@@ -16,6 +20,14 @@ export interface NodeRendererProps {
 }
 export interface TextToken { content: string; offset: number; style?: CSSProperties }
 export type NodeRenderer = ComponentType<NodeRendererProps>;
+export interface RendererOverride {
+  /** AST type, or the registered name of a component. */
+  type: string;
+  component: NodeRenderer;
+  /** Limits the replacement; false falls back to the next match or built-in. */
+  when?: (node: MarkdownNode, context: { pending: boolean; incomplete: boolean; ancestors: readonly MarkdownNode[] }) => boolean;
+}
+export type TypographyMode = 'knuth-plass' | 'standard' | 'justify';
 export type AnnotationPresentation = 'preview' | 'expanded' | 'sidebar';
 export interface AnnotationExpansion {
   /** Grow beside the marker, or center within the page's visual viewport. */
@@ -99,12 +111,27 @@ export interface AnnotationType<T = unknown> {
   load?: (annotation: Annotation<T>, context: { signal: AbortSignal }) => Promise<T>;
 }
 export interface RendererExtension extends SyntaxExtension {
+  streaming?: {
+    /** Optional module-owned intermediate state. Omit to render progressively. */
+    Loading?: NodeRenderer;
+    /** Last configured effect wins. The reader may override it. */
+    effect?: StreamEffect | false;
+  };
   /** Register document parameter defaults. Plugins extend RendererParameters
    * through TypeScript declaration merging and read them with useRendererParameter. */
   parameters?: Readonly<RendererParameters>;
   components?: Readonly<Record<string, NodeRenderer>>;
+  /** Ordered, reader-local overrides. Last matching entry wins. */
+  rendererOverrides?: readonly RendererOverride[];
   annotationTypes?: readonly AnnotationType<any>[];
   actions?: readonly SelectionAction[];
+}
+/** Animation applies to newly appended text and newly appearing blocks. CSS can style the supplied
+ * class; keyframes/timing use the Web Animations API. No source rewriting. */
+export interface StreamEffect {
+  className?: string;
+  keyframes?: Keyframe[];
+  timing?: KeyframeAnimationOptions;
 }
 /** Open to module augmentation; parameter names and semantics belong to plugins. */
 export interface RendererParameters {}
@@ -170,6 +197,7 @@ export interface LiMRLocale {
   highlight: string; addHighlight: string; editHighlight: string; highlightColor: string; highlightStyle: string;
   highlightBackground: string; highlightUnderline: string; highlightDotted: string; highlightWavy: string;
   hideHighlight: string; showHighlight: string;
+  inlineHighlightHint?: string;
   deleteAnnotations: string; deleteAnnotationsHint: string;
 }
 export interface ViewConfiguration {
@@ -181,11 +209,18 @@ export interface ViewConfiguration {
   /** CSS skin name, applied to every view including portalled controls. */
   appearance?: string;
   components?: Readonly<Record<string, NodeRenderer>>;
+  /** Reader rules take precedence over extension rules and component mappings. */
+  rendererOverrides?: readonly RendererOverride[];
   annotationTypes?: readonly AnnotationType<any>[];
   annotations?: readonly Annotation[];
   theme?: 'light' | 'dark' | 'auto';
   /** Justify prose paragraphs and list items, leaving the last line start-aligned. */
   justify?: boolean;
+  /** TeX Knuth–Plass, standard (default), or browser justification.
+   * pretty/normal remain compatible native-CSS aliases. */
+  typography?: TypographyMode | 'pretty' | 'normal';
+  knuthPlass?: KnuthPlassOptions;
+  streamEffect?: StreamEffect | false;
   locale?: Partial<LiMRLocale>;
   scrollRoot?: HTMLElement | null;
   scrollOffset?: number;

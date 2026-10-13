@@ -37,6 +37,10 @@ Reader, Markdown, and DocumentProvider accept:
 | appearance | classic; CSS scope propagated to portals |
 | locale | english; accepts chinese or Partial&lt;LiMRLocale&gt; |
 | justify | false; justify prose/list text |
+| typography | standard (default), knuth-plass, or justify; legacy CSS modes pretty / normal remain available |
+| knuthPlass | TeX paragraph parameters; see [styles](styles.md) |
+| rendererOverrides | Ordered, reader-scoped rules with type, component and optional when predicate |
+| streamEffect | Increment animation override; false disables |
 | scrollRoot | null/omitted means window |
 | scrollOffset | 24px |
 | onDocumentChange | DocumentSnapshot after updates |
@@ -63,7 +67,7 @@ The default locale is english. Missing partial keys fall back to English. locale
 | AnnotationGroup | occurrence, presentation, expanded=true, enabled=true |
 | AnnotationMarkdown | MarkdownProps with required source; interactive=false by default |
 | InlineMarker | Required label, color, children, button props/ref |
-| ToolIcon | name and SVG props; e.g. note, copy, sparkles, highlight |
+| ToolIcon | name and SVG props; e.g. note, copy, highlight, comment, zoom-in, zoom-out, source, image |
 
 Shared views/hooks require a provider, except standalone Markdown and Reader. AnnotationCard is an interior template, not its own portal. sidebar.renderCard receives occurrence/active/activate; toolbar.render receives context/actions/run.
 
@@ -105,3 +109,7 @@ Core defaults to extensions=[]. Use SyntaxExtension with micromark/mdast for a s
 DocumentSnapshot contains id, revision, source, streaming, blocks, headings, definitions, footnotes, footnoteOrder, annotations, occurrences, diagnostics, and metrics. Its annotations are **parsed from source**. Use useAnnotations for merged external data.
 
 Other core exports include walk, textContent, rangeOf, intersects, safeUrl, mapText, selectionFromRange, replaceExtension, resolveAnnotationAnchors, annotationReferenceRange, sameRange, defaultHighlight, LruCache, and ResourceCache. ResourceCache.acquire returns promise/release; invalidate clears a key or everything.
+
+`inlineHighlights({ color?, component? })` and `footnotes(annotationTypeOptions?)` are included in `standard()`. `HighlightData.readOnly` limits the default highlight toolbar to copying and a hint; `AnnotationOccurrence.referenceRange` separates a marker's source location from the text it references.
+
+Core also exports `knuthPlass(items, lengths, options?)`, `prepareKnuthPlass(items)`, `texBadness`, and their types. The prepared function reuses prefix sums when solving the same paragraph at multiple widths.

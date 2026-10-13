@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { selectionFromRange, type SelectionSnapshot, type SourceRange } from '../core';
 import type { ReaderRuntime } from './runtime';
-import { leavesIn } from './source-geometry';
+import { atomicSelectionText, leavesIn, measurementRange } from './source-geometry';
 
 /** Attribute captions can occur before an image in source, while being rendered
  * after it. Project these selections in reading order without covering captions
@@ -52,6 +52,12 @@ export function useSelectionTracking(runtime: ReaderRuntime, enabled: boolean) {
     function resolve(node: Node, offset: number, edge: 'start' | 'end'): Endpoint {
       let element = node.nodeType === Node.ELEMENT_NODE ? node as Element : node.parentElement;
       if (!element || element.closest('[data-limr-document]') !== container || element.closest('[data-limr-ignore]')) return null;
+      // Plugin atoms can contain mapped children or attributes. The enclosing
+      // atomic contract takes precedence over their individual text bindings.
+      let atom = element.closest('[data-limr-atomic]');
+      for (let outer = atom?.parentElement?.closest('[data-limr-atomic]'); outer && container?.contains(outer); outer = atom.parentElement?.closest('[data-limr-atomic]')) atom = outer;
+      const atomicBinding = atom && runtime.bindings.get(atom);
+      if (atomicBinding?.atomic) return { offset: edge === 'start' ? atomicBinding.range.start : atomicBinding.range.end, atomic: true, exact: true };
       runtime.prepareTextBindings(element);
       const native = node.nodeType === Node.TEXT_NODE ? runtime.bindings.get(node) : undefined;
       if (native?.resolve) return { offset: native.resolve(offset, edge), atomic: false, exact: native.exact !== false };
@@ -59,7 +65,7 @@ export function useSelectionTracking(runtime: ReaderRuntime, enabled: boolean) {
         const binding = runtime.bindings.get(element);
         if (binding) {
           if (binding.atomic) return { offset: edge === 'start' ? binding.range.start : binding.range.end, atomic: true, exact: true };
-          const range = document.createRange();
+          const range = measurementRange(element.ownerDocument);
           range.setStart(element, 0);
           try { range.setEnd(node, offset); } catch { return null; }
           const localOffset = range.toString().length;
@@ -108,23 +114,52 @@ export function useSelectionTracking(runtime: ReaderRuntime, enabled: boolean) {
       previous = { startNode: range.startContainer, start: range.startOffset, endNode: range.endContainer, end: range.endOffset, revision, settled: !dragging };
       runtime.selectionRange = range.cloneRange();
       runtime.highlightReference = null;
+      const text = selection.toString();
       const options = {
-        text: selection.toString(), settled: !dragging,
+        // An image/diagram can prohibit internal text selection while its
+        // complete source block remains selectable and copyable.
+        text: text || (start.atomic && end.atomic ? runtime.document.getSnapshot().source.slice(start.offset, end.offset) : ''), settled: !dragging,
         quality: (!start.exact || !end.exact ? 'unmapped' : start.atomic || end.atomic ? 'atomic' : 'exact') as SelectionSnapshot['quality'],
       };
-      runtime.updateInteraction({ activeHighlight: null, selection: visualSelection(runtime, range, options) ?? selectionFromRange(runtime.document.getSnapshot(), { start: start.offset, end: end.offset }, options) });
+      let captured = visualSelection(runtime, range, options) ?? selectionFromRange(runtime.document.getSnapshot(), { start: start.offset, end: end.offset }, options);
+      if (!dragging) {
+        const atomicText = atomicSelectionText(runtime, captured.raw.ranges);
+        if (atomicText !== undefined) captured = { ...captured, text: atomicText, quality: 'atomic' };
+      }
+      runtime.updateInteraction({ activeHighlight: null, selection: captured });
     }
     // Coalesce within a frame, never debounce a continuous drag. A resetting
     // timeout can starve updates for the entire gesture on a 60/120 Hz pointer.
     const schedule = () => { if (!frame) frame = requestAnimationFrame(process); };
     const down = () => { dragging = true; };
     const up = () => { dragging = false; schedule(); };
+    const atomicCopyText = (event: Event) => {
+      const native = window.getSelection(), captured = runtime.interaction.get().selection;
+      if (event.defaultPrevented || !native?.anchorNode || native.isCollapsed || !container.contains(native.anchorNode) || captured?.quality !== 'atomic') return null;
+      if (event.target instanceof Element && event.target.closest('input,textarea,[contenteditable],[data-limr-selection-ui]')) return null;
+      return captured.settled ? captured.text : atomicSelectionText(runtime, captured.raw.ranges) ?? captured.text;
+    };
+    const copy = (event: ClipboardEvent) => {
+      const text = atomicCopyText(event);
+      if (!text || !event.clipboardData) return;
+      event.clipboardData.setData('text/plain', text); event.preventDefault();
+    };
+    const copyKey = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== 'c' || !(event.ctrlKey || event.metaKey) || event.altKey || !navigator.clipboard?.writeText) return;
+      if (window.getSelection()?.toString()) return;
+      const text = atomicCopyText(event); if (!text) return;
+      // Chromium omits the copy event entirely for user-select:none SVGs.
+      // This fallback only handles those otherwise empty atomic selections.
+      event.preventDefault(); void navigator.clipboard.writeText(text).catch(() => {});
+    };
     document.addEventListener('selectionchange', schedule);
     container.addEventListener('pointerdown', down);
     document.addEventListener('pointerup', up);
     document.addEventListener('pointercancel', up);
     document.addEventListener('keyup', schedule);
+    document.addEventListener('copy', copy);
+    document.addEventListener('keydown', copyKey);
     if (window.getSelection()?.isCollapsed === false) schedule();
-    return () => { cancelAnimationFrame(frame); document.removeEventListener('selectionchange', schedule); container.removeEventListener('pointerdown', down); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up); document.removeEventListener('keyup', schedule); };
+    return () => { cancelAnimationFrame(frame); document.removeEventListener('selectionchange', schedule); container.removeEventListener('pointerdown', down); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up); document.removeEventListener('keyup', schedule); document.removeEventListener('copy', copy); document.removeEventListener('keydown', copyKey); };
   }, [runtime, enabled]);
 }

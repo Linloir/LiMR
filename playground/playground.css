@@ -126,3 +126,8 @@ button:disabled { cursor: default; opacity: .45; }
   .demo-docs-links { display: none; padding-top: 8px; }
   .demo-docs-links[data-open] { display: flex; }
 }
+
+@media (min-width: 761px) {
+  .demo-session-controls .demo-dropdown-menu { left: auto; right: 0; }
+  .demo-typography-control .demo-dropdown-menu { width: 180px; }
+}

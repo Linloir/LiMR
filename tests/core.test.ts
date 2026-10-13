@@ -102,8 +102,8 @@ describe('default extension modules', () => {
     }
     expect(document.finish().blocks.map(block => block.node)).toEqual(createDocument(source, { extensions }).getSnapshot().blocks.map(block => block.node));
   });
-  it('has reference annotations only by default', () => {
-    expect(standard().flatMap(extension => extension.annotationTypes?.map(type => type.type) ?? [])).toEqual(['citation']);
+  it('provides citation and Markdown footnote annotation types by default', () => {
+    expect(standard().flatMap(extension => extension.annotationTypes?.map(type => type.type) ?? [])).toEqual(['citation', 'footnote']);
   });
   it('retains exact attribute offsets across JSX, directives and streaming recovery', () => {
     const source = 'Before\r\n\r\n<definition title="Same &amp; 😀 \\* title"><content>Same title.</content></definition>\r\n\r\n:::question{title="Which &amp; why?"}\r\nBody\r\n:::';

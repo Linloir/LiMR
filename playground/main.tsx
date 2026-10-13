@@ -1,6 +1,7 @@
+import { StreamingFixture } from './streaming-fixture';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
-import { Reader, ToolIcon, chinese, english, type Annotation, type SelectionSnapshot, type TranslationMode } from '../src';
+import { Reader, ToolIcon, chinese, english, type Annotation, type SelectionSnapshot, type TypographyMode, type TranslationMode } from '../src';
 import { Dropdown } from './Dropdown';
 import { Documentation, docsHref, readDocsRoute } from './Documentation';
 import { MediaAnnotationFixture, MediaFixture, TranslationDetailsFixture } from './media-fixture';
@@ -36,23 +37,22 @@ function savedDocument(): { source: string; annotations: readonly Annotation[] }
   return null;
 }
 function App() {
-  const [initial] = useState(savedDocument);
-  const [source, setSource] = useState(initial?.source ?? sample);
+  const [source, setSource] = useState(sample);
   const [streaming, setStreaming] = useState(false);
   const [cursor, setCursor] = useState(0);
   const [dark, setDark] = useState(false);
   const [localeName, setLocaleName] = useState(savedLocale);
   const [docsRoute, setDocsRoute] = useState(() => readDocsRoute(savedLocale()));
-  const [justify, setJustify] = useState(false);
+  const [typography, setTypography] = useState<TypographyMode>('standard');
   const [translationMode, setTranslationMode] = useState<TranslationMode | undefined>();
   const [editor, setEditor] = useState(false);
   const [selection, setSelection] = useState<SelectionSnapshot | null>(null);
-  const [annotations, setAnnotations] = useState<readonly Annotation[]>(initial?.annotations ?? []);
+  const [annotations, setAnnotations] = useState<readonly Annotation[]>([]);
   const [textarea, setTextarea] = useState<HTMLTextAreaElement | null>(null);
   const [preview, setPreview] = useState<HTMLDivElement | null>(null);
   const [notesEnabled, setNotesEnabled] = useState(true);
   const [assistantEnabled, setAssistantEnabled] = useState(true);
-  const [menu, setMenu] = useState<'load' | 'plugins' | 'translation' | 'locale' | null>(null);
+  const [menu, setMenu] = useState<'load' | 'plugins' | 'translation' | 'locale' | 'typography' | null>(null);
   const [status, setStatus] = useState('');
   const [answerStatus, setAnswerStatus] = useState('');
   const [documentVersion, setDocumentVersion] = useState(0);
@@ -62,6 +62,8 @@ function App() {
   const pluginRoot = useRef<HTMLDivElement>(null);
   const translationRoot = useRef<HTMLDivElement>(null);
   const localeRoot = useRef<HTMLDivElement>(null);
+  const typographyRoot = useRef<HTMLDivElement>(null);
+  const typographyModes = [{ value: 'knuth-plass', label: 'Knuth–Plass' }, { value: 'standard', label: '标准' }, { value: 'justify', label: '两端对齐' }] as const;
   const locales = [{ value: 'zh-CN', label: '中文' }, { value: 'en', label: 'English' }] as const;
   const translationModes = [{ value: undefined, label: '随段落' }, { value: 'origin', label: '原文' }, { value: 'translation', label: '译文' }, { value: 'both', label: '对照' }] as const;
   useScrollSync(textarea, preview, source);
@@ -91,7 +93,7 @@ function App() {
   useEffect(() => {
     if (!streaming) return;
     let position = 0;
-    const interval = setInterval(() => { position = Math.min(source.length, position + 24); setCursor(position); if (position === source.length) { setStreaming(false); setStatus('流式演示完成，文本已保留'); } }, 25);
+    const interval = setInterval(() => { position = Math.min(source.length, position + 5); setCursor(position); if (position === source.length) { setStreaming(false); setStatus('流式演示完成，文本已保留'); } }, 90);
     return () => clearInterval(interval);
   }, [streaming, source]);
   useEffect(() => {
@@ -113,7 +115,7 @@ function App() {
   }, [localeName]);
   useEffect(() => {
     if (!menu) return;
-    const root = menu === 'load' ? loadRoot : menu === 'plugins' ? pluginRoot : menu === 'locale' ? localeRoot : translationRoot;
+    const root = menu === 'load' ? loadRoot : menu === 'plugins' ? pluginRoot : menu === 'locale' ? localeRoot : menu === 'typography' ? typographyRoot : translationRoot;
     const outside = (event: PointerEvent) => { if (event.target instanceof Node && !root.current?.contains(event.target)) setMenu(null); };
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { setMenu(null); root.current?.querySelector('button')?.focus(); } };
     document.addEventListener('pointerdown', outside); document.addEventListener('keydown', escape);
@@ -122,11 +124,10 @@ function App() {
   const replaceSource = (text: string, id = '') => {
     setStreaming(false); setCursor(0); setSource(text); setPreset(id); setAnnotations([]); setSelection(null); setAnswerStatus(''); setDocumentVersion(value => value + 1); setMenu(null);
   };
-  useEffect(() => {
-    if (editor || streaming) return;
-    try { localStorage.setItem(storageKey, JSON.stringify({ version: 2, source, annotations })); }
-    catch { setStatus('自动保存失败，请下载 Markdown 保留文本'); }
-  }, [source, annotations, editor, streaming]);
+  const save = () => {
+    try { localStorage.setItem(storageKey, JSON.stringify({ version: 2, source, annotations })); setStatus('已保存到此浏览器，可从加载菜单手动打开'); }
+    catch { setStatus('保存失败，请下载 Markdown 保留文本'); }
+  };
   const load = () => {
     const data = savedDocument();
     if (!data) { setStatus('还没有可加载的文本'); return; }
@@ -148,7 +149,7 @@ function App() {
     {docsRoute ? <Documentation route={docsRoute} theme={dark ? 'dark' : 'light'} /> : <>
     <div className="demo-commandbar" data-limr-appearance="classic">
       <nav className="demo-controls demo-document-controls" aria-label="文本操作">
-        <button onClick={() => { setStreaming(false); setEditor(!editor); setMenu(null); if (editor) setStatus('已自动保存到此浏览器'); }}><span className="limr-underline">{editor ? '保存' : '编辑'}</span></button>
+        <button onClick={() => { setStreaming(false); setEditor(!editor); setMenu(null); if (editor) save(); }}><span className="limr-underline">{editor ? '保存' : '编辑'}</span></button>
         <span className="demo-control-divider" />
         <div className="demo-dropdown" ref={loadRoot}><button aria-expanded={menu === 'load'} aria-controls="demo-load-menu" onClick={() => setMenu(value => value === 'load' ? null : 'load')}><span className="limr-underline">加载</span><ToolIcon name="chevron" /></button>
           <Dropdown open={menu === 'load'} id="demo-load-menu" className="demo-load-menu">
@@ -174,7 +175,12 @@ function App() {
             {translationModes.map(item => <button key={item.value ?? 'local'} aria-pressed={translationMode === item.value} onClick={() => { setTranslationMode(item.value); setMenu(null); translationRoot.current?.querySelector('button')?.focus(); }}><span className="limr-underline">{item.label}</span></button>)}
           </Dropdown>
         </div>
-        <button aria-pressed={justify} onClick={() => setJustify(value => !value)} title={justify ? '切换为左对齐' : '两端对齐，末行保持左对齐'}><span className="limr-underline">两端对齐</span></button><button className="demo-stream-button" disabled={!source.length} aria-pressed={streaming} onClick={() => {
+        <div className="demo-dropdown demo-typography-control" ref={typographyRoot}>
+          <button aria-label="排版模式" aria-expanded={menu === 'typography'} aria-controls="demo-typography-menu" onClick={() => setMenu(value => value === 'typography' ? null : 'typography')}><span className="limr-underline">{typographyModes.find(item => item.value === typography)!.label}</span><ToolIcon name="chevron" /></button>
+          <Dropdown open={menu === 'typography'} id="demo-typography-menu" role="group" aria-label="排版模式">
+            {typographyModes.map(item => <button key={item.value} aria-pressed={typography === item.value} onClick={() => { setTypography(item.value); setMenu(null); typographyRoot.current?.querySelector('button')?.focus(); }}><span className="limr-underline">{item.label}</span></button>)}
+          </Dropdown>
+        </div><button className="demo-stream-button" disabled={!source.length} aria-pressed={streaming} onClick={() => {
         if (streaming) { setStreaming(false); setStatus('已结束演示，完整文本已恢复'); }
         else { setCursor(0); setStreaming(true); setEditor(false); setStatus(''); setSelection(null); setDocumentVersion(value => value + 1); }
       }}><span className="limr-underline">{streaming ? '结束演示' : '流式演示'}</span></button>
@@ -185,7 +191,7 @@ function App() {
     <div className={editor ? 'demo-workbench' : 'demo-reading'}>
       {editor && <section className="demo-editor-pane"><div className="demo-pane-label">Markdown <span>直接编辑 · 双向滚动同步</span></div><textarea ref={setTextarea} wrap="off" spellCheck={false} className="demo-editor" aria-label="Markdown source" value={source} onChange={event => { setStreaming(false); setSource(event.target.value); setPreset(''); setAnnotations([]); setStatus(''); }} /></section>}
       <section className={editor ? 'demo-preview-pane' : undefined}>{editor && <div className="demo-pane-label">实时预览 <span>选区工具同样可用</span></div>}<div ref={editor ? setPreview : undefined} className={editor ? 'demo-preview-scroll' : undefined}>
-        <div className="demo-page"><Reader key={documentVersion} source={streaming ? source.slice(0, cursor) : source} streaming={streaming} theme={dark ? 'dark' : 'light'} justify={justify} parameters={{ translationMode, onTranslationModeChange: setTranslationMode }} locale={localeName === 'zh-CN' ? chinese : english} scrollRoot={editor ? preview : null} toc={!editor} sidebar={!editor} actions={streaming ? [] : undefined} plugins={plugins} annotations={annotations} onAnnotationsChange={setAnnotations} onSelectionChange={setSelection} documentId="demo" /></div>
+        <div className="demo-page"><Reader key={documentVersion} source={streaming ? source.slice(0, cursor) : source} streaming={streaming} theme={dark ? 'dark' : 'light'} typography={typography} parameters={{ translationMode, onTranslationModeChange: setTranslationMode }} locale={localeName === 'zh-CN' ? chinese : english} scrollRoot={editor ? preview : null} toc={!editor} sidebar={!editor} actions={streaming ? [] : undefined} plugins={plugins} annotations={annotations} onAnnotationsChange={setAnnotations} onSelectionChange={setSelection} documentId="demo" /></div>
       </div></section>
     </div>
     <output id="selection-data" hidden>{selection ? JSON.stringify(selection) : ''}</output>
@@ -195,4 +201,4 @@ function App() {
 }
 const fixture = new URLSearchParams(location.search).get('fixture');
 if (fixture === 'hydrate') hydrateRoot(document.getElementById('root')!, <HydrationFixture />, { onRecoverableError: error => { document.documentElement.dataset.hydrationError = String(error); } });
-else createRoot(document.getElementById('root')!).render(fixture === 'media-annotations' ? <MediaAnnotationFixture /> : fixture === 'translation-details' ? <TranslationDetailsFixture /> : fixture === 'media' ? <MediaFixture /> : fixture === 'toolbar' ? <ToolbarFixture /> : fixture === 'assistant-test' ? <PluginFixture /> : fixture === 'sidebar' ? <SidebarFixture /> : fixture === 'selection-bench' ? <SelectionBenchmarkFixture /> : fixture === 'video' ? <VideoFixture /> : fixture === 'overlay' ? <OverlayFixture /> : fixture === 'markers' ? <MarkerFixture /> : fixture === 'visual' ? <VisualFixture /> : fixture === 'scroll' ? <ScrollFixture /> : fixture === 'multiple' ? <MultipleFixture /> : fixture === 'bench' ? <BenchmarkFixture /> : fixture === 'resource' ? <ResourceFixture /> : <App />);
+else createRoot(document.getElementById('root')!).render(fixture === 'streaming' ? <StreamingFixture /> : fixture === 'media-annotations' ? <MediaAnnotationFixture /> : fixture === 'translation-details' ? <TranslationDetailsFixture /> : fixture === 'media' ? <MediaFixture /> : fixture === 'toolbar' ? <ToolbarFixture /> : fixture === 'assistant-test' ? <PluginFixture /> : fixture === 'sidebar' ? <SidebarFixture /> : fixture === 'selection-bench' ? <SelectionBenchmarkFixture /> : fixture === 'video' ? <VideoFixture /> : fixture === 'overlay' ? <OverlayFixture /> : fixture === 'markers' ? <MarkerFixture /> : fixture === 'visual' ? <VisualFixture /> : fixture === 'scroll' ? <ScrollFixture /> : fixture === 'multiple' ? <MultipleFixture /> : fixture === 'bench' ? <BenchmarkFixture /> : fixture === 'resource' ? <ResourceFixture /> : <App />);

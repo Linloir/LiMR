@@ -46,7 +46,7 @@ for (const version of ['18.3.1', '19']) {
   await writeFile(join(directory, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, skipLibCheck: false, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', jsx: 'react-jsx', noEmit: true }, include: ['consumer.tsx'] }));
   await writeFile(join(directory, 'consumer.tsx'), `
 import { Reader, Markdown, DocumentProvider, standard, defineAnnotation, AnnotationCard, AnnotationMarkdown, ToolIcon, InlineMarker, useLocale, useRendererParameter, type RendererExtension, type SelectionAction } from '@linloir/limr';
-import { createDocument } from '@linloir/limr/core';
+import { createDocument, prepareKnuthPlass } from '@linloir/limr/core';
 import { readingTools } from '@limr-example/reading-tools';
 import { readingTools as templateTools } from '@example/limr-reading-tools';
 const templateApp = <Reader source="Template" plugins={[templateTools()]} />;
@@ -58,6 +58,8 @@ declare module '@linloir/limr' { interface RendererParameters { consumerDensity?
 const parameterPlugin: RendererExtension = { name: 'consumer-parameters', parameters: { consumerDensity: 2 }, components: { parameter: () => <InlineMarker label="Density">{useRendererParameter('consumerDensity')}</InlineMarker> } };
 const standalone = <Markdown source="Text" justify plugins={[parameterPlugin]} parameters={{ consumerDensity: 3, translationMode: 'both', onTranslationModeChange: mode => { const checked: 'origin' | 'translation' | 'both' = mode; } }} />;
 const shared = <DocumentProvider source="Text" justify><Markdown justify={false} /></DocumentProvider>;
+const layoutApp = <Reader source="==Marked==" typography="knuth-plass" knuthPlass={{ tolerance: 200, hyphenate: word => [word] }} streamEffect={{ keyframes: [{ opacity: 0 }, { opacity: 1 }] }} rendererOverrides={[{ type: 'code', when: (node, context) => node.lang === 'js' && !context.incomplete, component: ({ renderValue }) => <pre>{renderValue()}</pre> }]} />;
+prepareKnuthPlass([{ type: 'box', width: 10 }, { type: 'penalty', width: 0, penalty: -10000 }])(400);
 createDocument('Core').getSnapshot();
 `);
   run('pnpm', ['exec', 'tsc'], directory);
@@ -104,7 +106,8 @@ const plugins = [readingTools()];
 createRoot(document.getElementById('root')).render(h(Fragment, null,
   h(Reader, { source: '# Package consumer\\n\\nChoose **this passage** with $x^2$.\\n\\n<reading-tip>\\n\\nA plugin **tip**.\\n\\n</reading-tip>', plugins, appearance: 'paper', toc: false, sidebar: false }),
   h(Reader, { source: 'Independent classic reader.', toc: false, sidebar: false }),
-  h(Reader, { documentId: 'template', source: 'A **template passage**.\\n\\n<reading-tip title="Template">\\n\\nA template tip.\\n\\n</reading-tip>', plugins: [templateTools()], locale: chinese, toc: false, sidebar: false })
+  h(Reader, { documentId: 'template', source: 'A **template passage**.\\n\\n<reading-tip title="Template">\\n\\nA template tip.\\n\\n</reading-tip>', plugins: [templateTools()], locale: chinese, toc: false, sidebar: false }),
+  h(Reader, { documentId: 'modules', source: '> [!tip] Tip\\n> Built in.\\n\\n==Marked==[^n]\\n\\n[^n]: Packed footnote.\\n\\n::mermaid\\nflowchart LR\\nA-->B\\n::', typography: 'knuth-plass', locale: chinese, toc: false, sidebar: false })
 ));
 `);
   // Serve the actual installed tarballs, never an alias back into the repo.
@@ -146,8 +149,20 @@ createRoot(document.getElementById('root')).render(h(Fragment, null,
     await page.getByRole('button', { name: '阅读笔记', exact: true }).click();
     await expect(page.locator('.limr-annotation-expanded')).toContainText('阅读笔记');
     await expect(page.locator('.limr-annotation-expanded')).toContainText('template passage');
+    await page.keyboard.press('Escape');
+    const modules = page.locator('[data-limr-document="modules"]');
+    await modules.scrollIntoViewIfNeeded();
+    await expect(modules.locator('.limr-callout')).toContainText('Built in.');
+    await expect(modules.locator('[data-mermaid-state="ready"] .limr-mermaid-canvas > svg')).toHaveCount(1, { timeout: 20000 });
+    await expect(modules.locator('p').first()).toHaveAttribute('data-limr-kp');
+    await modules.getByRole('button', { name: '脚注', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: '脚注', exact: true })).toContainText('Packed footnote.');
+    await page.keyboard.press('Escape');
+    await modules.locator('mark').first().click();
+    await expect(page.getByRole('toolbar')).toHaveAttribute('data-readonly', 'true');
+    await expect(page.getByRole('toolbar').getByRole('button')).toHaveCount(1);
     if (errors.length) throw new Error(errors.join('\n'));
-    console.log(`React ${version}: packed syntax/action/annotation plugin, scoped CSS, and the built skill template passed in Chromium`);
+    console.log(`React ${version}: packed plugins, scoped CSS, skill template, KP, Mermaid, callout, highlight and footnote modules passed in Chromium`);
   } finally { await browser?.close(); server.kill('SIGTERM'); }
 }
 await mkdir('artifacts', { recursive: true });

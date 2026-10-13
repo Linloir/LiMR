@@ -52,7 +52,7 @@ export function citation(options: Partial<AnnotationType<CitationData>> = {}): R
     annotationTypes: [{ type: 'citation', label: locale => locale.citation ?? 'Citation', icon: CitationIcon, color: '#6366f1', highlight: 'hover', Content, ...options, sidebar: { Preview, collapseOnContentClick: false, ...options.sidebar }, overlay: { Card, expand: false, ...options.overlay } }],
     transform(root) {
       walk(root, node => {
-        if (node.type !== 'component') return;
+        if (node.type !== 'component' || node.incomplete) return;
         if (node.name === 'citation') {
           const attributes = node.attributes ?? {};
           const id = String(attributes['cite-id'] ?? attributes.id ?? '');

@@ -14,15 +14,23 @@ Docs navigation and Playground persistence/loading/language menus belong to the 
 
 ## Append parsing
 
-Streaming reparses from the unstable final top-level block and reuses earlier stable blocks. Late Markdown reference/footnote definitions may change earlier semantics and trigger full correction. Middle edits, document-scoped transforms, extension changes, and finalization also reparse fully. Long lists, code fences, or unclosed tags can still make tail reparsing expensive.
+Streaming reparses from the unstable final top-level block, reusing stable prefixes, line indexes, and node semantic indexes. Growing code fences can use a literal fast path. Finalization can also reparse only the tail rather than always parsing the whole document. Late Markdown reference/footnote definitions, middle edits, document-scoped transforms, or extension changes can still require a full parse. Long paragraphs, lists, and complex unclosed tags retain tail-parsing costs.
 
-Source is not rewritten before parsing, and public coordinates preserve UTF-16 offsets. Custom transforms must preserve positions and honor locality. Embedded references and application annotations enter separately and merge in the React layer.
+`incomplete` identifies an unclosed node; `pending` describes its growing top-level block. Modules can render progressively or provide `streaming.Loading`. Incomplete headers and inline syntax markers are deferred. Increment animations affect new content; temporary wrappers merge after animation completion once native selection leaves them. Streaming code retains existing text nodes, and final highlighting waits while its text is selected.
+
+Public source always retains the original input. Internally, the parser inserts markers for two-colon components and incomplete syntax, then maps positions back through sparse offsets. These internal markers never enter copied text, annotations, or persisted data. Custom transforms must preserve original UTF-16 positions and honor locality. Embedded references and application annotations enter separately and merge in the React layer.
+
+## Typography and source mapping
+
+Standard mode uses browser layout by default. KP loads on the client: preparation caches glyph measurements, hyphenation, legal breakpoints, and prefix sums; solving runs TeX paragraph dynamic programming. Stable paragraphs near the viewport take priority and retain their DOM offscreen. Width changes reuse preparation and text containers. Selected paragraphs keep their native Range and defer layout until selection clears. Original source offsets and annotations remain unchanged; see [styles](styles.md) and [performance](performance.md).
+
+Atomic selection text serializes complete original source; surrounding ordinary text retains its rendered spelling and explicit line breaks. Mapped attributes, children, and nested atoms follow the enclosing plugin block’s atomic selection contract.
 
 ## State and resources
 
 Update configuration immutably and keep static references stable. Scrolling and parameter updates do not require parsing. A provider manages one primary body; document state and annotation requests are isolated between providers.
 
-Annotation loading uses bounded per-reader caching; releasing consumers can cancel unused requests. Pure Shiki token results use a bounded module-level cache, separate from user annotation data. The library supplies no model service, authentication, database, or automatic persistence.
+Annotation loading uses bounded per-reader caching; releasing consumers can cancel unused requests. Pure Shiki token results use a bounded module-level cache, separate from user annotation data. Mermaid uses bounded result caching and serializes global initialization with rendering so readers using different themes cannot interfere. The library supplies no model service, authentication, database, or automatic persistence.
 
 ## Fallback behavior
 

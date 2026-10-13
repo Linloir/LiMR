@@ -39,7 +39,8 @@ appearance 会传给 portal 中的浮层/工具栏；不要只用 `.limr-reader 
 | --- | --- |
 | --limr-font-text / --limr-font-code | 正文 / 代码字体 |
 | --limr-font-size / --limr-line-height | 基础排版 |
-| --limr-font-features | 正文默认 'palt' 1，字体支持时采用比例标点 |
+| --limr-font-features | 正文默认 normal，保留中文全角标点；可显式设置 'palt' 1 启用比例标点 |
+| --limr-punctuation-spacing | 默认 space-all，保留连续中文标点的全角空白 |
 | --limr-emphasis-spacing / --limr-list-item-gap | 斜体末尾 / 列表间距 |
 | --limr-text / --limr-heading / --limr-secondary / --limr-muted | 文字层次 |
 | --limr-background / --limr-surface / --limr-border | 背景和边框 |
@@ -54,6 +55,8 @@ appearance 会传给 portal 中的浮层/工具栏；不要只用 `.limr-reader 
 | --limr-overflow-fade-size | 溢出渐隐，默认 24px，0px 关闭 |
 | --limr-toolbar-panel-max-height | 工具栏面板高度上限 |
 | --limr-tool-icon-size / --limr-mark-size | 工具图标 / 正文角标尺寸 |
+| --limr-mermaid-max-height | 图表视口最大高度；默认 min(70vh, 36rem) |
+| --limr-mermaid-scrollbar | 图表细滚动条颜色；默认 #87837866 |
 
 runtime 测量的 --limr-toolbar-available-height、--limr-toolbar-panel-height、--limr-toc-available-height 是布局输出，不应由主题覆盖。sidebar 的局部颜色通常由 AnnotationType.sidebar 配置提供，见[扩展开发](extensions.md)。
 
@@ -71,10 +74,26 @@ Maple Mono NF CN v7.9 的本地 WOFF2 子集随包分发，衍生字体名为 Li
 
 密集的文末引用在静止时向上借用空余空间。悬浮或激活时优先对齐当前条目，允许邻项在边缘裁切；角标悬浮时可压缩可选摘要，为关联区和标题留出空间。展开内容受可见阅读区域高度限制，并可在卡片内滚动。侧栏条目即使被向上收拢，也会反向对齐正文。取消激活后按当前卡片高度平滑回位，使用 `--limr-motion-slow` 和 `--limr-ease`，保持卡片间距与页面高度。
 
-选区保留原生浏览器范围与键盘行为，绘制层只计算可见片段。代码支持局部高亮，公式整体选择，图片高亮使用边框。打印隐藏绘制层并保留正文。移动端自动化检查不等于 iOS/Android 原生拖动手柄和真机验收。
+选区保留原生浏览器范围与键盘行为，绘制层只计算可见片段。代码支持局部高亮，公式整体选择，图片高亮使用边框。单个整块选区的工具栏定位在块下方。打印隐藏绘制层并保留正文。移动端自动化检查不等于 iOS/Android 原生拖动手柄和真机验收。
+
+选区工具栏的复制反馈使用淡入淡出与轻微缩放。按钮文字宽度随当前状态增长或收缩，均通过 `--limr-ease` 非线性过渡；减少动态效果设置会关闭这些过渡。
+
+Mermaid 图像支持拖拽平移、触摸和触控板滚动、方向键、Page Up/Down、Home/End，以及 Shift＋滚轮横向移动；单击或 Enter 整块选择，拖动不会选中内部文字。缩放仅改变有限高度视口内的内容。共享磨砂工具栏在悬浮或获得焦点时显示，触屏常显；按钮只做背景淡入，不缩放。源码模式保留正常顶部内边距。主题和插件可在 Reader 或图表块上覆盖最大高度与滚动条变量。
 
 ## 仅 CSS 的独立主题
 
 包可导出 CSS，files 包含 CSS，sideEffects 为 `["**/*.css"]`；不需要 React 或解析器运行时依赖。规则用独立 appearance 名隔离，覆盖浅色、深色、auto 和 portal，并在同页两个不同主题 Reader 中检查。
 
 展开工具栏面板使用工具栏的全部可用宽度。宽度由当前操作按钮行与可用视口决定，展开内容不参与工具栏的固有宽度计算，不会反向撑大工具栏。高亮样式按钮按文字自然宽度排列，空间不足时整项换行并左对齐。多行下划线需要保持内部 span 为 inline，不把它直接作为 flex 子项。
+
+## 段落排版与流式效果
+
+`typography="standard"` 为默认模式；`justify` 使用浏览器两端对齐；`knuth-plass` 使用 TeX 的 box/glue/penalty 动态规划：四种适配类别、整数 badness、独立平方惩罚、连续与末行断词惩罚，以及 pretolerance、tolerance、emergency 多轮求解。整段求最优解，不使用 beam search 或段落长度截断。默认英文断词采用 Knuth–Liang 模式，Unicode 断行规则同时处理中文标点。字形由浏览器测量，因此不承诺与 TeX PDF 逐像素相同。
+
+`knuthPlass` 可配置 `pretolerance`、`tolerance`、`linePenalty`、`hyphenPenalty`、`adjacentDemerits`、`doubleHyphenDemerits`、`finalHyphenDemerits`、`emergencyStretch`（CSS 像素）、`looseness` 和 `hyphenate`（`false` 或返回单词分段的函数）。核心段落参数沿用 TeX 常用默认值，额外提供 16px 应急伸展量；浏览器适配器默认按字号换算为 3em，仅参与断行评估，可用 `knuthPlass.emergencyStretch` 显式覆盖。`pretty` / `normal` 保留为可选的旧版 CSS 模式。
+
+KP 按需加载，对视口附近的稳定段落排版；离开视口后保留 DOM，宽度变化时复用测量结果与前缀和，更新前保护原生选区。窗口缩小时，屏外缓存行暂时裁切横向溢出，进入视口后完成精确排版；仍被选中的段落暂时允许换行并保留原生选区。流式尾段稳定后再排版，不改变源码、标注位置或复制内容。滚动和缩放对照见[性能](performance.md)，算法依据见 [TeX 源码](https://github.com/TeX-Live/texlive-source/blob/trunk/texk/web2c/tex.web)。测量准备与断行分离的设计也参考了 [Typst 的增量排版实现](https://github.com/typst/typst/tree/main/crates/typst-layout/src/inline)。
+
+默认 loading 使用固定 32×32 viewBox、22px 显示尺寸、粗轨道和伸缩弧线；旋转、增长、收缩均为非线性缓动，围绕固定圆心运动，颜色跟随 `--limr-secondary`。新增文字与特殊块只做透明度淡入，不增加背景色，段落结束时不再次播放出现动画。插件可用 `streaming.effect` 替换共享动画，Reader 可用 `streamEffect` 单独覆盖。
+
+源码高亮的默认蓝色由 `--limr-inline-highlight` 控制，也可通过 `inlineHighlights({ color })` 替换模块。默认只读工具栏的说明可用 `locale.inlineHighlightHint` 本地化。

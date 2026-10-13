@@ -14,6 +14,7 @@ export const english: LiMRLocale = {
   highlight: 'Highlight', addHighlight: 'Add highlight', editHighlight: 'Edit highlight', highlightColor: 'Color', highlightStyle: 'Style',
   highlightBackground: 'Background', highlightUnderline: 'Underline', highlightDotted: 'Dotted', highlightWavy: 'Wavy',
   hideHighlight: 'Hide highlight', showHighlight: 'Show highlight',
+  inlineHighlightHint: 'Markdown inline highlight, editing unavailable',
   deleteAnnotations: 'Delete', deleteAnnotationsHint: 'Deletes {count} annotations on this text and any highlight.',
 };
 export const chinese: LiMRLocale = {
@@ -26,6 +27,7 @@ export const chinese: LiMRLocale = {
   highlight: '高亮', addHighlight: '添加高亮', editHighlight: '调整高亮', highlightColor: '颜色', highlightStyle: '样式',
   highlightBackground: '底色', highlightUnderline: '下划线', highlightDotted: '点线', highlightWavy: '波浪线',
   hideHighlight: '隐藏高亮', showHighlight: '显示高亮',
+  inlineHighlightHint: 'Markdown 内嵌高亮，不支持编辑',
   deleteAnnotations: '删除', deleteAnnotationsHint: '将删除这段文字关联的 {count} 个注释及高亮。',
 };
 
@@ -89,6 +91,7 @@ export class ReaderRuntime {
   readonly bindings = new WeakMap<Node, SourceBinding>();
   readonly textBinders = new WeakMap<HTMLElement, () => void>();
   components: Readonly<Record<string, NodeRenderer>> = {};
+  rendererOverrides = new Map<string, import('./types').RendererOverride[]>();
   annotationTypes = new Map<string, ResolvedAnnotationType>();
   private resolvedTypes = new WeakMap<AnnotationType<any>, ResolvedAnnotationType>();
   locale = english;
@@ -183,6 +186,10 @@ export class ReaderRuntime {
   private installConfiguration(config: ViewConfiguration) {
     this.locale = { ...english, ...config.locale };
     this.components = Object.assign({}, ...(config.extensions ?? []).map(ext => ext.components), config.components);
+    this.rendererOverrides = new Map();
+    const rules = [...(config.extensions ?? []).flatMap(ext => ext.rendererOverrides ?? []),
+      ...Object.entries(config.components ?? {}).map(([type, component]) => ({ type, component })), ...config.rendererOverrides ?? []];
+    for (const rule of rules) this.rendererOverrides.set(rule.type, [...this.rendererOverrides.get(rule.type) ?? [], rule]);
     const annotationTypes = [...(config.extensions ?? []).flatMap(ext => [...ext.annotationTypes ?? []]), ...config.annotationTypes ?? []];
     this.annotationTypes = new Map(annotationTypes.map(type => {
       if (typeof type.label === 'string') return [type.type, type as ResolvedAnnotationType];
@@ -253,13 +260,13 @@ export class ReaderRuntime {
     if ([...versions.keys()].some(id => !annotations.has(id))) this.resourceVersions.set(new Map([...versions].filter(([id]) => annotations.has(id))));
     const occurrences: AnnotationOccurrence[] = [...doc.occurrences];
     const allHighlights: PaintHighlight[] = [];
-    for (const annotation of config.annotations ?? this.localAnnotations) {
+    for (const annotation of annotations.values()) {
       resolveAnnotationAnchors(annotation, doc).forEach((anchor, index) => {
         if (annotation.type === 'highlight') {
           const id = index ? `${annotation.id}:${index}` : annotation.id;
           const value = { ...(annotation.data as HighlightData), id, annotationId: annotation.id, range: anchor.range };
           const old = previous.highlights.get(id);
-          allHighlights.push(old && !old.occurrenceId && sameRange(old.range, value.range) && old.color === value.color && old.style === value.style && old.hidden === value.hidden ? old : value);
+          allHighlights.push(old && !old.occurrenceId && sameRange(old.range, value.range) && old.color === value.color && old.style === value.style && old.hidden === value.hidden && old.readOnly === value.readOnly ? old : value);
         } else occurrences.push({ ...anchor, id: anchor.id ?? `${doc.id}-${annotation.id}-${index}`, annotationIds: [annotation.id] });
       });
     }

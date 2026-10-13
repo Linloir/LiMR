@@ -13,7 +13,7 @@
 | 一个带 Markdown 正文的新区块 | defineBlock |
 | 一种独立标注类型 | defineAnnotation |
 | 组合语法、标注、动作和参数 | defineExtension / RendererExtension |
-| 改写某种已有节点的外观 | components |
+| 改写已有节点外观或只替换满足条件的节点 | components / rendererOverrides |
 | 新的解析规则 | micromark + mdast 扩展，必要时 transform |
 | 仅修改视觉 | CSS 主题包 + appearance |
 
@@ -51,7 +51,7 @@ export const notice = defineBlock({
 });
 ```
 
-支持 `<notice title="提示">…</notice>` 和 `:::notice{title="提示"}`。name 默认同时成为标签名和指令名，可通过 tags / directives 自定义。defineBlock 默认 display: block、selection: content、scope: local。
+支持 `<notice title="提示">…</notice>`、配对的 `::notice{title="提示"}` / `::`，以及 `:::` 容器。name 默认同时成为标签名和指令名，可通过 tags / directives 自定义。defineBlock 默认 display: block、selection: content、scope: local。
 
 | NodeRendererProps | 用法 |
 | --- | --- |
@@ -59,6 +59,7 @@ export const notice = defineBlock({
 | children | 已经渲染好的子树；优先复用 |
 | source | **当前节点**对应的源码片段，不是全文 |
 | pending | 所属尾块是否仍在流式生成 |
+| incomplete | 当前语法节点是否尚未闭合 |
 | renderChildren(nodes, { trailing? }) | 重排已有子树，可在末尾注入纯操作角标 |
 | renderValue(tokens?) | 渲染字面量及高亮 token，保留原文选择和标注插入 |
 | renderAttribute(name) | 显示属性文本并保留原文坐标 |
@@ -148,12 +149,62 @@ export const glossary = defineExtension({
 
 ## 解析与流式约束
 
-SyntaxExtension 支持 micromark、mdast、tags、directives、display、selection、transform 和 scope。transform 默认全文作用域；仅依赖当前局部子树、不会回写前文或读取全局文档语义时才声明 scope: local。context.source 仍是原始全文，position 必须保持原始 UTF-16 坐标。不要先用正则替换 source 再解析。
+SyntaxExtension 支持 micromark、mdast、tags、directives、display、selection、literal、transform 和 scope。transform 默认全文作用域；仅依赖当前局部子树、不会回写前文或读取全局文档语义时才声明 scope: local。context.source 仍是原始全文，position 必须保持原始 UTF-16 坐标。插件不要先用正则替换 source 再解析。
 
-未知特殊标签安全显示整段原文，内部 Markdown 也作为原文显示。默认配置的未知指令则渲染内部 Markdown，丢弃指令外层标记；未安装任何指令扩展时按基础 Markdown 解析。不完整标签会回退并记录 diagnostics，之后追加再尝试恢复；结束必须 finish 或 streaming=false。扩展 transform 的异常记录为 diagnostic；客户端渲染边界可回退源码，但 React 错误边界不负责捕获服务端渲染异常。
+未知特殊标签安全显示整段原文，内部 Markdown 也作为原文显示。默认配置的未知指令则渲染内部 Markdown，丢弃指令外层标记；未安装任何指令扩展时按基础 Markdown 解析。已注册的未闭合标签和容器携带 node.incomplete，之后追加继续恢复；半截头部暂缓显示或交由模块展示 loading；无效 JSX 仍可能回退并记录 diagnostics；结束必须 finish 或 streaming=false。扩展 transform 的异常记录为 diagnostic；客户端渲染边界可回退源码，但 React 错误边界不负责捕获服务端渲染异常。
 
 验证应覆盖标签/指令、中文与 emoji、源坐标、流式结束与一次性解析等价、SSR，以及新增交互的浏览器行为。独立分发还需验证真实打包消费，见[插件模块包](plugin-packages.md)。
 
 ## 插件本地化
 
 1.0.0 起，组件可用 useLocale() 读取合并后的 locale，以 locale.language 选择自己的文案。AnnotationType.label 接受字符串或 `(locale) => string`；选区动作使用 context.locale。Citation 默认标题随语言切换为 Citation / 引用。保持插件实例稳定即可更新文案，无需重写源文；用户保存的笔记不会被翻译。
+
+## 流式中间态与增量动画
+
+`pending` 表示顶层块还在增长；`incomplete` 表示当前语法节点尚未闭合。注册的标签自动支持组件指令写法。`defineBlock` 可提供 `streaming.Loading`，不提供时由原组件渐进渲染，并通过 `incomplete` 判断状态。后续内容到来时保持组件身份和内部状态。
+
+默认的定义、题目、拓展阅读、视频、图片和 callout 指令使用小圆环等待完整内容；Mermaid 等待闭合后异步绘图；代码、公式、GFM 和翻译模块直接展示可用中间态。callout 的引用块写法可在头部完整后渐进展示正文。未闭合的引用定义不会提前注册不完整数据。第三方模块完全拥有自己的中间态样式。
+
+```tsx
+import { defineBlock, defineExtension } from '@linloir/limr';
+
+export const chart = defineBlock({
+  name: 'chart',
+  component: ({ children }) => <section>{children}</section>,
+  streaming: { Loading: () => <span role="status">正在准备图表…</span> },
+});
+export const streamMotion = defineExtension({
+  name: 'example:stream-motion',
+  streaming: {
+    effect: {
+      className: 'my-stream-increment',
+      keyframes: [{ opacity: 0.25 }, { opacity: 1 }],
+      timing: { duration: 320, easing: 'ease-out' },
+    },
+  },
+});
+```
+
+后注册的 `streaming.effect` 优先，阅读器的 `streamEffect` 拥有最终覆盖权，`false` 关闭效果。关键帧和时间选项使用 Web Animations API；减少动态效果的系统偏好会阻止新动画。默认动画仅改变新增文字和特殊块的透明度，不添加背景色；文字动画结束后在原生选区离开时合并临时包装节点。使用 `children`、`renderChildren` 和 `renderValue` 可保留这些行为；插件自行替换 DOM 时，需要自行维护选区和动画。
+
+`SyntaxExtension.literal` 让指令正文保持字面量，避免内部代码被解释为 Markdown 或 JSX。模块可读取原始 `source` 或变换组件节点；它不会执行属性表达式、YAML 或 JavaScript。
+
+## 按条件替换渲染组件
+
+模块可通过 `rendererOverrides` 限制替换的节点类型、语言、祖先或流式状态；规则只作用于使用该模块的 Reader。后注册且满足条件的规则优先；宿主 Reader 的规则优先于模块和 `components` 映射。未匹配的节点继续使用原组件。
+
+```tsx
+import { defineExtension, type NodeRenderer } from '@linloir/limr';
+
+const JavaScriptCode: NodeRenderer = ({ renderValue }) => <pre>{renderValue()}</pre>;
+export const customCode = defineExtension({
+  name: 'example:javascript-code',
+  rendererOverrides: [{
+    type: 'code',
+    when: (node, context) => node.lang === 'js' && !context.incomplete,
+    component: JavaScriptCode,
+  }],
+});
+```
+
+`when` 也能读取 `pending` 和 `ancestors`。显式替换组件拥有自己的中间态渲染，仍处于 LiMR 的源范围、原子选择和异常边界之内。使用 `renderValue`、`renderAttribute`、`renderChildren` 维持精确映射。这里的限制是渲染规则作用域，不是对第三方 JavaScript 的安全沙箱。

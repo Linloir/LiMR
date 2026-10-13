@@ -21,7 +21,31 @@ export function StreamingAnswer({ answer, generating }: {
 }
 ```
 
-The application owns transport and appends each chunk to the complete answer. Do not pass only the newest chunk as source. The final update must set streaming to false to complete semantic correction. followOutput follows only while the reader remains near the bottom. The core engine supports append(chunk) / finish(); React props take the accumulated string.
+The application owns transport and appends each chunk to the complete answer. Do not pass only the newest chunk as source. The final update must set streaming to false to finalize syntax and semantics. Finalization can reuse stable prefixes; definition changes and other global dependencies may still require a full parse. followOutput follows only while the reader remains near the bottom. The core engine supports append(chunk) / finish(); React props take the accumulated string.
+
+New text and special blocks fade through opacity by default, without replaying the entrance when a paragraph finishes. Use `streamEffect={false}` to disable it or supply `className`, `keyframes`, and `timing`; reduced-motion preferences take precedence. Unclosed modules can show loading states while code/math render progressively. Reuse `children`, `renderChildren`, and `renderValue` to preserve controls and selections. See [extensions](extensions.md).
+
+## Paragraph typography
+
+```tsx
+import { useState } from 'react';
+import { Reader, type TypographyMode } from '@linloir/limr';
+
+export function TypographyReader({ source }: { source: string }) {
+  const [mode, setMode] = useState<TypographyMode>('standard');
+  return <>
+    <select aria-label="Typography" value={mode}
+      onChange={event => setMode(event.target.value as TypographyMode)}>
+      <option value="standard">Standard</option>
+      <option value="knuth-plass">Knuth–Plass</option>
+      <option value="justify">Justified</option>
+    </select>
+    <Reader source={source} typography={mode} />
+  </>;
+}
+```
+
+`standard` is the default; `justify` uses browser justification; `knuth-plass` enables the paragraph optimizer. `knuthPlass` configures TeX parameters and hyphenation. Streaming tails participate in KP once stable. See [styles](styles.md) and [performance](performance.md) for behavior and measurement boundaries.
 
 ## Nested scroll containers
 
@@ -111,7 +135,7 @@ export async function renderArticle(source: string) {
 }
 ```
 
-React streaming SSR can also handle Suspense. Shiki adds highlighting on the client; SSR already includes code text. Annotation load requests start when a card is shown on the client. Put preloaded data in annotation.data if needed. The host must still serve CSS and fonts.
+React streaming SSR can also handle Suspense. Shiki adds highlighting on the client; SSR already includes code text. Mermaid emits a loading state on the server and fades in after client rendering. KP measures fonts and typesets on the client; SSR retains ordinary text layout. Annotation load requests start when a card is shown on the client. Put preloaded data in annotation.data if needed. The host must still serve CSS and fonts.
 
 ## Existing plugins and themes
 

@@ -7,10 +7,11 @@ export interface BlockExtensionOptions {
   tags?: readonly string[];
   directives?: readonly string[];
   selection?: 'content' | 'atomic';
+  streaming?: RendererExtension['streaming'];
 }
 /** A tag/directive adapter with original source positions and streaming recovery. */
-export function defineBlock({ name, component, tags = [name], directives = [name], selection = 'content' }: BlockExtensionOptions): RendererExtension {
-  return { name, tags, directives, selection, display: 'block', scope: 'local', components: Object.fromEntries([...new Set([...tags, ...directives])].map(tag => [tag, component])) };
+export function defineBlock({ name, component, tags = [name], directives = [name], selection = 'content', streaming }: BlockExtensionOptions): RendererExtension {
+  return { name, tags, directives, selection, streaming, display: 'block', scope: 'local', components: Object.fromEntries([...new Set([...tags, ...directives])].map(tag => [tag, component])) };
 }
 export function defineAnnotation<T>(type: AnnotationType<T>): RendererExtension {
   return { name: `annotation:${type.type}`, annotationTypes: [type], scope: 'local' };

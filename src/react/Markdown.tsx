@@ -23,15 +23,18 @@ function MarkdownBody({ className, style, interactive, followOutput, justify }: 
   const appearance = useAppearance();
   const theme = useStoreSelector(runtime.configuration, config => config.theme ?? 'light');
   const configuredJustify = useStoreSelector(runtime.configuration, config => config.justify ?? false);
+  const typography = useStoreSelector(runtime.configuration, config => config.typography ?? 'standard');
+  const justified = justify ?? (typography === 'justify' || configuredJustify);
   const scrollRoot = useStoreSelector(runtime.configuration, config => config.scrollRoot);
   const offset = useStoreSelector(runtime.documentOffset, value => value);
   const components = useStoreSelector(runtime.configuration, config => config.components);
   const extensions = useStoreSelector(runtime.configuration, config => config.extensions);
+  const rendererOverrides = useStoreSelector(runtime.configuration, config => config.rendererOverrides);
   const decorations = useStoreSelector(runtime.decorations, state => state.byBlock);
   const ref = useRef<HTMLElement>(null);
   const pinned = useRef(true);
   useIsomorphicLayoutEffect(() => ref.current ? runtime.mountContent(ref.current) : undefined, [runtime, scrollRoot]);
-  useIsomorphicLayoutEffect(() => runtime.requestLayout(), [runtime, justify, configuredJustify]);
+  useIsomorphicLayoutEffect(() => runtime.requestLayout(), [runtime, justify, configuredJustify, typography]);
   useSelectionTracking(runtime, interactive);
   useEffect(() => {
     if (!followOutput) return;
@@ -49,8 +52,8 @@ function MarkdownBody({ className, style, interactive, followOutput, justify }: 
     const frame = requestAnimationFrame(() => runtime.scrollTo(scrollRoot?.scrollHeight ?? window.document.documentElement.scrollHeight, 'instant'));
     return () => cancelAnimationFrame(frame);
   }, [document, runtime, followOutput, scrollRoot]);
-  return <article ref={ref} className={`limr-prose ${className ?? ''}`} style={{ ...style, translate: offset ? `0 ${offset}px` : style?.translate }} data-limr-theme={theme} data-limr-appearance={appearance} data-limr-document={document.id} data-limr-justify={justify ?? configuredJustify}>
-    {document.blocks.map(block => <BlockView key={block.id} block={block} runtime={runtime} components={components} extensions={extensions} decorations={decorations.get(block.id) ?? emptyDecorations} />)}
+  return <article ref={ref} className={`limr-prose ${className ?? ''}`} style={{ ...style, translate: offset ? `0 ${offset}px` : style?.translate }} data-limr-theme={theme} data-limr-appearance={appearance} data-limr-document={document.id} data-limr-justify={justified} data-limr-typography={typography}>
+    {document.blocks.map(block => <BlockView key={block.id} block={block} runtime={runtime} components={components} extensions={extensions} rendererOverrides={rendererOverrides} decorations={decorations.get(block.id) ?? emptyDecorations} />)}
     <Footnotes />
     <SelectionPaint runtime={runtime} interactive={interactive} />
   </article>;

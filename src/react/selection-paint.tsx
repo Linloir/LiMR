@@ -4,7 +4,7 @@ import type { SourceRange } from '../core';
 import { intersects } from '../core/tree';
 import { sameRange } from '../core/annotations';
 import type { ReaderRuntime } from './runtime';
-import { leavesIn, textRange, type Leaf, type Viewport } from './source-geometry';
+import { leavesIn, measurementRange, textRange, type Leaf, type Viewport } from './source-geometry';
 
 interface PaintRect { left: number; top: number; width: number; height: number; flow: HTMLElement; marker?: string; atomic?: boolean; image?: boolean; radius?: string }
 
@@ -34,7 +34,7 @@ function rectangles(leaves: readonly Leaf[], source: SourceRange, viewport: View
   };
   const edgeRect = (leaf: Leaf, edge: 'first' | 'last') => {
     const node = leaf.node as Text;
-    const range = document.createRange();
+    const range = measurementRange(node.ownerDocument);
     const offset = edge === 'first' ? 0 : Math.max(0, node.length - 1);
     range.setStart(node, offset); range.setEnd(node, Math.min(node.length, offset + 1));
     return range.getBoundingClientRect();
@@ -55,7 +55,7 @@ function rectangles(leaves: readonly Leaf[], source: SourceRange, viewport: View
     const boxAt = (index: number) => {
       const leaf = leaves[index];
       if (leaf.kind !== 'text') return (leaf.node as HTMLElement).getBoundingClientRect();
-      const range = document.createRange(); range.selectNodeContents(leaf.node); return range.getBoundingClientRect();
+      const range = measurementRange(leaf.node.ownerDocument!); range.selectNodeContents(leaf.node); return range.getBoundingClientRect();
     };
     let lo = 0, hi = leaves.length;
     while (lo < hi) { const mid = (lo + hi) >>> 1; if (boxAt(mid).bottom < viewport.top) lo = mid + 1; else hi = mid; }
@@ -75,6 +75,16 @@ function rectangles(leaves: readonly Leaf[], source: SourceRange, viewport: View
       raw.push({ ...item, marker: (leaf.node as HTMLElement).dataset.limrMarker });
     } else if (intersects(leaf.range, source)) {
       if (leaf.kind === 'text') {
+        // KP glue keeps the original source whitespace in a zero-size text run.
+        // Its inline box, rather than the glyph range, supplies the stretched
+        // advance. Borrow the neighboring glyph's baseline for continuous paint.
+        const glue = leaf.node.parentElement?.closest<HTMLElement>('.limr-kp-glue');
+        if (glue) {
+          const rect = glue.getBoundingClientRect();
+          const reference = referenceFor(index, rect);
+          if (rect.width && reference && rect.bottom >= viewport.top && rect.top <= viewport.bottom) raw.push(geometry(leaf, rect, reference));
+          continue;
+        }
         const range = textRange(leaf, source, viewport);
         const shell = leaf.node.parentElement?.closest<HTMLElement>('[data-limr-inline-syntax]');
         const edges = shell ? Array.from(shell.getClientRects()) : [];
@@ -119,7 +129,27 @@ function rectangles(leaves: readonly Leaf[], source: SourceRange, viewport: View
     const gap = right.left - left.left - left.width;
     if (left.flow === right.flow && Math.abs(left.top - right.top) < .5 && gap > .1 && gap < left.height * .6) bridges.push({ left: left.left + left.width, top: left.top, width: gap, height: left.height, flow: left.flow });
   }
-  return [...aligned, ...bridges];
+  const result: PaintRect[] = [], rows = new Map<HTMLElement, Map<number, PaintRect[]>>();
+  for (const rect of [...aligned, ...bridges]) {
+    if (!rect.flow.hasAttribute('data-limr-kp') || rect.atomic || rect.marker) { result.push(rect); continue; }
+    let flow = rows.get(rect.flow);
+    if (!flow) { flow = new Map(); rows.set(rect.flow, flow); }
+    const row = flow.get(rect.top) ?? [];
+    row.push(rect); flow.set(rect.top, row);
+  }
+  // Typesetting splits a sentence into many words and glue boxes. Paint their
+  // union once per line, retaining separate atomic surfaces and annotation hits.
+  // This also avoids hundreds of opacity transitions when a paragraph leaves
+  // the viewport and its paint layer is removed.
+  for (const flow of rows.values()) for (const row of flow.values()) {
+    row.sort((a, b) => a.left - b.left);
+    let previous: PaintRect | undefined;
+    for (const rect of row) {
+      if (previous && rect.left <= previous.left + previous.width + .1 && Math.abs(rect.height - previous.height) < .1) previous.width = Math.max(previous.width, rect.left + rect.width - previous.left);
+      else { previous = { ...rect }; result.push(previous); }
+    }
+  }
+  return result;
 }
 
 export function SelectionPaint({ runtime, interactive = true }: { runtime: ReaderRuntime; interactive?: boolean }) {
@@ -129,6 +159,7 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
     if (!container || !paint) return;
     let frame = 0, translating = false;
     let leavesCache = new WeakMap<HTMLElement, Leaf[]>();
+    let geometryCache = new WeakMap<HTMLElement, { width: number; height: number; tasks: Map<string, { source: SourceRange; rects: PaintRect[] }> }>();
     type Metric = { ascent: number; descent: number; height: number };
     let metrics = new WeakMap<HTMLElement, Metric>();
     const fontMetrics = new Map<string, Metric>();
@@ -249,14 +280,33 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       };
       for (let index = lo; index < blocks.length; index++) {
         const block = blocks[index];
-        if (block.element.getBoundingClientRect().top > viewport.bottom + 32) break;
+        const blockBox = block.element.getBoundingClientRect();
+        if (blockBox.top > viewport.bottom + 32) break;
         const tasks: { id: string; range: SourceRange; color?: string; style?: PaintHighlight['style']; occurrenceId?: string; selection?: boolean }[] = [...decorations.get(block.id)?.highlights ?? []];
         for (const range of selections) if (intersects(range, block.range)) tasks.push({ id: 'selection', range, selection: true });
         if (!tasks.length) continue;
         let leaves = leavesCache.get(block.element);
-        if (!leaves) { leaves = leavesIn(block.element, runtime); leavesCache.set(block.element, leaves); }
+        // Cache paragraph geometry in block-local coordinates. Scrolling moves
+        // the block, not its shaped text. Keep exceptionally tall blocks on the
+        // viewport-bounded path so selecting a book never measures it in full.
+        let cached = geometryCache.get(block.element);
+        if (cached?.width !== blockBox.width || cached.height !== blockBox.height) cached = undefined;
+        if (!cached && blockBox.height < (viewport.bottom - viewport.top) * 3) {
+          cached = { width: blockBox.width, height: blockBox.height, tasks: new Map() }; geometryCache.set(block.element, cached);
+        }
         for (const task of tasks) {
-          const rects = rectangles(leaves, task.range, { ...viewport, top: viewport.top - 32, bottom: viewport.bottom + 32 }, measure);
+          const saved = cached?.tasks.get(task.id);
+          // A dormant reference has no visible ink. Materialize its geometry on
+          // hover/activation; retain a previously painted one for its fade-out.
+          // Long papers otherwise measure every invisible citation on scroll.
+          if (task.occurrenceId && !referenceActive(task.occurrenceId) && !saved) continue;
+          if (!leaves) { leaves = leavesIn(block.element, runtime); leavesCache.set(block.element, leaves); }
+          let local = saved && sameRange(saved.source, task.range) ? saved.rects : undefined;
+          if (!local && cached) {
+            local = rectangles(leaves, task.range, { ...viewport, top: -Infinity, bottom: Infinity }, measure).map(rect => ({ ...rect, left: rect.left - blockBox.left, top: rect.top - blockBox.top }));
+            cached.tasks.set(task.id, { source: task.range, rects: local });
+          }
+          const rects = local ? local.map(rect => ({ ...rect, left: rect.left + blockBox.left, top: rect.top + blockBox.top })) : rectangles(leaves, task.range, { ...viewport, top: viewport.top - 32, bottom: viewport.bottom + 32 }, measure);
           for (const rect of rects) {
             const clip = clipFor(rect.flow);
             const left = Math.max(rect.left, clip.left), top = Math.max(rect.top, clip.top);
@@ -270,16 +320,17 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       // replacing thousands of spans and forcing layout between measurements.
       // The layer itself is viewport-sized too: a book-sized stacking layer can
       // otherwise cause expensive browser layout, hit testing and pre-paint.
-      paint.style.top = `${viewport.top - origin.top + scrollTop}px`;
-      paint.style.height = `${Math.max(0, viewport.bottom - viewport.top)}px`;
       // Each text flow is its own stacking context: its paper/background is
       // below the ink, and highlight paint sits between the two. Selection
       // retains its independent foreground layer, including atomic media.
-      const hostGeometry = new Map<HTMLElement, { box: DOMRect; top: number; positioned: boolean }>();
+      const hostGeometry = new Map<HTMLElement, { box: DOMRect; top: number; positioned: boolean; x: number; y: number }>();
       for (const { rect, task } of output) if (!task.selection && !hostGeometry.has(rect.flow)) {
         const host = rect.flow, box = host.getBoundingClientRect();
-        hostGeometry.set(host, { box, top: Math.max(viewport.top, box.top) - box.top - host.clientTop + host.scrollTop, positioned: getComputedStyle(host).position !== 'static' });
+        const x = host.scrollLeft - host.clientLeft, y = host.scrollTop - host.clientTop;
+        hostGeometry.set(host, { box, x, y, top: Math.max(viewport.top, box.top) - box.top + y, positioned: getComputedStyle(host).position !== 'static' });
       }
+      paint.style.top = `${viewport.top - origin.top + scrollTop}px`;
+      paint.style.height = `${Math.max(0, viewport.bottom - viewport.top)}px`;
       const counts = new Map<HTMLElement, number>();
       const nextHits: typeof hits = [];
       output.forEach(({ rect, task }) => {
@@ -297,8 +348,8 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
           // A layer inside a scrollable formula must not enlarge its scroll area.
           layer.style.height = `${Math.max(0, Math.min(viewport.bottom, geometry.box.bottom) - Math.max(viewport.top, geometry.box.top))}px`;
           target = layer;
-          left += origin.left - geometry.box.left - host.clientLeft + host.scrollLeft;
-          top += viewport.top - geometry.box.top - host.clientTop + host.scrollTop - geometry.top;
+          left += origin.left - geometry.box.left + geometry.x;
+          top += viewport.top - geometry.box.top + geometry.y - geometry.top;
           nextHits.push({ id: task.id, rect: { left: rect.left + origin.left - scrollLeft, top: rect.top + viewport.top, width: rect.width, height: rect.height } });
         }
         const index = counts.get(target) ?? 0; counts.set(target, index + 1);
@@ -321,8 +372,11 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
         }
         if (!item.parentNode) target.append(item);
       });
-      for (const layer of [paint, ...highlightLayers.values()]) while (layer.children.length > (counts.get(layer) ?? 0)) layer.lastChild!.remove();
       for (const [host, layer] of highlightLayers) if (!counts.has(layer)) removeLayer(host, layer);
+      for (const layer of [paint, ...highlightLayers.values()]) {
+        const count = counts.get(layer) ?? 0;
+        if (layer.children.length > count) layer.replaceChildren(...Array.from(layer.children).slice(0, count));
+      }
       hits = nextHits;
       const active = runtime.interaction.get().activeHighlight;
       if (active && !hits.some(hit => hit.id === active)) runtime.clearSelection();
@@ -345,12 +399,14 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
     container.addEventListener('transitionend', translate);
     container.addEventListener('transitioncancel', translate);
     const invalidate = () => { blocks = undefined; metrics = new WeakMap(); schedule(); };
-    const fontsChanged = () => { fontMetrics.clear(); invalidate(); };
+    const fontsChanged = () => { fontMetrics.clear(); geometryCache = new WeakMap(); invalidate(); };
     const unsubscribers = [runtime.interaction.subscribe(() => {
       const state = runtime.interaction.get(), selection = state.selection;
+      const referenceChanged = state.active !== lastAnnotation || state.hovered !== lastHoveredAnnotation;
       if (state.hoveredHighlight !== lastHovered || state.activeHighlight !== lastActive || state.active !== lastAnnotation || state.hovered !== lastHoveredAnnotation) {
         lastHovered = state.hoveredHighlight; lastActive = state.activeHighlight; lastAnnotation = state.active; lastHoveredAnnotation = state.hovered; feedback();
       }
+      if (referenceChanged) schedule();
       if (selection === lastSelection) return;
       lastSelection = selection;
       // Selection tracking already runs in rAF: paint in that same frame.
@@ -358,8 +414,8 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
     }), runtime.decorations.subscribe(() => {
       const decorations = runtime.decorations.get().byBlock;
       if (decorations === lastDecorations) return;
-      lastDecorations = decorations; leavesCache = new WeakMap(); schedule();
-    }), runtime.layout.subscribe(invalidate), runtime.documentOffset.subscribe(schedule), runtime.configuration.subscribe(invalidate)];
+      lastDecorations = decorations; leavesCache = new WeakMap(); geometryCache = new WeakMap(); schedule();
+    }), runtime.layout.subscribe(invalidate), runtime.documentOffset.subscribe(schedule), runtime.configuration.subscribe(() => { geometryCache = new WeakMap(); invalidate(); })];
     const observer = new MutationObserver(records => {
       let changed = false;
       for (const record of records) {
@@ -367,13 +423,20 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
         if (!target || target === paint || paint.contains(target) || target.closest('.limr-highlight-layer')) continue;
         if (record.type === 'childList' && [...record.addedNodes, ...record.removedNodes].every(node => node instanceof Element && node.classList.contains('limr-highlight-layer'))) continue;
         const block = target.closest<HTMLElement>('[data-limr-block]');
-        if (block) leavesCache.delete(block); else blocks = undefined;
+        if (block) { leavesCache.delete(block); geometryCache.delete(block); } else { blocks = undefined; geometryCache = new WeakMap(); }
         changed = true;
       }
       if (changed) { metrics = new WeakMap(); schedule(); }
     });
     observer.observe(container, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'inert', 'open', 'data-limr-theme', 'data-limr-justify'] });
-    const scroll = () => { runtime.hoverHighlight(null); schedule(); };
+    const scroll = (event: Event) => {
+      const target = event.target;
+      if (target instanceof Element) {
+        const block = target.closest<HTMLElement>('[data-limr-block]');
+        if (block) geometryCache.delete(block);
+      }
+      runtime.hoverHighlight(null); schedule();
+    };
     document.addEventListener('scroll', scroll, { capture: true, passive: true });
     window.visualViewport?.addEventListener('resize', schedule);
     window.visualViewport?.addEventListener('scroll', schedule);

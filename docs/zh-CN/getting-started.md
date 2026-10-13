@@ -36,6 +36,8 @@ export function Article() {
 
 宽屏提供目录、正文和侧栏；容器宽度小于 `sidebarBreakpoint`（默认 1120px）时标注改用浮层。目录在窄屏以可折叠列表展示。
 
+默认排版为 `standard`；可选 `knuth-plass` 或 `justify`，见[项目集成](integration.md)。默认模块还提供 Mermaid、嵌套 callout、`==高亮==` 和脚注卡片，不需要再追加同名插件；完整列表见[内置模块](modules.md)。
+
 ## 只需要正文
 
 ```tsx

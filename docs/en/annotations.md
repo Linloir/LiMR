@@ -36,7 +36,7 @@ Persist source, a stable documentId, annotation ID/type/data/anchors, and your a
 
 | Field | Meaning |
 | --- | --- |
-| text | Readable selected text |
+| text | Readable selected text; settled atomic content uses its complete original source |
 | raw | Mapped original ranges and source |
 | syntax | Absorbs adjacent standard Markdown delimiters at each edge, without selecting extra words or outer custom tags |
 | blocks | Ranges and source for touched blocks |
@@ -45,6 +45,8 @@ Persist source, a stable documentId, annotation ID/type/data/anchors, and your a
 | documentId / revision | Owning document snapshot |
 
 Each result has ranges and sourceText. Notes usually use syntax.ranges. Store document.source.slice(start, end) as quote for **every range**. Code supports partial selection; math and images are atomic. Do not infer offsets from DOM textContent lengths: entities, escapes, and emoji make those coordinates differ.
+
+The default selection toolbar and browser copy serialize atomic content as a whole, retaining its original delimiters (`$…$`, `$$…$$`, image syntax, Mermaid fences/directives, or plugin block tags). Surrounding ordinary text keeps its rendered spelling and explicit line breaks. This also applies when reopening an existing highlight. A plugin's `selection: 'atomic'` covers its mapped attributes, children, and nested atoms; block-local copy buttons may offer their own specialized format.
 
 ## Highlights and commands
 

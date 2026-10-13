@@ -9,6 +9,12 @@ async function source(page: Page, markdown: string) {
   await page.evaluate(() => document.fonts.ready);
 }
 
+async function saveAnnotations(page: Page) {
+  await page.getByRole('button', { name: '编辑', exact: true }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  return page.evaluate(() => JSON.parse(localStorage.getItem('limr-playground-document')!).annotations);
+}
+
 test('default notes absorb code delimiters, cover padding and place their marker after the code', async ({ page }) => {
   const markdown = 'Serialize data objects to `multipart/form-data` or `application/json`.';
   await source(page, markdown);
@@ -24,7 +30,7 @@ test('default notes absorb code delimiters, cover padding and place their marker
   await card.getByRole('button', { name: '提交', exact: true }).click();
   await expect(code.locator('.limr-mark')).toHaveCount(0);
   await expect(article.locator('code + .limr-mark-wrap')).toHaveCount(1);
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('limr-playground-document')!).annotations);
+  const saved = await saveAnnotations(page);
   expect(saved.map((item: any) => item.type).sort()).toEqual(['highlight', 'reader-footnote']);
   for (const annotation of saved) expect(annotation.anchors[0].quote).toBe('Serialize data objects to `multipart/form-data`');
   const rects = await article.locator('.limr-paint-background').evaluateAll(elements => elements.map(element => element.getBoundingClientRect().toJSON()));
@@ -46,7 +52,7 @@ for (const [selected, expected] of [['alpha', '`alpha'], ['beta', 'beta`'], ['ph
     return range.getBoundingClientRect().toJSON();
   }, selected);
   await page.getByRole('toolbar').getByRole('button', { name: '添加高亮', exact: true }).click();
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('limr-playground-document')!).annotations);
+  const saved = await saveAnnotations(page);
   expect(saved[0].anchors[0].quote).toBe(expected);
   const paint = page.locator('.limr-paint-background');
   await expect(paint).toHaveCount(1);
@@ -70,7 +76,7 @@ test('inline math and nested formats keep their annotation outside the completed
     await card.getByRole('textbox', { name: '笔记内容' }).fill('A syntax-aware note');
     await card.getByRole('button', { name: '提交', exact: true }).click();
     await expect(target.locator('.limr-mark')).toHaveCount(0);
-    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('limr-playground-document')!).annotations);
+    const saved = await saveAnnotations(page);
     const notes = saved.filter((item: any) => item.type === 'reading-note');
     expect(notes.at(-1).anchors[0].quote).toBe(quote);
     if (selector === 'code') await expect(content.locator('em + .limr-mark-wrap')).toHaveCount(1);

@@ -36,7 +36,7 @@ export const annotations: readonly Annotation[] = [{
 
 | 字段 | 含义 |
 | --- | --- |
-| `text` | 可读的选中文本 |
+| `text` | 可读的选中文本；选区稳定后，原子内容使用完整原始源码 |
 | `raw` | 映射得到的原始范围和源码 |
 | `syntax` | 仅吸收两端紧邻的标准 Markdown 标记，不扩选未选文字或特殊块外层标签 |
 | `blocks` | 选区触及的块范围与源码 |
@@ -45,6 +45,8 @@ export const annotations: readonly Annotation[] = [{
 | `documentId` / `revision` | 选区所属文档快照 |
 
 每种结果包含 ranges 和 sourceText。一般笔记使用 syntax.ranges，并为**每个范围**保存 `document.source.slice(start, end)` 作为 quote。代码支持部分选择；公式和图片作为原子内容。不要用 DOM textContent 长度倒推原文范围，实体、转义和 emoji 会让两者不同。
+
+默认选区工具栏与浏览器复制会完整序列化原子内容，保留原来的 `$…$`、`$$…$$`、图片语法、Mermaid 围栏／指令及插件块标签；周围普通文字保留渲染后的文本与显式换行。重新点击已有高亮后复制也遵循这一规则。插件的 `selection: 'atomic'` 覆盖其映射属性、子内容及嵌套原子块；模块内部的复制按钮可以提供专用格式。
 
 ## 高亮和命令
 

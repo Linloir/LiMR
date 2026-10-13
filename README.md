@@ -45,13 +45,14 @@ export function Answer({ text, generating }: { text: string; generating: boolean
 
 | 场景 | 能力 |
 | --- | --- |
-| 文档阅读 | CommonMark、GFM 表格/任务列表/脚注、数学公式、Shiki 代码高亮 |
-| 富内容 | 图片与图组、图注、视频、释义、练习题、拓展阅读、引用、原文/译文/对照 |
-| 阅读交互 | 响应式目录、桌面标注侧栏、窄屏浮层、复制、四种高亮样式 |
+| 文档阅读 | CommonMark、GFM 表格/任务列表、数学公式、Shiki 代码高亮、Mermaid 图表 |
+| 富内容 | 图片与图组、图注、视频、释义、练习题、嵌套注释与 Obsidian callout、引用、原文/译文/对照 |
+| 阅读交互 | 响应式目录、标注侧栏/窄屏浮层、完整原子内容复制、四种高亮样式、`==高亮==` 与脚注卡片 |
+| 排版与流式 | 标准、Knuth–Plass、两端对齐；未闭合语法中间态、增量淡入和稳定选区 |
 | 应用集成 | 受控标注、原始 UTF-16 坐标、多个独立阅读器、内部滚动容器、SSR |
-| 扩展 | 自定义语法、React 渲染组件、标注类型、选区动作、参数与 CSS 主题包 |
+| 扩展 | 自定义语法、按条件替换渲染组件、标注类型、选区动作、流式效果、参数与 CSS 主题包 |
 
-默认内容标注类型是 `citation`；`highlight` 是内置持久高亮。笔记、提问和聊天标注由应用插件提供，`question()` 则是默认的练习题正文模块。完整写法见[语法手册](docs/zh-CN/syntax.md)。
+默认模块包括 `citation` 和 Markdown 脚注卡片；`highlight` 支持应用创建的可编辑高亮，`==文字==` 则生成只读源码高亮。`[^id]` 与 `^[正文]` 显示评论角标及侧栏/浮层，也可紧接在高亮后面。笔记、提问和聊天标注由应用插件提供，`question()` 是练习题正文模块。完整写法见[语法手册](docs/zh-CN/syntax.md)。
 
 ```markdown
 <definition title="定义">
@@ -64,6 +65,16 @@ export function Answer({ text, generating }: { text: string; generating: boolean
 
 <citation id="paper" title="参考资料" url="https://example.com/paper" summary="简短摘要" />
 ```
+
+默认模块也支持 `::` 指令：例如 `::definition{title="定义"}` 与独立一行的 `::` 包围正文；原有标签与 `:::` 写法继续可用。Mermaid 使用 `mermaid` 代码围栏或 `::mermaid`，图像模式支持缩放、拖拽平移和键盘/滚轮移动。
+
+## 排版与流式行为
+
+`typography` 支持 `standard`（默认）、`knuth-plass`、`justify`。KP 使用 TeX 的 box/glue/penalty 段落优化和 Knuth–Liang 英文断词，缓存测量及断行准备结果，滚动保留已排版节点。浏览器字体测量与 TeX PDF 不保证逐像素相同；[性能报告](docs/zh-CN/performance.md)包含 Scikit Learn 滚动/窗口变化对照及测量边界。
+
+流式输出暂缓不完整的语法标记；默认模块可显示 loading，代码和公式可直接展示可用中间态。新增文字和特殊块只做透明度淡入，既有控件和选区保持稳定。插件可通过 `streaming.Loading`、`streaming.effect` 自定义行为，宿主可用 `streamEffect` 覆盖动画或设为 `false`。
+
+公式、图表等原子内容按整体选择，选区工具栏复制保留原始源码和分隔符（包括行内公式两侧的 `$`）。单个块的工具栏位于块下方；复制反馈与按钮宽度使用非线性过渡。详见[标注与选区](docs/zh-CN/annotations.md)和[样式](docs/zh-CN/styles.md)。
 
 ## 组合与扩展
 
@@ -84,6 +95,8 @@ export function Notice() {
 
 `plugins` 追加到默认扩展；`extensions` 替换整个扩展列表，`extensions={[]}` 使用基础 CommonMark。同名扩展使用 `replaceExtension()` 显式替换。配置应保持引用稳定。
 
+只替换某类内容的呈现时，可用 `rendererOverrides` 的 `type`、`component` 和 `when`，按语言、祖先或流式状态限定范围；宿主规则优先。它是渲染范围约束，不是第三方代码安全沙箱。
+
 插件可以拥有完整卡片 UI（`overlay.Card`）、侧栏摘要（`sidebar.Preview`）、异步加载和选区操作。使用 [AI 插件开发 Skill](skills/limr-plugin-development/SKILL.md) 或[独立插件包指南](docs/zh-CN/plugin-packages.md)创建可安装的包，再通过 `plugins` 引入。仓库提供[笔记](examples/notes.tsx)、[流式助手](examples/assistant.tsx)、[独立插件](examples/packages/reading-tools/index.js)和 [CSS 主题](examples/packages/paper-theme/index.css)示例；`@limr-example/*` 是未发布的本地示例包。
 
 ## AI Skills
@@ -99,8 +112,8 @@ Skills 随 npm 包分发，也可以从仓库下载。复制完整目录即可�
 
 - `styles.css` 包含默认浅色/深色样式和本地 Maple 代码字体；`styles/base.css` 提供相同样式但不加载 Maple。字体资产仍包含在 npm 包中。两者选一即可。
 - `appearance` 为 CSS 主题提供作用域，也会传播到 portal 中的工具栏和浮层。正文中文字体由应用或系统提供。
-- 代码高亮和公式按需加载。视频默认接近视口时加载，可以配置为点击加载；远程媒体仍可能访问其来源站点。
-- 保留全文 DOM，支持浏览器查找、原生选择与打印。流式追加复用稳定区块，结束时完整解析；并非所有编辑都能局部解析。
+- 代码高亮、公式、Mermaid 和 KP 按需加载。Mermaid 在客户端绘图，未闭合的流式图表先显示 loading。视频默认接近视口时加载，可以配置为点击加载；远程媒体仍可能访问其来源站点。
+- 保留全文 DOM，支持浏览器查找、原生选择与打印。流式追加和可局部处理的收尾复用稳定前缀；定义变化、中间编辑或全文 transform 仍可能触发全文解析。
 - 未注册的 HTML 显示为原文，Markdown 中的 JavaScript 表达式不执行。自定义组件负责自己的数据和远程请求。
 
 详见[样式与字体](docs/zh-CN/styles.md)、[API](docs/zh-CN/api.md)和[性能与限制](docs/zh-CN/performance.md)。
@@ -118,6 +131,21 @@ pnpm test:browser
 
 本地开发需要 Python 3 生成 Skill 下载归档。标题栏可切换 Docs / Playground，Docs 由 LiMR 渲染，可切换语言。
 
+Playground 刷新后回到默认文档与标准排版，不自动恢复上次打开的文档或编辑。编辑后的“保存”写入本地草稿，可从“加载已保存文本”手动打开；语言偏好独立保留。排版菜单提供三种模式，流式演示每 90ms 增加最多 5 个 UTF-16 单元。
+
 本地 Playground 位于 `http://127.0.0.1:4173`。纯解析场景使用 `@linloir/limr/core`，不依赖 React/DOM；其他入口为 `@linloir/limr/react` 和 `@linloir/limr/extensions`。
+
+## 构建与发布 Pages
+
+`main` 保存源码；`pages` 只保存构建产物。GitHub Pages 设置为 **Deploy from a branch → pages → /(root)**；推送 `main` 不会自动构建站点。
+
+```sh
+pnpm test:docs
+pnpm build:playground
+pnpm preview:playground --port 4174
+# http://127.0.0.1:4174/LiMR/
+```
+
+构建输出 `demo-dist/`，包含 `.nojekyll`、双语 Docs、示例和更新后的 Skill ZIP。验证后，将该目录内容同步到独立的 `pages` 工作树，提交并推送源码与产物分支。部署其他仓库名时需修改构建/预览的 `--base`。README 和文档以仓库实现为准；核对 npm 安装版本的导出和类型，必要时用 `pnpm pack` 消费当前源码。
 
 [MIT License](LICENSE). Developed with Codex.

@@ -7,6 +7,14 @@ export function literalValue(node: MarkdownNode): string { return (node.value ??
 export function mapLiteral(source: string, node: MarkdownNode): TextMapping {
   const range = rangeOf(node), raw = source.slice(range.start, range.end), value = literalValue(node);
   const starts: number[] = [], ends: number[] = [];
+  if (node.valueRange) {
+    const payload = node.valueRange as { start: number; end: number };
+    for (let at = payload.start; at < payload.end && starts.length < value.length; at++) {
+      const size = source[at] === '\r' && source[at + 1] === '\n' ? 2 : 1;
+      starts.push(at); ends.push(at + size); at += size - 1;
+    }
+    return { starts, ends, exact: starts.length === value.length };
+  }
   if (node.type === 'inlineCode') {
     const fence = /^`+/.exec(raw)?.[0].length ?? 0;
     let from = fence, until = raw.length - fence;

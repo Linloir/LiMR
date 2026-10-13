@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Markdown, Reader, chinese, type Annotation, type SelectionSnapshot, type TranslationMode } from '../src';
+import { Markdown, Reader, chinese, standard, type Annotation, type SelectionSnapshot, type TranslationMode } from '../src';
 import { readingNotes } from '../examples/notes';
 
 const photo = `${import.meta.env.BASE_URL}papers/feature-channel.png`;
+// This fixture also exercises the optional traditional endnote navigation.
+const mediaExtensions = standard().filter(module => module.name !== 'footnotes');
 export const mediaSource = `# Figures and translations
 
 [Jump to figure](#target-figure) · Footnote[^note]
@@ -67,7 +69,7 @@ export function MediaFixture() {
   return <>
     <div><label>Width<input aria-label="Reader width" type="number" value={width} onChange={event => setWidth(Number(event.target.value))} /></label><select aria-label="Translation mode" value={mode ?? 'local'} onChange={event => setMode(event.target.value === 'local' ? undefined : event.target.value as TranslationMode)}><option value="local">Local</option><option value="origin">Origin</option><option value="translation">Translation</option><option value="both">Both</option></select></div>
     <div ref={nested ? setRoot : undefined} data-testid="media-scroll" style={{ width: '100%', height: nested ? 520 : undefined, overflow: nested ? 'auto' : undefined }}>
-      <div style={{ width, maxWidth: '100%', margin: '0 auto' }}><Reader source={mediaSource} scrollRoot={nested ? root : null} toc={false} sidebar={false} parameters={{ translationMode: mode, onTranslationModeChange: setMode }} /></div>
+      <div style={{ width, maxWidth: '100%', margin: '0 auto' }}><Reader source={mediaSource} extensions={mediaExtensions} scrollRoot={nested ? root : null} toc={false} sidebar={false} parameters={{ translationMode: mode, onTranslationModeChange: setMode }} /></div>
     </div>
     <div data-testid="isolated"><Markdown source={'<translations>\n\n<origin>Isolated original</origin>\n\n<translation>独立译文</translation>\n\n</translations>'} /></div>
   </>;

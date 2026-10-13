@@ -6,22 +6,26 @@
 
 **模块**是为 LiMR 增加一组能力的配置对象，例如公式、视频或引用。下面的“创建函数”在应用代码中调用，返回模块对象；“模块名”是对象的 `name` 字段，用于替换和移除；“标签 / 指令”才是写在 Markdown 正文中的语法。完整概念和配置方式见[内置模块](modules.md)。
 
-`@linloir/limr` 随包提供以下十个模块。`Reader`、独立 `Markdown` 和 `DocumentProvider` 默认通过 `standard()` 全部启用；纯核心 `createDocument()` 默认只有 CommonMark。下面每节给出源码和实际效果，交互示例由 LiMR 自己渲染。
+`@linloir/limr` 随包提供以下默认模块。`Reader`、独立 `Markdown` 和 `DocumentProvider` 默认通过 `standard()` 全部启用；纯核心 `createDocument()` 默认只有 CommonMark。下面每节给出源码和实际效果，交互示例由 LiMR 自己渲染。
 
 ## 模块清单
 
 | 创建函数（应用代码） | 模块名（name） | 默认能力 | 注册的特殊标签 / 指令 |
 | --- | --- | --- | --- |
-| `gfm()` | `gfm` | 表格、删除线、任务列表、自动链接、标准脚注 | 无 |
-| `math()` | `math` | 行内与块级公式 | `$…$`、`$$…$$` |
-| `codeHighlight()` | `code-highlight` | Shiki 围栏代码高亮 | 标准代码围栏 |
-| `definition()` | `definition` | 释义 | 标签 `definition`、`title`、`content`；指令 `definition` |
-| `question()` | `question` | 练习题与答案 | 标签 `question` 及下文子标签；指令 `question` |
-| `extras()` | `extras` | 拓展阅读 | 标签 `extras`、`extra`；指令 `extras` |
-| `video()` | `video` | 原生视频、YouTube、Bilibili | 标签 `video`、`md-video`；指令 `video` |
-| `figures()` | `figures` | 图组与图注 | 标签 `figures`、`figure`、`figcaption`、`caption`、`img`；指令 `figures`、`figure`、`figcaption` |
-| `citation()` | `citation` | 引用定义与角标 | 标签 `citation`、`ref`；不注册指令 |
+| `gfm()` | `gfm` | 表格、删除线、任务列表、自动链接、标准脚注 | `::gfm` |
+| `math()` | `math` | 行内与块级公式 | `$…$`、`$$…$$`、`::math` |
+| `codeHighlight()` | `code-highlight` | Shiki 围栏代码高亮 | 标准代码围栏、`::code` / `::code-highlight` |
+| `definition()` | `definition` | 释义 | 标签 / 指令 `definition`、`title`、`content` |
+| `question()` | `question` | 练习题与答案 | 标签 / 指令 `question` 及下文子标签 |
+| `extras()` | `extras` | 拓展阅读 | 标签 / 指令 `extras`、`extra` |
+| `video()` | `video` | 原生视频、YouTube、Bilibili | 标签 / 指令 `video`、`md-video` |
+| `figures()` | `figures` | 图组与图注 | 标签 / 指令 `figures`、`figure`、`figcaption`、`caption`、`img` |
+| `citation()` | `citation` | 引用定义与角标 | 标签 / 指令 `citation`、`ref` |
 | `translations()` | `translations` | 原文、译文与对照 | 标签及指令 `translations`、`origin`、`translation` |
+| `mermaid()` | `mermaid` | 流程图等 Mermaid 图表 | Mermaid 围栏、`::mermaid` |
+| `callout()` | `callout` | 有类型、标题、折叠状态的注释块 | `> [!type]`、`::callout` |
+| `inlineHighlights()` | `inline-highlights` | 源码内嵌高亮 | `==文字==`、`::highlight` |
+| `footnotes()` | `footnotes` | 评论角标和脚注卡片 | `[^id]`、`^[正文]`、`::footnote`、`::footnote-ref` |
 
 这些是 Markdown 中允许的静态标签，不是任意 MDX/HTML 执行环境。使用字符串属性，如 `multi="true"`、`answer="[0,2]"`；不要使用 `answer={[0,2]}`、事件函数或展开属性。未注册 HTML 按文本显示；表达式不执行并可能产生诊断。嵌套块的标签和正文之间保留空行。
 
@@ -48,7 +52,7 @@ const value = 42;
 
 标准脚注[^note]。
 
-[^note]: 出现在文末的脚注内容。
+[^note]: 以角标和侧栏 / 窄屏卡片显示的脚注内容。
 ````
 
 实际效果（可交互）：
@@ -73,9 +77,9 @@ const value = 42;
 
 标准脚注[^syntax-note]。
 
-[^syntax-note]: 出现在文末的脚注内容。
+[^syntax-note]: 以角标和侧栏 / 窄屏卡片显示的脚注内容。
 
-标准 `[^note]` 是文末脚注，`<ref>` 是标注卡片，两者不同。图片 `![说明](/image.png)` 由普通 Markdown 支持。原始 HTML 不透传到 DOM；需要自定义外观时注册扩展或覆盖 `components`。
+默认 `[^note]` 显示脚注角标和卡片；移除 `footnotes` 模块后，GFM 仍可渲染传统文末脚注。图片 `![说明](/image.png)` 由普通 Markdown 支持。原始 HTML 不透传到 DOM；需要自定义外观时注册扩展或覆盖 `components`。
 
 ## 公式与代码
 
@@ -95,7 +99,7 @@ $$
 \int_0^1 x^2\,dx = \frac{1}{3}
 $$
 
-公式需要导入 `@linloir/limr/math.css`；支持通过 `math({ macros, strict })` 配置。代码围栏语言用于 Shiki 高亮。默认接近视口才加载高亮，流式代码暂停更新 180ms 后尝试高亮；超过默认 100,000 字符、未支持或未在允许列表中的语言保留可读源码。`codeHighlight({ languages, lightTheme, darkTheme, eager, maxLength })` 可配置。
+公式需要导入 `@linloir/limr/math.css`；支持通过 `math({ macros, strict })` 配置。代码围栏语言用于 Shiki 高亮。默认接近视口才加载高亮，流式代码等待语法闭合，且原生选区离开代码后再应用高亮；超过默认 100,000 字符、未支持或未在允许列表中的语言保留可读源码。`codeHighlight({ languages, lightTheme, darkTheme, eager, maxLength })` 可配置。
 
 ## 释义
 
@@ -349,4 +353,105 @@ Original **Markdown**.
 
 ## 选择与替换
 
-默认高亮存为 annotation，没有 `==高亮==` 内置语法。自定义标签需注册插件；不是所有子标签都有同名指令。使用完整清单配置或替换默认模块，见[扩展开发](extensions.md)。
+工具栏创建的高亮存为 annotation；`==高亮==` 由源码定义，只提供复制工具栏。默认模块的全部已注册标签都支持同名 `::` 指令。自定义标签需注册插件。使用完整清单配置或替换默认模块，见[扩展开发](extensions.md)。
+
+## 双冒号组件写法
+
+所有默认模块都支持 [CoMark 的组件写法](https://comark.dev/syntax/components)，包括嵌套、标量属性和 Markdown 正文：
+
+```md
+::definition{title="定义"}
+支持 **富文本** 的正文。
+::
+
+::question{title="一道题"}
+::question-content
+题目内容。
+::
+::question-answer
+答案内容。
+::
+::
+```
+
+可用名称包括 `gfm`、`definition`、`title`、`content`、`question` 及其已有子标签、`extras`、`extra`、`video`、`md-video`、`figures`、`figure`、`figcaption`、`caption`、`img`、`citation`、`ref`、`translations`、`origin`、`translation`、`code`（别名 `code-highlight`）、`math`、`mermaid`、`callout`、`highlight`、`footnote`、`footnote-ref`。`::code{lang="typescript"}` 与 `::math` 的正文保持字面量。
+
+标准 Markdown 围栏、JSX、单冒号行内指令和原有三冒号容器继续可用。最终文档中没有配对闭合的双冒号行，保留原有 leaf directive 语义。这里兼容的是组件语法，不包含 CoMark 的 YAML 属性、命名插槽和 frontmatter。
+
+流式过程中，半截头部、链接、行内代码/强调/公式符号和表头会暂缓显示；已识别但未闭合的组件携带 `incomplete`，由模块选择 loading 或渐进内容。代码围栏和块公式可在闭合前展示。结束时设置 `streaming={false}` 或调用 `finish()`，恢复普通 Markdown 的最终解释。所有范围始终对应未改写的原始输入。
+
+## Mermaid 图表
+
+````markdown
+```mermaid
+flowchart LR
+  A[开始] --> B{准备好了吗}
+  B --> C[继续阅读]
+```
+````
+
+也可使用 `::mermaid`。流式闭合前显示 loading，完成后异步加载 Mermaid 并淡入图像。背景与公式块一致，右上角共用圆角工具栏提供复制源码、放大、缩小、源码 / 图像切换。选区、高亮和角标以整张图为单位；源码视图不改变这个原子选择约定。图表使用 Mermaid strict 模式，不执行图中的交互回调。
+
+实际效果：
+
+```mermaid
+flowchart LR
+  A[开始] --> B{准备好了吗}
+  B --> C[继续阅读]
+```
+
+图像模式支持拖动平移、方向键、Page Up/Down、Home/End 和滚轮，Shift + 滚轮横向移动；点击或 Enter 整块选择，选区工具栏位于块下方。放大后的内容在最大高度内滚动，`--limr-mermaid-max-height` 默认 `min(70vh, 36rem)`。操作栏“复制”获取图表正文，选区工具栏及浏览器复制保留完整围栏或指令。详见[样式与字体](styles.md)和[整体复制](annotations.md)。
+
+## Callout 与嵌套注释
+
+```markdown
+> [!tip]+ 自定义标题
+> 提示正文。
+>
+> > 普通的嵌套注释。
+> >
+> > > [!warning]- 可折叠的提醒
+> > > 支持 **Markdown**。
+```
+
+默认类型为 `note`、`abstract`、`info`、`todo`、`tip`、`success`、`question`、`warning`、`failure`、`danger`、`bug`、`example`、`quote`，别名对齐 Obsidian：summary/tldr、hint/important、check/done、help/faq、caution/attention、fail/missing、error、cite。大小写不敏感，未知类型沿用 note 外观。`+` 初始展开，`-` 初始折叠；不写符号时为普通块。另支持 `::callout{type="tip" title="标题" fold="-"}`。
+
+实际效果，可展开内部的提醒：
+
+> [!tip]+ 自定义标题
+> 提示正文。
+>
+> > 普通的嵌套注释。
+> >
+> > > [!warning]- 可折叠的提醒
+> > > 支持 **Markdown**。
+
+## 源码高亮与脚注
+
+```markdown
+==默认蓝色高亮==，点击后只能复制。
+
+==有脚注的高亮==[^note]
+
+==内联脚注==^[这里可以写 **Markdown**。]
+
+[^note]: 脚注正文。
+
+    脚注的第二段。
+```
+
+高亮支持内部富文本，转义字符、代码和公式中的 `==` 保持字面量。高亮颜色可由 CSS `--limr-inline-highlight` 或 `inlineHighlights({ color })` 覆盖。工具栏只提供复制按钮和单行提示“Markdown 内嵌高亮，不支持编辑”。
+
+脚注显示圆润评论角标；宽屏为侧栏 item，窄屏为悬浮卡片，标题是“脚注”。紧邻高亮的脚注引用这段高亮，独立脚注引用所在段落；命名脚注可重复引用。`::highlight`、`::footnote{id="note"}` 和 `::footnote-ref{id="note"}` 可表达相同模块的容器形式。移除 `footnotes` 模块可恢复 GFM 的上标和文末脚注。
+
+实际效果，点击高亮或评论角标：
+
+==默认蓝色高亮==，点击后只能复制。
+
+==有脚注的高亮==[^syntax-source-highlight]
+
+==内联脚注==^[这里可以写 **Markdown**。]
+
+[^syntax-source-highlight]: 脚注正文。
+
+    脚注的第二段。

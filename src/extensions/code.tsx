@@ -4,6 +4,7 @@ import type { NodeRendererProps, RendererExtension, TextToken } from '../react/t
 import { useRuntime } from '../react/context';
 import { CopyButton } from '../components/CopyButton';
 import { literalValue } from '../react/literal';
+import { literalDirective } from './literal-directive';
 
 const cache = new ResourceCache<readonly TextToken[]>(96);
 export interface CodeHighlightOptions { languages?: readonly string[]; lightTheme?: string; darkTheme?: string; eager?: boolean; maxLength?: number }
@@ -28,9 +29,10 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
       return () => observer.disconnect();
     }, [visible, runtime]);
     useEffect(() => {
-      if (!visible || code.length > (options.maxLength ?? 100_000)) return;
+      if (!visible || pending || code.length > (options.maxLength ?? 100_000)) return;
       let disposed = false;
       let release: (() => void) | undefined;
+      let waiting: (() => void) | undefined;
       // A growing fence stays readable without re-highlighting its entire history
       // for every token. The final tree is highlighted as soon as it settles.
       const timer = setTimeout(() => {
@@ -49,9 +51,21 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
           });
         });
         release = request.release;
-        request.promise.then(tokens => { if (!disposed) setResult({ code, tokens }); }).catch(() => { /* Plain source is a usable fallback. */ });
-      }, pending ? 180 : 0);
-      return () => { disposed = true; clearTimeout(timer); release?.(); };
+        request.promise.then(tokens => {
+          const apply = () => {
+            if (disposed) return;
+            const selection = ref.current?.ownerDocument.getSelection();
+            if (selection && !selection.isCollapsed && selection.rangeCount && ref.current && selection.getRangeAt(0).intersectsNode(ref.current)) {
+              if (!waiting) { waiting = apply; document.addEventListener('selectionchange', waiting); }
+              return;
+            }
+            if (waiting) { document.removeEventListener('selectionchange', waiting); waiting = undefined; }
+            setResult({ code, tokens });
+          };
+          apply();
+        }).catch(() => { /* Plain source is a usable fallback. */ });
+      }, 0);
+      return () => { disposed = true; clearTimeout(timer); release?.(); if (waiting) document.removeEventListener('selectionchange', waiting); };
     }, [code, normalized, pending, visible]);
     const tokens = result?.code === code ? result.tokens : undefined;
     return <div className="limr-code-block" ref={ref}>
@@ -59,5 +73,5 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
       <pre className={tokens?.length ? 'shiki' : undefined}><code>{renderValue(tokens)}</code></pre>
     </div>;
   }
-  return { name: 'code-highlight', scope: 'local', components: { code: CodeNode } };
+  return { name: 'code-highlight', directives: ['code', 'code-highlight'], literal: true, scope: 'local', components: { code: CodeNode }, transform: (root, context) => literalDirective(root, context.source, 'code', ['code', 'code-highlight']) };
 }

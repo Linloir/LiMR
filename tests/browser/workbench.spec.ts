@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { sample } from '../../playground/sample';
 
 async function important(page: Page) {
   await page.locator('.limr-reader-content strong').first().evaluate(element => {
@@ -31,8 +32,8 @@ test('notes open directly in the sidebar, share highlights, and support editing 
   const note = page.locator('.limr-sidebar-card[data-type="reading-note"]');
   await note.getByRole('textbox', { name: '笔记内容' }).fill('同一片段的笔记');
   await note.getByRole('button', { name: '提交', exact: true }).click();
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('limr-playground-document')!).annotations);
-  expect(saved.map((item: any) => item.type).sort()).toEqual(['highlight', 'margin-note', 'reading-note']);
+  await expect(page.locator('.demo-context-line output')).toContainText('1 处高亮 · 2 条注释');
+  expect(await page.evaluate(() => localStorage.getItem('limr-playground-document'))).toBeNull();
   await important(page);
   const hint = toolbar.locator('.limr-toolbar-delete-hint');
   await expect(hint).not.toBeVisible();
@@ -57,7 +58,7 @@ test('text save/load, file import/export and presets share the editor while stre
   const editor = page.getByRole('textbox', { name: 'Markdown source' });
   await editor.fill(source);
   await page.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(page.locator('.demo-context-line output')).toHaveText('已自动保存到此浏览器');
+  await expect(page.locator('.demo-context-line output')).toHaveText('已保存到此浏览器，可从加载菜单手动打开');
   await page.getByRole('button', { name: '编辑', exact: true }).click();
   await page.getByRole('button', { name: '加载', exact: true }).click();
   await page.getByRole('button', { name: '公式与代码', exact: false }).click();
@@ -82,6 +83,27 @@ test('text save/load, file import/export and presets share the editor while stre
   expect(Buffer.concat(chunks).toString()).toBe(imported);
   await page.reload(); await page.getByRole('button', { name: '加载', exact: true }).click(); await page.getByRole('button', { name: '加载已保存文本' }).click();
   await expect(page.locator('.limr-reader h1')).toHaveText('My current draft');
+});
+
+test('refresh starts with the default document and preset, retaining only explicitly saved drafts for manual loading', async ({ page }) => {
+  await page.goto('/');
+  const saved = '# Saved draft\n\nKeep only when explicitly loaded.';
+  await page.evaluate(source => localStorage.setItem('limr-playground-document', JSON.stringify({ version: 2, source, annotations: [] })), saved);
+  await page.reload();
+  await page.getByRole('button', { name: '编辑', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Markdown source' })).toHaveValue(sample);
+  await page.getByRole('button', { name: '加载', exact: true }).click();
+  await expect(page.getByRole('group', { name: '预设文本' }).locator('[aria-pressed="true"]')).toContainText('阅读与排版');
+  await page.getByRole('button', { name: 'scikit-learn 论文', exact: false }).click();
+  await page.getByRole('textbox', { name: 'Markdown source' }).fill('# Unsaved edits');
+  await page.reload();
+  await page.getByRole('button', { name: '编辑', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Markdown source' })).toHaveValue(sample);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('limr-playground-document')!).source)).toBe(saved);
+  await page.getByRole('button', { name: '加载', exact: true }).click();
+  await expect(page.getByRole('group', { name: '预设文本' }).locator('[aria-pressed="true"]')).toContainText('阅读与排版');
+  await page.getByRole('button', { name: '加载已保存文本' }).click();
+  await expect(page.getByRole('textbox', { name: 'Markdown source' })).toHaveValue(saved);
 });
 
 test('the same page runs the assistant and supports light/dark controls on mobile', async ({ page }) => {
@@ -215,7 +237,8 @@ test('load and plugin dropdowns work in reading mode and plugin choices stay ope
   await page.goto('/');
   await page.getByRole('button', { name: '加载', exact: true }).click();
   const presets = page.getByRole('group', { name: '预设文本' });
-  await expect(presets.getByRole('button')).toHaveCount(11);
+  await expect(presets.getByRole('button')).toHaveCount(12);
+  await expect(presets.getByRole('button', { name: '逐字抵达', exact: false })).toBeVisible();
   await presets.getByRole('button', { name: '前赤壁赋' }).click();
   await expect(page.locator('.limr-reader h1')).toContainText('前赤壁赋');
   await expect(page.getByRole('textbox', { name: 'Markdown source' })).toHaveCount(0);

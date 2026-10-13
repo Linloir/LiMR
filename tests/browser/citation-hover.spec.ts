@@ -7,6 +7,11 @@ const paints = (page: Page) => reader(page).locator('.limr-paint-rect[data-refer
 async function referencePaint(page: Page, marker: Locator) {
   return reader(page).locator(`[data-paint="reference-${await marker.getAttribute('data-limr-anchor')}"]`);
 }
+async function unpainted(paint: Locator) {
+  // Dormant references can release their geometry instead of retaining hidden
+  // rectangles. Both representations must leave no visible paint.
+  await expect.poll(() => paint.evaluateAll(elements => elements.every(element => getComputedStyle(element).opacity === '0'))).toBe(true);
+}
 async function settled(page: Page) {
   await expect.poll(() => reader(page).evaluate(element => element.getAnimations({ subtree: true }).filter(animation => animation.playState === 'running').length)).toBe(0);
 }
@@ -25,7 +30,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('citation paint is hidden by default, light, behind text and isolated to the hovered occurrence', async ({ page }) => {
-  await expect.poll(() => paints(page).count()).toBeGreaterThan(0);
+  await expect(paints(page)).toHaveCount(0);
   expect(await paints(page).evaluateAll(elements => elements.every(element => getComputedStyle(element).opacity === '0'))).toBe(true);
   const marker = markers(page).nth(1), paint = await referencePaint(page, marker);
   await marker.hover();
@@ -83,7 +88,7 @@ for (const nested of [false, true]) test(`citation hover aligns both directions$
   expect(await geometry()).toEqual(initial);
   await page.mouse.move(10, 10);
   await expect.poll(() => referenceTop(marker)).toBeCloseTo(initialReference, 0);
-  await expect((await referencePaint(page, marker)).first()).toHaveCSS('opacity', '0');
+  await unpainted(await referencePaint(page, marker));
 });
 
 test('ranged citations and narrow overlay previews use the same temporary paint', async ({ page }) => {

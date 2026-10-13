@@ -1,3 +1,4 @@
+import streaming from './presets/streaming.md?raw';
 import notes from './presets/notes.md?raw';
 import code from './presets/code.md?raw';
 import express from './presets/express.md?raw';
@@ -11,6 +12,7 @@ import { sample } from './sample';
 
 export const presets = [
   { id: 'welcome', label: '阅读与排版', description: '从一篇完整的文章开始', source: sample },
+  { id: 'streaming', label: '逐字抵达', description: '组件语法、流式代码与公式', source: streaming },
   { id: 'notes', label: '做一点笔记', description: '从复述到提问的完整阅读练习', source: notes },
   { id: 'code', label: '公式与代码', description: '数值积分、误差与梯度下降', source: code },
   { id: 'express', label: 'Express README', description: 'Web 框架的设计与使用 · 英文', source: express },

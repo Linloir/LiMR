@@ -7,6 +7,8 @@ import type { ActionContext, SelectionAction, StyledProps, ToolbarActionContext 
 import { annotationReferenceText } from './annotation-reference';
 import { OverlayScrollArea } from './OverlayScrollArea';
 import { Collapse } from './Collapse';
+import { atomicSelectionText } from '../react/source-geometry';
+import { ToolFaces } from './ToolFaces';
 
 export interface SelectionToolbarProps extends StyledProps {
   /** Replaces the built-in actions. Extension actions are added. */
@@ -53,9 +55,17 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
     if (interaction.editing && active?.annotationIds.includes(interaction.editing)) return null;
     const range = paint?.range ?? (hiddenActive ? active?.range : undefined);
     return range ? selectionFromRange(documentSnapshot, range, {
-      text: paint ? runtime.highlightReference?.text ?? annotationReferenceText(documentSnapshot, { id: paint.id, annotationIds: [], range }) : annotationReferenceText(documentSnapshot, active!),
+      text: atomicSelectionText(runtime, [range]) ?? (paint ? runtime.highlightReference?.text ?? annotationReferenceText(documentSnapshot, { id: paint.id, annotationIds: [], range }) : annotationReferenceText(documentSnapshot, active!)),
     }) : null;
   }, [documentSnapshot, paint, active, selection, interaction.editing, hiddenActive]);
+  const blockReference = useMemo(() => {
+    const ranges = effectiveSelection?.raw.ranges;
+    if (ranges?.length !== 1) return null;
+    const { start, end } = ranges[0];
+    // Atomic source selection can start in one tiny SVG label or math glyph.
+    // Anchor to the whole block, including when reopening its saved highlight.
+    return runtime.content?.querySelector<HTMLElement>(`[data-limr-atomic="block"][data-source-start="${start}"][data-source-end="${end}"]`) ?? null;
+  }, [runtime, effectiveSelection]);
   const annotations = useMemo(() => effectiveSelection ? [...decorations.annotations.values()].filter(annotation =>
     resolveAnnotationAnchors(annotation, documentSnapshot).some(anchor => [...effectiveSelection.raw.ranges, ...effectiveSelection.syntax.ranges].some(range => sameRange(anchor.range, range)))) : [], [decorations, effectiveSelection, documentSnapshot]);
   const highlight = (paint ? decorations.annotations.get(paint.annotationId) : annotations.find(annotation => annotation.type === 'highlight')) as Annotation<HighlightData> | undefined;
@@ -65,23 +75,24 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
     addAnnotation: (annotation, options) => runtime.commands.addAnnotation(annotation, { highlight: highlightAppearance, ...options }),
     document: documentSnapshot, signal: runtime.signal, clearSelection: () => runtime.clearSelection(),
   } : null;
-  const available = context ? combined.filter(action => action.visible?.(context) ?? true) : [];
+  const readOnly = highlight?.data?.readOnly === true;
+  const available = context ? readOnly ? [defaults[2]] : combined.filter(action => action.visible?.(context) ?? true) : [];
   const expandedAction = available.find(action => action.id === expanded && action.renderExpanded);
   const hasPanels = available.some(action => action.renderExpanded);
   const open = !!context && effectiveSelection!.settled && available.length > 0;
   const { refs, floatingStyles, placement, isPositioned } = useFloating({
     open, strategy: 'fixed', placement: 'bottom',
-    middleware: [offset(10), { name: 'toolbarSpace', options: { hasPanels, maxPanelHeight }, fn({ rects, placement, elements }) {
+    middleware: [offset(10), { name: 'toolbarSpace', options: { hasPanels, maxPanelHeight, blockReference }, fn({ rects, placement, elements }) {
       const viewport = window.visualViewport;
       const root = runtime.configuration.get().scrollRoot?.getBoundingClientRect();
       const top = Math.max(viewport?.offsetTop ?? 0, root?.top ?? 0);
       const bottom = Math.min((viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight), root?.bottom ?? Infinity);
       const above = Math.max(0, rects.reference.y - top - 20), below = Math.max(0, bottom - rects.reference.y - rects.reference.height - 20);
-      const row = (elements.floating.querySelector('.limr-toolbar-actions')?.getBoundingClientRect().height ?? 34) + (elements.floating.querySelector('.limr-toolbar-delete-hint')?.getBoundingClientRect().height ?? 0);
+      const row = (elements.floating.querySelector('.limr-toolbar-actions')?.getBoundingClientRect().height ?? 34) + (elements.floating.querySelector('.limr-toolbar-delete-hint,.limr-toolbar-readonly-hint')?.getBoundingClientRect().height ?? 0);
       const limit = Math.max(0, parseFloat(getComputedStyle(elements.floating).getPropertyValue('--limr-toolbar-panel-max-height')) || maxPanelHeight);
       const needed = row + (hasPanels ? limit : 0) + 24;
       // Reserve the same budget while closed or expanded, so hover never moves the action row.
-      const next = below >= needed || below >= above ? 'bottom' : 'top';
+      const next = blockReference || below >= needed || below >= above ? 'bottom' : 'top';
       const room = next === 'bottom' ? below : above;
       elements.floating.style.setProperty('--limr-toolbar-panel-height', `${Math.max(0, Math.min(limit, room - row - 24))}px`);
       elements.floating.style.setProperty('--limr-toolbar-available-height', `${room}px`);
@@ -89,9 +100,9 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
     } }, shift({ padding: 10 })], whileElementsMounted: autoUpdate,
   });
   useEffect(() => {
-    const reference = selection ? runtime.selectionRange : paint ? runtime.highlightReference : active ? runtime.anchors.get(active.id) : null;
-    if (reference) refs.setPositionReference({ getBoundingClientRect: () => reference.getBoundingClientRect(), getClientRects: () => reference.getClientRects(), contextElement: runtime.content ?? undefined });
-  }, [runtime, refs, selection, paint, active]);
+    const reference = blockReference ?? (selection ? runtime.selectionRange : paint ? runtime.highlightReference : active ? runtime.anchors.get(active.id) : null);
+    if (reference) refs.setPositionReference({ getBoundingClientRect: () => reference.getBoundingClientRect(), getClientRects: () => reference.getClientRects(), contextElement: blockReference ?? runtime.content ?? undefined });
+  }, [runtime, refs, blockReference, selection, paint, active]);
   const selectionKey = effectiveSelection?.raw.ranges.map(range => `${range.start}-${range.end}`).join(',') ?? '';
   useEffect(() => { setError(null); setExpanded(null); setSuccess(null); setDeleteHintOpen(false); clearTimeout(closeTimer.current); clearTimeout(successTimer.current); }, [selectionKey, open]);
   useEffect(() => () => { clearTimeout(closeTimer.current); clearTimeout(successTimer.current); }, []);
@@ -141,7 +152,7 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
   };
   const annotationCount = annotations.filter(annotation => annotation.type !== 'highlight').length;
   const hint = available.some(action => action.id === 'delete-annotations') && annotationCount > 1 ? context.locale.deleteAnnotationsHint.replace('{count}', String(annotationCount)) : null;
-  return <FloatingPortal root={portalRoot}><div ref={refs.setFloating} className={`limr-selection-toolbar ${className}`} style={{ ...style, ...floatingStyles, visibility: isPositioned ? undefined : 'hidden' }} role="toolbar" aria-label="Text actions" data-limr-selection-ui="true" data-limr-theme={theme} data-limr-appearance={appearance} data-placement={placement} data-highlight={highlight?.id} data-expanded={expandedAction?.id}
+  return <FloatingPortal root={portalRoot}><div ref={refs.setFloating} className={`limr-selection-toolbar ${className}`} style={{ ...style, ...floatingStyles, visibility: isPositioned ? undefined : 'hidden' }} role="toolbar" aria-label="Text actions" data-limr-selection-ui="true" data-limr-theme={theme} data-limr-appearance={appearance} data-placement={placement} data-highlight={highlight?.id} data-readonly={readOnly || undefined} data-expanded={expandedAction?.id}
     onMouseDown={event => { if (!(event.target instanceof Element) || !event.target.closest('input,textarea,select,[contenteditable]')) event.preventDefault(); }}
     onPointerEnter={() => clearTimeout(closeTimer.current)}
     onPointerLeave={event => {
@@ -165,7 +176,7 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
       event.preventDefault();
     }}>
     <div className="limr-toolbar-surface" key={selectionKey} data-ready={isPositioned || undefined}>
-      <div className="limr-toolbar-actions">{render ? render({ context, actions: available, run }) : available.map((action, index) => <div className="limr-toolbar-item" key={action.id} data-action-id={action.id} data-active={expanded === action.id || undefined} data-tone={action.tone} data-status={success === action.id ? 'success' : undefined} style={{ '--limr-tool-index': index } as CSSProperties}
+      <div className="limr-toolbar-actions">{render && !readOnly ? render({ context, actions: available, run }) : available.map((action, index) => <div className="limr-toolbar-item" key={action.id} data-action-id={action.id} data-active={expanded === action.id || undefined} data-tone={action.tone} data-status={success === action.id ? 'success' : undefined} style={{ '--limr-tool-index': index } as CSSProperties}
         onPointerEnter={event => {
           if (event.pointerType !== 'mouse' || busy || action.disabled?.(context)) return;
           if (expandedAction && expandedAction.id !== action.id && refs.floating.current?.querySelector('.limr-toolbar-panel')?.contains(document.activeElement)) return;
@@ -180,14 +191,15 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
           onPointerLeave={event => { if (action.id === 'delete-annotations') setDeleteHintOpen(event.currentTarget.matches(':focus-visible')); }}
           onFocus={event => { if (action.id === 'delete-annotations' && event.currentTarget.matches(':focus-visible')) setDeleteHintOpen(true); }}
           onBlur={event => { if (action.id === 'delete-annotations' && !event.currentTarget.matches(':hover')) setDeleteHintOpen(false); }}>
-          <span className="limr-tool-face" data-visible={success !== action.id || undefined} aria-hidden="true">
+          <ToolFaces state={label(action)}><span className="limr-tool-face" data-visible={success !== action.id || undefined} aria-hidden="true">
             <span className="limr-tool-icon" key={typeof action.label === 'function' ? action.label(context) : action.label}>{typeof action.icon === 'function' ? action.icon(context) : action.icon}</span><span className="limr-tool-label limr-underline">{typeof action.label === 'function' ? action.label(context) : action.label}</span>
           </span>
           {action.successLabel && <span className="limr-tool-face" data-visible={success === action.id || undefined} aria-hidden="true">
             <span className="limr-tool-icon">{action.successIcon ?? (typeof action.icon === 'function' ? action.icon(context) : action.icon)}</span><span className="limr-tool-label limr-underline">{typeof action.successLabel === 'function' ? action.successLabel(context) : action.successLabel}</span>
-          </span>}
+          </span>}</ToolFaces>
         </button>}
       </div>)}</div>
+      {readOnly && <p className="limr-toolbar-readonly-hint">{context.locale.inlineHighlightHint ?? 'Markdown inline highlight, editing unavailable'}</p>}
       {expandedAction && <div id={panelId} className="limr-toolbar-panel" key={expandedAction.id} role="group" aria-label={label(expandedAction)}><OverlayScrollArea active label={label(expandedAction)}>{expandedAction.renderExpanded!(actionContext(expandedAction))}</OverlayScrollArea></div>}
       {hint && <Collapse open={deleteHintOpen} keepMounted className="limr-toolbar-delete-warning"><p id={`${panelId}-delete`} className="limr-toolbar-delete-hint">{hint}</p></Collapse>}
       {error && <span role="alert" className="limr-action-error">{error}</span>}

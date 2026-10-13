@@ -7,7 +7,8 @@ export function useOverflowFade(ref: RefObject<HTMLElement | null>, runtime: Rea
   useEffect(() => {
     const host = ref.current;
     if (!host) return;
-    let frame = 0, transitions = 0;
+    let frame = 0;
+    const transitions = new Map<Element, Map<string, number>>();
     const measure = () => {
       frame = 0;
       // Constraint-driven cards must finish positioning with this frame's
@@ -28,13 +29,32 @@ export function useOverflowFade(ref: RefObject<HTMLElement | null>, runtime: Rea
       const set = (name: string, value: number) => { const css = `${Math.max(0, value).toFixed(2)}px`; if (host.style.getPropertyValue(name) !== css) host.style.setProperty(name, css); };
       set('--limr-fade-start', top - box.top);
       set('--limr-fade-end', bottom - box.top);
-      if (transitions && host.getAnimations({ subtree: true }).some(animation => animation.playState === 'running')) schedule();
-      else transitions = 0;
+      const now = performance.now();
+      for (const [target, properties] of transitions) {
+        for (const [property, end] of properties) if (end <= now || !host.contains(target)) properties.delete(property);
+        if (!properties.size) transitions.delete(target);
+      }
+      // Enumerating animations across the entire subtree forces style/layout
+      // after the mask writes above, once per frame. Track geometry transitions
+      // from their lifecycle events instead; detached nodes expire as well.
+      if (transitions.size) schedule();
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
     const refresh = () => { cancelAnimationFrame(frame); measure(); };
-    const start = () => { transitions++; schedule(); };
-    const end = () => { transitions = Math.max(0, transitions - 1); schedule(); };
+    const start = (event: TransitionEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || !/^(top|bottom|left|right|height|max-height|min-height|width|max-width|transform|translate|grid-template-rows|padding.*|margin.*)$/.test(event.propertyName)) return;
+      const css = getComputedStyle(target), properties = css.transitionProperty.split(',').map(value => value.trim());
+      const index = Math.max(0, properties.indexOf(event.propertyName));
+      const milliseconds = (value: string) => { const list = value.split(','); const item = list[index % list.length].trim(); return parseFloat(item) * (item.endsWith('ms') ? 1 : 1000); };
+      const pending = transitions.get(target) ?? new Map<string, number>();
+      pending.set(event.propertyName, performance.now() + milliseconds(css.transitionDuration) + milliseconds(css.transitionDelay) + 34);
+      transitions.set(target, pending); schedule();
+    };
+    const end = (event: TransitionEvent) => {
+      if (event.target instanceof Element) transitions.get(event.target)?.delete(event.propertyName);
+      schedule();
+    };
     host.addEventListener('transitionrun', start);
     host.addEventListener('transitionend', end);
     host.addEventListener('transitioncancel', end);
@@ -46,7 +66,9 @@ export function useOverflowFade(ref: RefObject<HTMLElement | null>, runtime: Rea
       if (records.some(record => {
         const element = record.target instanceof Element ? record.target : record.target.parentElement;
         return element && element !== host && !element.closest('.limr-highlight-layer,.limr-paint-layer');
-      })) refresh();
+      })) {
+        if (beforeMeasure) refresh(); else schedule();
+      }
     });
     mutation.observe(host, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['style', 'class'] });
     const unsubscribe = [runtime.layout.subscribe(schedule), runtime.viewport.subscribe(refresh), runtime.documentOffset.subscribe(schedule), runtime.configuration.subscribe(schedule)];

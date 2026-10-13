@@ -1,3 +1,4 @@
+import { BlockLoading } from '../components/LoadingRing';
 import { useEffect, useRef, useState } from 'react';
 import { safeUrl } from '../core/tree';
 import { useRuntime, useStoreSelector } from '../react/context';
@@ -88,5 +89,5 @@ export function video(options: VideoOptions = {}): RendererExtension {
       <CopyButton className="limr-video-copy" variant="glass" value={markdown} />
     </div>;
   }
-  return defineBlock({ name: 'video', tags: ['video', 'md-video'], component: options.component ?? Video, selection: 'atomic' });
+  return defineBlock({ name: 'video', streaming: options.component ? undefined : { Loading: BlockLoading }, tags: ['video', 'md-video'], component: options.component ?? Video, selection: 'atomic' });
 }

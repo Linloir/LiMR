@@ -18,6 +18,8 @@ export interface MarkdownNode {
   attributeNodes?: Record<string, MarkdownNode>;
   inline?: boolean;
   selection?: 'content' | 'atomic';
+  /** The opening syntax is known but its closing delimiter has not arrived. */
+  incomplete?: boolean;
   [key: string]: unknown;
 }
 
@@ -33,6 +35,8 @@ export interface SyntaxExtension {
   mdast?: readonly MdastExtension[];
   tags?: readonly string[];
   directives?: readonly string[];
+  /** Directive bodies are literal source (for example code or LaTeX). */
+  literal?: boolean;
   selection?: 'content' | 'atomic';
   transform?: (root: MarkdownNode, context: ParseContext) => void;
   display?: 'block' | 'inline' | 'auto';
@@ -66,12 +70,16 @@ export interface AnnotationOccurrence extends AnnotationAnchor {
   id: string;
   annotationIds: readonly string[];
   embedded?: boolean;
+  /** Optional referenced text range, distinct from the marker's source range. */
+  referenceRange?: SourceRange;
 }
 /** Data for the built-in `highlight` annotation type. */
 export interface HighlightData {
   color?: string;
   style?: 'background' | 'underline' | 'dotted' | 'wavy';
   hidden?: boolean;
+  /** Authored in Markdown: the default toolbar offers copying without editing. */
+  readOnly?: boolean;
 }
 export interface Block {
   id: string;
@@ -114,6 +122,8 @@ export interface SelectionResult {
 export interface SelectionSnapshot {
   documentId: string;
   revision: number;
+  /** Readable selected text; the browser adapter substitutes complete original
+   * source (including delimiters) for selected atomic content once settled. */
   text: string;
   quality: 'exact' | 'atomic' | 'unmapped';
   raw: SelectionResult;

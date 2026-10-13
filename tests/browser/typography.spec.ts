@@ -1,5 +1,10 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+async function typography(page: Page, mode: string) {
+  await page.getByRole('button', { name: '排版模式', exact: true }).click();
+  await page.getByRole('button', { name: mode, exact: true }).click();
+}
+
 async function loadSource(page: Page, source: string) {
   await page.goto('/');
   await page.getByRole('button', { name: '编辑', exact: true }).click();
@@ -40,24 +45,25 @@ async function paintLines(paint: Locator) {
   return boxes;
 }
 
-test('proportional punctuation, italic spacing and nested list rhythm are themeable without source changes', async ({ page }) => {
+test('Chinese punctuation is full width by default, with optional proportional spacing and themeable list rhythm', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1050 });
-  const text = 'I’ll do _that_ in a hurry.';
+  const text = "中文标点，。 I'll do _that_ in a hurry.";
   const tight = '- First item\n- Second item\n  - Nested A\n  - Nested B\n- Third item';
   const loose = '1. First item\n\n2. Second item\n\n   - Nested A\n\n   - Nested B\n\n3. Third item';
   await loadSource(page, `${text}\n\n${tight}\n\n${loose}`);
   const article = page.locator('.limr-reader-content > article');
   const punctuationWidth = () => article.locator('p').first().evaluate(p => {
     const text = document.createTreeWalker(p, NodeFilter.SHOW_TEXT).nextNode()!;
-    const start = text.textContent!.indexOf('’'), range = document.createRange();
+    const start = text.textContent!.indexOf('，'), range = document.createRange();
     range.setStart(text, start); range.setEnd(text, start + 1);
     return range.getBoundingClientRect().width;
   });
-  const narrow = await punctuationWidth();
+  const full = await punctuationWidth();
   const spacing = await article.locator('em').evaluate(em => {
     const css = getComputedStyle(em); return { left: parseFloat(css.paddingLeft), right: parseFloat(css.paddingRight), font: parseFloat(css.fontSize) };
   });
   expect(spacing.left).toBe(0);
+  expect(full / spacing.font).toBeGreaterThan(.95);
   expect(spacing.right / spacing.font).toBeCloseTo(.08, 2);
   for (const list of await article.locator(':scope > ul,:scope > ol').all()) {
     const tops = await list.locator('li').evaluateAll(items => items.map(item => {
@@ -71,11 +77,11 @@ test('proportional punctuation, italic spacing and nested list rhythm are themea
   await selectContents(article.locator('p').first());
   await expect.poll(() => page.locator('#selection-data').textContent().then(value => JSON.parse(value || '{}').raw?.sourceText)).toBe(text);
   await paintLines(page.locator('.limr-paint-selection'));
-  await page.addStyleTag({ content: ".limr-prose { --limr-font-features: normal; --limr-emphasis-spacing: .2em; --limr-list-item-gap: 10px; }" });
-  expect(await punctuationWidth()).toBeGreaterThan(narrow * 1.5);
+  await page.addStyleTag({ content: ".limr-prose { --limr-font-features: 'palt' 1; --limr-emphasis-spacing: .2em; --limr-list-item-gap: 10px; }" });
+  expect(await punctuationWidth()).toBeLessThan(full * .7);
   await expect(article.locator('em')).toHaveCSS('padding-right', `${spacing.font * .2}px`);
   await expect(article.locator('ul ul')).toHaveCSS('margin-top', '10px');
-  await expect(article.locator('p').first()).toHaveText('I’ll do that in a hurry.');
+  await expect(article.locator('p').first()).toHaveText("中文标点，。 I'll do that in a hurry.");
 });
 
 for (const width of [1440, 390]) test(`justified selection and persistent highlights remain continuous at ${width}px`, async ({ page }) => {
@@ -83,9 +89,8 @@ for (const width of [1440, 390]) test(`justified selection and persistent highli
   const prose = ('I’ll read the _small label_ and **look carefully** at the bottle, then try `one more word` and [read on](https://example.com). 爱丽丝还想知道，这个房间里会发生什么奇妙的事情。 ').repeat(3).trim();
   await loadSource(page, `# Typography\n\n${prose}\n\n\`\`\`text\nIndented code stays left aligned.\n\`\`\``);
   const article = page.locator('.limr-reader-content > article'), paragraph = article.locator(':scope > p').first();
-  const toggle = page.getByRole('button', { name: '两端对齐', exact: true });
   await expect(article).toHaveAttribute('data-limr-justify', 'false');
-  await toggle.click();
+  await typography(page, '两端对齐');
   await expect(article).toHaveAttribute('data-limr-justify', 'true');
   await expect(article.locator('h1')).toHaveCSS('text-align', 'start');
   await expect(article.locator('pre')).toHaveCSS('text-align', 'start');
@@ -107,11 +112,11 @@ for (const width of [1440, 390]) test(`justified selection and persistent highli
   const highlights = page.locator('.limr-paint-background');
   await expect.poll(() => highlights.count()).toBeGreaterThan(5);
   expect(await paintLines(highlights)).toEqual(justified);
-  await toggle.click();
+  await typography(page, '标准');
   await expect(article).toHaveAttribute('data-limr-justify', 'false');
   await expect.poll(() => highlights.evaluateAll(items => Math.max(...items.filter(item => Math.abs(item.getBoundingClientRect().top - items[0].getBoundingClientRect().top) < 1).map(item => item.getBoundingClientRect().right)))).toBeLessThan(box.x + box.width - 1);
   await paintLines(highlights);
-  await toggle.click();
+  await typography(page, '两端对齐');
   await expect.poll(async () => (await paintLines(highlights))[0].right).toBeCloseTo(box.x + box.width, 0);
 });
 
@@ -143,7 +148,7 @@ test('a multiline annotation aligns its sidebar to the range start through hover
   await marker.hover(); await aligned();
   await card.locator('.limr-sidebar-toggle').click(); await aligned();
   await card.locator('.limr-sidebar-toggle').click(); await aligned();
-  await page.getByRole('button', { name: '两端对齐', exact: true }).click();
+  await typography(page, '两端对齐');
   await marker.hover(); await aligned();
   await page.setViewportSize({ width: 1280, height: 1050 });
   await marker.hover(); await aligned();

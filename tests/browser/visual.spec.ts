@@ -69,6 +69,8 @@ test('formula selection and persistent highlight retain the formula surface and 
   expect(Math.abs(actual.x - expected.rect.x) + Math.abs(actual.y - expected.rect.y)).toBeLessThan(1);
   expect(actual.width).toBeCloseTo(expected.rect.width, 1);
   expect(actual.height).toBeCloseTo(expected.rect.height, 1);
+  await expect(page.getByRole('toolbar')).toHaveAttribute('data-placement', 'bottom');
+  await expect.poll(async () => (await page.getByRole('toolbar').boundingBox())!.y - expected.rect.bottom).toBeCloseTo(10, 0);
   await page.getByRole('button', { name: '添加高亮', exact: true }).click();
   const highlight = page.locator('.limr-highlight-layer > [data-atomic]:not([data-reference])');
   await expect(highlight).toHaveClass(/limr-paint-background/);
@@ -128,12 +130,12 @@ test('question, sidebar and copy interactions keep the refined layout', async ({
   }
 });
 
-test('footnote selections and highlights follow rendered reference order', async ({ page }) => {
-  await page.goto('/'); await page.getByRole('button', { name: '编辑', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Markdown source' }).fill('Read B[^b] before A[^a].\n\n[^a]: First definition.\n\n[^b]: Second definition with `literal code`.');
+test('optional traditional endnote selections and highlights follow rendered reference order', async ({ page }) => {
+  await page.goto('/?fixture=streaming'); await page.waitForFunction(() => !!window.limrStream);
+  await page.evaluate(() => window.limrStream({ source: 'Read B[^b] before A[^a].\n\n[^a]: First definition.\n\n[^b]: Second definition with `literal code`.', streaming: false, legacyFootnotes: true, chinese: true }));
   await expect(page.locator('.limr-footnotes > ol > li').first()).toContainText('Second definition');
   await selectContents(page, '.limr-footnotes code');
-  await expect.poll(() => page.locator('#selection-data').textContent().then(text => JSON.parse(text || '{}').raw?.sourceText)).toBe('literal code');
+  await expect.poll(() => page.locator('#stream-selection').textContent().then(text => JSON.parse(text || '{}')?.raw?.sourceText)).toBe('literal code');
   await expect(page.locator('.limr-paint-selection')).not.toHaveCount(0);
   await page.getByRole('button', { name: '添加高亮', exact: true }).click();
   await expect(page.locator('.limr-footnotes mark')).toHaveText('literal code');

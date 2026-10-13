@@ -1,0 +1,102 @@
+import { expect, test } from '@playwright/test';
+
+test.beforeEach(async ({ page }) => { await page.goto('/?fixture=streaming'); await page.waitForFunction(() => !!window.limrStream); });
+
+test('hint and answer animate on their very first expansion, including after a completed close', async ({ page }) => {
+  await page.evaluate(() => window.limrStream({ streaming: false, source: '<question><question-content>A question.</question-content><question-hint>A useful hint.<br />More detail.</question-hint><question-answer>A full answer with explanation.</question-answer></question>' }));
+  await page.evaluate(() => document.fonts.ready);
+  for (const index of [0, 1, 0]) {
+    const disclosure = page.locator('.limr-disclosure').nth(index);
+    const result = await disclosure.evaluate(async element => {
+      const panel = element.querySelector('.limr-collapse')!;
+      const initial = panel.getBoundingClientRect().height;
+      (element.querySelector('summary') as HTMLElement).click();
+      await new Promise(resolve => setTimeout(resolve, 60));
+      const animated = panel.getAnimations().some(animation => animation instanceof CSSTransition && animation.transitionProperty === 'grid-template-rows');
+      const middle = panel.getBoundingClientRect().height;
+      await new Promise(resolve => setTimeout(resolve, 450));
+      return { initial, middle, final: panel.getBoundingClientRect().height, animated };
+    });
+    expect(result.initial).toBe(0); expect(result.animated).toBe(true);
+    expect(result.middle).toBeGreaterThan(0); expect(result.middle).toBeLessThan(result.final);
+    await disclosure.locator('summary').click();
+    await expect(disclosure.locator('.limr-collapse')).toHaveAttribute('inert', '');
+    await page.waitForTimeout(500);
+  }
+});
+
+test('embedded blue highlights hover and open a copy-only toolbar with an unwrapped hint', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.evaluate(() => window.limrStream({ source: 'Before ==blue **bold** &amp; 😀== after.', streaming: false, chinese: true }));
+  const mark = page.locator('article > p mark').first(), paint = page.locator('.limr-paint-background').first();
+  await expect(paint).toBeVisible();
+  await mark.hover(); await expect(paint).toHaveAttribute('data-hovered');
+  await mark.click();
+  const toolbar = page.getByRole('toolbar');
+  await expect(toolbar).toHaveAttribute('data-readonly', 'true');
+  await expect(toolbar.getByRole('button')).toHaveCount(1);
+  const hint = toolbar.locator('.limr-toolbar-readonly-hint');
+  await expect(hint).toHaveText('Markdown 内嵌高亮，不支持编辑');
+  await expect(hint).toHaveCSS('white-space', 'nowrap'); await expect(hint).toHaveCSS('text-align', 'start');
+  await toolbar.getByRole('button', { name: '复制', exact: true }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('blue bold & 😀');
+  const before = await paint.evaluate(element => getComputedStyle(element).backgroundColor);
+  await page.addStyleTag({ content: '.limr-reader { --limr-inline-highlight: #E57373; }' });
+  await expect.poll(() => paint.evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe(before);
+  await page.setViewportSize({ width: 390, height: 800 });
+  await mark.click();
+  const box = (await toolbar.boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(390);
+});
+
+for (const width of [1460, 560]) test(`named and inline footnotes use comment markers and ${width > 1120 ? 'sidebar' : 'overlay'} cards`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 950 });
+  await page.evaluate(() => window.limrStream({ source: 'Before ==named **highlight**==[^n] and ==inline==^[An **inline** footnote]. Plain[^n].\n\n[^n]: Named **footnote**.\n\n    Second paragraph.', streaming: false, sidebar: true, chinese: true }));
+  const article = page.locator('.limr-reader-content > article');
+  await expect(article.locator('sup,.limr-footnotes')).toHaveCount(0);
+  const markers = article.getByRole('button', { name: '脚注', exact: true });
+  await expect(markers).toHaveCount(3); await expect(markers.first().locator('svg')).toHaveCount(1);
+  await markers.first().click();
+  const card = width > 1120 ? page.locator('.limr-sidebar-card[data-type="footnote"]').first() : page.locator('.limr-overlay-positioner');
+  await expect(card).toContainText('脚注'); await expect(card).toContainText('Second paragraph.');
+  await expect(card.locator('strong').first()).toHaveText('footnote');
+  if (width > 1120) await expect(card.locator('.limr-sidebar-excerpt')).toHaveText('named highlight');
+  await markers.nth(1).click();
+  const inline = width > 1120 ? page.locator('.limr-sidebar-card[data-type="footnote"]').nth(1) : page.locator('.limr-overlay-positioner');
+  await expect(inline).toContainText('An inline footnote');
+  if (width > 1120) await expect(inline.locator('.limr-sidebar-excerpt')).toHaveText('inline');
+});
+
+test('streaming highlight text selection survives closing delimiters and a following footnote', async ({ page }) => {
+  await page.evaluate(() => window.limrStream({ source: '==selected words', effect: false }));
+  const mark = page.locator('article > p mark');
+  await mark.evaluate(element => {
+    const text = document.createTreeWalker(element, NodeFilter.SHOW_TEXT).nextNode()!;
+    const range = document.createRange(); range.setStart(text, 0); range.setEnd(text, 8);
+    getSelection()!.removeAllRanges(); getSelection()!.addRange(range);
+  });
+  for (const source of ['==selected words=', '==selected words==', '==selected words==^[', '==selected words==^[a note]']) {
+    await page.evaluate(source => window.limrStream({ source, effect: false }), source);
+    expect(await page.evaluate(() => getSelection()?.toString())).toBe('selected');
+  }
+  await page.evaluate(() => window.limrStream({ source: '==selected words==^[a note]', effect: false, streaming: false }));
+  expect(await page.evaluate(() => getSelection()?.toString())).toBe('selected');
+  await expect(page.locator('article > p')).not.toContainText('==');
+});
+
+test('KP keeps authored highlights and footnote anchors through resize and mode changes', async ({ page }) => {
+  const source = ('Some ==highlighted **words**==^[A footnote] with rich typography. ').repeat(12);
+  await page.evaluate(source => window.limrStream({ source, typography: 'knuth-plass', streaming: false }), source);
+  const paragraph = page.locator('.limr-reader-content > article > p');
+  await expect(paragraph).toHaveAttribute('data-limr-kp');
+  await expect.poll(() => paragraph.locator('.limr-paint-background:not([data-reference])').count()).toBeGreaterThan(10);
+  for (const width of [620, 700, 690]) {
+    await page.setViewportSize({ width, height: 950 });
+    await expect.poll(() => paragraph.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThan(5);
+  }
+  await paragraph.locator('mark').first().click();
+  await expect(page.getByRole('toolbar')).toHaveAttribute('data-readonly', 'true');
+  await page.evaluate(source => window.limrStream({ source, typography: 'standard', streaming: false }), source);
+  await expect(paragraph).not.toHaveAttribute('data-limr-kp');
+  await expect(paragraph.getByRole('button', { name: 'Footnotes', exact: true })).toHaveCount(12);
+});

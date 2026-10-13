@@ -1,3 +1,4 @@
+import { BlockLoading } from '../components/LoadingRing';
 import { useState } from 'react';
 import { defineBlock } from './define';
 import { rangeOf, safeUrl, textContent, walk } from '../core/tree';
@@ -25,7 +26,7 @@ export function definition(options: { component?: NodeRenderer } = {}): Renderer
       <div className="limr-block-content">{content ? renderChildren(content.children ?? []) : children}</div>
     </aside>;
   }
-  return { ...defineBlock({ name: 'definition', component: options.component ?? Definition }), tags: ['definition', 'title', 'content'], components: { definition: options.component ?? Definition, title: PassThrough, content: PassThrough } };
+  return { ...defineBlock({ name: 'definition', streaming: options.component ? undefined : { Loading: BlockLoading }, component: options.component ?? Definition }), tags: ['definition', 'title', 'content'], components: { definition: options.component ?? Definition, title: PassThrough, content: PassThrough } };
 }
 
 export function question(options: { component?: NodeRenderer } = {}): RendererExtension {
@@ -63,7 +64,7 @@ export function question(options: { component?: NodeRenderer } = {}): RendererEx
     </section>;
   }
   const names = ['question-content', 'question-hint', 'question-answer', 'question-sel-grp', 'question-sel'];
-  return { ...defineBlock({ name: 'question', component: options.component ?? Question }), tags: ['question', ...names], components: { question: options.component ?? Question, ...Object.fromEntries(names.map(name => [name, PassThrough])) } };
+  return { ...defineBlock({ name: 'question', streaming: options.component ? undefined : { Loading: BlockLoading }, component: options.component ?? Question }), tags: ['question', ...names], components: { question: options.component ?? Question, ...Object.fromEntries(names.map(name => [name, PassThrough])) } };
 }
 
 export function extras(options: { component?: NodeRenderer } = {}): RendererExtension {
@@ -72,7 +73,7 @@ export function extras(options: { component?: NodeRenderer } = {}): RendererExte
     {node.attributes?.desc && <p><span className="limr-underline">{renderAttribute('desc')}</span></p>}</a>{children}
   </div>;
   const Extras: NodeRenderer = ({ children }) => { const runtime = useRuntime(); return <aside className="limr-extras"><div className="limr-card-label" data-limr-ignore="true">{runtime.locale.extra}</div>{children}</aside>; };
-  return { ...defineBlock({ name: 'extras', component: options.component ?? Extras }), tags: ['extras', 'extra'], components: { extras: options.component ?? Extras, extra: Extra } };
+  return { ...defineBlock({ name: 'extras', streaming: options.component ? undefined : { Loading: BlockLoading }, component: options.component ?? Extras }), tags: ['extras', 'extra'], components: { extras: options.component ?? Extras, extra: Extra } };
 }
 
 export { video, type VideoOptions } from './video';

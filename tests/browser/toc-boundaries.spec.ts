@@ -13,7 +13,18 @@ test('playground TOC stays pinned through the article end and footer without cha
   const toc = page.locator('.limr-reader-toc .limr-toc'), title = toc.locator('.limr-toc-title'), list = toc.locator('.limr-toc-scroll');
   await expect.poll(async () => (await toc.boundingBox())!.y + (await toc.boundingBox())!.height).toBeLessThanOrEqual(877);
   const height = await page.evaluate(() => document.documentElement.scrollHeight);
-  await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight / 2));
+  // Axios has one very long code section near its final headings. Halfway
+  // through the article can legitimately put its TOC at the bottom; choose a
+  // heading whose settled TOC position has overflow on both sides instead.
+  const middle = await list.evaluate(element => {
+    const target = (element.scrollHeight - element.clientHeight) / 2;
+    return [...element.querySelectorAll<HTMLElement>('a[data-heading]')].map(link => ({
+      id: link.dataset.heading!, top: link.getBoundingClientRect().top - element.getBoundingClientRect().top + element.scrollTop - 24,
+    })).sort((a, b) => Math.abs(a.top - target) - Math.abs(b.top - target))[0];
+  });
+  await page.evaluate(id => scrollTo(0, document.getElementById(id)!.getBoundingClientRect().top + scrollY - 24), middle.id);
+  await expect(toc.locator(`a[data-heading="${middle.id}"]`)).toHaveAttribute('aria-current', 'location');
+  await expect.poll(() => list.evaluate(element => element.scrollTop)).toBeCloseTo(middle.top, 0);
   await expect.poll(async () => (await toc.boundingBox())!.y).toBeCloseTo(24, 0);
   await expect(list).toHaveAttribute('data-overflow-top', '');
   await expect(list).toHaveAttribute('data-overflow-bottom', '');

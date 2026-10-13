@@ -13,7 +13,7 @@ Start with [built-in modules](modules.md) for module objects, factories, names, 
 | A new block with Markdown content | defineBlock |
 | A standalone annotation type | defineAnnotation |
 | Combined syntax, annotations, actions, and parameters | defineExtension / RendererExtension |
-| A different view for an existing node | components |
+| A different view for existing nodes or a matching subset | components / rendererOverrides |
 | New parsing rules | micromark + mdast, with transform when needed |
 | Visual changes only | CSS theme package + appearance |
 
@@ -51,7 +51,7 @@ export const notice = defineBlock({
 });
 ```
 
-This supports `<notice title="Tip">…</notice>` and `:::notice{title="Tip"}`. name becomes the tag and directive name unless tags/directives overrides them. defineBlock defaults to display: block, selection: content, and scope: local.
+This supports `<notice title="Tip">…</notice>`, paired `::notice{title="Tip"}` / `::`, and `:::` containers. name becomes the tag and directive name unless tags/directives overrides them. defineBlock defaults to display: block, selection: content, and scope: local.
 
 | NodeRendererProps | Use |
 | --- | --- |
@@ -59,6 +59,7 @@ This supports `<notice title="Tip">…</notice>` and `:::notice{title="Tip"}`. n
 | children | Already-rendered subtree; reuse it where possible |
 | source | Source for **this node**, not the entire document |
 | pending | Whether its tail block is still streaming |
+| incomplete | Whether this particular syntax node is unclosed |
 | renderChildren(nodes, { trailing? }) | Rearrange an existing subtree or append an action-only marker |
 | renderValue(tokens?) | Render literals/tokens while preserving selection and annotation insertion |
 | renderAttribute(name) | Render attribute text with original source coordinates |
@@ -148,12 +149,60 @@ The host overrides defaults with parameters={{ exampleDetail: 'full' }}. Paramet
 
 ## Parsing and streaming constraints
 
-SyntaxExtension supports micromark, mdast, tags, directives, display, selection, transform, and scope. Transforms default to document scope. Declare scope: local only if the transform depends on the current subtree and never revises earlier content or needs document-wide semantics. context.source is the original whole document; positions remain original UTF-16 offsets. Do not regex-rewrite source before parsing.
+SyntaxExtension supports micromark, mdast, tags, directives, display, selection, literal, transform, and scope. Transforms default to document scope. Declare scope: local only if the transform depends on the current subtree and never revises earlier content or needs document-wide semantics. context.source is the original whole document; positions remain original UTF-16 offsets. Plugins must not regex-rewrite source before parsing.
 
-Unknown custom tags display their complete original text, including Markdown inside. Unknown directives in the default configuration render their inner Markdown without outer directive markers; with no directive extension installed, basic Markdown parsing applies. Incomplete tags fall back with diagnostics and retry on append. Finish with finish() or streaming=false. Transform exceptions become diagnostics. Client renderer boundaries can fall back to source, but React error boundaries do not catch server-rendering exceptions.
+Unknown custom tags display their complete original text, including Markdown inside. Unknown directives in the default configuration render their inner Markdown without outer directive markers; with no directive extension installed, basic Markdown parsing applies. Registered incomplete tags and containers carry node.incomplete and are retried on append; unfinished headers stay hidden or use the module loading view. Invalid JSX can still fall back with diagnostics. Finish with finish() or streaming=false. Transform exceptions become diagnostics. Client renderer boundaries can fall back to source, but React error boundaries do not catch server-rendering exceptions.
 
 Validate tags/directives, Chinese/emoji, offsets, equivalence between finalized streams and one-shot parsing, SSR, and browser behavior for new interactions. For distribution, test actual packed consumption as described in [plugin packages](plugin-packages.md).
 
 ## Plugin localization
 
 From 1.0.0, components can read the merged locale through useLocale() and select their own dictionary by locale.language. AnnotationType.label accepts a string or `(locale) => string`; actions use context.locale. Citation titles switch between Citation and 引用. A stable plugin instance can update labels without rewriting source. Saved user notes are never translated.
+
+## Streaming presentation
+
+`pending` describes a growing top-level block; `incomplete` describes this particular unclosed syntax node. Every registered tag also accepts component directive syntax. `defineBlock` accepts `streaming.Loading`; omit it to render progressively, using `incomplete` in your component. Component identity is retained while children grow. Default definition, question, extras, video, figure and callout directives use a small themed ring; Mermaid waits for closure before asynchronously drawing. Code, math, GFM and translations show usable partial content. Blockquote-style callouts can grow progressively once their header is complete. Unclosed citation definitions do not register incomplete data.
+
+```tsx
+import { defineBlock, defineExtension } from '@linloir/limr';
+
+export const chart = defineBlock({
+  name: 'chart',
+  component: ({ children }) => <section>{children}</section>,
+  streaming: { Loading: () => <span role="status">Preparing chart…</span> },
+});
+export const streamMotion = defineExtension({
+  name: 'example:stream-motion',
+  streaming: {
+    effect: {
+      className: 'my-stream-increment',
+      keyframes: [{ opacity: 0.25 }, { opacity: 1 }],
+      timing: { duration: 320, easing: 'ease-out' },
+    },
+  },
+});
+```
+
+The last extension providing `streaming.effect` wins. The reader's `streamEffect` overrides it; `false` disables the effect. Keyframes and timing use the Web Animations API. Reduced-motion preferences suppress new animations. Default text/block entrances change opacity without adding a background tint. Text wrappers are compacted after completion, once the native selection leaves them. Use `children`, `renderChildren` and `renderValue` to retain this behavior; a plugin that replaces its own DOM owns its selection and animation behavior.
+
+`SyntaxExtension.literal` protects directive bodies from Markdown/JSX interpretation. Literal modules read their original `source` or transform the resulting component. It does not execute attribute expressions, YAML or JavaScript.
+
+## Conditional component replacement
+
+A module's `rendererOverrides` can restrict replacement by node type, language, ancestors or streaming state. Rules apply only inside that Reader. The last matching rule wins; Reader rules take precedence over extension rules and component mappings. Unmatched nodes retain their existing renderer.
+
+```tsx
+import { defineExtension, type NodeRenderer } from '@linloir/limr';
+
+const JavaScriptCode: NodeRenderer = ({ renderValue }) => <pre>{renderValue()}</pre>;
+export const customCode = defineExtension({
+  name: 'example:javascript-code',
+  rendererOverrides: [{
+    type: 'code',
+    when: (node, context) => node.lang === 'js' && !context.incomplete,
+    component: JavaScriptCode,
+  }],
+});
+```
+
+`when` also receives `pending` and `ancestors`. An explicit replacement owns its intermediate rendering while retaining LiMR's source wrapper, atomic selection and error boundary. Use `renderValue`, `renderAttribute` and `renderChildren` to preserve mappings. These restrictions scope rendering rules; they are not a JavaScript security sandbox.

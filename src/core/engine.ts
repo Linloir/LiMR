@@ -14,6 +14,17 @@ export class DocumentEngine {
   private listeners = new Set<() => void>();
   private definitionSignature = '';
   private recoveryOffset: number | undefined;
+  private lines: number[] = [0];
+  private facts = new WeakMap<MarkdownNode, readonly MarkdownNode[]>();
+  private relevant(node: MarkdownNode): readonly MarkdownNode[] {
+    let result = this.facts.get(node);
+    if (!result) {
+      const nodes: MarkdownNode[] = [];
+      walk(node, child => { if (child.annotation || ['heading', 'definition', 'footnoteDefinition', 'footnoteReference', 'annotationDefinition', 'annotationReference'].includes(child.type)) nodes.push(child); });
+      this.facts.set(node, result = nodes);
+    }
+    return result;
+  }
 
   constructor(source = '', options: DocumentOptions = {}) {
     this.id = options.id ?? `limr-${++sequence}`;
@@ -43,23 +54,29 @@ export class DocumentEngine {
     const globalTransform = this.extensions.some(ext => ext.transform && ext.scope !== 'local');
     const append = !force && previous?.streaming && source.startsWith(previous.source) && !globalTransform;
     const finalizing = !!previous?.streaming && !streaming;
-    let start = append && streaming && previous.blocks.length ? previous.blocks[previous.blocks.length - 1].range.start : 0;
+    let start = append && previous.blocks.length ? previous.blocks[previous.blocks.length - 1].range.start : 0;
     const recovering = this.recoveryOffset !== undefined;
     if (append && recovering) start = Math.min(start, this.recoveryOffset!);
     let reason: DocumentMetrics['reason'] = force || globalTransform ? 'extension' : !previous ? 'initial' : finalizing ? 'finalize' : append ? 'append' : 'replace';
-    const lines = start ? lineStarts(source) : [];
+    if (append && previous) {
+      // Rescan the last code unit as CR and LF may arrive in separate chunks.
+      const from = Math.max(0, previous.source.length - 1);
+      while (this.lines.length > 1 && this.lines.at(-1)! > from) this.lines.pop();
+      for (const at of lineStarts(source.slice(from)).slice(1)) this.lines.push(from + at);
+    } else this.lines = lineStarts(source);
+    const lines = this.lines;
     const context = { source, streaming, documentId: this.id };
     let retained = start ? previous!.blocks.filter(block => block.range.end <= start) : [];
     const environment: string[] = [];
-    for (const block of retained) walk(block.node, node => {
+    for (const block of retained) for (const node of this.relevant(block.node)) {
       if (node.type === 'definition' || node.type === 'footnoteDefinition') { const range = rangeOf(node); environment.push(source.slice(range.start, range.end)); }
-    });
+    }
     let parsed = this.parse(source.slice(start), start, context, lines, environment.join('\n\n'));
     const getSignature = (nodes: readonly MarkdownNode[]) => {
       const entries: string[] = [];
-      for (const node of nodes) walk(node, child => {
+      for (const node of nodes) for (const child of this.relevant(node)) {
         if (child.type === 'definition' || child.type === 'footnoteDefinition') { const range = rangeOf(child); entries.push(source.slice(range.start, range.end)); }
-      });
+      }
       return entries.join('\u0000');
     };
     let signature = getSignature([...retained.map(block => block.node), ...parsed.nodes]);
@@ -75,7 +92,7 @@ export class DocumentEngine {
     }
     this.definitionSignature = signature;
     this.recoveryOffset = parsed.recoveryOffset;
-    const oldAt = new Map(previous?.blocks.map(block => [block.range.start, block]));
+    const oldAt = new Map(previous?.blocks.slice(retained.length).map(block => [block.range.start, block]));
     let reused = retained.length;
     const blocks: Block[] = [...retained];
     for (let index = 0; index < parsed.nodes.length; index++) {
@@ -95,7 +112,7 @@ export class DocumentEngine {
     const annotations = new Map<string, Annotation>();
     const occurrences: AnnotationOccurrence[] = [];
     const slugCounts = new Map<string, number>();
-    for (const block of blocks) walk(block.node, node => {
+    for (const block of blocks) for (const node of this.relevant(block.node)) {
       if (node.type === 'heading') {
         const text = textContent(node);
         const base = slugify(text);
@@ -106,15 +123,16 @@ export class DocumentEngine {
       if (node.type === 'definition' && !definitions.has(String(node.identifier))) definitions.set(String(node.identifier), node);
       if (node.type === 'footnoteDefinition' && !footnotes.has(String(node.identifier))) footnotes.set(String(node.identifier), node);
       if (node.type === 'footnoteReference' && !footnoteOrder.includes(String(node.identifier))) footnoteOrder.push(String(node.identifier));
-      if (node.type === 'annotationDefinition') {
+      if (node.annotation) {
         const annotation = node.annotation as Annotation;
-        annotations.set(annotation.id, annotation);
+        // GFM resolves duplicate named footnotes to their first definition.
+        if (node.type !== 'footnoteDefinition' || !annotations.has(annotation.id)) annotations.set(annotation.id, annotation);
       }
       if (node.type === 'annotationReference') {
         const range = rangeOf(node);
-        occurrences.push({ id: `${this.id}-ref-${range.start}`, range, annotationIds: node.annotationIds as string[], embedded: true });
+        occurrences.push({ id: `${this.id}-ref-${range.start}`, range, annotationIds: node.annotationIds as string[], embedded: true, ...(node.referenceRange ? { referenceRange: node.referenceRange as AnnotationOccurrence['referenceRange'] } : {}) });
       }
-    });
+    }
     this.snapshot = {
       id: this.id, revision: (previous?.revision ?? -1) + 1, source, streaming,
       blocks,

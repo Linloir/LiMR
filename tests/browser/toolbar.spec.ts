@@ -28,7 +28,7 @@ test('default tools animate outward with delayed, staggered fades and normalize 
     expect(motions.items[i][1].timing.delay).toBeGreaterThan(motions.items[i][0].timing.delay ?? 0);
     if (i) expect(motions.items[i][0].timing.delay ?? 0).toBeGreaterThan(motions.items[i - 1][0].timing.delay ?? 0);
   }
-  const icons = await toolbar.locator('.limr-tool-icon').evaluateAll(elements => elements.map(element => ({ slot: element.getBoundingClientRect().toJSON(), icon: element.querySelector('svg')!.getBoundingClientRect().toJSON() })));
+  const icons = await toolbar.locator('.limr-tool-face[data-visible] .limr-tool-icon').evaluateAll(elements => elements.map(element => ({ slot: element.getBoundingClientRect().toJSON(), icon: element.querySelector('svg')!.getBoundingClientRect().toJSON() })));
   for (const { slot, icon } of icons) { expect(slot.width).toBe(18); expect(slot.height).toBe(18); expect(icon.width).toBeLessThanOrEqual(18); expect(icon.height).toBeLessThanOrEqual(18); }
   await page.keyboard.press('Escape');
   await page.locator('.limr-reader-content > article > p').first().evaluate(element => Object.assign(element.style, { position: 'fixed', marginTop: '0', top: '4px', left: '80px' }));
@@ -134,14 +134,34 @@ test('copy crossfades in place, reports green success, and resets for another co
   await toolbar.getByRole('button', { name: '复制', exact: true }).click();
   const copied = toolbar.getByRole('button', { name: '已复制', exact: true });
   await expect(copied).toBeVisible();
+  const widthMotion = async () => copied.locator('.limr-tool-faces').evaluate(element => {
+    const animation = element.getAnimations().find(animation => animation instanceof CSSTransition && animation.transitionProperty === 'width');
+    if (!animation) return null;
+    const time = animation.currentTime, duration = Number(animation.effect!.getTiming().duration), easing = animation.effect!.getTiming().easing;
+    animation.pause();
+    const widths = [0, .25, .5, 1].map(fraction => { animation.currentTime = duration * fraction; return element.getBoundingClientRect().width; });
+    animation.currentTime = time; animation.play();
+    return { widths, easing, duration };
+  });
+  const growing = await widthMotion();
+  expect(growing).not.toBeNull();
+  expect(growing!.easing).toContain('cubic-bezier');
+  expect(growing!.widths[3]).toBeGreaterThan(growing!.widths[0]);
+  expect((growing!.widths[1] - growing!.widths[0]) / (growing!.widths[3] - growing!.widths[0])).toBeGreaterThan(.35);
   await expect(copied).toHaveCSS('color', 'rgb(82, 136, 94)');
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('bravo');
   const faces = copied.locator('.limr-tool-face');
   const styles = await faces.evaluateAll(elements => elements.map(element => ({ transition: getComputedStyle(element).transition, transform: getComputedStyle(element).transform })));
-  expect(styles.every(style => style.transition.includes('opacity') && style.transition.includes('cubic-bezier') && style.transform === 'none')).toBe(true);
+  expect(styles.every(style => style.transition.includes('opacity') && style.transition.includes('transform') && style.transition.includes('cubic-bezier'))).toBe(true);
   await expect(copied.locator('.limr-tool-face[data-visible]')).toHaveCSS('opacity', '1');
   await expect(copied.locator('.limr-tool-face:not([data-visible])')).toHaveCSS('opacity', '0');
   await expect(toolbar.getByRole('button', { name: '复制', exact: true })).toBeVisible({ timeout: 4000 });
+  const shrinking = await toolbar.getByRole('button', { name: '复制', exact: true }).locator('.limr-tool-faces').evaluate(element => {
+    const animation = element.getAnimations().find(animation => animation instanceof CSSTransition && animation.transitionProperty === 'width');
+    return animation ? (animation.effect as KeyframeEffect).getKeyframes().map(frame => parseFloat(String(frame.width))) : [];
+  });
+  expect(shrinking.length).toBeGreaterThanOrEqual(2);
+  expect(shrinking[0]).toBeGreaterThan(shrinking.at(-1)!);
 });
 
 test('panels prefer below, keep the row steady, and scroll inside the shell height budget', async ({ page }) => {

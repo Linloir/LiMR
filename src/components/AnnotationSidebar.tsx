@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { useAppearance, useDocument, useIsomorphicLayoutEffect, useLocale, useRuntime, useStoreSelector, useTheme } from '../react/context';
-import type { AnnotationOccurrence } from '../core';
-import type { StyledProps } from '../react/types';
+import type { Annotation, AnnotationOccurrence } from '../core';
+import type { AnnotationSidebarPreviewProps, StyledProps } from '../react/types';
+import type { ComponentType } from 'react';
 import { AnnotationGroup } from './AnnotationContent';
 import { Collapse } from './Collapse';
 import { annotationReferenceText } from './annotation-reference';
@@ -39,6 +40,21 @@ export interface AnnotationSidebarProps extends StyledProps {
   positioner?: SidebarPositioner;
   renderCard?: (props: { occurrence: AnnotationOccurrence; active: boolean; activate: () => void }) => ReactNode;
 }
+/** Position changes on scroll do not change a card's content. Keep its nested
+ * renderer, disclosure controls and plugin preview out of the scroll render. */
+const SidebarCardBody = memo(function SidebarCardBody({ occurrence, annotation, annotations, reference, active, title, toggleLabel, Preview, activate }: {
+  occurrence: AnnotationOccurrence; annotation?: Annotation; annotations: readonly Annotation[]; reference: string; active: boolean; title: string; toggleLabel: string;
+  Preview?: ComponentType<AnnotationSidebarPreviewProps<any>> | false; activate: (id: string) => void;
+}) {
+  return <>
+    {reference && <div className="limr-sidebar-reference" title={reference}><p className="limr-sidebar-excerpt">{reference}</p></div>}
+    <div className="limr-sidebar-card-body">
+      <button type="button" className="limr-sidebar-card-heading" onClick={() => activate(occurrence.id)} aria-expanded={active}>{title}<span className="limr-sidebar-toggle"><span key={String(active)} className="limr-button-label limr-underline">{toggleLabel}</span></span></button>
+      {Preview && annotation && <Collapse open={!active} keepMounted className="limr-sidebar-preview-panel"><div className="limr-sidebar-preview"><Preview annotation={annotation} data={annotation.data} occurrence={occurrence} annotations={annotations} referenceText={reference} /></div></Collapse>}
+      <Collapse open={active} className="limr-sidebar-expansion"><div className="limr-sidebar-card-content"><AnnotationGroup occurrence={occurrence} presentation="sidebar" enabled={active} /></div></Collapse>
+    </div>
+  </>;
+});
 export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = alignSidebar, renderCard, className, style }: AnnotationSidebarProps) {
   const runtime = useRuntime();
   const document = useDocument();
@@ -200,7 +216,7 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
   // under the pointer and move its referenced text, even at the rail boundary.
   const displacement = sync === 'document' && locked ? (positions.get(locked.id) ?? locked.top) - lockedAnchor : 0;
   useIsomorphicLayoutEffect(() => { if (sync === 'document') runtime.documentOffset.set(displacement); }, [runtime, displacement, sync]);
-  const lockCard = (id: string) => {
+  const lockCard = useCallback((id: string) => {
     // Keep the original resting position while this card is hovered or active.
     // Relocking its boundary-raised top would prevent a collapse from moving
     // back down, then jump when pointer leave releases the new lock.
@@ -211,7 +227,14 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
       const top = card.getBoundingClientRect().top - origin;
       setCardLock({ id, top });
     }
-  };
+  }, [locked?.id]);
+  const activateCard = useCallback((id: string) => {
+    const state = runtime.interaction.get();
+    const hovering = state.hovered === id || cards.current.get(id)?.matches(':hover');
+    lockCard(id);
+    runtime.activate(state.active === id ? null : id, 'sidebar');
+    if (hovering) runtime.hover(id, 'sidebar');
+  }, [runtime, lockCard]);
   return <aside ref={rail} aria-label={locale.annotations} className={`limr-sidebar ${className ?? ''}`} data-sync={sync} data-releasing={releasing ? '' : undefined} data-limr-theme={theme} data-limr-appearance={appearance} style={style}>
     {items.map(occurrence => {
       const annotation = decorations.annotations.get(occurrence.annotationIds[0]);
@@ -240,13 +263,7 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
       } as CSSProperties & { [token: `--${string}`]: string | undefined };
       // A mixed card must not dismiss a conversation because a citation opted in.
       const collapseOnContentClick = occurrence.annotationIds.every(id => runtime.annotationTypes.get(decorations.annotations.get(id)?.type ?? '')?.sidebar?.collapseOnContentClick);
-      const activate = () => {
-        const hovering = runtime.interaction.get().hovered === occurrence.id || cards.current.get(occurrence.id)?.matches(':hover');
-        lockCard(occurrence.id);
-        runtime.activate(isActive ? null : occurrence.id, 'sidebar');
-        // Activation clears marker hover; the pointer is still inside this card.
-        if (hovering) runtime.hover(occurrence.id, 'sidebar');
-      };
+      const activate = () => activateCard(occurrence.id);
       return <div key={occurrence.id} ref={element => { if (element) cards.current.set(occurrence.id, element); else cards.current.delete(occurrence.id); }}
         className="limr-sidebar-card" data-type={annotation?.type} data-locked={locked?.id === occurrence.id || undefined} data-active={isActive || hovered === occurrence.id || undefined} data-expanded={isActive || undefined} data-default-card={!renderCard || undefined} data-content-toggle={collapseOnContentClick || undefined} data-citations={occurrence.annotationIds.every(id => decorations.annotations.get(id)?.type === 'citation') || undefined} data-occurrence={occurrence.id}
         style={cardStyle}
@@ -254,14 +271,7 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
         onClick={event => {
           if ((!isActive || collapseOnContentClick) && !renderCard && !event.defaultPrevented && !(event.target as Element).closest('button,a,input,select,textarea,summary,[role="button"],[role="link"],[contenteditable="true"],[data-limr-card-interactive]') && window.getSelection()?.isCollapsed !== false) activate();
         }}>
-        {renderCard ? renderCard({ occurrence, active: isActive, activate }) : <>
-          {references.get(occurrence.id) && <div className="limr-sidebar-reference" title={references.get(occurrence.id)}><p className="limr-sidebar-excerpt">{references.get(occurrence.id)}</p></div>}
-          <div className="limr-sidebar-card-body">
-            <button type="button" className="limr-sidebar-card-heading" onClick={activate} aria-expanded={isActive}>{definition?.label ?? annotation?.type ?? 'Reference'}<span className="limr-sidebar-toggle"><span key={String(isActive)} className="limr-button-label limr-underline">{isActive ? locale.collapse : locale.expand}</span></span></button>
-            {Preview && annotation && <Collapse open={!isActive} keepMounted className="limr-sidebar-preview-panel"><div className="limr-sidebar-preview"><Preview annotation={annotation} data={annotation.data} occurrence={occurrence} annotations={annotationGroups.get(occurrence.id)!} referenceText={references.get(occurrence.id) ?? ''} /></div></Collapse>}
-            <Collapse open={isActive} className="limr-sidebar-expansion"><div className="limr-sidebar-card-content"><AnnotationGroup occurrence={occurrence} presentation="sidebar" enabled={isActive} /></div></Collapse>
-          </div>
-        </>}
+        {renderCard ? renderCard({ occurrence, active: isActive, activate }) : <SidebarCardBody occurrence={occurrence} annotation={annotation} annotations={annotationGroups.get(occurrence.id)!} reference={references.get(occurrence.id) ?? ''} active={isActive} title={definition?.label ?? annotation?.type ?? 'Reference'} toggleLabel={isActive ? locale.collapse : locale.expand} Preview={Preview} activate={activateCard} />}
       </div>;
     })}
   </aside>;

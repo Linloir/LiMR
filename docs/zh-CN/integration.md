@@ -21,7 +21,31 @@ export function StreamingAnswer({ answer, generating }: {
 }
 ```
 
-应用负责传输层，把每个片段追加到完整 `answer`；不要只把最后一个片段传给 source。最后一次更新必须传 `streaming={false}`，触发完整语义校正。followOutput 只在仍靠近底部时跟随，不会强行拉回正在阅读上文的用户。纯核心支持 `append(chunk)` / `finish()`，React props 使用累计字符串。
+应用负责传输层，把每个片段追加到完整 `answer`；不要只把最后一个片段传给 source。最后一次更新必须传 `streaming={false}`，完成尾部语法与语义校正。收尾可以复用稳定前缀；引用定义变化等情况仍可能触发全文解析。followOutput 只在仍靠近底部时跟随，不会强行拉回正在阅读上文的用户。纯核心支持 `append(chunk)` / `finish()`，React props 使用累计字符串。
+
+默认新增文字和特殊块使用透明度淡入，段落结束时不重播动画。`streamEffect={false}` 可关闭，传入 `className`、`keyframes` 和 `timing` 可自定义；系统的减少动态效果偏好优先。未闭合模块可显示 loading，代码/公式渐进显示；复用 `children`、`renderChildren`、`renderValue` 有助于保留控件状态与选区。插件接口见[扩展开发](extensions.md)。
+
+## 段落排版
+
+```tsx
+import { useState } from 'react';
+import { Reader, type TypographyMode } from '@linloir/limr';
+
+export function TypographyReader({ source }: { source: string }) {
+  const [mode, setMode] = useState<TypographyMode>('standard');
+  return <>
+    <select aria-label="排版模式" value={mode}
+      onChange={event => setMode(event.target.value as TypographyMode)}>
+      <option value="standard">标准</option>
+      <option value="knuth-plass">Knuth–Plass</option>
+      <option value="justify">两端对齐</option>
+    </select>
+    <Reader source={source} typography={mode} />
+  </>;
+}
+```
+
+`standard` 为默认值；`justify` 使用浏览器两端对齐；`knuth-plass` 启用真正的段落优化算法。`knuthPlass` 可调整 TeX 参数与断词；流式尾段稳定后再参与 KP 排版。详细行为及性能边界见[样式](styles.md)和[性能](performance.md)。
 
 ## 内部滚动容器
 
@@ -111,7 +135,7 @@ export async function renderArticle(source: string) {
 }
 ```
 
-也可以使用 React 流式 SSR 处理 Suspense。Shiki 在客户端补充高亮，SSR HTML 仍包含代码文本。`load` 标注请求在客户端显示卡片时发起；如需服务端已有内容，可预先放进 annotation.data。宿主仍需把 CSS 和字体资源放到页面能访问的位置。
+也可以使用 React 流式 SSR 处理 Suspense。Shiki 在客户端补充高亮，SSR HTML 仍包含代码文本。Mermaid 在服务器输出 loading，客户端完成绘图后淡入；KP 在客户端测量字体并排版，SSR 保留普通文本布局。`load` 标注请求在客户端显示卡片时发起；如需服务端已有内容，可预先放进 annotation.data。宿主仍需把 CSS 和字体资源放到页面能访问的位置。
 
 ## 已有插件与主题
 

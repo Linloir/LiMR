@@ -8,12 +8,12 @@ const ordinary = new Set(['text', 'paragraph', 'heading', 'strong', 'emphasis', 
 
 /** Native text nodes suffice for ordinary Markdown. Custom layouts keep explicit
  * wrappers so reordered/conditional children retain independent source bindings. */
-export function compactTextNodes(node: MarkdownNode, components: Readonly<Record<string, NodeRenderer>>): readonly MarkdownNode[] | null {
+export function compactTextNodes(node: MarkdownNode, components: Readonly<Record<string, NodeRenderer>>, overrides?: ReadonlyMap<string, unknown>): readonly MarkdownNode[] | null {
   const texts: MarkdownNode[] = [];
   let supported = true;
   const visit = (node: MarkdownNode) => {
     if (node.selection === 'atomic' || atomic.has(node.type) || hidden.has(node.type)) return;
-    if (!ordinary.has(node.type) || components[node.type]) { supported = false; return; }
+    if (!ordinary.has(node.type) || components[node.type] || overrides?.has(node.type)) { supported = false; return; }
     if (node.type === 'text') { if (node.value) texts.push(node); return; }
     node.children?.forEach(visit);
   };

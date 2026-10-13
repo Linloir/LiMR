@@ -63,6 +63,7 @@ test('touch expands from the measured preview and closes back to it with fade an
   expect(entry.rect.height).toBeLessThan(300);
   expect(entry.easing).toContain('cubic-bezier');
   await card.evaluate(element => element.getAnimations({ subtree: true }).forEach(animation => animation.finish()));
+  await expect(card).not.toHaveAttribute('data-motion');
   await expect(page.locator('.limr-overlay-positioner')).toBeFocused();
   await expect(card.getByRole('button', { name: '收起', exact: true })).not.toBeFocused();
   await page.keyboard.press('Tab');

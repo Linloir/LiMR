@@ -40,13 +40,13 @@ The names need not match. The code-highlighting factory is `codeHighlight()`, it
 
 `video({ loading: 'click' })` sets module defaults for that Reader. A `<video loading="eager" … />` tag overrides the setting for one video. Available options vary by module; see [default syntax](syntax.md).
 
-## Ten default modules included with LiMR
+## Default modules included with LiMR
 
-These modules ship in `@linloir/limr`; they do not require ten separate npm installations. `standard()` returns an array containing the following ten module objects, each with its default settings.
+These modules ship in `@linloir/limr`; no separate npm installations are required. `standard()` returns the following module objects with their default settings.
 
 | Factory function | Object's `name` | Capability and content syntax |
 | --- | --- | --- |
-| `gfm()` | `gfm` | Tables, `~~strikethrough~~`, tasks, autolinks, `[^id]` endnotes |
+| `gfm()` | `gfm` | Tables, `~~strikethrough~~`, tasks, autolinks, `[^id]` footnote parsing |
 | `math()` | `math` | `$…$` inline and `$$…$$` display math; also import math.css |
 | `codeHighlight()` | `code-highlight` | Shiki colors for code fences with a language identifier |
 | `definition()` | `definition` | `<definition>` cards with a title and Markdown body |
@@ -56,12 +56,16 @@ These modules ship in `@linloir/limr`; they do not require ten separate npm inst
 | `figures()` | `figures` | `<figures>` / `<figure>` responsive groups, single figures, and captions |
 | `citation()` | `citation` | `<citation>` source definitions and `<ref>` markers with cards |
 | `translations()` | `translations` | `<translations>` original, translated, and parallel views |
+| `mermaid()` | `mermaid` | Mermaid fences / `::mermaid`, image/source, zoom and copy |
+| `callout()` | `callout` | Obsidian callout types, aliases and nested quotes / `::callout` |
+| `inlineHighlights()` | `inline-highlights` | `==text==` and `::highlight`, blue read-only highlights |
+| `footnotes()` | `footnotes` | `[^id]` / `^[body]`, comment markers and cards; `::footnote` / `::footnote-ref` |
 
-Import these functions from `@linloir/limr` or `@linloir/limr/extensions`. `standard()` is a convenience function returning an array, not an eleventh module.
+Import these functions from `@linloir/limr` or `@linloir/limr/extensions`. `standard()` is a convenience function returning an array, not an additional module.
 
 `Reader`, standalone `Markdown`, and `DocumentProvider` automatically use `standard()` when `extensions` is omitted. Your first `<Reader source={source} />` therefore supports these capabilities. Components inside a shared Provider inherit its configuration. Core-only `createDocument()` starts with CommonMark; extensions must be explicit, and it does not display React UI.
 
-Highlight, copy, and annotation deletion are built-in toolbar actions. Highlights are saved as annotation data, not a separate Markdown tag. The Playground's margin notes, reading notes, questions, footnote annotations, and simulated assistant come from example plugins and **are not automatically installed in every Reader**. The `question()` exercise module is also separate from question annotations.
+Highlight, copy, and annotation deletion are built-in toolbar actions. Default modules recognize `==text==` and Markdown footnotes. Source-authored highlights offer copying but no toolbar editing. The Playground's editable margin notes, reading notes, questions, footnote annotations, and simulated assistant come from example plugins and **are not automatically installed in every Reader**. The `question()` exercise module is also separate from question annotations.
 
 ## Choosing a configuration
 

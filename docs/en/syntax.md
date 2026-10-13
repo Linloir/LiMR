@@ -6,22 +6,26 @@
 
 **Modules** are configuration objects that add capabilities such as formulas, videos, or citations. A factory is called in application code to return an object; the module name is its `name` property, used for replacement and removal; tags and directives are the syntax written in Markdown. See [built-in modules](modules.md) for concepts and configuration.
 
-The ten modules below ship with `@linloir/limr`. `Reader`, standalone `Markdown`, and `DocumentProvider` enable all of them through `standard()` by default; core-only `createDocument()` starts with CommonMark. The following sections include source and rendered examples, using LiMR itself.
+The default modules below ship with `@linloir/limr`. `Reader`, standalone `Markdown`, and `DocumentProvider` enable all of them through `standard()` by default; core-only `createDocument()` starts with CommonMark. The following sections include source and rendered examples, using LiMR itself.
 
 ## Module catalog
 
 | Factory (application code) | Module name (name) | Capability | Registered tags / directives |
 | --- | --- | --- | --- |
-| `gfm()` | `gfm` | Tables, strikethrough, tasks, autolinks, standard footnotes | None |
-| `math()` | `math` | Inline and display math | `$…$`, `$$…$$` |
-| `codeHighlight()` | `code-highlight` | Shiki fenced-code highlighting | Standard code fences |
-| `definition()` | `definition` | Definitions | Tags: definition, title, content; directive: definition |
-| `question()` | `question` | Exercises and answers | question and child tags below; directive: question |
-| `extras()` | `extras` | Further reading | Tags: extras, extra; directive: extras |
-| `video()` | `video` | Native video, YouTube, Bilibili | Tags: video, md-video; directive: video |
-| `figures()` | `figures` | Figure groups and captions | Tags: figures, figure, figcaption, caption, img; directives: figures, figure, figcaption |
-| `citation()` | `citation` | Reference definitions and markers | Tags: citation, ref; no directives |
+| `gfm()` | `gfm` | Tables, strikethrough, tasks, autolinks, standard footnotes | `::gfm` |
+| `math()` | `math` | Inline and display math | `$…$`, `$$…$$`, `::math` |
+| `codeHighlight()` | `code-highlight` | Shiki fenced-code highlighting | Standard code fences, `::code` / `::code-highlight` |
+| `definition()` | `definition` | Definitions | Tags / directives: definition, title, content |
+| `question()` | `question` | Exercises and answers | Tags / directives: question and child names below |
+| `extras()` | `extras` | Further reading | Tags / directives: extras, extra |
+| `video()` | `video` | Native video, YouTube, Bilibili | Tags / directives: video, md-video |
+| `figures()` | `figures` | Figure groups and captions | Tags / directives: figures, figure, figcaption, caption, img |
+| `citation()` | `citation` | Reference definitions and markers | Tags / directives: citation, ref |
 | `translations()` | `translations` | Original, translated, and parallel text | Tags and directives: translations, origin, translation |
+| `mermaid()` | `mermaid` | Mermaid diagrams | Mermaid fences, `::mermaid` |
+| `callout()` | `callout` | Typed, titled and collapsible quotes | `> [!type]`, `::callout` |
+| `inlineHighlights()` | `inline-highlights` | Source-authored highlights | `==text==`, `::highlight` |
+| `footnotes()` | `footnotes` | Comment markers and footnote cards | `[^id]`, `^[body]`, `::footnote`, `::footnote-ref` |
 
 These are registered static tags in Markdown, not an arbitrary MDX/HTML execution environment. Use string attributes such as `multi="true"` and `answer="[0,2]"`. Do not use `answer={[0,2]}`, event functions, or spread attributes. Unregistered HTML is displayed as text; expressions are not executed and may produce diagnostics. Keep blank lines between block tags and their Markdown content.
 
@@ -48,7 +52,7 @@ const value = 42;
 
 A standard footnote[^note].
 
-[^note]: Content at the end of the document.
+[^note]: Footnote content in a sidebar or floating card.
 ````
 
 Rendered result (interactive where applicable):
@@ -73,9 +77,9 @@ const value = 42;
 
 A standard footnote[^syntax-note].
 
-[^syntax-note]: Content at the end of the document.
+[^syntax-note]: Footnote content in a sidebar or floating card.
 
-Standard `[^note]` footnotes appear at the end; `<ref>` opens an annotation card. Ordinary Markdown supports `![Description](/image.png)`. Raw HTML is not passed through to the DOM. Register an extension or override `components` to customize rendering.
+Default `[^note]` footnotes use markers and cards. Remove the `footnotes` module to restore traditional GFM endnotes. Ordinary Markdown supports `![Description](/image.png)`. Raw HTML is not passed through to the DOM. Register an extension or override `components` to customize rendering.
 
 ## Math and code
 
@@ -95,7 +99,7 @@ $$
 \int_0^1 x^2\,dx = \frac{1}{3}
 $$
 
-Import `@linloir/limr/math.css`. Configure formulas with `math({ macros, strict })`. Fenced language names select Shiki highlighting. Highlighting loads near the viewport; streaming code waits for a 180ms pause. Code over the default 100,000-character limit, unsupported languages, and languages outside the configured list retain readable source. Configure `codeHighlight({ languages, lightTheme, darkTheme, eager, maxLength })`.
+Import `@linloir/limr/math.css`. Configure formulas with `math({ macros, strict })`. Fenced language names select Shiki highlighting. Highlighting loads near the viewport; streaming code waits for closure and for native selections to leave before applying colors. Code over the default 100,000-character limit, unsupported languages, and languages outside the configured list retain readable source. Configure `codeHighlight({ languages, lightTheme, darkTheme, eager, maxLength })`.
 
 ## Definitions
 
@@ -349,4 +353,103 @@ Global `parameters.translationMode` overrides individual blocks. Pass onTranslat
 
 ## Selection and replacement
 
-Persistent highlights are annotations; there is no built-in `==highlight==` syntax. Register plugins for custom tags. Not every child tag has a corresponding directive. See [extension development](extensions.md) to select or replace default modules.
+Toolbar-authored highlights are annotations; source-authored `==highlights==` offer copying without editing. All registered default tags also support their matching `::` directive. Register plugins for custom tags. See [extension development](extensions.md) to select or replace default modules.
+
+## Two-colon components
+
+All default modules accept the [CoMark component form](https://comark.dev/syntax/components), including nesting, scalar attributes, and Markdown children:
+
+```md
+::definition{title="A definition"}
+**Rich** Markdown content.
+::
+
+::question{title="A question"}
+::question-content
+The prompt.
+::
+::question-answer
+The answer.
+::
+::
+```
+
+Names: `gfm`, `definition`, `title`, `content`, `question` and its existing child tags, `extras`, `extra`, `video`, `md-video`, `figures`, `figure`, `figcaption`, `caption`, `img`, `citation`, `ref`, `translations`, `origin`, `translation`, `code` (alias `code-highlight`), `math`, `mermaid`, `callout`, `highlight`, `footnote`, and `footnote-ref`. `::code{lang="typescript"}` and `::math` preserve their bodies literally. Standard Markdown fences, JSX, single-colon inline directives and existing triple-colon containers remain supported. An unpaired two-colon line in a finished document keeps its legacy leaf-directive meaning. This is component-syntax compatibility, not support for CoMark's YAML props, named slots or frontmatter.
+
+During streaming, partial headers, links, inline code/emphasis/math delimiters and table headers are withheld until usable. Registered open components carry `incomplete`; the module chooses a loading view or progressive content. Code fences and display math can render before their closing delimiter. Set `streaming={false}` or call `finish()` to restore normal final Markdown interpretation. Source ranges always refer to the unmodified original input.
+
+## Mermaid diagrams
+
+````markdown
+```mermaid
+flowchart LR
+  A[Start] --> B{Ready}
+  B --> C[Read on]
+```
+````
+
+`::mermaid` is also supported. Open streaming blocks show a loading ring; completed diagrams load asynchronously and fade into view. The math-style surface has one rounded toolbar for copying source, zooming in/out, and switching source/image views. Selection, highlights and markers treat the whole diagram atomically in both views. Mermaid uses strict mode without diagram interaction callbacks.
+
+Rendered result:
+
+```mermaid
+flowchart LR
+  A[Start] --> B{Ready}
+  B --> C[Read on]
+```
+
+Drag to pan, or use arrow keys, Page Up/Down, Home/End and the wheel; Shift+wheel moves horizontally. Click or Enter selects the whole block with its selection toolbar below. Zoomed content scrolls within `--limr-mermaid-max-height`, defaulting to `min(70vh, 36rem)`. The diagram's own copy button copies its body; selection-toolbar and browser copying preserve the full fence or directive. See [styles](styles.md) and [atomic copying](annotations.md).
+
+## Callouts and nested quotes
+
+```markdown
+> [!tip]+ Custom title
+> A useful hint.
+>
+> > An ordinary nested quote.
+> >
+> > > [!warning]- Collapsible reminder
+> > > With **Markdown** content.
+```
+
+Default types are `note`, `abstract`, `info`, `todo`, `tip`, `success`, `question`, `warning`, `failure`, `danger`, `bug`, `example`, and `quote`. Obsidian aliases are supported: summary/tldr, hint/important, check/done, help/faq, caution/attention, fail/missing, error, and cite. Types are case-insensitive; unknown names use note styling. `+` starts expanded, `-` starts collapsed, and no sign creates a regular block. The equivalent component is `::callout{type="tip" title="Title" fold="-"}`.
+
+Rendered result; expand the nested reminder:
+
+> [!tip]+ Custom title
+> A useful hint.
+>
+> > An ordinary nested quote.
+> >
+> > > [!warning]- Collapsible reminder
+> > > With **Markdown** content.
+
+## Source highlights and footnotes
+
+```markdown
+==A blue highlight== offers copying without editing.
+
+==A named note==[^note]
+
+==An inline note==^[With **Markdown** content.]
+
+[^note]: Footnote content.
+
+    A second paragraph.
+```
+
+Highlights preserve rich inline formatting. Escaped punctuation, code and math do not create highlights. Override the blue through `--limr-inline-highlight` or `inlineHighlights({ color })`. Their toolbar contains only a copy button and a single-line, left-aligned read-only hint.
+
+Footnotes use rounded comment markers, sidebar items on wide readers, and floating cards on narrow readers. Adjacent footnotes reference precisely the highlighted text; standalone markers reference their paragraph. Named definitions can be reused. `::highlight`, `::footnote{id="note"}`, and `::footnote-ref{id="note"}` provide component forms. Removing the `footnotes` module restores GFM superscripts and endnotes.
+
+Rendered result; click a highlight or comment marker:
+
+==A blue highlight== offers copying without editing.
+
+==A named note==[^syntax-source-highlight]
+
+==An inline note==^[With **Markdown** content.]
+
+[^syntax-source-highlight]: Footnote content.
+
+    A second paragraph.

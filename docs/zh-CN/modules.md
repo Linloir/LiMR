@@ -40,13 +40,13 @@ export function Article() {
 
 `video({ loading: 'click' })` 的参数设置这个 Reader 中视频模块的默认行为；正文的 `<video loading="eager" … />` 则可以覆盖某一个视频的设置。不同模块支持不同参数，见[默认语法](syntax.md)。
 
-## 随 LiMR 提供的十个默认模块
+## 随 LiMR 提供的默认模块
 
-这些模块都随 `@linloir/limr` 安装，不需要再安装十个 npm 包。`standard()` 返回由下面十个模块对象组成的数组，使用各自的默认配置。
+这些模块都随 `@linloir/limr` 安装，不需要分别安装 npm 包。`standard()` 返回下面的模块对象数组，使用各自的默认配置。
 
 | 创建模块的函数 | 对象的 `name` | 增加的能力与正文写法 |
 | --- | --- | --- |
-| `gfm()` | `gfm` | 表格、`~~删除线~~`、任务列表、自动链接、`[^id]` 文末脚注 |
+| `gfm()` | `gfm` | 表格、`~~删除线~~`、任务列表、自动链接、`[^id]` 脚注解析 |
 | `math()` | `math` | `$…$` 行内公式、`$$…$$` 块级公式，需要额外导入 math.css |
 | `codeHighlight()` | `code-highlight` | 使用 Shiki 为带语言标记的代码围栏着色 |
 | `definition()` | `definition` | `<definition>` 释义卡片，可带标题与 Markdown 正文 |
@@ -56,12 +56,16 @@ export function Article() {
 | `figures()` | `figures` | `<figures>` / `<figure>` 响应式图组、单图和图注 |
 | `citation()` | `citation` | `<citation>` 定义来源，`<ref>` 插入引用角标和卡片 |
 | `translations()` | `translations` | `<translations>` 包含原文与译文，切换原文、译文、对照 |
+| `mermaid()` | `mermaid` | Mermaid 围栏 / `::mermaid`，图像、源码、缩放和复制 |
+| `callout()` | `callout` | Obsidian callout 类型、别名和嵌套注释 / `::callout` |
+| `inlineHighlights()` | `inline-highlights` | `==文字==` 和 `::highlight`，默认蓝色只读高亮 |
+| `footnotes()` | `footnotes` | `[^id]`、`^[正文]`，评论角标与脚注卡片；`::footnote` / `::footnote-ref` |
 
-所有函数都可以从 `@linloir/limr` 或 `@linloir/limr/extensions` 导入。`standard()` 是便捷组合函数，自身不是第十一个模块；它的返回值是数组。
+所有函数都可以从 `@linloir/limr` 或 `@linloir/limr/extensions` 导入。`standard()` 是便捷组合函数，自身不是额外的模块；它的返回值是数组。
 
 `Reader`、独立使用的 `Markdown`、`DocumentProvider` 在未传 `extensions` 时自动使用 `standard()`，因此最初的 `<Reader source={source} />` 就支持这些能力。共享 Provider 内的组件使用 Provider 的配置。纯核心 `createDocument()` 默认只启用 CommonMark；需要时显式传入扩展，它不负责显示 React UI。
 
-高亮、复制、删除选区标注是工具栏自带动作，高亮以 annotation 数据保存，不是另外一种默认 Markdown 标签。Playground 的旁注、笔记、提问、脚注和模拟 AI 问答来自示例插件，**没有自动装进每个 Reader**。`question()` 的练习题与“提问”标注也不是同一功能。
+高亮、复制、删除选区标注是工具栏自带动作。`==文字==` 和 Markdown 脚注由默认模块自动识别；源码中的高亮只可复制，不能通过工具栏编辑。Playground 的可编辑旁注、笔记、提问、脚注和模拟 AI 问答来自示例插件，**没有自动装进每个 Reader**。`question()` 的练习题与“提问”标注也不是同一功能。
 
 ## 按需要组合
 

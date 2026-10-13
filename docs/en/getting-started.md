@@ -36,6 +36,8 @@ export function Article() {
 
 Wide containers show contents, body, and annotations. Below `sidebarBreakpoint` (1120px by default), annotations use an overlay. Contents become a collapsible list on narrow screens.
 
+Typography defaults to `standard`; `knuth-plass` and `justify` are also available, as shown in [integration](integration.md). Defaults include Mermaid, nested callouts, `==highlights==`, and footnote cards; do not append duplicate modules. See [built-in modules](modules.md).
+
 ## Body only
 
 ```tsx
