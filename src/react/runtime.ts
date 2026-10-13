@@ -6,6 +6,7 @@ import { scrollWithMotion } from './motion';
 
 export const english: LiMRLocale = {
   contents: 'Contents', annotations: 'Annotations', expand: 'Expand', collapse: 'Collapse', close: 'Close', copy: 'Copy', copied: 'Copied',
+  copyFailed: 'Copy failed', copyImage: 'Copy image URL', copyFigures: 'Copy figures Markdown',
   loading: 'Loading…', retry: 'Retry', unavailable: 'Content unavailable', footnotes: 'Footnotes',
   definition: 'Definition', question: 'Question', note: 'Note', extra: 'Extended reading', hint: 'Hint', answer: 'Answer', submit: 'Submit',
   correct: 'Correct', incorrect: 'Try again', play: 'Play video',
@@ -16,6 +17,7 @@ export const english: LiMRLocale = {
 };
 export const chinese: LiMRLocale = {
   contents: '目录', annotations: '注释', expand: '展开', collapse: '收起', close: '关闭', copy: '复制', copied: '已复制',
+  copyFailed: '复制失败', copyImage: '复制图片 URL', copyFigures: '复制图组 Markdown',
   loading: '加载中…', retry: '重试', unavailable: '暂无内容', footnotes: '脚注',
   definition: '释义', question: '提问', note: '注释', extra: '拓展阅读', hint: '提示', answer: '答案', submit: '提交',
   correct: '回答正确', incorrect: '再试一次', play: '播放视频',
@@ -295,12 +297,33 @@ export class ReaderRuntime {
     const element = this.anchors.get(id);
     if (element) this.scrollTo(element.getBoundingClientRect().top - this.getViewportTop() + this.getScrollTop() - (this.configuration.get().scrollOffset ?? 24));
   }
+  private followFragment = (event: MouseEvent) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[href]') : null;
+    if (!link || link.hasAttribute('download') || link.target && link.target !== '_self' || !this.content?.contains(link)) return;
+    const url = new URL(link.href, document.baseURI);
+    if (!url.hash || url.origin !== location.origin || url.pathname !== location.pathname || url.search !== location.search) return;
+    let id: string;
+    try { id = decodeURIComponent(url.hash.slice(1)); } catch { return; }
+    const target = this.content.querySelector<HTMLElement>(`[id="${CSS.escape(id)}"]`);
+    if (!target) return;
+    event.preventDefault();
+    this.scrollTo(target.getBoundingClientRect().top - this.getViewportTop() + this.getScrollTop() - (this.configuration.get().scrollOffset ?? 24));
+    // Keyboard navigation retains a meaningful destination without a second jump.
+    if (event.detail === 0) {
+      if (!target.hasAttribute('tabindex')) { target.tabIndex = -1; target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true }); }
+      target.focus({ preventScroll: true });
+    }
+  };
   requestLayout = () => {
     if (typeof window === 'undefined' || !this.content || this.layoutFrame) return;
     this.layoutFrame = window.requestAnimationFrame(() => {
       this.layoutFrame = 0;
       const offset = this.getScrollTop() - this.getViewportTop();
-      this.headingPositions = [...this.headings].map(([id, element]) => ({ id, top: element.getBoundingClientRect().top + offset })).sort((a, b) => a.top - b.top);
+      this.headingPositions = [...this.headings].filter(([, element]) => !element.closest('[inert]')).map(([id, element]) => ({ id, top: element.getBoundingClientRect().top + offset })).sort((a, b) => a.top - b.top);
+      const state = this.interaction.get();
+      if (state.active && this.anchors.get(state.active)?.closest('[inert]')) this.activate(null);
+      if (state.hovered && this.anchors.get(state.hovered)?.closest('[inert]')) this.hover(null);
       this.layout.set(this.layout.get() + 1);
       this.trackHeading();
     });
@@ -330,12 +353,14 @@ export class ReaderRuntime {
     window.addEventListener('resize', this.requestLayout);
     document.fonts?.addEventListener('loadingdone', this.requestLayout);
     element.addEventListener('load', this.requestLayout, true);
+    element.addEventListener('click', this.followFragment);
     this.requestLayout();
     return () => {
       this.content = null; this.observer?.disconnect(); this.observer = null;
       cancelAnimationFrame(frame); cancelAnimationFrame(this.layoutFrame); this.layoutFrame = 0;
       scrollRoot.removeEventListener('scroll', scroll); window.removeEventListener('resize', this.requestLayout);
       document.fonts?.removeEventListener('loadingdone', this.requestLayout); element.removeEventListener('load', this.requestLayout, true);
+      element.removeEventListener('click', this.followFragment);
     };
   }
 }

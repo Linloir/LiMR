@@ -11,7 +11,10 @@ async function alignedCard(page: Page, marker: Locator) {
     const top = ranged ? await reader(page).locator('.limr-reader-content strong').first().evaluate(element => {
       const range = document.createRange(); range.selectNodeContents(element); return range.getClientRects()[0].top;
     }) : (await marker.boundingBox())!.y;
-    return Math.abs((await card.boundingBox())!.y - top);
+    const bounds = (await card.boundingBox())!, rail = (await reader(page).locator('.limr-sidebar').boundingBox())!;
+    // Boundary cards move upward instead of being forced through the rail end.
+    const expected = Math.max(rail.y, Math.min(top, rail.y + rail.height - bounds.height));
+    return Math.abs(bounds.y - expected);
   }).toBeLessThan(1);
   return card;
 }
@@ -316,4 +319,43 @@ test('collapsing a hovered card returns later cards without moving the pointer',
   await card.locator('.limr-sidebar-card-heading').click();
   await expect(card).toHaveAttribute('data-active', 'true');
   await expect.poll(async () => (await following.boundingBox())!.y).toBeCloseTo(initial, 0);
+});
+
+for (const kind of ['assistant', 'citation'] as const) test(`${kind} sidebar motion keeps text visible and neighboring cards separated through reversals`, async ({ page }) => {
+  const cards = reader(page).locator('.limr-sidebar-card');
+  const card = kind === 'assistant' ? cards.nth(1) : reader(page).locator('.limr-sidebar-card[data-type="citation"]').first();
+  if (kind === 'citation') await reader(page).locator('.limr-reader-content .limr-mark[aria-label="Citation"]').first().hover();
+  await card.locator('.limr-sidebar-card-heading').hover();
+  const rail = reader(page).locator('.limr-sidebar');
+  await expect.poll(() => rail.evaluate(element => element.getAnimations({ subtree: true }).filter(animation => animation.playState === 'running').length)).toBe(0);
+  const frames = await card.evaluate(async element => {
+    const button = element.querySelector<HTMLButtonElement>('.limr-sidebar-card-heading')!;
+    const neighbors = [...element.parentElement!.children];
+    const samples = [];
+    // A full expansion/collapse, followed by several interrupted reversals.
+    for (let frame = 0; frame < 100; frame++) {
+      if ([0, 28, 56, 60, 64, 68, 72].includes(frame)) button.click();
+      // Read after ResizeObserver has delivered this frame's new card heights.
+      await new Promise<void>(resolve => requestAnimationFrame(() => { setTimeout(resolve, 0); }));
+      const bounds = neighbors.map(card => card.getBoundingClientRect());
+      const panels = [...element.querySelectorAll<HTMLElement>('.limr-sidebar-card-body > .limr-collapse')];
+      const opacity = panels.flatMap(panel => {
+        const content = panel.querySelector<HTMLElement>('.limr-collapse-inner > *');
+        return panel.getBoundingClientRect().height > 6 && content ? [Number(getComputedStyle(content).opacity)] : [];
+      });
+      samples.push({
+        height: element.getBoundingClientRect().height,
+        gap: Math.min(...bounds.slice(1).map((rect, index) => rect.top - bounds[index].bottom)),
+        opacity: Math.max(0, ...opacity),
+      });
+    }
+    return samples;
+  });
+  expect(Math.max(...frames.map(frame => frame.height)) - Math.min(...frames.map(frame => frame.height))).toBeGreaterThan(20);
+  expect(Math.min(...frames.map(frame => frame.gap))).toBeGreaterThanOrEqual(13);
+  expect(Math.min(...frames.map(frame => frame.opacity))).toBeGreaterThan(.5);
+  await expect(card).toHaveAttribute('data-expanded', 'true');
+  await card.locator('.limr-sidebar-card-heading').click();
+  await expect(card.locator('.limr-sidebar-expansion .limr-annotation-entry')).toHaveCount(0);
+  await expect(card.locator('.limr-sidebar-preview')).toBeVisible();
 });

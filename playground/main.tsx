@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
-import { Reader, ToolIcon, chinese, type Annotation, type SelectionSnapshot } from '../src';
+import { Reader, ToolIcon, chinese, type Annotation, type SelectionSnapshot, type TranslationMode } from '../src';
+import { Dropdown } from './Dropdown';
+import { MediaAnnotationFixture, MediaFixture, TranslationDetailsFixture } from './media-fixture';
 import { assistant } from '../examples/assistant';
 import { readingNotes } from '../examples/notes';
 import { sample } from './sample';
@@ -34,6 +36,7 @@ function App() {
   const [cursor, setCursor] = useState(0);
   const [dark, setDark] = useState(false);
   const [justify, setJustify] = useState(false);
+  const [translationMode, setTranslationMode] = useState<TranslationMode | undefined>();
   const [editor, setEditor] = useState(false);
   const [selection, setSelection] = useState<SelectionSnapshot | null>(null);
   const [annotations, setAnnotations] = useState<readonly Annotation[]>(initial?.annotations ?? []);
@@ -41,7 +44,7 @@ function App() {
   const [preview, setPreview] = useState<HTMLDivElement | null>(null);
   const [notesEnabled, setNotesEnabled] = useState(true);
   const [assistantEnabled, setAssistantEnabled] = useState(true);
-  const [menu, setMenu] = useState<'load' | 'plugins' | null>(null);
+  const [menu, setMenu] = useState<'load' | 'plugins' | 'translation' | null>(null);
   const [status, setStatus] = useState('');
   const [answerStatus, setAnswerStatus] = useState('');
   const [documentVersion, setDocumentVersion] = useState(0);
@@ -49,6 +52,8 @@ function App() {
   const fileInput = useRef<HTMLInputElement>(null);
   const loadRoot = useRef<HTMLDivElement>(null);
   const pluginRoot = useRef<HTMLDivElement>(null);
+  const translationRoot = useRef<HTMLDivElement>(null);
+  const translationModes = [{ value: undefined, label: '随段落' }, { value: 'origin', label: '原文' }, { value: 'translation', label: '译文' }, { value: 'both', label: '对照' }] as const;
   useScrollSync(textarea, preview, source);
   const plugins = useMemo(() => {
     const notes = readingNotes();
@@ -81,7 +86,7 @@ function App() {
   useEffect(() => { document.documentElement.dataset.theme = dark ? 'dark' : 'light'; }, [dark]);
   useEffect(() => {
     if (!menu) return;
-    const root = menu === 'load' ? loadRoot : pluginRoot;
+    const root = menu === 'load' ? loadRoot : menu === 'plugins' ? pluginRoot : translationRoot;
     const outside = (event: PointerEvent) => { if (event.target instanceof Node && !root.current?.contains(event.target)) setMenu(null); };
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { setMenu(null); root.current?.querySelector('button')?.focus(); } };
     document.addEventListener('pointerdown', outside); document.addEventListener('keydown', escape);
@@ -112,23 +117,30 @@ function App() {
         <button onClick={() => { setStreaming(false); setEditor(!editor); setMenu(null); if (editor) setStatus('已自动保存到此浏览器'); }}><span className="limr-underline">{editor ? '保存' : '编辑'}</span></button>
         <span className="demo-control-divider" />
         <div className="demo-dropdown" ref={loadRoot}><button aria-expanded={menu === 'load'} aria-controls="demo-load-menu" onClick={() => setMenu(value => value === 'load' ? null : 'load')}><span className="limr-underline">加载</span><ToolIcon name="chevron" /></button>
-          {menu === 'load' && <div id="demo-load-menu" className="demo-dropdown-menu demo-load-menu">
+          <Dropdown open={menu === 'load'} id="demo-load-menu" className="demo-load-menu">
             <div role="group" aria-label="文本文件"><button onClick={load}><span className="limr-underline">加载已保存文本</span><small>此浏览器中的文本与标记</small></button><button onClick={() => { fileInput.current?.click(); setMenu(null); }}><span className="limr-underline">打开 Markdown 文件</span><small>从本地 .md 或 .txt 文件载入</small></button><button onClick={download}><span className="limr-underline">下载 Markdown</span><small>导出当前的完整文本</small></button></div>
             <div role="group" aria-label="预设文本" className="demo-dropdown-section"><p className="demo-small-label">预设文本</p>{presets.map(item => <button key={item.id} aria-pressed={preset === item.id} onClick={() => { replaceSource(item.source, item.id); setStatus(`已加载「${item.label}」`); }}><span className="limr-underline">{item.label}</span><small>{item.description}</small></button>)}</div>
-          </div>}
+          </Dropdown>
         </div>
         <div className="demo-dropdown" ref={pluginRoot}><button aria-expanded={menu === 'plugins'} aria-controls="demo-plugin-menu" onClick={() => setMenu(value => value === 'plugins' ? null : 'plugins')}><span className="limr-underline">插件</span><ToolIcon name="chevron" /></button>
-          {menu === 'plugins' && <div id="demo-plugin-menu" className="demo-dropdown-menu" role="group" aria-label="插件">
+          <Dropdown open={menu === 'plugins'} id="demo-plugin-menu" role="group" aria-label="插件">
             <label className="demo-plugin-option"><input type="checkbox" checked={notesEnabled} onChange={event => setNotesEnabled(event.target.checked)} aria-label="启用旁注与笔记" /><span><strong className="limr-underline">旁注与笔记</strong><small>旁注、笔记、提问与脚注</small></span></label>
             <label className="demo-plugin-option"><input type="checkbox" checked={assistantEnabled} onChange={event => setAssistantEnabled(event.target.checked)} aria-label="启用 AI 问答" /><span><strong className="limr-underline">AI 问答</strong><small>本地模拟回答，无需配置服务</small></span></label>
-          </div>}
+          </Dropdown>
         </div>
         <input hidden ref={fileInput} type="file" accept=".md,.markdown,.txt,text/plain,text/markdown" aria-label="打开 Markdown 文件" onChange={async event => {
           const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; if (!file) return;
           try { replaceSource(await file.text()); setStatus(`已加载 ${file.name}`); } catch { setStatus('文件读取失败'); }
         }} />
       </nav>
-      <div className="demo-controls demo-session-controls"><button aria-pressed={justify} onClick={() => setJustify(value => !value)} title={justify ? '切换为左对齐' : '两端对齐，末行保持左对齐'}><span className="limr-underline">两端对齐</span></button><button className="demo-stream-button" disabled={!source.length} aria-pressed={streaming} onClick={() => {
+      <div className="demo-controls demo-session-controls">
+        <div className="demo-dropdown demo-translation-control" ref={translationRoot}>
+          <button aria-label="全局翻译展示模式" aria-expanded={menu === 'translation'} aria-controls="demo-translation-menu" onClick={() => setMenu(value => value === 'translation' ? null : 'translation')}><span className="limr-underline">{translationModes.find(item => item.value === translationMode)!.label}</span><ToolIcon name="chevron" /></button>
+          <Dropdown open={menu === 'translation'} id="demo-translation-menu" role="group" aria-label="全局翻译展示模式">
+            {translationModes.map(item => <button key={item.value ?? 'local'} aria-pressed={translationMode === item.value} onClick={() => { setTranslationMode(item.value); setMenu(null); translationRoot.current?.querySelector('button')?.focus(); }}><span className="limr-underline">{item.label}</span></button>)}
+          </Dropdown>
+        </div>
+        <button aria-pressed={justify} onClick={() => setJustify(value => !value)} title={justify ? '切换为左对齐' : '两端对齐，末行保持左对齐'}><span className="limr-underline">两端对齐</span></button><button className="demo-stream-button" disabled={!source.length} aria-pressed={streaming} onClick={() => {
         if (streaming) { setStreaming(false); setStatus('已结束演示，完整文本已恢复'); }
         else { setCursor(0); setStreaming(true); setEditor(false); setStatus(''); setSelection(null); setDocumentVersion(value => value + 1); }
       }}><span className="limr-underline">{streaming ? '结束演示' : '流式演示'}</span></button></div>
@@ -138,7 +150,7 @@ function App() {
     <div className={editor ? 'demo-workbench' : 'demo-reading'}>
       {editor && <section className="demo-editor-pane"><div className="demo-pane-label">Markdown <span>直接编辑 · 双向滚动同步</span></div><textarea ref={setTextarea} wrap="off" spellCheck={false} className="demo-editor" aria-label="Markdown source" value={source} onChange={event => { setStreaming(false); setSource(event.target.value); setPreset(''); setAnnotations([]); setStatus(''); }} /></section>}
       <section className={editor ? 'demo-preview-pane' : undefined}>{editor && <div className="demo-pane-label">实时预览 <span>选区工具同样可用</span></div>}<div ref={editor ? setPreview : undefined} className={editor ? 'demo-preview-scroll' : undefined}>
-        <div className="demo-page"><Reader key={documentVersion} source={streaming ? source.slice(0, cursor) : source} streaming={streaming} theme={dark ? 'dark' : 'light'} justify={justify} locale={chinese} scrollRoot={editor ? preview : null} toc={!editor} sidebar={!editor} actions={streaming ? [] : undefined} plugins={plugins} annotations={annotations} onAnnotationsChange={setAnnotations} onSelectionChange={setSelection} documentId="demo" /></div>
+        <div className="demo-page"><Reader key={documentVersion} source={streaming ? source.slice(0, cursor) : source} streaming={streaming} theme={dark ? 'dark' : 'light'} justify={justify} parameters={{ translationMode, onTranslationModeChange: setTranslationMode }} locale={chinese} scrollRoot={editor ? preview : null} toc={!editor} sidebar={!editor} actions={streaming ? [] : undefined} plugins={plugins} annotations={annotations} onAnnotationsChange={setAnnotations} onSelectionChange={setSelection} documentId="demo" /></div>
       </div></section>
     </div>
     <output id="selection-data" hidden>{selection ? JSON.stringify(selection) : ''}</output>
@@ -147,4 +159,4 @@ function App() {
 }
 const fixture = new URLSearchParams(location.search).get('fixture');
 if (fixture === 'hydrate') hydrateRoot(document.getElementById('root')!, <HydrationFixture />, { onRecoverableError: error => { document.documentElement.dataset.hydrationError = String(error); } });
-else createRoot(document.getElementById('root')!).render(fixture === 'toolbar' ? <ToolbarFixture /> : fixture === 'assistant-test' ? <PluginFixture /> : fixture === 'sidebar' ? <SidebarFixture /> : fixture === 'selection-bench' ? <SelectionBenchmarkFixture /> : fixture === 'video' ? <VideoFixture /> : fixture === 'overlay' ? <OverlayFixture /> : fixture === 'markers' ? <MarkerFixture /> : fixture === 'visual' ? <VisualFixture /> : fixture === 'scroll' ? <ScrollFixture /> : fixture === 'multiple' ? <MultipleFixture /> : fixture === 'bench' ? <BenchmarkFixture /> : fixture === 'resource' ? <ResourceFixture /> : <App />);
+else createRoot(document.getElementById('root')!).render(fixture === 'media-annotations' ? <MediaAnnotationFixture /> : fixture === 'translation-details' ? <TranslationDetailsFixture /> : fixture === 'media' ? <MediaFixture /> : fixture === 'toolbar' ? <ToolbarFixture /> : fixture === 'assistant-test' ? <PluginFixture /> : fixture === 'sidebar' ? <SidebarFixture /> : fixture === 'selection-bench' ? <SelectionBenchmarkFixture /> : fixture === 'video' ? <VideoFixture /> : fixture === 'overlay' ? <OverlayFixture /> : fixture === 'markers' ? <MarkerFixture /> : fixture === 'visual' ? <VisualFixture /> : fixture === 'scroll' ? <ScrollFixture /> : fixture === 'multiple' ? <MultipleFixture /> : fixture === 'bench' ? <BenchmarkFixture /> : fixture === 'resource' ? <ResourceFixture /> : <App />);

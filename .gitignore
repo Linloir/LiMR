@@ -5,5 +5,5 @@ test-results/
 playwright-report/
 coverage/
 *.tgz
-artifacts/visual/
+artifacts/
 .DS_Store

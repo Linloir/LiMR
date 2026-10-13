@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { Annotation, AnnotationOccurrence, DocumentEngine, DocumentSnapshot, SelectionSnapshot } from '../core';
 import { ReaderRuntime, type Store, type InteractionState } from './runtime';
-import type { RendererExtension, ViewConfiguration } from './types';
+import type { RendererExtension, RendererParameters, ViewConfiguration } from './types';
 import { standard } from '../extensions/standard';
 
 let defaults: readonly RendererExtension[] | undefined;
@@ -39,6 +39,19 @@ export function useRuntime(): ReaderRuntime {
   const runtime = useContext(RuntimeContext);
   if (!runtime) throw new Error('This LiMR component needs a DocumentProvider or Reader. Markdown can also be used on its own.');
   return runtime;
+}
+
+/** Only the requested value is subscribed; changing a parameter never reparses source. */
+export function useRendererParameter<K extends keyof RendererParameters>(name: K): RendererParameters[K] {
+  const runtime = useRuntime();
+  return useStoreSelector(runtime.configuration, config => {
+    if (config.parameters?.[name] !== undefined) return config.parameters[name];
+    for (let index = (config.extensions?.length ?? 0) - 1; index >= 0; index--) {
+      const parameters = config.extensions![index].parameters;
+      if (parameters && name in parameters) return parameters[name];
+    }
+    return undefined as RendererParameters[K];
+  });
 }
 
 /** Selective subscription: unchanged values do not re-render the subscriber. */

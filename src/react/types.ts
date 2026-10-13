@@ -7,7 +7,7 @@ export interface NodeRendererProps {
   pending: boolean;
   source: string;
   /** Render an existing subtree without parsing strings again. */
-  renderChildren: (nodes: readonly MarkdownNode[]) => ReactNode;
+  renderChildren: (nodes: readonly MarkdownNode[], options?: { trailing?: ReactNode }) => ReactNode;
   /** Render a literal node value with optional syntax tokens, preserving source
    * selection, highlights and annotation insertion. Token offsets are UTF-16. */
   renderValue: (tokens?: readonly TextToken[]) => ReactNode;
@@ -96,10 +96,15 @@ export interface AnnotationType<T = unknown> {
   load?: (annotation: Annotation<T>, context: { signal: AbortSignal }) => Promise<T>;
 }
 export interface RendererExtension extends SyntaxExtension {
+  /** Register document parameter defaults. Plugins extend RendererParameters
+   * through TypeScript declaration merging and read them with useRendererParameter. */
+  parameters?: Readonly<RendererParameters>;
   components?: Readonly<Record<string, NodeRenderer>>;
   annotationTypes?: readonly AnnotationType<any>[];
   actions?: readonly SelectionAction[];
 }
+/** Open to module augmentation; parameter names and semantics belong to plugins. */
+export interface RendererParameters {}
 export interface DocumentCommands {
   /** Content annotations get a shared highlight unless explicitly disabled. */
   addAnnotation: (annotation: Annotation, options?: { highlight?: HighlightData | false; edit?: boolean }) => void;
@@ -152,7 +157,7 @@ export interface SelectionAction {
 }
 export interface LiMRLocale {
   contents: string; annotations: string; expand: string; collapse: string; close: string; copy: string;
-  copied: string; loading: string; retry: string; unavailable: string; footnotes: string;
+  copied: string; copyFailed: string; copyImage: string; copyFigures: string; loading: string; retry: string; unavailable: string; footnotes: string;
   definition: string; question: string; note: string; extra: string; hint: string; answer: string; submit: string;
   correct: string; incorrect: string; play: string;
   highlight: string; addHighlight: string; editHighlight: string; highlightColor: string; highlightStyle: string;
@@ -161,6 +166,8 @@ export interface LiMRLocale {
   deleteAnnotations: string; deleteAnnotationsHint: string;
 }
 export interface ViewConfiguration {
+  /** Document-wide overrides of parameters registered by extensions. */
+  parameters?: Readonly<RendererParameters>;
   extensions?: readonly RendererExtension[];
   /** Add installed plugins to the default extensions (or your extensions list). */
   plugins?: readonly RendererExtension[];

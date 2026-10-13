@@ -21,8 +21,13 @@ button:disabled { cursor: default; opacity: .45; }
 .demo-control-divider { width: 1px; height: 18px; margin: 0 6px; background: var(--demo-line); }
 .demo-session-controls [aria-pressed='true'] { color: var(--limr-accent, #8a7865); }
 .demo-dropdown { position: relative; }
-.demo-dropdown > button svg { width: 13px; height: 13px; }
-.demo-dropdown-menu { position: absolute; z-index: 20; top: calc(100% + 8px); left: 0; width: 250px; max-width: calc(100vw - 32px); max-height: min(580px, calc(100dvh - 160px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--demo-muted) transparent; padding: 6px; border: 1px solid var(--demo-line); border-radius: 5px; background: var(--demo-paper); box-shadow: 0 8px 30px #40392d18; animation: limr-tool-fade 180ms var(--limr-ease); }
+.demo-dropdown > button svg { width: 13px; height: 13px; transition: transform 360ms var(--limr-ease); }
+.demo-dropdown > button[aria-expanded='true'] svg { transform: rotate(180deg); }
+.demo-dropdown-menu { position: absolute; z-index: 20; top: calc(100% + 8px); left: 0; width: 250px; max-width: calc(100vw - 32px); max-height: min(580px, calc(100dvh - 160px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--demo-muted) transparent; padding: 6px; border: 1px solid var(--demo-line); border-radius: 5px; background: var(--demo-paper); box-shadow: 0 8px 30px #40392d18; clip-path: inset(0 0 100% 0 round 5px); opacity: 0; transition: clip-path 360ms var(--limr-ease), opacity 220ms var(--limr-ease); }
+.demo-dropdown-menu[data-open] { clip-path: inset(0 0 0 0 round 5px); opacity: 1; }
+.demo-dropdown-content { opacity: 0; transform: translateY(-5px); transition: opacity 220ms var(--limr-ease), transform 360ms var(--limr-ease); }
+.demo-dropdown-menu[data-open] .demo-dropdown-content { opacity: 1; transform: translateY(0); transition-delay: 45ms; }
+.demo-translation-control .demo-dropdown-menu { width: 150px; }
 .demo-dropdown-menu button { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; padding: 9px 10px; text-align: start; }
 .demo-dropdown-menu [aria-pressed='true'] > .limr-underline { color: var(--limr-accent, #8a7865); background-size: 100% 1px; }
 .demo-dropdown-menu small { color: var(--demo-muted); font-size: 10px; line-height: 1.7; }

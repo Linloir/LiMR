@@ -55,14 +55,114 @@ const badge = defineExtension({
 | `question({component?})` / `question` | 问题正文、提示、答案、选择题 |
 | `extras({component?})` / `extras` | `<extras><extra title="..." url="..." desc="..." /></extras>` |
 | `video({component?, resolveUrl?, loading?})` / `video` | `<video>` / `<md-video>`，自动识别 native / youtube / bilibili |
-| `figures()` / `figures` | `<figure>` / `<figcaption>` |
+| `figures(options?)` / `figures` | `<figures>` 响应式图组、`<figure>` 单图、图注与图片复制 |
 | `citation(annotationTypeOverrides?)` / `citation` | `<ref>` / `<citation>`，citation 角注类型 |
+| `translations({defaultMode?})` / `translations` | `<translations>`、`<origin>`、`<translation>`；原文、译文、对照与段末切换角标 |
 
 问题的子标签为 `question-content`、`question-hint`、`question-answer`、`question-sel-grp` 和 `question-sel`。选择组用 `answer="[0,2]"` 配置从 0 开始的正确选项编号，`multi="true"` 开启多选。它们是内容组件，不包含提问/聊天角注或服务连接。
 
 视频使用 `url` 或 `src`，默认从 URL 识别平台，也可显式指定 `provider="youtube"`、`"bilibili"`、`"native"`。支持 YouTube watch/短链接/embed/shorts/live 地址及起始时间、Bilibili BV/av 地址及分 P。播放器靠近视口 200px 时才挂载真实 iframe/原生 video，不自动播放；可用 `video({ loading: 'click' })` 或单个标签的 `loading="click"` 改成点击后加载，`"eager"` 则立即加载。视频居中、默认最大宽 560px，16:9；右上角复用公式复制按钮，复制原始 Markdown。
 
 YouTube 使用标准 `youtube.com/embed` 地址，iframe 的 `referrerPolicy="strict-origin-when-cross-origin"` 保留来源站点。播放器的来源要求见 [YouTube 官方文档](https://developers.google.com/youtube/iframe_api_reference#Events)（缺少来源身份可能报 153）。远程平台仍决定视频能否嵌入；本地回归使用请求拦截验证 URL、加载时机和 iframe 参数，不代替真实播放验收。未知标签不执行 HTML；自定义组件对自己的远程请求和 URL 处理负责。
+
+## 图片与论文图组
+
+```markdown
+<figures columns="2" rows="2" min-width="220" min-height="120" max-width="560" max-height="480">
+
+<figure src="/paper/a.png" alt="实验 A" caption="(a) 实验 A" />
+
+<figure>
+
+![实验 B](/paper/b.png)
+
+<figcaption>**(b)** 实验 B，支持 Markdown 图注。</figcaption>
+
+</figure>
+
+<figcaption>图 1 · 两个实验的比较。</figcaption>
+
+</figures>
+```
+
+`figure` 可以独立使用，支持 `src` / `url` 属性，或内部的 Markdown 图片、图片引用及 `<img src="..." alt="..." />`。每个 `figure` 放一张图，多图使用 `figures`；图注可用 `caption` 属性、`<figcaption>` 或 `<caption>`。`id` 可以作为普通 Markdown 页内链接的目标。属性文字保留源文坐标；富文本图注仍可选择、高亮和加角注。也支持 `:::figures`、`:::figure`、`:::figcaption` 指令，单图可写作 `::figure{src="/image.png" caption="图注"}`。
+
+图片在各网格行中垂直居中，图注居中对齐。选择按“图片、该图图注、下一张图片、该图图注、总图注”的阅读顺序进行；属性顺序不同也不会把未选中的图注混进选区。图片高亮描绘实际图片的边框（或所选的下划线样式），图注仍按文字高亮。图片角标叠在图片右下角，保留按钮主题底色；图注角标跟随文字。复制按钮位于外框内部。
+
+| 属性 | 默认值 | 行为 |
+| --- | --- | --- |
+| `min-width` / `min-height` | `220` / `120` | 图片可读尺寸下限，用于决定是否增加列；窄于下限时优先适应容器 |
+| `max-width` / `max-height` | `560` / `480` | 图片尺寸上限，保持比例、不裁切；`none` 或 `false` 取消对应上限 |
+| `columns`（或 `cols`） | 自动 | 指定列数，上限 24 |
+| `rows` | 自动 | 单独指定时按图数推导列数；同时指定行列时预留行，超出内容继续排入新行 |
+| `responsive` | `true` | 显式列数无法满足可读尺寸时逐步减列；`false` 保留列数，允许小图 |
+| `gap` | `16` | 图组间距，像素 |
+
+尺寸接受非负数字或 `px`，模块工厂对应驼峰参数，例如 `figures({ maxHeight: 360, maxWidth: false })`。`figures` 的尺寸限制由内部 `figure` 继承，单图属性可覆盖。最小高度也保留媒体区域的留白；长宽比使上下限无法同时满足时，最大尺寸及容器宽度优先，图片不会变形。
+
+自动布局从一列开始，结合图片加载后的真实比例：当前列达到可用最大宽度后，还有空间容纳另一张达到最小宽、高的图，才增加一列。最大高度同样会限制可用宽度。明确关闭全部尺寸上限时，自动布局保持一列；需要多列可设置 `columns` / `rows`。这里的上限约束图片，不裁切较长的图注。
+
+单图按钮复制 **图片 URL**，沿用 infilearn 的行为；相对 URL 保留原来的相对形式。图组按钮复制完整的 **Markdown 源码**。复制不读取图片二进制，也不要求图片服务器允许跨域读取；浏览器拒绝剪贴板写入时会显示失败提示。
+
+## 分段译文与全局参数
+
+```markdown
+<translations default="origin">
+
+<origin>
+
+Original **Markdown**. It can include lists, images and citations.
+
+</origin>
+
+<translation>
+
+翻译后的 **Markdown**，同样可以包含列表、图片和引用。
+
+</translation>
+
+</translations>
+```
+
+`default` 接受 `origin`、`translation`、`both`，默认 `origin`。对照时先显示译文，再显示原文。角标位于最后一段显示内容的末尾，用圆角线条的原文页、译文页、并排页图标表示状态，悬浮提示及无障碍名称说明当前状态和下一步操作，依次切换“原 → 译 → 对照 → 原”。内容高度和透明度共同过渡，支持中途反向切换与减少动态效果偏好；隐藏内容保持挂载并设置 `inert`，其角注不会生成同步侧栏卡片。流式生成期间只有一侧内容时，先显示已到达的内容。
+
+这是 `translations()` 模块通过公共 `InlineMarker` 和 `renderChildren(nodes, { trailing })` 注入的操作，不生成 `Annotation`，不打开浮层或侧栏。`InlineMarker` 也可用于插件自己的纯操作角标；最后一个节点是段落时 `trailing` 放在段内，其余块类型放在块后。
+
+```tsx
+const [mode, setMode] = useState<TranslationMode | undefined>();
+
+<Reader
+  source={source}
+  parameters={{ translationMode: mode, onTranslationModeChange: setMode }}
+/>
+```
+
+`translationMode` 覆盖各块的 `default` 和本地选择；设回 `undefined` 后恢复各块原来的本地选择。传入 `onTranslationModeChange` 时，角标会请求修改全局模式；只有全局值而没有回调时，角标只显示当前模式，不允许局部绕过外部控制。不同阅读器的参数相互隔离。
+
+插件参数是通用能力，不需要修改 LiMR 内核：
+
+```tsx
+import { useRendererParameter, type RendererExtension } from 'limr';
+
+declare module 'limr' {
+  interface RendererParameters { glossaryDetail?: 'short' | 'full' }
+}
+
+const glossary: RendererExtension = {
+  name: 'glossary', tags: ['glossary'],
+  parameters: { glossaryDetail: 'short' },
+  components: {
+    glossary: ({ children }) => {
+      const detail = useRendererParameter('glossaryDetail');
+      return <aside data-detail={detail}>{children}</aside>;
+    },
+  },
+};
+
+<Markdown source={source} plugins={[glossary]} parameters={{ glossaryDetail: 'full' }} />
+```
+
+模块在 `RendererExtension.parameters` 注册默认值；宿主通过 `Reader`、`Markdown` 或 `DocumentProvider` 的 `parameters` 覆盖。后注册模块可以覆盖同名默认值。hook 仅订阅所请求的值，参数变化不会重新解析 Markdown，卡片中的 `AnnotationMarkdown` 也继承宿主参数。
 
 ## 角注类型
 

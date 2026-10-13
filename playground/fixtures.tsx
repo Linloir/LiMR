@@ -74,13 +74,14 @@ export function SidebarFixture() {
 
 export function ScrollFixture() {
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
+  const quickReader = new URLSearchParams(location.search).has('reader');
   const source = useMemo(() => Array.from({ length: 30 }, (_, i) => `## Section ${i + 1}\n\n${'A paragraph in a shared scrolling region. '.repeat(25)} <ref id="ref-${i}" />\n\n<citation id="ref-${i}" title="Reference ${i + 1}" description="A **nested** description." />`).join('\n\n'), []);
   return <div className="demo-page"><div ref={setScrollRoot} id="scroll-root" style={{ height: 520, overflowY: 'auto', border: '1px solid #aaa' }}>
-    <DocumentProvider documentId="scroller" source={source} scrollRoot={scrollRoot} locale={chinese}>
+    {quickReader ? <Reader documentId="scroller" source={source} scrollRoot={scrollRoot} locale={chinese} style={{ padding: 20 }} /> : <DocumentProvider documentId="scroller" source={source} scrollRoot={scrollRoot} locale={chinese}>
       <div style={{ display: 'grid', gridTemplateColumns: '190px minmax(0,1fr) 260px', gap: 24, padding: 20, alignItems: 'start' }}>
         <TableOfContents style={{ position: 'sticky', top: 0, height: 420 }} /><Markdown /><AnnotationSidebar />
       </div><AnnotationOverlay disabled /><SelectionToolbar />
-    </DocumentProvider>
+    </DocumentProvider>}
   </div></div>;
 }
 

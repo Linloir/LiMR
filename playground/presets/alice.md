@@ -2,21 +2,105 @@
 
 Lewis Carroll · 1865
 
-> 英文原著第一至第三章，公版作品。文本取自 [Project Gutenberg](https://www.gutenberg.org/ebooks/11)，仅整理为 Markdown 段落与章节，保留原文与诗行；不含现代译文。
+> 英文原著第一至第三章，公版作品。文本取自 [Project Gutenberg](https://www.gutenberg.org/ebooks/11)，保留三章原文与诗行，并为各章开头的选段新译中文；这些译文为 LiMR 示例编写，不取自已有中文译本。段末“原 / 译 / 对照”可切换显示。
 
 ## Chapter I · Down the Rabbit-Hole
 
+<translations default="origin">
+
+<origin>
+
 Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it, “and what is the use of a book,” thought Alice “without pictures or conversations?”
+
+</origin>
+
+<translation>
+
+爱丽丝坐在河岸边陪着姐姐，渐渐觉得厌倦，无事可做。她偶尔瞥一眼姐姐正在读的书，里面却既没有插图，也没有对话。“一本没有插图、没有对话的书，”爱丽丝心想，“有什么用呢？”
+
+</translation>
+
+</translations>
+
+<translations default="origin">
+
+<origin>
 
 So she was considering in her own mind (as well as she could, for the hot day made her feel very sleepy and stupid), whether the pleasure of making a daisy-chain would be worth the trouble of getting up and picking the daisies, when suddenly a White Rabbit with pink eyes ran close by her.
 
+</origin>
+
+<translation>
+
+她正琢磨着：起身去摘雏菊，编成花环，这点乐趣值不值得费那番力气？天气热得让她又困又迷糊，她也只能勉强想想。就在这时，一只粉红眼睛的白兔突然从她身旁跑过。
+
+</translation>
+
+</translations>
+
+<translations default="origin">
+
+<origin>
+
 There was nothing so _very_ remarkable in that; nor did Alice think it so _very_ much out of the way to hear the Rabbit say to itself, “Oh dear! Oh dear! I shall be late!” (when she thought it over afterwards, it occurred to her that she ought to have wondered at this, but at the time it all seemed quite natural); but when the Rabbit actually _took a watch out of its waistcoat-pocket_, and looked at it, and then hurried on, Alice started to her feet, for it flashed across her mind that she had never before seen a rabbit with either a waistcoat-pocket, or a watch to take out of it, and burning with curiosity, she ran across the field after it, and fortunately was just in time to see it pop down a large rabbit-hole under the hedge.
+
+</origin>
+
+<translation>
+
+这本来并不怎么稀奇。听到兔子自言自语：“哎呀！哎呀！我要迟到了！”爱丽丝当时也没觉得有多奇怪——后来回想，她才觉得自己本该惊讶。可是，当兔子真的从**背心口袋里掏出一块表**，看了一眼，又匆匆赶路时，爱丽丝一下子跳了起来：她从没见过穿着背心、还能从口袋里掏出表的兔子！好奇心驱使着她追过田野，恰好看见兔子钻进篱笆下的一个大洞。
+
+</translation>
+
+</translations>
+
+<translations default="origin">
+
+<origin>
 
 In another moment down went Alice after it, never once considering how in the world she was to get out again.
 
+</origin>
+
+<translation>
+
+转眼之间，爱丽丝也跟着钻了进去，压根没想过待会儿该怎么出来。
+
+</translation>
+
+</translations>
+
+<translations default="origin">
+
+<origin>
+
 The rabbit-hole went straight on like a tunnel for some way, and then dipped suddenly down, so suddenly that Alice had not a moment to think about stopping herself before she found herself falling down a very deep well.
 
+</origin>
+
+<translation>
+
+兔子洞起初像隧道一样直直延伸了一段，接着突然向下倾斜。变化来得如此突然，爱丽丝还没来得及想怎样停下来，就已经掉进了一口深得吓人的井。
+
+</translation>
+
+</translations>
+
+<translations default="origin">
+
+<origin>
+
 Either the well was very deep, or she fell very slowly, for she had plenty of time as she went down to look about her and to wonder what was going to happen next. First, she tried to look down and make out what she was coming to, but it was too dark to see anything; then she looked at the sides of the well, and noticed that they were filled with cupboards and book-shelves; here and there she saw maps and pictures hung upon pegs. She took down a jar from one of the shelves as she passed; it was labelled “ORANGE MARMALADE”, but to her great disappointment it was empty: she did not like to drop the jar for fear of killing somebody underneath, so managed to put it into one of the cupboards as she fell past it.
+
+</origin>
+
+<translation>
+
+不是井实在太深，就是她落得太慢；往下落时，她有充足的时间打量四周，猜测接下来会发生什么。起初她试着朝下看，可那里黑得什么也看不清。于是她转而看井壁，发现上面布满橱柜和书架，间或还挂着地图和图画。经过一个架子时，她取下一只罐子，上面写着“橘子果酱”，可惜里面是空的。她怕扔下去会砸死下面的人，便趁继续下落时，设法把罐子塞进另一个橱柜。
+
+</translation>
+
+</translations>
 
 “Well!” thought Alice to herself, “after such a fall as this, I shall think nothing of tumbling down stairs! How brave they’ll all think me at home! Why, I wouldn’t say anything about it, even if I fell off the top of the house!” (Which was very likely true.)
 
@@ -68,7 +152,21 @@ So she set to work, and very soon finished off the cake.
 
 ## Chapter II · The Pool of Tears
 
+<translations default="origin">
+
+<origin>
+
 “Curiouser and curiouser!” cried Alice (she was so much surprised, that for the moment she quite forgot how to speak good English); “now I’m opening out like the largest telescope that ever was! Good-bye, feet!” (for when she looked down at her feet, they seemed to be almost out of sight, they were getting so far off). “Oh, my poor little feet, I wonder who will put on your shoes and stockings for you now, dears? I’m sure _I_ shan’t be able! I shall be a great deal too far off to trouble myself about you: you must manage the best way you can;—but I must be kind to them,” thought Alice, “or perhaps they won’t walk the way I want to go! Let me see: I’ll give them a new pair of boots every Christmas.”
+
+</origin>
+
+<translation>
+
+“越来越奇怪，越来越奇怪！”爱丽丝喊道。她惊讶得一时连话都说不周全了。“我现在像一架世界上最大的望远镜那样伸长了！再见啦，脚！”她低头看时，两只脚已经远得几乎看不见。“可怜的小脚呀，以后谁替你们穿鞋袜呢？我肯定办不到啦，离得实在太远了。你们只好自己想办法——不过我得对它们好一点，”她又想，“要不然，它们也许不肯往我想去的地方走呢！对了，每年圣诞节，我都送它们一双新靴子。”
+
+</translation>
+
+</translations>
 
 And she went on planning to herself how she would manage it. “They must go by the carrier,” she thought; “and how funny it’ll seem, sending presents to one’s own feet! And how odd the directions will look!
 
@@ -77,9 +175,37 @@ And she went on planning to herself how she would manage it. “They must go by 
 
 Oh dear, what nonsense I’m talking!”
 
+<translations default="origin">
+
+<origin>
+
 Just then her head struck against the roof of the hall: in fact she was now more than nine feet high, and she at once took up the little golden key and hurried off to the garden door.
 
+</origin>
+
+<translation>
+
+就在这时，她的头撞上了大厅的天花板。原来，她已经长到九英尺多高了。她立刻拿起那把小金钥匙，急匆匆地朝花园门跑去。
+
+</translation>
+
+</translations>
+
+<translations default="origin">
+
+<origin>
+
 Poor Alice! It was as much as she could do, lying down on one side, to look through into the garden with one eye; but to get through was more hopeless than ever: she sat down and began to cry again.
+
+</origin>
+
+<translation>
+
+可怜的爱丽丝！她侧身躺下，才勉强能用一只眼睛往花园里看；要想进去，却比刚才更没有希望。她坐在地上，又哭了起来。
+
+</translation>
+
+</translations>
 
 “You ought to be ashamed of yourself,” said Alice, “a great girl like you,” (she might well say this), “to go on crying in this way! Stop this moment, I tell you!” But she went on all the same, shedding gallons of tears, until there was a large pool all round her, about four inches deep and reaching half down the hall.
 
@@ -123,11 +249,53 @@ It was high time to go, for the pool was getting quite crowded with the birds an
 
 ## Chapter III · A Caucus-Race and a Long Tale
 
+<translations default="origin">
+
+<origin>
+
 They were indeed a queer-looking party that assembled on the bank—the birds with draggled feathers, the animals with their fur clinging close to them, and all dripping wet, cross, and uncomfortable.
+
+</origin>
+
+<translation>
+
+聚在岸边的这一群，模样实在古怪：鸟儿的羽毛湿漉漉地拖着，野兽的毛皮紧贴着身子。大家都浑身滴水，又恼火，又不舒服。
+
+</translation>
+
+</translations>
+
+<translations default="origin">
+
+<origin>
 
 The first question of course was, how to get dry again: they had a consultation about this, and after a few minutes it seemed quite natural to Alice to find herself talking familiarly with them, as if she had known them all her life. Indeed, she had quite a long argument with the Lory, who at last turned sulky, and would only say, “I am older than you, and must know better;” and this Alice would not allow without knowing how old it was, and, as the Lory positively refused to tell its age, there was no more to be said.
 
+</origin>
+
+<translation>
+
+头一个问题当然是怎样重新弄干身子。大家商量了一会儿，爱丽丝竟觉得与它们熟络地说话再自然不过，仿佛认识了一辈子。她还和鹦鹉争论了好久。鹦鹉最后闷闷不乐，只肯说：“我比你年长，当然懂得更多。”可是，除非知道它究竟多大，爱丽丝就不肯认输；鹦鹉又坚决不肯说出年龄，于是也就无话可说了。
+
+</translation>
+
+</translations>
+
+<translations default="origin">
+
+<origin>
+
 At last the Mouse, who seemed to be a person of authority among them, called out, “Sit down, all of you, and listen to me! _I’ll_ soon make you dry enough!” They all sat down at once, in a large ring, with the Mouse in the middle. Alice kept her eyes anxiously fixed on it, for she felt sure she would catch a bad cold if she did not get dry very soon.
+
+</origin>
+
+<translation>
+
+最后，老鼠——它在这群动物中似乎颇有威望——大声说：“都坐下，听我说！我很快就会让你们全干起来！”大家立刻围坐成一个大圈，老鼠坐在中央。爱丽丝焦急地盯着它；她确信，如果不能尽快弄干，自己一定会重重地感冒。
+
+</translation>
+
+</translations>
 
 “Ahem!” said the Mouse with an important air, “are you all ready? This is the driest thing I know. Silence all round, if you please! ‘William the Conqueror, whose cause was favoured by the pope, was soon submitted to by the English, who wanted leaders, and had been of late much accustomed to usurpation and conquest. Edwin and Morcar, the earls of Mercia and Northumbria—’”
 

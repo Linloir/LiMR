@@ -77,9 +77,4 @@ export function extras(options: { component?: NodeRenderer } = {}): RendererExte
 
 export { video, type VideoOptions } from './video';
 
-export function figures(): RendererExtension {
-  return {
-    name: 'figures', tags: ['figure', 'figcaption'], scope: 'local', display: 'block',
-    components: { figure: ({ children }) => <figure>{children}</figure>, figcaption: ({ children }) => <figcaption>{children}</figcaption> },
-  };
-}
+export { figures, type FiguresOptions } from './figures';

@@ -15,7 +15,7 @@ function CitationIcon() {
 export function AnnotationMarkdown({ source, className, ...props }: MarkdownProps & { source: string }) {
   const runtime = useRuntime();
   const config = useStoreSelector(runtime.configuration, config => config);
-  return <Markdown source={source} extensions={config.extensions} components={config.components} annotationTypes={config.annotationTypes} theme={config.theme} appearance={config.appearance} locale={config.locale} interactive={false} {...props} className={`limr-annotation-markdown ${className ?? ''}`} />;
+  return <Markdown source={source} extensions={config.extensions} parameters={config.parameters} components={config.components} annotationTypes={config.annotationTypes} theme={config.theme} appearance={config.appearance} locale={config.locale} interactive={false} {...props} className={`limr-annotation-markdown ${className ?? ''}`} />;
 }
 
 export function citation(options: Partial<AnnotationType<CitationData>> = {}): RendererExtension {

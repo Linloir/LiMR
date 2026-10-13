@@ -4,7 +4,7 @@ import type { ReaderRuntime, SourceBinding } from './runtime';
 
 export interface Leaf {
   node: Text | HTMLElement;
-  kind: 'text' | 'marker' | 'inline' | 'block';
+  kind: 'text' | 'marker' | 'inline' | 'block' | 'image';
   range: SourceRange;
   flow: HTMLElement;
   binding?: SourceBinding;
@@ -13,7 +13,7 @@ export interface Leaf {
 export interface Viewport { top: number; bottom: number; left: number; right: number }
 
 function flowOf(element: HTMLElement, container: HTMLElement): HTMLElement {
-  const known = element.closest<HTMLElement>('pre,p,li,th,td,h1,h2,h3,h4,h5,h6,.limr-choice-text,.limr-definition-title,.limr-question-title,.limr-block-content');
+  const known = element.closest<HTMLElement>('pre,p,figcaption,li,th,td,h1,h2,h3,h4,h5,h6,.limr-choice-text,.limr-definition-title,.limr-question-title,.limr-block-content');
   return known && container.contains(known) ? known : element.closest<HTMLElement>('[data-limr-block]') ?? container;
 }
 
@@ -26,7 +26,8 @@ export function leavesIn(block: HTMLElement, runtime: ReaderRuntime): Leaf[] {
       const marker = node.dataset.limrMarker;
       const atomic = node.dataset.limrAtomic;
       if (marker || atomic) {
-        result.push({ node, kind: marker ? 'marker' : atomic === 'block' ? 'block' : 'inline', range: { start: Number(node.dataset.sourceStart), end: Number(node.dataset.sourceEnd) }, flow: flowOf(node, runtime.content!), offset: 0 });
+        const image = node.dataset.limrMedia === 'image';
+        result.push({ node, kind: marker ? 'marker' : image ? 'image' : atomic === 'block' ? 'block' : 'inline', range: { start: Number(node.dataset.sourceStart), end: Number(node.dataset.sourceEnd) }, flow: image ? node : flowOf(node, runtime.content!), offset: 0 });
         return;
       }
       if (node.hasAttribute('data-limr-ignore')) return;
@@ -107,7 +108,7 @@ export function sourceRangeStartRect(runtime: ReaderRuntime, source: SourceRange
         }
       } else {
         const node = leaf.node as HTMLElement;
-        const rect = (node.querySelector('[data-limr-selection-surface]') ?? node).getBoundingClientRect();
+        const rect = (node.querySelector(leaf.kind === 'image' ? 'img' : '[data-limr-selection-surface]') ?? node).getBoundingClientRect();
         if (rect.width && rect.height) return rect;
       }
     }

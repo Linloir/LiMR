@@ -26,13 +26,15 @@ for (const version of ['18.3.1', '19']) {
   run('pnpm', ['install', '--ignore-scripts'], directory);
   await writeFile(join(directory, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, skipLibCheck: false, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', jsx: 'react-jsx', noEmit: true }, include: ['consumer.tsx'] }));
   await writeFile(join(directory, 'consumer.tsx'), `
-import { Reader, Markdown, DocumentProvider, standard, defineAnnotation, AnnotationCard, AnnotationMarkdown, ToolIcon, type SelectionAction } from 'limr';
+import { Reader, Markdown, DocumentProvider, standard, defineAnnotation, AnnotationCard, AnnotationMarkdown, ToolIcon, InlineMarker, useRendererParameter, type RendererExtension, type SelectionAction } from 'limr';
 import { createDocument } from 'limr/core';
 import { readingTools } from '@limr-example/reading-tools';
 const extension = defineAnnotation<{text: string}>({ type: 'custom', label: 'Custom', overlay: { Card: props => <AnnotationCard {...props} title={props.annotation.data?.text ?? 'Custom card'} />, expand: { placement: 'center', width: 640 } }, Content: ({data}) => <AnnotationMarkdown source={data?.text ?? ''} streaming /> });
 const actions: SelectionAction[] = [{ id: 'ask', label: 'Ask', icon: <ToolIcon name="note" />, run(context) { context.addAnnotation({id:'a', type:'custom', range:context.selection.raw.ranges[0]}, {edit:true}); }, renderExpanded: context => <button onClick={() => void context.run(current => { if (current.highlight) current.updateAnnotation(current.highlight.id, {data: {...current.highlight.data, style: 'wavy'}}); })}>Change style</button> }];
 const app = <Reader source="# hello" extensions={[...standard(), extension]} plugins={[readingTools()]} appearance="paper" actions={actions} justify />;
-const standalone = <Markdown source="Text" justify />;
+declare module 'limr' { interface RendererParameters { consumerDensity?: number } }
+const parameterPlugin: RendererExtension = { name: 'consumer-parameters', parameters: { consumerDensity: 2 }, components: { parameter: () => <InlineMarker label="Density">{useRendererParameter('consumerDensity')}</InlineMarker> } };
+const standalone = <Markdown source="Text" justify plugins={[parameterPlugin]} parameters={{ consumerDensity: 3, translationMode: 'both', onTranslationModeChange: mode => { const checked: 'origin' | 'translation' | 'both' = mode; } }} />;
 const shared = <DocumentProvider source="Text" justify><Markdown justify={false} /></DocumentProvider>;
 createDocument('Core').getSnapshot();
 `);

@@ -162,12 +162,60 @@ test('activating an annotation temporarily masks other fragments and restores th
   await expect(page.locator('.limr-highlight-layer [data-muted]')).toHaveCount(0);
 });
 
+for (const [presentation, width] of [['sidebar', 1440], ['overlay', 900]] as const) {
+  test(`dismissing note editing in the ${presentation} restores highlight actions and preserves the draft`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/'); await page.getByRole('button', { name: '编辑', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Markdown source' }).fill('# Highlight actions\n\n**Alpha** and **Bravo** are separate fragments.\n\n**Charlie** remains unmarked.');
+    await page.getByRole('button', { name: '保存', exact: true }).click();
+    const toolbar = page.getByRole('toolbar');
+    const word = (text: string) => page.locator('.limr-reader-content strong').filter({ hasText: text });
+    for (const text of ['Alpha', 'Bravo']) {
+      await word(text).evaluate(element => { const range = document.createRange(); range.selectNodeContents(element); getSelection()!.removeAllRanges(); getSelection()!.addRange(range); });
+      await toolbar.getByRole('button', { name: '添加高亮', exact: true }).click();
+      await expect(toolbar).toHaveCount(0);
+    }
+    const highlights = page.locator('.limr-highlight-layer [data-paint]');
+    await expect(highlights).toHaveCount(2);
+    const firstId = (await highlights.nth(0).getAttribute('data-paint'))!;
+    const secondId = (await highlights.nth(1).getAttribute('data-paint'))!;
+    await word('Alpha').click();
+    await expect(toolbar).toHaveAttribute('data-highlight', firstId);
+    await toolbar.getByRole('button', { name: '笔记', exact: true }).click();
+    const editor = presentation === 'sidebar' ? page.locator('.limr-sidebar-card[data-type="reading-note"]') : page.locator('.limr-annotation-expanded');
+    const field = editor.getByRole('textbox', { name: '笔记内容' });
+    await expect(field).toBeFocused();
+    await field.fill('A draft to keep after dismissal');
+    await expect(toolbar).toHaveCount(0);
+    await page.mouse.click(10, 850);
+    await expect(field).not.toBeVisible();
+    await expect(page.locator('.limr-highlight-layer [data-muted]')).toHaveCount(0);
+
+    await word('Bravo').click();
+    await expect(toolbar).toBeVisible();
+    await expect(toolbar).toHaveAttribute('data-highlight', secondId);
+    await word('Alpha').click();
+    await expect(toolbar).toHaveAttribute('data-highlight', firstId);
+    await word('Charlie').evaluate(element => { const range = document.createRange(); range.selectNodeContents(element); getSelection()!.removeAllRanges(); getSelection()!.addRange(range); });
+    await expect(toolbar.getByRole('button', { name: '添加高亮', exact: true })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await page.locator('.limr-mark').click();
+    await expect(field).toBeVisible();
+    await expect(field).toHaveValue('A draft to keep after dismissal');
+    await expect(toolbar).toHaveCount(0);
+    await field.fill('The resumed draft');
+    await editor.getByRole('button', { name: '提交', exact: true }).click();
+    await expect(editor.locator('.demo-note-content')).toContainText('The resumed draft');
+  });
+}
+
 test('load and plugin dropdowns work in reading mode and plugin choices stay open for multiple selections', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 700 });
   await page.goto('/');
   await page.getByRole('button', { name: '加载', exact: true }).click();
   const presets = page.getByRole('group', { name: '预设文本' });
-  await expect(presets.getByRole('button')).toHaveCount(9);
+  await expect(presets.getByRole('button')).toHaveCount(11);
   await presets.getByRole('button', { name: '前赤壁赋' }).click();
   await expect(page.locator('.limr-reader h1')).toContainText('前赤壁赋');
   await expect(page.getByRole('textbox', { name: 'Markdown source' })).toHaveCount(0);

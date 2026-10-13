@@ -7,6 +7,7 @@ import { AnnotationSidebar } from './AnnotationSidebar';
 import { AnnotationOverlay } from './AnnotationOverlay';
 import { SelectionToolbar } from './SelectionToolbar';
 import { Collapse } from './Collapse';
+import { useOverflowFade } from '../react/overflow-fade';
 
 export interface ReaderProps extends Omit<DocumentProviderProps, 'children'>, StyledProps {
   actions?: readonly SelectionAction[];
@@ -27,6 +28,9 @@ function ReaderLayout({ actions, toc, sidebar, followOutput, sidebarBreakpoint, 
   const appearance = useAppearance();
   const theme = useTheme();
   const ref = useRef<HTMLDivElement>(null);
+  const tocRail = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLElement>(null);
+  useOverflowFade(content, runtime, ':scope > .limr-prose');
   const [width, setWidth] = useState(0);
   const [availableHeight, setAvailableHeight] = useState(0);
   useIsomorphicLayoutEffect(() => {
@@ -46,10 +50,43 @@ function ReaderLayout({ actions, toc, sidebar, followOutput, sidebarBreakpoint, 
     setWidth(element.clientWidth);
     return () => observer.disconnect();
   }, [runtime, scrollRoot, sidebarBreakpoint]);
+  useIsomorphicLayoutEffect(() => {
+    const rail = tocRail.current;
+    if (!rail) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      if (!rail.clientWidth) return;
+      const viewport = window.visualViewport;
+      let top = viewport?.offsetTop ?? 0, bottom = top + (viewport?.height ?? window.innerHeight);
+      if (scrollRoot) {
+        const origin = scrollRoot.getBoundingClientRect().top + scrollRoot.clientTop;
+        top = Math.max(top, origin); bottom = Math.min(bottom, origin + scrollRoot.clientHeight);
+      }
+      const reader = ref.current!.getBoundingClientRect();
+      // A reader that has left the viewport must not cover the next reader.
+      rail.toggleAttribute('inert', reader.bottom <= top || reader.top >= bottom);
+      const height = `${Math.max(0, bottom - Math.max(top, rail.getBoundingClientRect().top)).toFixed(2)}px`;
+      if (rail.style.getPropertyValue('--limr-toc-available-height') !== height) rail.style.setProperty('--limr-toc-available-height', height);
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
+    const unsubscribe = [runtime.layout.subscribe(schedule), runtime.viewport.subscribe(schedule)];
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    window.visualViewport?.addEventListener('resize', schedule);
+    window.visualViewport?.addEventListener('scroll', schedule);
+    measure();
+    return () => {
+      cancelAnimationFrame(frame); unsubscribe.forEach(fn => fn());
+      window.removeEventListener('scroll', schedule); window.removeEventListener('resize', schedule);
+      window.visualViewport?.removeEventListener('resize', schedule); window.visualViewport?.removeEventListener('scroll', schedule);
+      rail.removeAttribute('inert'); rail.style.removeProperty('--limr-toc-available-height');
+    };
+  }, [runtime, scrollRoot, toc]);
   const sidebarVisible = !!sidebar && width >= sidebarBreakpoint;
   return <div ref={ref} className={`limr-reader ${className ?? ''}`} style={{ '--limr-reader-available-height': fillHeight ? `${availableHeight}px` : undefined, ...style } as CSSProperties} data-fill-height={fillHeight || undefined} data-sidebar={sidebarVisible || undefined} data-toc={toc && width >= 800 || undefined} data-limr-theme={theme} data-limr-appearance={appearance}>
-    {toc && <><div className="limr-reader-toc"><TableOfContents /></div><MobileContents /></>}
-    <main className="limr-reader-content"><Markdown followOutput={followOutput} /></main>
+    {toc && <><div ref={tocRail} className="limr-reader-toc"><TableOfContents /></div><MobileContents /></>}
+    <main ref={content} className="limr-reader-content"><Markdown followOutput={followOutput} /></main>
     {sidebarVisible && <AnnotationSidebar />}
     <AnnotationOverlay disabled={sidebarVisible} />
     <SelectionToolbar actions={actions} />

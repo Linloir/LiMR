@@ -1,6 +1,46 @@
 import { useEffect } from 'react';
-import { selectionFromRange } from '../core';
+import { selectionFromRange, type SelectionSnapshot, type SourceRange } from '../core';
 import type { ReaderRuntime } from './runtime';
+import { leavesIn } from './source-geometry';
+
+/** Attribute captions can occur before an image in source, while being rendered
+ * after it. Project these selections in reading order without covering captions
+ * the user did not select. Ordinary prose keeps its fast endpoint-only path. */
+function visualSelection(runtime: ReaderRuntime, native: Range, options: Parameters<typeof selectionFromRange>[2]): SelectionSnapshot | undefined {
+  if (![...runtime.content!.querySelectorAll('[data-limr-selection-order="visual"]')].some(element => native.intersectsNode(element))) return;
+  const blocks = [...runtime.blocks.values()].filter(block => native.intersectsNode(block));
+  blocks.sort((a, b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
+  const leaves = blocks.flatMap(block => leavesIn(block, runtime)).filter(leaf => leaf.kind !== 'marker');
+  const selected: SourceRange[] = [];
+  for (const leaf of leaves) {
+    if (!native.intersectsNode(leaf.node)) continue;
+    if (leaf.kind !== 'text') { selected.push(leaf.range); continue; }
+    const node = leaf.node as Text;
+    const start = native.startContainer === node ? native.startOffset : 0;
+    const end = native.endContainer === node ? native.endOffset : node.length;
+    if (start < end) selected.push({ start: leaf.binding!.resolve!(leaf.offset + start, 'start'), end: leaf.binding!.resolve!(leaf.offset + end, 'end') });
+  }
+  if (!selected.length) return;
+  // Only bridge syntax gaps: a previously visited or unselected rendered leaf
+  // in that source gap would otherwise be painted a second time.
+  const sourceOrder = leaves.map(leaf => leaf.range).sort((a, b) => a.end - b.end);
+  const ranges: SourceRange[] = [];
+  for (const range of selected) {
+    const previous = ranges.at(-1);
+    let lo = 0, hi = sourceOrder.length;
+    if (previous) while (lo < hi) { const mid = (lo + hi) >>> 1; if (sourceOrder[mid].end <= previous.end) lo = mid + 1; else hi = mid; }
+    if (previous && range.start >= previous.end && (!sourceOrder[lo] || sourceOrder[lo].start >= range.start)) previous.end = range.end;
+    else ranges.push({ ...range });
+  }
+  const snapshot = runtime.document.getSnapshot();
+  const selections = ranges.map(range => selectionFromRange(snapshot, range, options));
+  const combine = (key: 'raw' | 'syntax' | 'blocks') => {
+    const seen = new Set<string>();
+    const ranges = selections.flatMap(selection => selection[key].ranges).filter(range => { const key = `${range.start}:${range.end}`; if (seen.has(key)) return false; seen.add(key); return true; });
+    return { ranges, sourceText: ranges.map(range => snapshot.source.slice(range.start, range.end)).join('\n\n') };
+  };
+  return { ...selections[0], raw: combine('raw'), syntax: combine('syntax'), blocks: combine('blocks') };
+}
 
 export function useSelectionTracking(runtime: ReaderRuntime, enabled: boolean) {
   useEffect(() => {
@@ -33,7 +73,11 @@ export function useSelectionTracking(runtime: ReaderRuntime, enabled: boolean) {
       const candidates = edge === 'start' ? children.slice(offset) : children.slice(0, offset).reverse();
       const descend = (candidate: Node): Endpoint => {
         if (candidate.nodeType === Node.TEXT_NODE && candidate.textContent) return resolve(candidate, edge === 'start' ? 0 : candidate.textContent.length, edge);
-        if (candidate instanceof Element && candidate.hasAttribute('data-limr-ignore')) return null;
+        if (candidate instanceof Element) {
+          if (candidate.hasAttribute('data-limr-ignore') || candidate.hasAttribute('inert')) return null;
+          const binding = runtime.bindings.get(candidate);
+          if (binding?.atomic) return { offset: edge === 'start' ? binding.range.start : binding.range.end, atomic: true, exact: true };
+        }
         const list = Array.from(candidate.childNodes);
         if (edge === 'end') list.reverse();
         for (const child of list) { const result = descend(child); if (result) return result; }
@@ -64,10 +108,11 @@ export function useSelectionTracking(runtime: ReaderRuntime, enabled: boolean) {
       previous = { startNode: range.startContainer, start: range.startOffset, endNode: range.endContainer, end: range.endOffset, revision, settled: !dragging };
       runtime.selectionRange = range.cloneRange();
       runtime.highlightReference = null;
-      runtime.updateInteraction({ activeHighlight: null, selection: selectionFromRange(runtime.document.getSnapshot(), { start: start.offset, end: end.offset }, {
+      const options = {
         text: selection.toString(), settled: !dragging,
-        quality: !start.exact || !end.exact ? 'unmapped' : start.atomic || end.atomic ? 'atomic' : 'exact',
-      }) });
+        quality: (!start.exact || !end.exact ? 'unmapped' : start.atomic || end.atomic ? 'atomic' : 'exact') as SelectionSnapshot['quality'],
+      };
+      runtime.updateInteraction({ activeHighlight: null, selection: visualSelection(runtime, range, options) ?? selectionFromRange(runtime.document.getSnapshot(), { start: start.offset, end: end.offset }, options) });
     }
     // Coalesce within a frame, never debounce a continuous drag. A resetting
     // timeout can starve updates for the entire gesture on a 60/120 Hz pointer.

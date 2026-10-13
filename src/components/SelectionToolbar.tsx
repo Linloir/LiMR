@@ -48,7 +48,9 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
   const documentSnapshot = runtime.document.getSnapshot();
   const effectiveSelection = useMemo(() => {
     if (selection) return selection;
-    if (interaction.editing) return null;
+    // Dismissed annotations can retain their edit state for later resumption.
+    // Only the active annotation's editor suppresses highlight actions.
+    if (interaction.editing && active?.annotationIds.includes(interaction.editing)) return null;
     const range = paint?.range ?? (hiddenActive ? active?.range : undefined);
     return range ? selectionFromRange(documentSnapshot, range, {
       text: paint ? runtime.highlightReference?.text ?? annotationReferenceText(documentSnapshot, { id: paint.id, annotationIds: [], range }) : annotationReferenceText(documentSnapshot, active!),

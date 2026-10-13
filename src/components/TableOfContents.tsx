@@ -2,18 +2,25 @@ import { useEffect, useRef } from 'react';
 import { useAppearance, useDocumentSelector, useLocale, useRuntime, useStoreSelector, useTheme } from '../react/context';
 import type { StyledProps } from '../react/types';
 import { scrollWithMotion } from '../react/motion';
+import { useOverflowFade } from '../react/overflow-fade';
 
 export interface TableOfContentsProps extends StyledProps { title?: string; maxDepth?: number; followActive?: boolean; topInset?: number; updateHash?: boolean }
-export function TableOfContents({ title, maxDepth = 6, followActive = true, topInset = 12, updateHash = false, className, style }: TableOfContentsProps) {
+export function TableOfContents({ title, maxDepth = 6, followActive = true, topInset = 24, updateHash = false, className, style }: TableOfContentsProps) {
   const runtime = useRuntime();
   const appearance = useAppearance();
   const theme = useTheme(), locale = useLocale();
   const headings = useDocumentSelector(doc => doc.headings);
+  useStoreSelector(runtime.layout, value => value);
   const active = useStoreSelector(runtime.interaction, state => state.activeHeading);
   const list = useRef<HTMLDivElement>(null);
+  useOverflowFade(list, runtime, ':scope > ol');
   const manualUntil = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const visible = headings.filter(heading => heading.level <= maxDepth);
+  const visible = headings.filter(heading => heading.level <= maxDepth && !runtime.headings.get(heading.id)?.closest('[inert]'));
+  visible.sort((a, b) => {
+    const left = runtime.headings.get(a.id), right = runtime.headings.get(b.id);
+    return left && right && left !== right ? left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1 : 0;
+  });
   const minimum = Math.min(...visible.map(heading => heading.level), 6);
   useEffect(() => {
     if (!followActive || !active) return;

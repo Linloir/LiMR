@@ -48,3 +48,19 @@ it('keeps colliding cards separate and aligns the active anchor even when earlie
   expect(positions.get('b')! - positions.get('a')!).toBeGreaterThanOrEqual(64);
   expect(positions.get('c')! - positions.get('b')!).toBeGreaterThanOrEqual(114);
 });
+
+it('packs footer cards upward into spare rail space while retaining order and gaps', () => {
+  const items = [{ id: 'a', anchorTop: 80, height: 100 }, { id: 'b', anchorTop: 460, height: 80 }, { id: 'c', anchorTop: 480, height: 90 }];
+  const positions = alignSidebar(items, { activeId: 'c', gap: 14, height: 500 });
+  expect(positions.get('a')).toBe(80);
+  expect(positions.get('b')).toBe(316);
+  expect(positions.get('c')).toBe(410);
+});
+
+it('keeps the focused card visible when the complete stack cannot fit', () => {
+  const items = Array.from({ length: 8 }, (_, index) => ({ id: String(index), anchorTop: 220 + index, height: 100 }));
+  const positions = alignSidebar(items, { activeId: '6', gap: 14, height: 300 });
+  expect(positions.get('6')).toBe(200);
+  expect(positions.get('5')! + 114).toBeLessThanOrEqual(positions.get('6')!);
+  expect(positions.get('7')!).toBeGreaterThanOrEqual(314);
+});

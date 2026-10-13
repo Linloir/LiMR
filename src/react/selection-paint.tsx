@@ -6,7 +6,7 @@ import { sameRange } from '../core/annotations';
 import type { ReaderRuntime } from './runtime';
 import { leavesIn, textRange, type Leaf, type Viewport } from './source-geometry';
 
-interface PaintRect { left: number; top: number; width: number; height: number; flow: HTMLElement; marker?: string; atomic?: boolean; radius?: string }
+interface PaintRect { left: number; top: number; width: number; height: number; flow: HTMLElement; marker?: string; atomic?: boolean; image?: boolean; radius?: string }
 
 /** Separate paint from content. Every inline fragment uses its line's typography
  * instead of the (different) code, KaTeX or superscript box height. */
@@ -91,10 +91,10 @@ function rectangles(leaves: readonly Leaf[], source: SourceRange, viewport: View
         }
       } else {
         const element = leaf.node as HTMLElement;
-        const surface = leaf.kind === 'block' ? element.querySelector<HTMLElement>('[data-limr-selection-surface]') ?? element : element;
+        const surface = leaf.kind === 'image' ? element.querySelector<HTMLImageElement>('img') ?? element : leaf.kind === 'block' ? element.querySelector<HTMLElement>('[data-limr-selection-surface]') ?? element : element;
         const rect = surface.getBoundingClientRect();
         if (!rect.width || !rect.height || rect.bottom < viewport.top || rect.top > viewport.bottom) continue;
-        if (leaf.kind === 'block') raw.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height, atomic: true, baseline: rect.bottom, flow: surface, radius: getComputedStyle(surface).borderRadius });
+        if (leaf.kind === 'block' || leaf.kind === 'image') raw.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height, atomic: true, image: leaf.kind === 'image', baseline: rect.bottom, flow: leaf.kind === 'image' ? element : surface, radius: getComputedStyle(surface).borderRadius });
         else {
           const item = geometry(leaf, rect, referenceFor(index, rect));
           raw.push({ ...item, atomic: true });
@@ -105,7 +105,7 @@ function rectangles(leaves: readonly Leaf[], source: SourceRange, viewport: View
   // All pieces of the same text line share exactly the same top and height.
   const lines = new Map<HTMLElement, Map<number, { baseline: number; top: number; height: number }>>();
   const aligned = raw.map(rect => {
-    if (rect.atomic && rect.height > measure(rect.flow).height * 1.5) return rect;
+    if (rect.image || rect.atomic && rect.height > measure(rect.flow).height * 1.5) return rect;
     let flow = lines.get(rect.flow);
     if (!flow) { flow = new Map(); lines.set(rect.flow, flow); }
     const key = Math.floor(rect.baseline / 3);
@@ -279,7 +279,8 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
             host.append(layer); highlightLayers.set(host, layer);
           }
           layer.style.top = `${geometry.top}px`;
-          layer.style.height = `${Math.max(0, viewport.bottom - Math.max(viewport.top, geometry.box.top))}px`;
+          // A layer inside a scrollable formula must not enlarge its scroll area.
+          layer.style.height = `${Math.max(0, Math.min(viewport.bottom, geometry.box.bottom) - Math.max(viewport.top, geometry.box.top))}px`;
           target = layer;
           left += origin.left - geometry.box.left - host.clientLeft + host.scrollLeft;
           top += viewport.top - geometry.box.top - host.clientTop + host.scrollTop - geometry.top;
@@ -292,6 +293,7 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
         item.dataset.paint = task.id;
         if (rect.marker) item.dataset.marker = rect.marker; else delete item.dataset.marker;
         if (rect.atomic) item.dataset.atomic = 'true'; else delete item.dataset.atomic;
+        if (rect.image) item.dataset.media = 'image'; else delete item.dataset.media;
         // Assign user colors as a single property, never interpolate CSS text.
         const css = `left:${left}px;top:${top}px;width:${rect.width}px;height:${rect.height}px;border-radius:${rect.radius ?? '0'};`;
         if (item.dataset.geometry !== css) { item.style.cssText = css; item.dataset.geometry = css; }

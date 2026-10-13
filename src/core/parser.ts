@@ -29,7 +29,10 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
   const syntax = extensions.flatMap(ext => [...ext.micromark ?? []]);
   const mdast = extensions.flatMap(ext => [...ext.mdast ?? []]);
   if (directiveDefinitions.size) { syntax.push(directive()); mdast.push(directiveFromMarkdown()); }
-  const jsxSyntax = tagDefinitions.size ? [...syntax, mdxJsx()] : syntax;
+  // CommonMark's HTML blocks otherwise swallow same-line native tag names such
+  // as <figcaption>**caption**</figcaption> before the JSX adapter can see them.
+  // Unknown JSX remains inert through the whitelist below; recovery keeps HTML.
+  const jsxSyntax = tagDefinitions.size ? [...syntax, { disable: { null: ['htmlFlow', 'htmlText'] } }, mdxJsx()] : syntax;
   const jsxMdast = tagDefinitions.size ? [...mdast, mdxJsxFromMarkdown()] : mdast;
 
   return (fragment: string, offset: number, context: ParseContext, lines: readonly number[], environment = '') => {

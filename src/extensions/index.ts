@@ -5,4 +5,5 @@ export * from './code';
 export * from './blocks';
 export * from './annotations';
 export * from './standard';
+export * from './translations';
 export * from './actions';

@@ -138,12 +138,18 @@ function Atomic({ node, context, children, inline, blockElement }: { node: Markd
   const selected = useStoreSelector(context.runtime.interaction, state => state.selection?.raw.ranges.some(selection => intersects(selection, range)) ?? false);
   const highlights = context.highlights.filter(highlight => !highlight.hidden && intersects(highlight.range, range));
   const Tag = inline ? 'span' : 'div';
-  return <><Tag {...blockAttributes(blockElement)} className={`limr-atomic${highlights.length ? ' limr-atomic-highlight' : ''}`} data-selected={selected || undefined}
+  const image = ['image', 'imageReference'].includes(node.type) || node.type === 'component' && node.name === 'img';
+  const corner = image || !inline;
+  const marks = [...context.marks.get(node) ?? [], ...corner ? context.afterMarks.get(node) ?? [] : []];
+  const markers = marks.map(occurrence => <AnnotationMarker key={occurrence.id} occurrence={occurrence} />);
+  return <><Tag {...blockAttributes(blockElement)} className={`limr-atomic${image ? ' limr-atomic-image' : ''}${corner ? ' limr-atomic-corner' : ''}${highlights.length ? ' limr-atomic-highlight' : ''}`} data-selected={selected || undefined}
+    data-limr-media={image ? 'image' : undefined}
     data-limr-atomic={inline ? 'inline' : 'block'} data-source-start={range.start} data-source-end={range.end}
     style={{ '--limr-highlight': highlights[0]?.color ?? '#f3ce7380' } as CSSProperties}
     ref={element => { if (element) context.runtime.bindings.set(element, { range, atomic: true }); blockElement?.ref(element); }}>
     {children}
-  </Tag>{context.marks.get(node)?.map(occurrence => <AnnotationMarker key={occurrence.id} occurrence={occurrence} />)}</>;
+    {corner && !!marks.length && <span className="limr-corner-marks" data-limr-ignore="true">{markers}</span>}
+  </Tag>{!corner && markers}</>;
 }
 
 function HeadingNode({ node, children, runtime, blockElement }: { node: MarkdownNode; children: ReactNode; runtime: ReaderRuntime; blockElement?: BlockElement }) {
@@ -182,13 +188,18 @@ function containsBlock(node: MarkdownNode): boolean {
   return (node.type === 'component' && !node.inline) || ['math', 'code', 'list', 'table', 'blockquote'].includes(node.type) || (node.children?.some(containsBlock) ?? false);
 }
 
-function renderNode(node: MarkdownNode, context: RenderContext, index = 0): ReactNode {
+function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trailing?: ReactNode): ReactNode {
   const { runtime } = context;
   if (node.type === 'text' && context.compact) return node.value ?? '';
   const blockElement = node === context.block.node ? context.blockElement : undefined;
   const key = `${node.type}-${node.position?.start.offset ?? index}-${index}`;
   const childContext = node.type === 'list' ? { ...context, tightList: !node.spread } : context;
-  const renderChildren = (nodes: readonly MarkdownNode[]) => nodes.map((child, i) => renderNode(child, childContext, i));
+  const renderChildren = (nodes: readonly MarkdownNode[], options?: { trailing?: ReactNode }) => {
+    let last = -1;
+    nodes.forEach((child, i) => { if (!['definition', 'footnoteDefinition', 'annotationDefinition'].includes(child.type)) last = i; });
+    if (last < 0 && options?.trailing) return [<Fragment key="trailing">{options.trailing}</Fragment>];
+    return nodes.map((child, i) => renderNode(child, childContext, i, i === last ? options?.trailing : undefined));
+  };
   const children = node.type === 'table' ? [] : node.type === 'listItem' && context.tightList
     ? (node.children ?? []).flatMap((child, index) => child.type === 'paragraph' ? renderChildren(child.children ?? []) : renderNode(child, context, index))
     : renderChildren(node.children ?? []);
@@ -205,9 +216,9 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0): Reac
     element = <ExtensionBoundary key={key} fallback={runtime.document.getSnapshot().source.slice(range.start, range.end)}><Renderer node={node} children={children} pending={context.block.pending} source={runtime.document.getSnapshot().source.slice(range.start, range.end)} renderChildren={renderChildren} renderValue={tokens => <LiteralValue node={node} context={context} tokens={tokens} />} renderAttribute={renderAttribute} /></ExtensionBoundary>;
   } else {
     switch (node.type) {
-      case 'text': return context.compact ? node.value ?? '' : <Text key={key} node={node} context={context} />;
-      case 'paragraph': element = containsBlock(node) ? <div className="limr-paragraph">{children}</div> : <p>{children}</p>; break;
-      case 'heading': return <HeadingNode key={key} node={node} runtime={runtime} blockElement={blockElement}>{children}</HeadingNode>;
+      case 'text': return <Fragment key={key}>{context.compact ? node.value ?? '' : <Text node={node} context={context} />}{trailing}</Fragment>;
+      case 'paragraph': element = containsBlock(node) ? <div className="limr-paragraph">{children}{trailing}</div> : <p>{children}{trailing}</p>; trailing = undefined; break;
+      case 'heading': return <HeadingNode key={key} node={node} runtime={runtime} blockElement={blockElement}>{children}{trailing}</HeadingNode>;
       case 'strong': element = <strong>{children}</strong>; break;
       case 'emphasis': element = <em>{children}</em>; break;
       case 'delete': element = <del>{children}</del>; break;
@@ -228,7 +239,7 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0): Reac
         element = <div className="limr-table-scroll"><table><thead>{rows.slice(0, 1).map((row, i) => <tr key={i}>{row.children?.map((cell, j) => <th key={j} style={{ textAlign: alignment?.[j] as CSSProperties['textAlign'] }}>{renderChildren(cell.children ?? [])}</th>)}</tr>)}</thead><tbody>{rows.slice(1).map((row, i) => <tr key={i}>{row.children?.map((cell, j) => <td key={j} style={{ textAlign: alignment?.[j] as CSSProperties['textAlign'] }}>{renderChildren(cell.children ?? [])}</td>)}</tr>)}</tbody></table></div>; break;
       }
       case 'definition': case 'footnoteDefinition': case 'annotationDefinition': return null;
-      case 'footnoteReference': return <FootnoteReference key={key} node={node} />;
+      case 'footnoteReference': return <Fragment key={key}><FootnoteReference node={node} />{trailing}</Fragment>;
       case 'annotationReference': {
         const Tag = node.inline ? 'span' : 'div';
         element = <Tag>{children}<AnnotationMarker occurrence={{ id: `${runtime.document.id}-ref-${rangeOf(node).start}`, range: rangeOf(node), annotationIds: node.annotationIds as string[], embedded: true }} /></Tag>; break;
@@ -239,8 +250,9 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0): Reac
     }
   }
   const atomic = node.selection === 'atomic' || ['math', 'inlineMath', 'image', 'imageReference', 'html'].includes(node.type);
-  const after = context.afterMarks.get(node);
-  const withMarkers = (element: ReactNode) => after?.length ? <Fragment key={key}>{element}{after.map(occurrence => <AnnotationMarker key={occurrence.id} occurrence={occurrence} />)}</Fragment> : element;
+  const corner = atomic && (!node.inline && !['inlineCode', 'inlineMath', 'html'].includes(node.type) || ['image', 'imageReference'].includes(node.type) || node.name === 'img');
+  const after = corner ? undefined : context.afterMarks.get(node);
+  const withMarkers = (element: ReactNode) => after?.length || trailing ? <Fragment key={key}>{element}{after?.map(occurrence => <AnnotationMarker key={occurrence.id} occurrence={occurrence} />)}{trailing}</Fragment> : element;
   if (atomic) return withMarkers(<Atomic key={key} node={node} context={context} blockElement={blockElement} inline={node.inline || ['inlineCode', 'inlineMath', 'image', 'imageReference', 'html'].includes(node.type)}>{element}</Atomic>);
   if (blockElement) {
     const attributes = { ...blockAttributes(blockElement), ref: blockElement.ref };
@@ -284,8 +296,11 @@ export const BlockView = memo(function BlockView({ block, runtime, components, e
     }
     collect(block.node);
     for (const occurrence of occurrences) {
-      if (attributes.some(attribute => { const range = rangeOf(attribute); return occurrence.range.end > range.start && occurrence.range.end <= range.end; })) continue;
       const target = [...leaves].reverse().find(node => rangeOf(node).start < occurrence.range.end) ?? leaves[0];
+      // An attribute can supply an atomic image, or text rendered separately as
+      // its caption. Only the latter is handled by renderAttribute's Text node.
+      const image = target && (['image', 'imageReference'].includes(target.type) || target.name === 'img') && rangeOf(target).end >= occurrence.range.end;
+      if (!image && attributes.some(attribute => { const range = rangeOf(attribute); return occurrence.range.end > range.start && occurrence.range.end <= range.end; })) continue;
       if (target) {
         // An absorbed closing delimiter places the marker after its outermost
         // completed format. A partial code selection keeps its exact inner end.

@@ -106,4 +106,31 @@ const extensions = [
 顶部的“加载”菜单里提供了更长的练习文本、开源项目的 README、文学作品与论文。代码文档适合检验列表和配置项，小说适合连续阅读，论文适合在论述与表格之间切换。同一个阅读器，可以为这些不同的文本保留一致的操作习惯。
 
 点击“编辑”修改文章，再点击同一位置的“保存”返回阅读，文本就会保存在当前浏览器中。阅读时新增或修改的批注也会自动保存。下一次回来，可以继续从上一次留下的问题开始。
+
+## 图片、图注与双语阅读
+
+<figures min-width="160" max-width="240" min-height="120" max-height="240">
+
+<figure src="/papers/feature-neuron.png" alt="单个神经元的优化图像" caption="单个神经元的响应。" />
+<figure src="/papers/feature-channel.png" alt="整个通道的优化图像" caption="整个通道的响应。" />
+
+<figcaption>图像来自 Olah、Mordvintsev、Schubert 的 [Feature Visualization](https://distill.pub/2017/feature-visualization/)（2017），CC BY 4.0。更多图文示例在顶部“加载”菜单的论文中。</figcaption>
+
+</figures>
+
+<translations default="both">
+
+<origin>
+
+Read at your own pace. Keep the original close, and let the translation help when you need it.
+
+</origin>
+
+<translation>
+
+按自己的节奏阅读。把原文留在身边，在需要时让译文帮你一把。
+
+</translation>
+
+</translations>
 `;

@@ -1,5 +1,5 @@
 export * from './types';
-export { DocumentProvider, useDocument, useDocumentSelector, useSelection, useAnnotation, useAnnotations, useAnnotationState, useAnchor, useLiMR } from './context';
+export { DocumentProvider, useDocument, useDocumentSelector, useSelection, useAnnotation, useAnnotations, useAnnotationState, useAnchor, useLiMR, useRendererParameter } from './context';
 export type { DocumentProviderProps } from './context';
 export { Markdown } from './Markdown';
 export type { MarkdownProps } from './Markdown';
@@ -12,3 +12,4 @@ export * from '../components/AnnotationCard';
 export * from '../components/AnnotationContent';
 export * from '../components/SelectionToolbar';
 export * from '../components/ToolIcon';
+export * from '../components/InlineMarker';

@@ -11,6 +11,7 @@
 | `documentId` | 自动生成且与 SSR hydration 一致；显式传入时应在页面内唯一 |
 | `extensions` | `standard()`，完整扩展列表 |
 | `plugins` | 追加到默认模块或显式 extensions 的第三方扩展 |
+| `parameters` | 模块注册的文档级参数；例如 `{ translationMode: 'both' }`，覆盖各段译文模式 |
 | `appearance` | `classic`；CSS 样式包作用域，包含 portal 浮层 |
 | `components` | 覆盖 AST 节点类型或特殊标签名对应的组件 |
 | `annotationTypes` | 追加或覆盖同 type 的角注显示定义 |
@@ -20,18 +21,22 @@
 | `justify` | `false`；开启后段落和列表两端对齐，末行保持起始侧对齐 |
 | `locale` | `english`；可以传 `chinese` 或部分文字覆盖 |
 | `scrollRoot` | 窗口；传入内部滚动容器 DOM 节点可切换 |
-| `scrollOffset` | `24`，标题定位时留出的顶部距离 |
+| `scrollOffset` | `24`，标题、页内链接及脚注定位时留出的顶部距离 |
 | `onSelectionChange` | 接收三种选区结果或 `null` |
 | `onAnnotationClick` / `onAnnotationHover` | 接收 occurrence；hover 离开时为 `null` |
 | `onDocumentChange` | 输入或扩展变更后接收新快照 |
 
 数组、扩展和数据对象按不可变数据使用。发生变更时传新对象，静态配置保持引用稳定。更换整篇独立文档时可以给 Provider/Reader 换一个 React `key`，从而清除上篇文章的局部交互和任务。
 
+`useRendererParameter(name)` 读取模块通过 `RendererExtension.parameters` 注册的默认值及宿主覆盖，类型由可扩展的 `RendererParameters` 接口提供。参数更新不会重新解析 Markdown。模块可用 `InlineMarker` 注入仅执行操作的角标，再通过 `renderChildren(nodes, { trailing })` 将其放在内容末尾；它与 `Annotation` 的卡片生命周期相互独立。详见[扩展指南](extensions.md#分段译文与全局参数)。
+
 `<Reader source={source} justify />`、独立 `<Markdown source={source} justify />` 或 `<DocumentProvider justify>` 均可开启两端对齐；Provider 中的 `<Markdown justify={false} />` 可显式覆盖。开关可动态更新，选区、高亮和侧栏位置随重新排版更新。标题、代码块和表格保留原有对齐方式。
 
 `Reader` 额外接受 `toc`、`sidebar`、`fillHeight`（均默认 true）、`sidebarBreakpoint`（默认 1120，按容器宽度判断）、`actions`、`followOutput`、`className`、`style`。`fillHeight` 让短正文补足当前位置到滚动视口底部的可用高度，默认预留 24px；可通过 `--limr-reader-bottom-space` 为页脚留位，或用 `--limr-reader-min-height` 覆盖最小高度。内嵌小卡片可设 `fillHeight={false}`。计算使用滚动坐标中的固定起点，普通滚动不会改变最小高度。`Markdown` 额外接受 `interactive`（默认 true，控制选区监听）、`followOutput` 和样式属性。
 
 ## 布局和定位
+
+正文内同页 `#fragment` 链接（包括标准脚注）与目录使用同一个非线性滚动实现，遵守 `scrollRoot`、`scrollOffset` 和减少动态效果设置。滚轮、触摸、指针按下或滚动按键会中断动画；带修饰键、下载及外部链接保持原有行为。目标在当前正文内查找，多个阅读器不会相互跳转。
 
 默认组合约定：目录、正文和侧栏在同一个滚动容器内。正文与阅读区域最小高度共同决定布局，同步侧栏拉伸至所在网格行的高度，卡片在内部绝对定位并裁切溢出，不参与父组件高度计算。保持侧栏和正文处于同一个未缩放的 CSS 坐标系，不额外添加独立滚动或 transform。自定义组合应像下面一样使用同一行的 grid，并给正文提供裁切容器；非 grid 布局需要由宿主给侧栏明确高度。ResizeObserver、图片加载、字体加载及容器变化会重新测量几何；普通滚动使用缓存的标题位置。
 
@@ -50,9 +55,9 @@ const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
 </div>
 ```
 
-同步侧栏没有独立滚动条，也不接受滚轮、触摸或聚焦引起的列表滚动。悬浮正文角标时移动侧栏；悬浮侧栏卡片时锁住当前卡片的命中位置，让正文平滑位移至关联位置。其他条目根据实际高度重新排列，收起时无需移开鼠标就会归位。正文位移不改变布局高度，测量锚点时扣除动画中的实时位移，避免位置反馈循环。展开/收起保留交互来源与 hover；点击空白处清除卡片与角标的激活状态并恢复正文位置，Esc 收起并把焦点还给角标。长回答的正文仍可在卡片内滚动，隐藏原生滚动条，卡片高度受侧栏剩余空间限制。
+同步侧栏没有独立滚动条，也不接受滚轮、触摸或聚焦引起的列表滚动。悬浮正文角标时移动侧栏；悬浮侧栏卡片时锁住当前卡片的命中位置，在边界允许时让正文平滑位移至关联位置。其他条目根据实际高度重新排列，收起时无需移开鼠标就会归位。正文位移不改变布局高度，测量锚点时扣除动画中的实时位移，避免位置反馈循环。展开/收起保留交互来源与 hover；点击空白处清除卡片与角标的激活状态并恢复正文位置，Esc 收起并把焦点还给角标。长回答的正文仍可在卡片内滚动，隐藏原生滚动条，卡片高度受侧栏整体可用高度限制。
 
-在独立抽屉等场景使用 `<AnnotationSidebar sync="none" />`。它保留正常列表流，不读取正文的对齐位置，也展示没有锚点的角注，宿主自行约束高度与滚动。`positioner(items, {activeId, gap})` 可以替换同步侧栏的对齐算法；items 含 occurrence ID、相对侧栏的关联文本起始行顶部（`anchorTop`）和卡片高度，返回 ID 到顶部距离的 Map。绑定文本范围的脚注按片段第一个可见字符所在行对齐，末尾角标位置不变；内嵌引用等仅有角标的脚注按角标对齐。默认优先对齐 hover/激活条目；无激活条目时跟随正文当前阅读位置。前面的卡片允许返回负位置并在侧栏内裁切，不会为了保留前面条目而挤走当前卡片；卡片顺序和间隔仍然保留。
+在独立抽屉等场景使用 `<AnnotationSidebar sync="none" />`。它保留正常列表流，不读取正文的对齐位置，也展示没有锚点的角注，宿主自行约束高度与滚动。`positioner(items, {activeId, gap, height})` 可以替换同步侧栏的对齐算法；items 含 occurrence ID、相对侧栏的关联文本起始行顶部（`anchorTop`）和卡片高度，`height` 是可用侧栏高度（尚未测量时为 undefined），返回 ID 到顶部距离的 Map。绑定文本范围的脚注按片段第一个可见字符所在行对齐，末尾角标位置不变；内嵌引用等仅有角标的脚注按角标对齐。默认优先对齐 hover/激活条目；无激活条目时跟随正文当前阅读位置。空间足够时，末尾卡片向上借用留白，所有卡片保持顺序和间隔并完整显示；容纳不下时优先保留当前卡片，其他条目允许越过边界并渐隐。边界处优先保证卡片可见，不为精确对齐强行平移正文。
 
 `renderCard({occurrence, active, activate})` 替换侧栏卡片外壳；单个角注的内容通常通过 `AnnotationType.Content` 替换。需要完全自主的布局时，用 `useAnchor(occurrenceId)` 获得实时角标元素、视口矩形和正文矩形，再自行放置组件。
 
@@ -60,7 +65,9 @@ const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
 
 `AnnotationCard` 是模块可选用的默认卡片布局，接收 `AnnotationOverlayCardProps` 以及必填的 `title: ReactNode`、可选的 `bodyLabel`。它提供标题栏、展开/收起/关闭按钮和滚动区域；模块也可以完全自行渲染这些部分。旧模块只提供 `Content` 时仍可使用兼容布局，其标题来自类型的 `label`。
 
-`TableOfContents` 接受 `title`、`maxDepth`、`followActive`、`topInset`（12）、`updateHash`（false）和样式属性。独立使用时给它或父容器设定可用高度。标题位于滚动区之外；手动滚动目录会短暂暂停自动跟随；页面底部将最后一个标题视为 active。
+`TableOfContents` 接受 `title`、`maxDepth`、`followActive`、`topInset`（24）、`updateHash`（false）和样式属性。独立使用时给它或父容器设定可用高度。标题位于滚动区之外；列表上下仅在实际溢出时渐隐，默认跟随留白让当前章节位于渐隐区之外。手动滚动目录会短暂暂停自动跟随；页面底部将最后一个标题视为 active。
+
+`Reader` 的宽屏目录自动适配窗口或 `scrollRoot` 的可用高度。正文滚到末尾及页脚出现时，目录外框保持吸顶，只有内部列表滚动；目录不会撑高正文或增加页面滚动范围。整个 Reader 离开可视区域后，目录隐藏且不可聚焦，避免覆盖后续页面内容。playground 使用同一默认布局。
 
 `Reader` 的窄屏目录使用整行按钮，右侧箭头随展开状态旋转。目录内容持续挂载，展开/收起从当前高度连续过渡，快速点击可随时反转；隐藏内容不可获得焦点。
 

@@ -92,7 +92,8 @@ test('edge placement and rapid marker changes reveal from the current marker on 
   });
   await page.goto('/?fixture=visual'); await page.evaluate(() => document.fonts.ready);
   const first = page.locator('.limr-reader-content .limr-mark').nth(0), second = page.locator('.limr-reader-content .limr-mark').nth(1);
-  await first.evaluate(element => Object.assign(element.style, { position: 'fixed', left: '24px', top: '80px', transition: 'none', zIndex: '5' }));
+  // Keep the synthetic fixed markers inside the reader's clipped content area.
+  await first.evaluate(element => Object.assign(element.style, { position: 'fixed', left: '24px', top: '160px', transition: 'none', zIndex: '5' }));
   await second.evaluate(element => Object.assign(element.style, { position: 'fixed', left: '650px', top: '450px', transition: 'none', zIndex: '5' }));
   await first.hover();
   const card = page.locator('.limr-annotation-preview');
