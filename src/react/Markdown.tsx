@@ -11,17 +11,18 @@ export interface MarkdownProps extends Omit<DocumentProviderProps, 'children'>, 
   /** Follow generated output while the reader remains near the bottom. */
   followOutput?: boolean;
 }
-export function Markdown({ className, style, interactive = true, followOutput = false, ...props }: MarkdownProps) {
+export function Markdown({ className, style, interactive = true, followOutput = false, justify, ...props }: MarkdownProps) {
   const parent = useContext(RuntimeContext);
-  if (props.source !== undefined || !parent) return <DocumentProvider {...props}><MarkdownBody className={className} style={style} interactive={interactive} followOutput={followOutput} /></DocumentProvider>;
-  return <MarkdownBody className={className} style={style} interactive={interactive} followOutput={followOutput} />;
+  if (props.source !== undefined || !parent) return <DocumentProvider {...props} justify={justify}><MarkdownBody className={className} style={style} interactive={interactive} followOutput={followOutput} /></DocumentProvider>;
+  return <MarkdownBody className={className} style={style} interactive={interactive} followOutput={followOutput} justify={justify} />;
 }
 
-function MarkdownBody({ className, style, interactive, followOutput }: StyledProps & { interactive: boolean; followOutput: boolean }) {
+function MarkdownBody({ className, style, interactive, followOutput, justify }: StyledProps & { interactive: boolean; followOutput: boolean; justify?: boolean }) {
   const runtime = useRuntime();
   const document = useDocument();
   const appearance = useAppearance();
   const theme = useStoreSelector(runtime.configuration, config => config.theme ?? 'light');
+  const configuredJustify = useStoreSelector(runtime.configuration, config => config.justify ?? false);
   const scrollRoot = useStoreSelector(runtime.configuration, config => config.scrollRoot);
   const offset = useStoreSelector(runtime.documentOffset, value => value);
   const components = useStoreSelector(runtime.configuration, config => config.components);
@@ -30,6 +31,7 @@ function MarkdownBody({ className, style, interactive, followOutput }: StyledPro
   const ref = useRef<HTMLElement>(null);
   const pinned = useRef(true);
   useIsomorphicLayoutEffect(() => ref.current ? runtime.mountContent(ref.current) : undefined, [runtime, scrollRoot]);
+  useIsomorphicLayoutEffect(() => runtime.requestLayout(), [runtime, justify, configuredJustify]);
   useSelectionTracking(runtime, interactive);
   useEffect(() => {
     if (!followOutput) return;
@@ -47,9 +49,9 @@ function MarkdownBody({ className, style, interactive, followOutput }: StyledPro
     const frame = requestAnimationFrame(() => runtime.scrollTo(scrollRoot?.scrollHeight ?? window.document.documentElement.scrollHeight, 'instant'));
     return () => cancelAnimationFrame(frame);
   }, [document, runtime, followOutput, scrollRoot]);
-  return <article ref={ref} className={`limr-prose ${className ?? ''}`} style={{ ...style, translate: offset ? `0 ${offset}px` : style?.translate }} data-limr-theme={theme} data-limr-appearance={appearance} data-limr-document={document.id}>
+  return <article ref={ref} className={`limr-prose ${className ?? ''}`} style={{ ...style, translate: offset ? `0 ${offset}px` : style?.translate }} data-limr-theme={theme} data-limr-appearance={appearance} data-limr-document={document.id} data-limr-justify={justify ?? configuredJustify}>
     {document.blocks.map(block => <BlockView key={block.id} block={block} runtime={runtime} components={components} extensions={extensions} decorations={decorations.get(block.id) ?? emptyDecorations} />)}
     <Footnotes />
-    <SelectionPaint runtime={runtime} />
+    <SelectionPaint runtime={runtime} interactive={interactive} />
   </article>;
 }

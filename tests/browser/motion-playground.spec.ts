@@ -133,7 +133,7 @@ test('overlay scrollbar reserves no width, stays hidden during motion and fades 
   await page.goto('/'); await page.getByRole('button', { name: '编辑', exact: true }).click();
   const paragraphs = Array.from({ length: 30 }, (_, i) => `Paragraph ${i}. A long annotation with stable line wrapping.`).join('&#10;&#10;');
   await page.getByRole('textbox', { name: 'Markdown source' }).fill(`Text<ref id="long" />.\n\n<citation id="long" title="Long annotation" description="${paragraphs}" />`);
-  await page.getByRole('button', { name: '阅读', exact: true }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
   await page.evaluate(() => document.fonts.ready);
   await page.locator('.limr-mark').hover();
   const card = page.locator('.limr-annotation-preview'), content = card.locator('.limr-overlay-content'), track = card.locator('.limr-overlay-scrollbar');
@@ -249,10 +249,10 @@ test('sidebar modules opt into content-click collapse while links and conversati
   await label.hover();
   await expect(label).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   await expect(label.locator('.limr-underline')).toHaveCSS('background-size', '100% 1px');
-  // The whole card owns hover, including after collapse while the pointer stays.
+  // Card hover still activates the note, but only toggle-text hover underlines.
   await citation.locator('.limr-sidebar-card-content').getByText('Clickable sidebar content.').hover();
-  await expect(label.locator('.limr-underline')).toHaveCSS('background-size', '100% 1px');
-  await citation.getByRole('button').click();
+  await expect(label.locator('.limr-underline')).toHaveCSS('background-size', '0% 1px');
+  await label.click();
   await expect(citation.getByRole('button')).toHaveAttribute('aria-expanded', 'false');
   await expect(citation).toHaveAttribute('data-active', 'true');
   await expect(label.locator('.limr-underline')).toHaveCSS('background-size', '100% 1px');

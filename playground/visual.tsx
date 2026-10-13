@@ -15,13 +15,14 @@ export const visualSource = [
   '<citation id="inside" title="Nested citation" />',
 ].join('\n\n');
 const annotation = [{ id: 'code-note', type: 'citation', range: { start: visualSource.indexOf('total ='), end: visualSource.indexOf('total =') + 5 }, data: { title: 'Code annotation', description: 'A card inserted into code.' } }];
-const actions = [highlightSelection({ label: '高亮' })];
+const actions = [highlightSelection()];
 
 export function VisualFixture() {
+  const [annotations, setAnnotations] = useState<readonly import("../src").Annotation[]>(annotation);
   const [selection, setSelection] = useState<SelectionSnapshot | null>(null);
   const [dark, setDark] = useState(false);
   return <div className="demo-page"><div className="demo-controls"><button onClick={() => setDark(!dark)}>Theme</button></div>
-    <Reader source={visualSource} documentId="visual" theme={dark ? 'dark' : 'light'} locale={chinese} annotations={annotation} actions={actions} onSelectionChange={setSelection} />
+    <Reader source={visualSource} documentId="visual" theme={dark ? 'dark' : 'light'} locale={chinese} annotations={annotations} onAnnotationsChange={setAnnotations} actions={actions} onSelectionChange={setSelection} />
     <output id="selection-data" hidden>{selection ? JSON.stringify(selection) : ''}</output><output id="source-data" hidden>{visualSource}</output>
   </div>;
 }

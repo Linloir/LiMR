@@ -1,90 +1,12 @@
+import type { PaintHighlight } from './runtime';
 import { useEffect, useRef } from 'react';
-import type { Highlight, SourceRange } from '../core';
+import type { SourceRange } from '../core';
 import { intersects } from '../core/tree';
-import type { ReaderRuntime, SourceBinding } from './runtime';
+import { sameRange } from '../core/annotations';
+import type { ReaderRuntime } from './runtime';
+import { leavesIn, textRange, type Leaf, type Viewport } from './source-geometry';
 
-interface Leaf {
-  node: Text | HTMLElement;
-  kind: 'text' | 'marker' | 'inline' | 'block';
-  range: SourceRange;
-  flow: HTMLElement;
-  binding?: SourceBinding;
-  offset: number;
-}
 interface PaintRect { left: number; top: number; width: number; height: number; flow: HTMLElement; marker?: string; atomic?: boolean; radius?: string }
-interface Viewport { top: number; bottom: number; left: number; right: number }
-
-function flowOf(element: HTMLElement, container: HTMLElement): HTMLElement {
-  const known = element.closest<HTMLElement>('pre,p,li,th,td,h1,h2,h3,h4,h5,h6,.limr-choice-text,.limr-definition-title,.limr-question-title,.limr-block-content');
-  return known && container.contains(known) ? known : element.closest<HTMLElement>('[data-limr-block]') ?? container;
-}
-
-function leavesIn(block: HTMLElement, runtime: ReaderRuntime): Leaf[] {
-  runtime.prepareTextBindings(block);
-  const result: Leaf[] = [];
-  const visit = (node: Node, inherited?: { binding: SourceBinding; offset: number }) => {
-    if (node instanceof HTMLElement) {
-      if (node !== block && node.hasAttribute('data-limr-document') || node.hasAttribute('inert')) return;
-      const marker = node.dataset.limrMarker;
-      const atomic = node.dataset.limrAtomic;
-      if (marker || atomic) {
-        result.push({ node, kind: marker ? 'marker' : atomic === 'block' ? 'block' : 'inline', range: { start: Number(node.dataset.sourceStart), end: Number(node.dataset.sourceEnd) }, flow: flowOf(node, runtime.content!), offset: 0 });
-        return;
-      }
-      if (node.hasAttribute('data-limr-ignore')) return;
-      const binding = runtime.bindings.get(node);
-      if (binding) inherited = { binding, offset: 0 };
-    }
-    if (node.nodeType === Node.TEXT_NODE) {
-      const binding = runtime.bindings.get(node) ?? inherited?.binding;
-      const offset = runtime.bindings.has(node) ? 0 : inherited?.offset ?? 0;
-      const length = node.textContent?.length ?? 0;
-      if (binding?.resolve && length) result.push({ node: node as Text, kind: 'text', range: { start: binding.resolve(offset, 'start'), end: binding.resolve(offset + length, 'end') }, flow: flowOf(node.parentElement!, runtime.content!), binding, offset });
-      if (inherited) inherited.offset += length;
-      return;
-    }
-    node.childNodes.forEach(child => visit(child, inherited));
-  };
-  visit(block);
-  return result;
-}
-
-function textRange(leaf: Leaf, source: SourceRange, viewport: Viewport): Range | null {
-  const node = leaf.node as Text, length = node.length;
-  const resolve = leaf.binding!.resolve!;
-  // Binary searches preserve decoded entities, surrogate pairs and source gaps.
-  let lo = 0, hi = length;
-  while (lo < hi) { const mid = (lo + hi) >>> 1; if (resolve(leaf.offset + mid + 1, 'end') <= source.start) lo = mid + 1; else hi = mid; }
-  let start = lo;
-  lo = start; hi = length;
-  while (lo < hi) { const mid = (lo + hi) >>> 1; if (resolve(leaf.offset + mid, 'start') < source.end) lo = mid + 1; else hi = mid; }
-  if (start === lo) return null;
-  let end = lo;
-  const range = document.createRange();
-  // A single unwrapped text node can contain a book or a large code fence.
-  // Bound its native Range before requesting line rectangles.
-  if (end - start > 1024) {
-    range.setStart(node, start); range.setEnd(node, end);
-    const box = range.getBoundingClientRect();
-    if (box.height > viewport.bottom - viewport.top + 80) {
-      lo = start; hi = end;
-      while (lo < hi) {
-        const mid = (lo + hi) >>> 1;
-        range.setStart(node, mid); range.setEnd(node, mid + 1);
-        if (range.getBoundingClientRect().bottom < viewport.top) lo = mid + 1; else hi = mid;
-      }
-      start = lo; hi = end;
-      while (lo < hi) {
-        const mid = (lo + hi) >>> 1;
-        range.setStart(node, mid); range.setEnd(node, mid + 1);
-        if (range.getBoundingClientRect().top <= viewport.bottom) lo = mid + 1; else hi = mid;
-      }
-      end = lo;
-    }
-  }
-  if (start === end) return null;
-  range.setStart(node, start); range.setEnd(node, end); return range;
-}
 
 /** Separate paint from content. Every inline fragment uses its line's typography
  * instead of the (different) code, KaTeX or superscript box height. */
@@ -154,13 +76,25 @@ function rectangles(leaves: readonly Leaf[], source: SourceRange, viewport: View
     } else if (intersects(leaf.range, source)) {
       if (leaf.kind === 'text') {
         const range = textRange(leaf, source, viewport);
-        for (const rect of range?.getClientRects() ?? []) if (rect.width && rect.height && rect.bottom >= viewport.top && rect.top <= viewport.bottom) raw.push(geometry(leaf, rect));
+        const shell = leaf.node.parentElement?.closest<HTMLElement>('[data-limr-inline-syntax]');
+        const edges = shell ? Array.from(shell.getClientRects()) : [];
+        const css = shell && getComputedStyle(shell);
+        for (const rect of range?.getClientRects() ?? []) if (rect.width && rect.height && rect.bottom >= viewport.top && rect.top <= viewport.bottom) {
+          const item = geometry(leaf, rect), first = edges[0], last = edges.at(-1);
+          // Include code padding only at the source edges whose backticks were
+          // absorbed. Partial code selections retain their exact character box.
+          if (shell && css && first && source.start <= Number(shell.dataset.sourceStart) && Math.abs(first.top - rect.top) < rect.height && Math.abs(rect.left - first.left - parseFloat(css.paddingLeft)) < 1) {
+            item.width += item.left - first.left; item.left = first.left;
+          }
+          if (shell && css && last && source.end >= Number(shell.dataset.sourceEnd) && Math.abs(last.top - rect.top) < rect.height && Math.abs(last.right - parseFloat(css.paddingRight) - rect.right) < 1) item.width = last.right - item.left;
+          raw.push(item);
+        }
       } else {
         const element = leaf.node as HTMLElement;
         const surface = leaf.kind === 'block' ? element.querySelector<HTMLElement>('[data-limr-selection-surface]') ?? element : element;
         const rect = surface.getBoundingClientRect();
         if (!rect.width || !rect.height || rect.bottom < viewport.top || rect.top > viewport.bottom) continue;
-        if (leaf.kind === 'block') raw.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height, atomic: true, baseline: rect.bottom, flow: leaf.flow, radius: getComputedStyle(surface).borderRadius });
+        if (leaf.kind === 'block') raw.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height, atomic: true, baseline: rect.bottom, flow: surface, radius: getComputedStyle(surface).borderRadius });
         else {
           const item = geometry(leaf, rect, referenceFor(index, rect));
           raw.push({ ...item, atomic: true });
@@ -188,7 +122,7 @@ function rectangles(leaves: readonly Leaf[], source: SourceRange, viewport: View
   return [...aligned, ...bridges];
 }
 
-export function SelectionPaint({ runtime }: { runtime: ReaderRuntime }) {
+export function SelectionPaint({ runtime, interactive = true }: { runtime: ReaderRuntime; interactive?: boolean }) {
   const layer = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const container = runtime.content, paint = layer.current;
@@ -202,6 +136,34 @@ export function SelectionPaint({ runtime }: { runtime: ReaderRuntime }) {
     let snapshot = runtime.document.getSnapshot();
     let lastSelection = runtime.interaction.get().selection;
     let lastDecorations = runtime.decorations.get().byBlock;
+    let lastHovered = runtime.interaction.get().hoveredHighlight;
+    let lastActive = runtime.interaction.get().activeHighlight;
+    let lastAnnotation = runtime.interaction.get().active;
+    let lastHoveredAnnotation = runtime.interaction.get().hovered;
+    const highlightLayers = new Map<HTMLElement, HTMLSpanElement>();
+    let hits: { id: string; rect: { left: number; top: number; width: number; height: number } }[] = [];
+    const highlightRects = (id: string) => [...highlightLayers.values()].flatMap(layer => Array.from(layer.children).filter(item => (item as HTMLElement).dataset.paint === id).map(item => item.getBoundingClientRect()));
+    const focusedRange = () => {
+      const state = runtime.interaction.get(), decorations = runtime.decorations.get();
+      return decorations.occurrences.find(item => item.id === state.hovered)?.range
+        ?? (state.activeHighlight ? decorations.highlights.get(state.activeHighlight)?.range : undefined)
+        ?? decorations.occurrences.find(item => item.id === state.active)?.range;
+    };
+    const feedback = () => {
+      const state = runtime.interaction.get();
+      const decorations = runtime.decorations.get();
+      const focused = focusedRange();
+      for (const layer of highlightLayers.values()) for (const item of layer.children as HTMLCollectionOf<HTMLElement>) {
+        item.toggleAttribute('data-hovered', item.dataset.paint === state.hoveredHighlight);
+        const highlight = decorations.highlights.get(item.dataset.paint ?? '');
+        item.toggleAttribute('data-active', item.dataset.paint === state.activeHighlight || !!focused && !!highlight && sameRange(focused, highlight.range));
+        item.toggleAttribute('data-muted', !!highlight?.hidden || !!focused && !!highlight && !sameRange(focused, highlight.range));
+      }
+    };
+    const removeLayer = (host: HTMLElement, layer: HTMLElement) => {
+      layer.remove(); delete host.dataset.limrHighlightHost; delete host.dataset.limrHighlightPosition;
+      highlightLayers.delete(host);
+    };
     const canvas = document.createElement('canvas'), context = canvas.getContext('2d');
     const measure = (element: HTMLElement): Metric => {
       const saved = metrics.get(element); if (saved) return saved;
@@ -218,7 +180,11 @@ export function SelectionPaint({ runtime }: { runtime: ReaderRuntime }) {
       }
       metrics.set(element, metric); return metric;
     };
-    const clear = () => { if (paint.childNodes.length) paint.replaceChildren(); };
+    const clear = () => {
+      if (paint.childNodes.length) paint.replaceChildren();
+      for (const [host, layer] of highlightLayers) removeLayer(host, layer);
+      hits = [];
+    };
     const render = () => {
       cancelAnimationFrame(frame);
       frame = 0;
@@ -254,7 +220,7 @@ export function SelectionPaint({ runtime }: { runtime: ReaderRuntime }) {
       viewport.top = Math.max(viewport.top, origin.top);
       viewport.bottom = Math.min(viewport.bottom, origin.bottom);
       const scrollLeft = container.scrollLeft, scrollTop = container.scrollTop;
-      const output: { rect: PaintRect; task: { id: string; color?: string; style?: Highlight['style']; selection?: boolean } }[] = [];
+      const output: { rect: PaintRect; task: { id: string; color?: string; style?: PaintHighlight['style']; selection?: boolean } }[] = [];
       const clips = new Map<HTMLElement, { left: number; right: number; top: number; bottom: number }>();
       const clipFor = (flow: HTMLElement) => {
         const saved = clips.get(flow); if (saved) return saved;
@@ -269,7 +235,7 @@ export function SelectionPaint({ runtime }: { runtime: ReaderRuntime }) {
       for (let index = lo; index < blocks.length; index++) {
         const block = blocks[index];
         if (block.element.getBoundingClientRect().top > viewport.bottom + 32) break;
-        const tasks: { id: string; range: SourceRange; color?: string; style?: Highlight['style']; selection?: boolean }[] = [...decorations.get(block.id)?.highlights ?? []];
+        const tasks: { id: string; range: SourceRange; color?: string; style?: PaintHighlight['style']; selection?: boolean }[] = [...decorations.get(block.id)?.highlights ?? []];
         for (const range of selections) if (intersects(range, block.range)) tasks.push({ id: 'selection', range, selection: true });
         if (!tasks.length) continue;
         let leaves = leavesCache.get(block.element);
@@ -291,24 +257,62 @@ export function SelectionPaint({ runtime }: { runtime: ReaderRuntime }) {
       // otherwise cause expensive browser layout, hit testing and pre-paint.
       paint.style.top = `${viewport.top - origin.top + scrollTop}px`;
       paint.style.height = `${Math.max(0, viewport.bottom - viewport.top)}px`;
-      output.forEach(({ rect, task }, index) => {
-        const item = paint.children[index] as HTMLElement | undefined ?? document.createElement('span');
+      // Each text flow is its own stacking context: its paper/background is
+      // below the ink, and highlight paint sits between the two. Selection
+      // retains its independent foreground layer, including atomic media.
+      const hostGeometry = new Map<HTMLElement, { box: DOMRect; top: number; positioned: boolean }>();
+      for (const { rect, task } of output) if (!task.selection && !hostGeometry.has(rect.flow)) {
+        const host = rect.flow, box = host.getBoundingClientRect();
+        hostGeometry.set(host, { box, top: Math.max(viewport.top, box.top) - box.top - host.clientTop + host.scrollTop, positioned: getComputedStyle(host).position !== 'static' });
+      }
+      const counts = new Map<HTMLElement, number>();
+      const nextHits: typeof hits = [];
+      output.forEach(({ rect, task }) => {
+        let target: HTMLElement = paint, left = rect.left, top = rect.top;
+        if (!task.selection) {
+          const host = rect.flow, geometry = hostGeometry.get(host)!;
+          let layer = highlightLayers.get(host);
+          if (!layer) {
+            layer = document.createElement('span'); layer.className = 'limr-highlight-layer'; layer.dataset.limrIgnore = 'true'; layer.setAttribute('aria-hidden', 'true');
+            host.dataset.limrHighlightHost = 'true';
+            if (!geometry.positioned) host.dataset.limrHighlightPosition = 'true';
+            host.append(layer); highlightLayers.set(host, layer);
+          }
+          layer.style.top = `${geometry.top}px`;
+          layer.style.height = `${Math.max(0, viewport.bottom - Math.max(viewport.top, geometry.box.top))}px`;
+          target = layer;
+          left += origin.left - geometry.box.left - host.clientLeft + host.scrollLeft;
+          top += viewport.top - geometry.box.top - host.clientTop + host.scrollTop - geometry.top;
+          nextHits.push({ id: task.id, rect: { left: rect.left + origin.left - scrollLeft, top: rect.top + viewport.top, width: rect.width, height: rect.height } });
+        }
+        const index = counts.get(target) ?? 0; counts.set(target, index + 1);
+        const item = target.children[index] as HTMLElement | undefined ?? document.createElement('span');
         const className = `limr-paint-rect limr-paint-${task.selection ? 'selection' : task.style ?? 'background'}`;
         if (item.className !== className) item.className = className;
         item.dataset.paint = task.id;
         if (rect.marker) item.dataset.marker = rect.marker; else delete item.dataset.marker;
         if (rect.atomic) item.dataset.atomic = 'true'; else delete item.dataset.atomic;
-        const css = `left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;border-radius:${rect.radius ?? '0'};${task.selection ? '' : `--limr-highlight:${task.color ?? '#f3ce7380'};`}`;
-        if (item.getAttribute('style') !== css) item.setAttribute('style', css);
-        if (!item.parentNode) paint.append(item);
+        // Assign user colors as a single property, never interpolate CSS text.
+        const css = `left:${left}px;top:${top}px;width:${rect.width}px;height:${rect.height}px;border-radius:${rect.radius ?? '0'};`;
+        if (item.dataset.geometry !== css) { item.style.cssText = css; item.dataset.geometry = css; }
+        if (!task.selection) item.style.setProperty('--limr-highlight', task.color ?? '#F2C744');
+        if (!item.parentNode) target.append(item);
       });
-      while (paint.children.length > output.length) paint.lastChild!.remove();
+      for (const layer of [paint, ...highlightLayers.values()]) while (layer.children.length > (counts.get(layer) ?? 0)) layer.lastChild!.remove();
+      for (const [host, layer] of highlightLayers) if (!counts.has(layer)) removeLayer(host, layer);
+      hits = nextHits;
+      const active = runtime.interaction.get().activeHighlight;
+      if (active && !hits.some(hit => hit.id === active)) runtime.clearSelection();
+      feedback();
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(render); };
     const invalidate = () => { blocks = undefined; metrics = new WeakMap(); schedule(); };
     const fontsChanged = () => { fontMetrics.clear(); invalidate(); };
     const unsubscribers = [runtime.interaction.subscribe(() => {
-      const selection = runtime.interaction.get().selection;
+      const state = runtime.interaction.get(), selection = state.selection;
+      if (state.hoveredHighlight !== lastHovered || state.activeHighlight !== lastActive || state.active !== lastAnnotation || state.hovered !== lastHoveredAnnotation) {
+        lastHovered = state.hoveredHighlight; lastActive = state.activeHighlight; lastAnnotation = state.active; lastHoveredAnnotation = state.hovered; feedback();
+      }
       if (selection === lastSelection) return;
       lastSelection = selection;
       // Selection tracking already runs in rAF: paint in that same frame.
@@ -322,21 +326,74 @@ export function SelectionPaint({ runtime }: { runtime: ReaderRuntime }) {
       let changed = false;
       for (const record of records) {
         const target = record.target instanceof Element ? record.target : record.target.parentElement;
-        if (!target || target === paint || paint.contains(target)) continue;
+        if (!target || target === paint || paint.contains(target) || target.closest('.limr-highlight-layer')) continue;
+        if (record.type === 'childList' && [...record.addedNodes, ...record.removedNodes].every(node => node instanceof Element && node.classList.contains('limr-highlight-layer'))) continue;
         const block = target.closest<HTMLElement>('[data-limr-block]');
         if (block) leavesCache.delete(block); else blocks = undefined;
         changed = true;
       }
       if (changed) { metrics = new WeakMap(); schedule(); }
     });
-    observer.observe(container, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'inert', 'open', 'data-limr-theme'] });
-    const scroll = () => schedule();
+    observer.observe(container, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'inert', 'open', 'data-limr-theme', 'data-limr-justify'] });
+    const scroll = () => { runtime.hoverHighlight(null); schedule(); };
     document.addEventListener('scroll', scroll, { capture: true, passive: true });
     window.visualViewport?.addEventListener('resize', schedule);
     window.visualViewport?.addEventListener('scroll', schedule);
     document.fonts?.addEventListener('loadingdone', fontsChanged);
+    const hitAt = (event: MouseEvent) => {
+      const element = event.target instanceof Element ? event.target : null;
+      if (!element || element.closest('[data-limr-document]') !== container || element.closest('button,input,textarea,select,[contenteditable],[data-limr-ignore]')) return null;
+      const focused = focusedRange(), decorations = runtime.decorations.get();
+      for (let index = hits.length - 1; index >= 0; index--) {
+        const { rect, id } = hits[index];
+        const highlight = decorations.highlights.get(id);
+        if (highlight?.hidden || focused && highlight && !sameRange(focused, highlight.range)) continue;
+        if (event.clientX >= rect.left && event.clientX <= rect.left + rect.width && event.clientY >= rect.top && event.clientY <= rect.top + rect.height) return id;
+      }
+      return null;
+    };
+    const move = (event: PointerEvent) => { if (!event.buttons) runtime.hoverHighlight(hitAt(event)); };
+    const leave = () => runtime.hoverHighlight(null);
+    let down: { x: number; y: number } | null = null;
+    const pointerDown = (event: PointerEvent) => { down = { x: event.clientX, y: event.clientY }; };
+    const click = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || !down || Math.hypot(event.clientX - down.x, event.clientY - down.y) > 4 || window.getSelection()?.isCollapsed === false) return;
+      const id = hitAt(event); if (!id) return;
+      event.preventDefault();
+      const highlight = runtime.decorations.get().highlights.get(id)!;
+      const text: string[] = [];
+      let atomic = false;
+      // Capture rendered text from the same bindings used by selection. AST
+      // fallback alone misses decoded attributes and literal code boundaries.
+      for (const block of runtime.document.getSnapshot().blocks) {
+        if (!intersects(block.range, highlight.range)) continue;
+        const element = runtime.blocks.get(block.id); if (!element) continue;
+        const parts: string[] = [];
+        for (const leaf of leavesIn(element, runtime)) {
+          if (!intersects(leaf.range, highlight.range) || leaf.kind === 'marker') continue;
+          if (leaf.kind !== 'text') { atomic = true; continue; }
+          const range = textRange(leaf, highlight.range, { top: -Infinity, bottom: Infinity, left: -Infinity, right: Infinity });
+          if (range) parts.push(range.toString());
+        }
+        if (parts.length) text.push(parts.join(''));
+      }
+      runtime.highlightReference = {
+        text: !atomic && text.length ? text.join('\n\n') : undefined,
+        getClientRects: () => highlightRects(id),
+        getBoundingClientRect: () => {
+          const rects = highlightRects(id); if (!rects.length) return new DOMRect();
+          const left = Math.min(...rects.map(rect => rect.left)), top = Math.min(...rects.map(rect => rect.top));
+          return new DOMRect(left, top, Math.max(...rects.map(rect => rect.right)) - left, Math.max(...rects.map(rect => rect.bottom)) - top);
+        },
+      };
+      runtime.activateHighlight(id);
+    };
+    if (interactive) {
+      container.addEventListener('pointermove', move); container.addEventListener('pointerleave', leave);
+      container.addEventListener('pointerdown', pointerDown); container.addEventListener('click', click);
+    }
     container.dataset.limrPainted = 'true'; schedule();
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); unsubscribers.forEach(unsubscribe => unsubscribe()); document.removeEventListener('scroll', scroll, true); window.visualViewport?.removeEventListener('resize', schedule); window.visualViewport?.removeEventListener('scroll', schedule); document.fonts?.removeEventListener('loadingdone', fontsChanged); delete container.dataset.limrPainted; clear(); };
-  }, [runtime]);
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); unsubscribers.forEach(unsubscribe => unsubscribe()); document.removeEventListener('scroll', scroll, true); window.visualViewport?.removeEventListener('resize', schedule); window.visualViewport?.removeEventListener('scroll', schedule); document.fonts?.removeEventListener('loadingdone', fontsChanged); container.removeEventListener('pointermove', move); container.removeEventListener('pointerleave', leave); container.removeEventListener('pointerdown', pointerDown); container.removeEventListener('click', click); delete container.dataset.limrPainted; clear(); };
+  }, [runtime, interactive]);
   return <div ref={layer} className="limr-paint-layer" data-limr-ignore="true" aria-hidden="true" />;
 }

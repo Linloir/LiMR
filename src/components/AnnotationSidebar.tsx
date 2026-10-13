@@ -5,7 +5,9 @@ import type { StyledProps } from '../react/types';
 import { AnnotationGroup } from './AnnotationContent';
 import { Collapse } from './Collapse';
 import { annotationReferenceText } from './annotation-reference';
+import { sourceRangeStartRect } from '../react/source-geometry';
 
+/** anchorTop is the first anchored text line, or the marker for embedded references. */
 export interface SidebarItem { id: string; anchorTop: number; height: number }
 export type SidebarPositioner = (items: readonly SidebarItem[], context: { activeId: string | null; gap: number }) => ReadonlyMap<string, number>;
 export const alignSidebar: SidebarPositioner = (items, { activeId, gap }) => {
@@ -46,10 +48,10 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
   const [anchorTops, setAnchorTops] = useState<Map<string, number>>(new Map());
   const [railHeight, setRailHeight] = useState(0);
   const [viewportTop, setViewportTop] = useState(0);
-  const [cardLock, setCardLock] = useState<{ id: string; top: number; positions: ReadonlyMap<string, number> } | null>(null);
+  const [cardLock, setCardLock] = useState<{ id: string; top: number } | null>(null);
   const occurrences = useMemo(() => {
-    const values = [...decorations.occurrences];
-    if (sync === 'none') for (const annotation of decorations.annotations.values()) if (!values.some(item => item.annotationIds.includes(annotation.id))) values.push({ id: `unanchored-${annotation.id}`, range: { start: 0, end: 0 }, annotationIds: [annotation.id] });
+    const values = [...decorations.occurrences].sort((a, b) => a.range.start - b.range.start || a.range.end - b.range.end || a.id.localeCompare(b.id));
+    if (sync === 'none') for (const annotation of decorations.annotations.values()) if (annotation.type !== 'highlight' && !values.some(item => item.annotationIds.includes(annotation.id))) values.push({ id: `unanchored-${annotation.id}`, range: { start: 0, end: 0 }, annotationIds: [annotation.id] });
     return values;
   }, [decorations, sync]);
   const references = useMemo(() => new Map(occurrences.map(occurrence => [occurrence.id, annotationReferenceText(document, occurrence)])), [document, occurrences]);
@@ -72,7 +74,12 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
     const top = rail.current.getBoundingClientRect().top;
     const values = new Map<string, number>();
     const displacement = runtime.getContentOffset();
-    for (const occurrence of occurrences) { const element = runtime.anchors.get(occurrence.id); if (element) values.set(occurrence.id, element.getBoundingClientRect().top - top - displacement); }
+    for (const occurrence of occurrences) {
+      const marker = runtime.anchors.get(occurrence.id);
+      if (!marker) continue;
+      const rect = !occurrence.embedded && sourceRangeStartRect(runtime, occurrence.range);
+      values.set(occurrence.id, (rect || marker.getBoundingClientRect()).top - top - displacement);
+    }
     setAnchorTops(old => old.size === values.size && [...values].every(([id, value]) => Math.abs(value - (old.get(id) ?? -Infinity)) < .5) ? old : values);
   }, [runtime, occurrences, layout, sync]);
   useIsomorphicLayoutEffect(() => {
@@ -106,15 +113,14 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
   const alignmentId = hovered ?? active ?? readingId;
   const source = hovered ? hoverSource : active ? activeSource : null;
   const locked = source === 'sidebar' && cardLock?.id === alignmentId ? cardLock : null;
-  const positions = positioner(items.map(item => ({ id: item.id, anchorTop: locked?.positions.get(item.id) ?? anchorTops.get(item.id) ?? 0, height: sizes.get(item.id) ?? 80 })), { activeId: alignmentId, gap });
+  const positions = positioner(items.map(item => ({ id: item.id, anchorTop: (locked?.id === item.id ? locked.top : anchorTops.get(item.id)) ?? 0, height: sizes.get(item.id) ?? 80 })), { activeId: alignmentId, gap });
   const displacement = sync === 'document' && locked ? locked.top - (anchorTops.get(locked.id) ?? locked.top) : 0;
   useIsomorphicLayoutEffect(() => { if (sync === 'document') runtime.documentOffset.set(displacement); }, [runtime, displacement, sync]);
   const lockCard = (id: string) => {
     const card = cards.current.get(id);
     if (card && rail.current) {
       const origin = rail.current.getBoundingClientRect().top;
-      const positions = new Map([...cards.current].map(([key, element]) => [key, element.getBoundingClientRect().top - origin]));
-      setCardLock({ id, top: positions.get(id)!, positions });
+      setCardLock({ id, top: card.getBoundingClientRect().top - origin });
     }
   };
   return <aside ref={rail} aria-label={locale.annotations} className={`limr-sidebar ${className ?? ''}`} data-sync={sync} data-limr-theme={theme} data-limr-appearance={appearance} style={style}>

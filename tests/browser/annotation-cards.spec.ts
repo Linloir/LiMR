@@ -153,7 +153,7 @@ test('collapse and interrupted expansion morph only the shell, keeping text and 
 
 test('mobile contents has one hoverable heading and reverses motion during rapid toggles', async ({ page }) => {
   await page.setViewportSize({ width: 700, height: 850 });
-  await page.goto('/?fixture=plugin');
+  await page.goto('/?fixture=assistant-test');
   const toc = page.locator('.limr-reader-mobile-toc'), toggle = toc.getByRole('button', { name: '目录' });
   const panel = toc.locator('.limr-collapse');
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');

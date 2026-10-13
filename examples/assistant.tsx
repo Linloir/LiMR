@@ -28,11 +28,11 @@ export function assistant({ adapter, type = 'assistant', label = 'Ask assistant'
   return defineExtension({
     name: type,
     annotationTypes: [{ type, label, icon, color, Content: Answer, sidebar: { Preview }, overlay: { Card, expand: { placement: 'center', width: 680, height: '80dvh' } } }],
-    actions: [{ id: `${type}:ask`, label, icon, async run(context) {
+    actions: [{ id: `${type}:ask`, label, icon: icon ?? assistantIcon, async run(context) {
       const id = `${type}-${crypto.randomUUID()}`;
       const question = prompt(context.selection);
       let text = '';
-      context.addAnnotation({ id, type, data: { text, question, status: 'streaming' } satisfies AnswerData, anchors: context.selection.raw.ranges.map(range => ({
+      context.addAnnotation({ id, type, data: { text, question, status: 'streaming' } satisfies AnswerData, anchors: context.selection.syntax.ranges.map(range => ({
         range, documentId: context.document.id, quote: context.document.source.slice(range.start, range.end),
       })) });
       context.activateAnnotation(id);

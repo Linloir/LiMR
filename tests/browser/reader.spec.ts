@@ -24,7 +24,7 @@ test('desktop rendering, selections, highlights and aligned citation cards', asy
   expect(selection.raw.sourceText).toBe('重要内容');
   expect(selection.syntax.sourceText).toBe('**重要内容**');
   expect(selection.blocks.sourceText).toContain('重要内容');
-  await page.getByRole('button', { name: '高亮', exact: true }).click();
+  await page.getByRole('button', { name: '添加高亮', exact: true }).click();
   await expect(page.locator('mark')).toHaveText('重要内容');
   const marker = page.locator('.limr-mark').first();
   await marker.click();
@@ -50,7 +50,10 @@ test('desktop rendering, selections, highlights and aligned citation cards', asy
 test('TOC wraps, retains its title and follows active headings within scroll limits', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
-  await page.getByRole('button', { name: '长文演示' }).click();
+  await page.getByRole('button', { name: '编辑', exact: true }).click();
+  await page.getByRole('button', { name: '加载', exact: true }).click();
+  await page.getByRole('button', { name: '长文阅读' }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
   const toc = page.locator('.limr-reader-toc .limr-toc');
   const link = toc.locator('a').nth(49);
   await link.click();
@@ -92,7 +95,7 @@ test('narrow pointer preview expands in the page viewport and restores focus', a
 test('application plugin adds its action and streams into its own annotation renderer', async ({ page }) => {
   await page.setViewportSize({ width: 700, height: 800 });
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/?fixture=plugin');
+  await page.goto('/?fixture=assistant-test');
   await selectImportant(page);
   await page.getByRole('button', { name: '询问助手' }).click();
   await expect(page.locator('.limr-mark')).toHaveAttribute('aria-label', '询问助手');
@@ -109,7 +112,7 @@ test('application plugin adds its action and streams into its own annotation ren
 
 test('plugin transport is cancelled when its reader unmounts', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/?fixture=plugin');
+  await page.goto('/?fixture=assistant-test');
   await selectImportant(page);
   await page.getByRole('button', { name: '询问助手' }).click();
   await expect(page.locator('#adapter-status')).toHaveText('回答中');

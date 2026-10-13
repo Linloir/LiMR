@@ -13,10 +13,10 @@ export function readingTools() {
       Content: ({ data }) => h(AnnotationMarkdown, { source: data?.text ?? '' }),
     }],
     actions: [{
-      id: 'reading-note:add', label: 'Save passage',
+      id: 'reading-note:add', label: 'Save passage', icon: h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('rect', { x: 5, y: 3, width: 14, height: 18, rx: 3 }), h('path', { d: 'M9 8h6M9 12h6M9 16h4' })),
       run(context) {
         const id = `reading-note-${crypto.randomUUID()}`;
-        context.addAnnotation({ id, type: 'reading-note', range: context.selection.raw.ranges[0], data: { text: `**Saved passage**\n\n${context.selection.text}` } });
+        context.addAnnotation({ id, type: 'reading-note', range: context.selection.syntax.ranges[0], data: { text: `**Saved passage**\n\n${context.selection.text}` } });
         context.activateAnnotation(id);
         context.clearSelection();
       },

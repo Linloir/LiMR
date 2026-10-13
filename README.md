@@ -111,22 +111,26 @@ const plugins = [readingTools()];
 ## 高亮、选区和应用插件
 
 ```tsx
-import { Reader, copyText, highlightSelection, chinese } from 'limr';
+import { Reader, copyText, highlightPalette, highlightSelection, deleteAnnotations, chinese } from 'limr';
 
 const actions = [
+  highlightPalette(),
+  highlightSelection(),
   copyText({ label: '复制文字' }),
   copyText({ label: '复制 Markdown', format: 'syntax' }),
-  highlightSelection({ label: '高亮' }),
+  deleteAnnotations(),
 ];
 
 <Reader source={markdown} locale={chinese} actions={actions} />
 ```
 
-工具菜单默认无应用动作。选区同时提供 `raw`、`syntax`、`blocks` 三种结果，所有范围都指向**未经改写的原始输入**，使用 UTF-16 偏移、右端不包含。`quality` 区分精确映射、公式等原子节点和无法精确映射的内容。行内及围栏代码支持部分选择、高亮与角标；公式保持整体选择。
+工具菜单默认提供色块、高亮、复制和删除。悬浮左侧色块可调整颜色与样式，添加高亮直接生效；同一文本片段可以同时拥有高亮、旁注、提问等多个 annotation。高亮统一存为 `type: 'highlight'` 的 annotation，通过 `annotations` / `onAnnotationsChange` 管理。右侧删除操作移除该片段关联的所有 annotation，隐藏高亮则保留注释。上面的 `actions` 可替换默认列表。
+
+选区同时提供 `raw`、`syntax`、`blocks` 三种结果，所有范围都指向**未经改写的原始输入**，使用 UTF-16 偏移、右端不包含。`quality` 区分精确映射、公式等原子节点和无法精确映射的内容。默认高亮和脚注使用 `syntax`，仅吸附选区两端紧邻的标准 Markdown 标记，不扩大未选中的文字，也不吸附特殊块的外层标签。行内及围栏代码支持部分选择、高亮与角标；公式保持整体选择。
 
 插件可以在一个 `defineExtension()` 中提供 `actions`、`annotationTypes` 和语法模块。动作拿到选区、文档、`addAnnotation` / `updateAnnotation` / `activateAnnotation` 等命令和取消信号。卡片可以使用任意 React 组件，也可以用 `AnnotationMarkdown` 持续渲染 Markdown 回答。
 
-[完整助手插件示例](examples/assistant.tsx) 演示了这条路径。运行 `pnpm dev` 后访问 `/?fixture=plugin` 可以验证选区发起问答、流式卡片和卸载取消。示例使用本地模拟传输；实际 Codex 连接、认证、会话管理由应用适配器实现，LiMR 不预设服务端协议。
+[助手插件](examples/assistant.tsx) 和 [旁注编辑插件](examples/notes.tsx) 演示了这条路径。运行 `pnpm dev` 后即可在同一 playground 页面选中文字，使用问答、旁注、笔记、提问和脚注；新注释会直接进入桌面侧栏或手机卡片的编辑态。顶部“编辑／保存”切换写作与阅读，返回阅读时保存文本与注释到浏览器。“加载”包含全部预设、已保存文本与文件导入导出，“插件”下拉菜单支持多选。预设包含 Express / Axios README、文学作品及 scikit-learn 原论文的 Markdown 转写，来源与许可随文本保留。流式演示始终使用当前文本，主题切换独立保留。问答示例使用本地模拟传输；实际 Codex 连接、认证、会话管理由应用适配器实现，LiMR 不预设服务端协议。
 
 ## 渲染与资源
 

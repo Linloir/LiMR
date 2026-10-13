@@ -1,5 +1,5 @@
 import type { ComponentType, CSSProperties, ReactNode } from 'react';
-import type { Annotation, AnnotationOccurrence, DocumentSnapshot, Highlight, MarkdownNode, SelectionSnapshot, SyntaxExtension } from '../core/types';
+import type { Annotation, AnnotationOccurrence, DocumentSnapshot, HighlightData, MarkdownNode, SelectionSnapshot, SourceRange, SyntaxExtension } from '../core/types';
 
 export interface NodeRendererProps {
   node: MarkdownNode;
@@ -29,6 +29,8 @@ export interface AnnotationContentProps<T = unknown> {
   annotation: Annotation<T>;
   presentation: AnnotationPresentation;
   expanded: boolean;
+  /** Shared editor state, preserved when switching between sidebar and overlay. */
+  editing: boolean;
   data: T | undefined;
   loading: boolean;
   error: Error | null;
@@ -99,35 +101,64 @@ export interface RendererExtension extends SyntaxExtension {
   actions?: readonly SelectionAction[];
 }
 export interface DocumentCommands {
-  addAnnotation: (annotation: Annotation) => void;
+  /** Content annotations get a shared highlight unless explicitly disabled. */
+  addAnnotation: (annotation: Annotation, options?: { highlight?: HighlightData | false; edit?: boolean }) => void;
   updateAnnotation: (id: string, update: Partial<Annotation>) => void;
   removeAnnotation: (id: string) => void;
-  addHighlight: (highlight: Highlight) => void;
-  removeHighlight: (id: string) => void;
+  /** Remove all annotations bound to these exact fragments, preserving other anchors. */
+  removeAnnotationsAt: (ranges: readonly SourceRange[]) => void;
+  editAnnotation: (id: string | null) => void;
   /** Open the first occurrence of an annotation, or an explicit occurrence ID. */
   activateAnnotation: (id: string | null) => void;
 }
 export interface ActionContext extends DocumentCommands {
   selection: SelectionSnapshot;
+  /** Annotations bound to the selected fragment, including its highlight. */
+  annotations: readonly Annotation[];
+  highlight: Annotation<HighlightData> | null;
   document: DocumentSnapshot;
+  locale: LiMRLocale;
   clearSelection: () => void;
   /** Aborted when this reader is disposed, not when its menu closes. */
   signal: AbortSignal;
 }
+export interface ToolbarActionContext extends ActionContext {
+  busy: boolean;
+  expanded: boolean;
+  highlightAppearance: HighlightData;
+  setHighlightAppearance: (appearance: HighlightData) => void;
+  expand: () => void;
+  collapse: () => void;
+  /** Run a panel operation through the toolbar's busy/error handling. */
+  run: (operation: (context: ActionContext) => void | Promise<void>) => Promise<void>;
+}
 export interface SelectionAction {
   id: string;
-  label: string;
-  icon?: ReactNode;
+  label: string | ((context: ActionContext) => string);
+  /** Required, decorative, ideally a rounded SVG with a square viewBox. */
+  icon: NonNullable<ReactNode> | ((context: ActionContext) => ReactNode);
+  placement?: 'start' | 'end';
+  tone?: 'danger';
+  /** Optional transient success feedback after run() resolves. */
+  successLabel?: string | ((context: ActionContext) => string);
+  successIcon?: ReactNode;
   visible?: (context: ActionContext) => boolean;
   disabled?: (context: ActionContext) => boolean;
-  run?: (context: ActionContext) => void | Promise<void>;
-  render?: (context: ActionContext & { busy: boolean }) => ReactNode;
+  run?: (context: ToolbarActionContext) => void | Promise<void>;
+  onHover?: (context: ToolbarActionContext) => void;
+  /** Automatically opens on hover; also accessible by keyboard and touch. */
+  renderExpanded?: (context: ToolbarActionContext) => ReactNode;
+  render?: (context: ToolbarActionContext) => ReactNode;
 }
 export interface LiMRLocale {
   contents: string; annotations: string; expand: string; collapse: string; close: string; copy: string;
   copied: string; loading: string; retry: string; unavailable: string; footnotes: string;
   definition: string; question: string; note: string; extra: string; hint: string; answer: string; submit: string;
   correct: string; incorrect: string; play: string;
+  highlight: string; addHighlight: string; editHighlight: string; highlightColor: string; highlightStyle: string;
+  highlightBackground: string; highlightUnderline: string; highlightDotted: string; highlightWavy: string;
+  hideHighlight: string; showHighlight: string;
+  deleteAnnotations: string; deleteAnnotationsHint: string;
 }
 export interface ViewConfiguration {
   extensions?: readonly RendererExtension[];
@@ -138,8 +169,9 @@ export interface ViewConfiguration {
   components?: Readonly<Record<string, NodeRenderer>>;
   annotationTypes?: readonly AnnotationType<any>[];
   annotations?: readonly Annotation[];
-  highlights?: readonly Highlight[];
   theme?: 'light' | 'dark' | 'auto';
+  /** Justify prose paragraphs and list items, leaving the last line start-aligned. */
+  justify?: boolean;
   locale?: Partial<LiMRLocale>;
   scrollRoot?: HTMLElement | null;
   scrollOffset?: number;
@@ -148,6 +180,7 @@ export interface ViewConfiguration {
   onAnnotationHover?: (occurrence: AnnotationOccurrence | null) => void;
   onDocumentChange?: (document: DocumentSnapshot) => void;
   onAnnotationsChange?: (annotations: readonly Annotation[]) => void;
-  onHighlightsChange?: (highlights: readonly Highlight[]) => void;
+  onHighlightHover?: (highlight: Annotation<HighlightData> | null) => void;
+  onHighlightClick?: (highlight: Annotation<HighlightData>) => void;
 }
 export interface StyledProps { className?: string; style?: CSSProperties }

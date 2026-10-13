@@ -143,16 +143,47 @@ describe('selection source mapping', () => {
     const start = source.indexOf('port');
     const selection = selectionFromRange(document, { start, end: start + 4 });
     expect(selection.raw.sourceText).toBe('port');
-    expect(selection.syntax.sourceText).toBe('**important**');
+    expect(selection.syntax.sourceText).toBe('port');
     expect(selection.blocks.sourceText).toBe('First **important** paragraph.');
     expect(selectionFromRange(document, { start, end: source.indexOf('Second') + 4 }).blocks.ranges).toHaveLength(2);
   });
-  it('completes nested boundary markup and both sides of a cross-sibling selection', () => {
+  it('absorbs adjacent nested delimiters independently without selecting extra words', () => {
     const source = 'Before ***deep*** [a **linked** word](https://example.com) after.';
     const document = createDocument(source).getSnapshot();
     const start = source.indexOf('deep') + 1;
-    expect(selectionFromRange(document, { start, end: start + 1 }).syntax.sourceText).toBe('***deep***');
-    expect(selectionFromRange(document, { start, end: source.indexOf('linked') + 2 }).syntax.sourceText).toBe('***deep*** [a **linked** word](https://example.com)');
+    expect(selectionFromRange(document, { start, end: start + 1 }).syntax.sourceText).toBe('e');
+    expect(selectionFromRange(document, { start: start - 1, end: start + 1 }).syntax.sourceText).toBe('***de');
+    expect(selectionFromRange(document, { start: start + 1, end: start + 3 }).syntax.sourceText).toBe('ep***');
+    expect(selectionFromRange(document, { start: start - 1, end: start + 3 }).syntax.sourceText).toBe('***deep***');
+    expect(selectionFromRange(document, { start, end: source.indexOf('linked') + 2 }).syntax.sourceText).toBe('eep*** [a **li');
+    expect(selectionFromRange(document, { start, end: source.indexOf('linked') + 6 }).syntax.sourceText).toBe('eep*** [a **linked**');
     expect(selectionFromRange(document, { start: 0, end: source.length }).syntax.sourceText).toBe(source);
+  });
+  it.each([
+    ['Normal words here.', 'words', 'words'],
+    ['Escaped \\*plain\\* text.', 'plain', 'plain'],
+    ['> First line\n> **second line**', 'second', '> **second'],
+    ['- [x] checked item', 'checked', '- [x] checked'],
+    ['Before **bold** after.', 'Before', 'Before'],
+    ['- ***first item***\n- Next item', 'first', '- ***first'],
+    ['- ***first item***\n- Next item', 'item', 'item***'],
+    ['# **Heading**', 'Heading', '# **Heading**'],
+    ['Read [label](https://example.com).', 'label', '[label](https://example.com)'],
+    ['Read [label](https://example.com).', 'lab', '[lab'],
+    ['Read ``  alpha beta  `` now.', 'alpha', '``  alpha'],
+    ['Read ``  alpha beta  `` now.', 'beta', 'beta  ``'],
+    ['Read ``  alpha beta  `` now.', 'pha be', 'pha be'],
+    ['Read $ x^2 $ now.', 'x^2', '$ x^2 $'],
+    ['```js\nalpha beta\n```', 'alpha', '```js\nalpha'],
+    ['```js\nalpha beta\n```', 'beta', 'beta\n```'],
+    ['<definition>\n\n***inside***\n\n</definition>', 'inside', '***inside***'],
+    [':::definition\n\n- **inside**\n\n:::', 'inside', '- **inside**'],
+    ['<definition>\n\nJust plain text.\n\n</definition>', 'Just plain text.', 'Just plain text.'],
+  ])('only absorbs standard Markdown boundaries in %s', (source, selected, expected) => {
+    const document = createDocument(source, { extensions: standard() }).getSnapshot();
+    const start = source.indexOf(selected);
+    const selection = selectionFromRange(document, { start, end: start + selected.length });
+    expect(selection.raw.sourceText).toBe(selected);
+    expect(selection.syntax.sourceText).toBe(expected);
   });
 });

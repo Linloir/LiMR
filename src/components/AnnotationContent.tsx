@@ -6,6 +6,7 @@ import type { AnnotationPresentation } from '../react/types';
 export function AnnotationContent({ annotationId, presentation, expanded = true, enabled = true }: { annotationId: string; presentation: AnnotationPresentation; expanded?: boolean; enabled?: boolean }) {
   const runtime = useRuntime();
   const annotation = useStoreSelector(runtime.decorations, state => state.annotations.get(annotationId));
+  const editing = useStoreSelector(runtime.interaction, state => state.editing === annotationId);
   const definition = useStoreSelector(runtime.configuration, () => runtime.annotationTypes.get(annotation?.type ?? 'citation'));
   const version = useStoreSelector(runtime.resourceVersions, versions => versions.get(annotationId) ?? 0);
   const [loaded, setLoaded] = useState<{ id: string; data?: unknown; loading: boolean; error: Error | null }>({ id: annotationId, loading: !!definition?.load, error: null });
@@ -22,7 +23,7 @@ export function AnnotationContent({ annotationId, presentation, expanded = true,
   const current = loaded.id === annotationId ? loaded : { loading: !!definition?.load, error: null, data: undefined };
   if (!annotation) return <span className="limr-muted">{runtime.locale.unavailable} · {annotationId}</span>;
   if (!Content) return <span className="limr-muted">{runtime.locale.unavailable} · {annotation.type}</span>;
-  return <Content annotation={annotation} data={definition?.load ? current.data ?? annotation.data : annotation.data} loading={definition?.load ? current.loading : false} error={current.error} retry={retry} presentation={presentation} expanded={expanded} />;
+  return <Content editing={editing} annotation={annotation} data={definition?.load ? current.data ?? annotation.data : annotation.data} loading={definition?.load ? current.loading : false} error={current.error} retry={retry} presentation={presentation} expanded={expanded} />;
 }
 
 export function AnnotationGroup({ occurrence, presentation, expanded = true, enabled = true }: { occurrence: AnnotationOccurrence; presentation: AnnotationPresentation; expanded?: boolean; enabled?: boolean }) {

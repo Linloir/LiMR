@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { forwardRef, memo } from 'react';
-import { Markdown, DocumentProvider, TableOfContents, defineBlock, standard, preloadMath } from '../src';
+import { Markdown, Reader, DocumentProvider, TableOfContents, defineBlock, standard, preloadMath } from '../src';
 
 describe('server rendering and plugin isolation', () => {
+  it('supports opt-in justification on readers, standalone Markdown and shared providers', () => {
+    expect(renderToString(<Markdown source="Paragraph" />)).toContain('data-limr-justify="false"');
+    expect(renderToString(<Markdown source="Paragraph" justify />)).toContain('data-limr-justify="true"');
+    expect(renderToString(<Reader source="Paragraph" justify />)).toContain('data-limr-justify="true"');
+    expect(renderToString(<DocumentProvider source="Paragraph" justify><Markdown /></DocumentProvider>)).toContain('data-limr-justify="true"');
+    expect(renderToString(<DocumentProvider source="Paragraph" justify><Markdown justify={false} /></DocumentProvider>)).toContain('data-limr-justify="false"');
+  });
   it('renders Markdown and shared TOC without a browser', () => {
     const html = renderToString(<DocumentProvider source={'# Hello\n\n**world**'} documentId="server"><TableOfContents /><Markdown /></DocumentProvider>);
     expect(html).toContain('server-hello'); expect(html).toContain('<strong>'); expect(html).toContain('world');

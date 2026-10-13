@@ -14,6 +14,7 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
   const runtime = useRuntime();
   const appearance = useAppearance();
   const theme = useTheme(), locale = useLocale();
+  const editing = useStoreSelector(runtime.interaction, state => state.editing);
   const active = useStoreSelector(runtime.interaction, state => state.active);
   const hovered = useStoreSelector(runtime.interaction, state => state.hovered);
   const occurrences = useStoreSelector(runtime.decorations, state => state.occurrences);
@@ -126,7 +127,7 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
     children: <AnnotationGroup occurrence={occurrence} presentation={shownExpanded ? 'expanded' : 'preview'} expanded={shownExpanded} />,
   };
   const modal = open && !!centered;
-  const card = <FloatingFocusManager context={context} modal={modal} disabled={!open || !pinned || measuringPreview} initialFocus={refs.floating} returnFocus={false}>
+  const card = <FloatingFocusManager context={context} modal={modal} disabled={!open || !pinned || measuringPreview} initialFocus={editing ? -1 : refs.floating} returnFocus={false}>
     <div ref={refs.setFloating} {...getFloatingProps()} tabIndex={-1} aria-label={definition?.label ?? locale.annotations} className="limr-overlay-positioner" style={{ ...style, pointerEvents: open ? 'auto' : 'none', visibility: ready && !measuringPreview ? 'visible' : 'hidden' }}>
       <div ref={setSurface} className={`limr-annotation-overlay ${shownExpanded ? 'limr-annotation-expanded' : 'limr-annotation-preview'}`} style={{ '--limr-annotation-color': definition?.color } as CSSProperties} data-type={annotation?.type} data-state={open ? 'open' : 'closing'} data-pinned={shownPinned || undefined} data-placement={centered ? 'center' : anchoredExpansion ? fromPreview.placement : placement} data-limr-theme={theme} data-limr-appearance={appearance}
         onPointerEnter={event => { if (!pinned && event.pointerType !== 'touch') runtime.hover(occurrence.id); }} onPointerLeave={() => { if (!pinned) runtime.hover(null); }}>

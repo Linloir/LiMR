@@ -44,6 +44,9 @@ export function useSelectionTracking(runtime: ReaderRuntime, enabled: boolean) {
     }
     function process() {
       frame = 0;
+      // Selecting/editing text inside a plugin panel must never replace the
+      // captured document selection with the form's own native selection.
+      if (!dragging && document.activeElement instanceof Element && document.activeElement.closest('[data-limr-selection-ui]')) return;
       const selection = window.getSelection();
       if (!selection || selection.isCollapsed || !selection.rangeCount) {
         // A toolbar/dialog owns the captured snapshot while it has focus.
@@ -54,13 +57,14 @@ export function useSelectionTracking(runtime: ReaderRuntime, enabled: boolean) {
       }
       const range = selection.getRangeAt(0);
       const revision = runtime.document.getSnapshot().revision;
-      if (previous?.startNode === range.startContainer && previous.start === range.startOffset && previous.endNode === range.endContainer && previous.end === range.endOffset && previous.revision === revision && previous.settled === !dragging) return;
+      if (runtime.interaction.get().selection && previous?.startNode === range.startContainer && previous.start === range.startOffset && previous.endNode === range.endContainer && previous.end === range.endOffset && previous.revision === revision && previous.settled === !dragging) return;
       const start = resolve(range.startContainer, range.startOffset, 'start');
       const end = resolve(range.endContainer, range.endOffset, 'end');
       if (!start || !end) { previous = undefined; runtime.selectionRange = null; runtime.updateInteraction({ selection: null }); return; }
       previous = { startNode: range.startContainer, start: range.startOffset, endNode: range.endContainer, end: range.endOffset, revision, settled: !dragging };
       runtime.selectionRange = range.cloneRange();
-      runtime.updateInteraction({ selection: selectionFromRange(runtime.document.getSnapshot(), { start: start.offset, end: end.offset }, {
+      runtime.highlightReference = null;
+      runtime.updateInteraction({ activeHighlight: null, selection: selectionFromRange(runtime.document.getSnapshot(), { start: start.offset, end: end.offset }, {
         text: selection.toString(), settled: !dragging,
         quality: !start.exact || !end.exact ? 'unmapped' : start.atomic || end.atomic ? 'atomic' : 'exact',
       }) });

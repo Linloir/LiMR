@@ -44,7 +44,7 @@ test('mixed inline selections share line geometry; markers require text on both 
   const marker = page.locator('.limr-mark').first();
   const background = await marker.evaluate(e => getComputedStyle(e).backgroundColor);
   expect(background).not.toBe('rgba(0, 0, 0, 0)');
-  await page.getByRole('button', { name: '高亮', exact: true }).click();
+  await page.getByRole('button', { name: '添加高亮', exact: true }).click();
   await expect(page.locator('.limr-paint-background[data-marker]')).toHaveCount(1);
   await expect(page.locator('.limr-paint-selection')).toHaveCount(0);
   await page.locator('.limr-reader-content > article > p code').evaluate(code => {
@@ -69,9 +69,11 @@ test('formula selection and persistent highlight retain the formula surface and 
   expect(Math.abs(actual.x - expected.rect.x) + Math.abs(actual.y - expected.rect.y)).toBeLessThan(1);
   expect(actual.width).toBeCloseTo(expected.rect.width, 1);
   expect(actual.height).toBeCloseTo(expected.rect.height, 1);
-  await page.getByRole('button', { name: '高亮', exact: true }).click();
-  await expect(paint).toHaveClass(/limr-paint-background/);
-  await expect(paint).toHaveCSS('border-radius', expected.radius);
+  await page.getByRole('button', { name: '添加高亮', exact: true }).click();
+  const highlight = page.locator('.limr-highlight-layer > [data-atomic]');
+  await expect(highlight).toHaveClass(/limr-paint-background/);
+  await expect(highlight).toHaveCSS('border-radius', expected.radius);
+  await expect(highlight.locator('..')).toHaveCSS('z-index', '-1');
 });
 
 test('tokenized code maps partial selection and paints code markers without line overlap', async ({ page }) => {
@@ -133,7 +135,7 @@ test('footnote selections and highlights follow rendered reference order', async
   await selectContents(page, '.limr-footnotes code');
   await expect.poll(() => page.locator('#selection-data').textContent().then(text => JSON.parse(text || '{}').raw?.sourceText)).toBe('literal code');
   await expect(page.locator('.limr-paint-selection')).not.toHaveCount(0);
-  await page.getByRole('button', { name: '高亮', exact: true }).click();
+  await page.getByRole('button', { name: '添加高亮', exact: true }).click();
   await expect(page.locator('.limr-footnotes mark')).toHaveText('literal code');
   await expect(page.locator('.limr-paint-background')).not.toHaveCount(0);
 });
@@ -151,7 +153,7 @@ test('attribute titles select exact source and retain highlights, including enti
     await selectContents(page, selector);
     await expect.poll(() => page.locator('#selection-data').textContent().then(value => JSON.parse(value || '{}').raw?.sourceText)).toBe(raw);
     expect(JSON.parse(await page.locator('#selection-data').textContent() || '{}').quality).toBe('exact');
-    await page.getByRole('button', { name: '高亮', exact: true }).click();
+    await page.getByRole('button', { name: '添加高亮', exact: true }).click();
     await expect(page.locator(selector).first().locator('mark')).toHaveText(text);
   }
 });
@@ -173,7 +175,10 @@ test('answer feedback fills correct diamonds and keeps optical baselines and com
   const alignment = await correct.evaluate(label => {
     const text = label.querySelector('.limr-choice-text')!, glyph = label.querySelector('svg')!.getBoundingClientRect();
     const style = getComputedStyle(text);
-    const canvas = document.createElement('canvas').getContext('2d')!; canvas.font = style.font;
+    const canvas = document.createElement('canvas').getContext('2d')!;
+    // OpenType feature settings make the computed font shorthand empty in
+    // Chromium; measure the actual face instead of the canvas default 10px.
+    canvas.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
     const metric = canvas.measureText(text.textContent!);
     const probe = document.createElement('span'); probe.style.cssText = 'display:inline-block;width:0;height:0;'; text.append(probe);
     const baseline = probe.getBoundingClientRect().top; probe.remove();

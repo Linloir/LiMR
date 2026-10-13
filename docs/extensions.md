@@ -80,7 +80,7 @@ const glossary = defineAnnotation<{ title: string; body: string }>({
 
 `icon` / `Marker` 只负责图形；按钮、点击、悬浮、可访问标签和大小由 LiMR 管理。推荐带方形 `viewBox`、`currentColor` 的 SVG，图形在 viewBox 中居中，不需要写外层按钮、sup 或尺寸。图标槽会限制超大 SVG/图片、嵌套组件的尺寸与溢出，统一普通和插件角标的尺寸，并重置装饰性 HTML 包裹层的字体基线。复杂自定义图形仍应在自己的 viewBox 内留出边界；槽位不能修复 SVG 内部画偏或留白不对称。可通过 `--limr-mark-size` 修改整套角标尺寸。
 
-`Content` 接收 `annotation`、`data`、`presentation`（preview/expanded/sidebar）、`expanded`、`loading`、`error`、`retry`。可以按展示模式显示摘要或完整 UI。`load(annotation, {signal})` 只在需要展示内容时调用，必须遵守 signal；同一注释在侧栏和浮层之间共享请求和结果。更换不可变 annotation 对象会换资源标识；显式 `invalidateAnnotation(id)` 或 `retry()` 可重新加载。缓存按阅读器隔离，结果采用有限 LRU；不会把一个应用用户的数据共享给另一阅读器。
+`Content` 接收 `annotation`、`data`、`presentation`（preview/expanded/sidebar）、`expanded`、`editing`、`loading`、`error`、`retry`。可以按展示模式显示摘要或完整 UI；`editing` 来自 `editAnnotation(id)` 或 `addAnnotation(annotation, { edit: true })`。`load(annotation, {signal})` 只在需要展示内容时调用，必须遵守 signal；同一注释在侧栏和浮层之间共享请求和结果。更换不可变 annotation 对象会换资源标识；显式 `invalidateAnnotation(id)` 或 `retry()` 可重新加载。缓存按阅读器隔离，结果采用有限 LRU；不会把一个应用用户的数据共享给另一阅读器。
 
 `color` 同时作为角标、默认侧栏标题/装饰条/淡色背景及公共浮层标题的主题色，未激活的装饰条也保留主题色。`sidebar.color`、`borderColor`、`titleColor`、`textColor`、`excerptColor`、`previewColor` 可分别覆盖侧栏主题色、未激活装饰条、标题、正文、关联文本和标题下的预览；不指定正文颜色时沿用阅读器正文色，支持 CSS 颜色和变量。`Content` 和 `Preview` 可以给局部元素单独设置颜色，不会被骨架强制覆盖。多条注释共用一张卡片时，首条注释决定卡片主题，各条目的内部富文本仍由模块控制。
 
@@ -148,6 +148,40 @@ defineAnnotation({
 `sidebar.collapseOnContentClick` 默认 false，Citation 也保持 false。Citation 条目悬浮时显示下划线，有 URL 时点击标题或说明可以跳转；标题栏负责展开/收起。自定义模块启用该选项后，展开卡片的普通文字/空白区域可点击收起，链接、按钮、输入框、选中文本和 `[data-limr-card-interactive]` 区域保留自身交互。模块仍可用 `useLiMR().activateAnnotation(null)` 自行关闭。多个角注共用一个角标时，首个角注决定浮层 Card 和布局，`children` 保留所有条目各自的 Content；侧栏仅在所有角注类型均启用后才允许点击内容收起；页面级 `renderCard` 可完全替换侧栏卡片行为。
 
 自定义语法可以生成 `annotationDefinition` 节点，其 `annotation` 字段为完整数据；生成 `annotationReference` 节点，其 `annotationIds` 为引用的 ID 数组，position 对应角标位置。也可以完全不添加语法，直接给用户选中的范围添加外部 annotation。
+
+## 工具栏插件与展开面板
+
+工具栏默认包含高亮和复制。插件将 `SelectionAction` 放入 `actions` 即可追加入口；`icon` 是必填字段，推荐 `currentColor`、圆润线端和方形 viewBox。LiMR 将 SVG、图片或嵌套图形限制到统一的图标槽中；内部图形的留白和视觉重量仍需由插件作者控制。内置的 `ToolIcon` 提供同一设计语言的常用图形。
+
+```tsx
+import { ToolIcon, defineExtension, type ToolbarActionContext } from 'limr';
+
+function Settings({ context }: { context: ToolbarActionContext }) {
+  return <button disabled={context.busy} onClick={() => void context.run(current => {
+    current.addAnnotation({
+      id: crypto.randomUUID(), type: 'my-note',
+      range: current.selection.syntax.ranges[0], data: { text: current.selection.text },
+    });
+    current.clearSelection();
+  })}>保存选中文本</button>;
+}
+
+const noteTool = defineExtension({
+  name: 'note-tool',
+  actions: [{
+    id: 'note-tool:add', label: '记一笔', icon: <ToolIcon name="note" />,
+    run: context => context.expand(),
+    renderExpanded: context => <Settings context={context} />,
+  }],
+  // 另行注册 my-note 的 annotationTypes，定义卡片内容。
+});
+```
+
+`renderExpanded` 自动接入悬浮展开、键盘入口、尺寸约束与选区保留；触屏点击动作本身展开。可选 `onHover(context)` 接入自定义悬浮行为。`context.annotations` 是当前片段绑定的所有 annotation，`context.highlight` 是其中的高亮 annotation；`label(context)` / `icon(context)` 可以随状态改变。展开内容的操作使用 `context.run(operation)` 统一处理忙碌与异常。完整自绘 `render` 槽位的控件与可访问性由模块自行管理。
+
+面板的最大可用高度由 LiMR 决定，通过 `--limr-toolbar-panel-height` 暴露；默认上限 260px，样式包可设置 `--limr-toolbar-panel-max-height`。插件使用自然高度和响应式宽度，骨架在实际溢出时提供不占内容宽度的细滚动条，无需插件重复处理滚动。第三方皮肤可覆盖工具栏的颜色、圆角、字体与面板宽高，详见[样式指南](styles.md)。
+
+[notes.tsx](../examples/notes.tsx) 将旁注、笔记、提问和脚注拆成四个直接操作，使用 `addAnnotation(..., { edit: true })` 创建带原文 quote 的锚点、共享高亮并进入编辑。宽屏在侧栏编辑，窄屏直接打开卡片；草稿存入 annotation data，跨布局切换仍然保留。编辑框透明无边框、随内容增高，支持 Markdown 换行及 Ctrl/Cmd+Enter 提交。修改、删除、取消和提交采用右对齐的图标文字按钮，复用 `.limr-underline`。Playground 的模块样式在 `playground/playground.css` 的 `.demo-note-*` 中，移植时可替换为应用自己的样式。插件的卡片内容与业务状态由插件负责，骨架只管理定位、激活、编辑状态和滚动。
 
 ## 助手插件的协作方式
 

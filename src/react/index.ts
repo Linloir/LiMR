@@ -11,3 +11,4 @@ export * from '../components/AnnotationOverlay';
 export * from '../components/AnnotationCard';
 export * from '../components/AnnotationContent';
 export * from '../components/SelectionToolbar';
+export * from '../components/ToolIcon';

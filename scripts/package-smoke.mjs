@@ -26,12 +26,14 @@ for (const version of ['18.3.1', '19']) {
   run('pnpm', ['install', '--ignore-scripts'], directory);
   await writeFile(join(directory, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, skipLibCheck: false, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', jsx: 'react-jsx', noEmit: true }, include: ['consumer.tsx'] }));
   await writeFile(join(directory, 'consumer.tsx'), `
-import { Reader, standard, defineAnnotation, AnnotationCard, AnnotationMarkdown, type SelectionAction } from 'limr';
+import { Reader, Markdown, DocumentProvider, standard, defineAnnotation, AnnotationCard, AnnotationMarkdown, ToolIcon, type SelectionAction } from 'limr';
 import { createDocument } from 'limr/core';
 import { readingTools } from '@limr-example/reading-tools';
 const extension = defineAnnotation<{text: string}>({ type: 'custom', label: 'Custom', overlay: { Card: props => <AnnotationCard {...props} title={props.annotation.data?.text ?? 'Custom card'} />, expand: { placement: 'center', width: 640 } }, Content: ({data}) => <AnnotationMarkdown source={data?.text ?? ''} streaming /> });
-const actions: SelectionAction[] = [{ id: 'ask', label: 'Ask', run(context) { context.addAnnotation({id:'a', type:'custom', range:context.selection.raw.ranges[0]}); context.activateAnnotation('a'); } }];
-const app = <Reader source="# hello" extensions={[...standard(), extension]} plugins={[readingTools()]} appearance="paper" actions={actions} />;
+const actions: SelectionAction[] = [{ id: 'ask', label: 'Ask', icon: <ToolIcon name="note" />, run(context) { context.addAnnotation({id:'a', type:'custom', range:context.selection.raw.ranges[0]}, {edit:true}); }, renderExpanded: context => <button onClick={() => void context.run(current => { if (current.highlight) current.updateAnnotation(current.highlight.id, {data: {...current.highlight.data, style: 'wavy'}}); })}>Change style</button> }];
+const app = <Reader source="# hello" extensions={[...standard(), extension]} plugins={[readingTools()]} appearance="paper" actions={actions} justify />;
+const standalone = <Markdown source="Text" justify />;
+const shared = <DocumentProvider source="Text" justify><Markdown justify={false} /></DocumentProvider>;
 createDocument('Core').getSnapshot();
 `);
   run('pnpm', ['exec', 'tsc'], directory);
@@ -44,8 +46,8 @@ import { dirname, resolve } from 'node:path';
 import { Markdown, Reader, preloadMath } from 'limr';
 import { standard } from 'limr/extensions';
 await preloadMath();
-const html = renderToString(createElement(Reader, { source: '# Packed package\\n\\n$x^2$\\n\\nText<ref id="p" />.\\n\\n<citation id="p" title="Paper" />', documentId: 'packed', extensions: standard() }));
-if (!html.includes('packed-packed-package') || !html.includes('katex-mathml')) throw new Error('SSR output is incomplete');
+const html = renderToString(createElement(Reader, { source: '# Packed package\\n\\n$x^2$\\n\\nText<ref id="p" />.\\n\\n<citation id="p" title="Paper" />', documentId: 'packed', extensions: standard(), justify: true }));
+if (!html.includes('packed-packed-package') || !html.includes('katex-mathml') || !html.includes('data-limr-justify="true"')) throw new Error('SSR output is incomplete');
 if (!renderToString(createElement(Markdown, {source:'**bold**'})).includes('<strong>')) throw new Error('Standalone Markdown failed');
 const cssPath = fileURLToPath(import.meta.resolve('limr/math.css'));
 const css = await readFile(cssPath, 'utf8');

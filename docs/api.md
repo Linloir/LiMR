@@ -14,9 +14,10 @@
 | `appearance` | `classic`；CSS 样式包作用域，包含 portal 浮层 |
 | `components` | 覆盖 AST 节点类型或特殊标签名对应的组件 |
 | `annotationTypes` | 追加或覆盖同 type 的角注显示定义 |
-| `annotations` / `highlights` | 外部控制的角注和高亮数组；不传时由命令维护内部状态 |
-| `onAnnotationsChange` / `onHighlightsChange` | 受控模式下接收下一份数组，应用负责回传 |
+| `annotations` | 外部控制的 annotation 数组，包括角注与 `type: 'highlight'` 的高亮；不传时由命令维护内部状态 |
+| `onAnnotationsChange` | 受控模式下接收下一份数组，应用负责回传 |
 | `theme` | `light`；也可以是 `dark` / `auto` |
+| `justify` | `false`；开启后段落和列表两端对齐，末行保持起始侧对齐 |
 | `locale` | `english`；可以传 `chinese` 或部分文字覆盖 |
 | `scrollRoot` | 窗口；传入内部滚动容器 DOM 节点可切换 |
 | `scrollOffset` | `24`，标题定位时留出的顶部距离 |
@@ -25,6 +26,8 @@
 | `onDocumentChange` | 输入或扩展变更后接收新快照 |
 
 数组、扩展和数据对象按不可变数据使用。发生变更时传新对象，静态配置保持引用稳定。更换整篇独立文档时可以给 Provider/Reader 换一个 React `key`，从而清除上篇文章的局部交互和任务。
+
+`<Reader source={source} justify />`、独立 `<Markdown source={source} justify />` 或 `<DocumentProvider justify>` 均可开启两端对齐；Provider 中的 `<Markdown justify={false} />` 可显式覆盖。开关可动态更新，选区、高亮和侧栏位置随重新排版更新。标题、代码块和表格保留原有对齐方式。
 
 `Reader` 额外接受 `toc`、`sidebar`、`fillHeight`（均默认 true）、`sidebarBreakpoint`（默认 1120，按容器宽度判断）、`actions`、`followOutput`、`className`、`style`。`fillHeight` 让短正文补足当前位置到滚动视口底部的可用高度，默认预留 24px；可通过 `--limr-reader-bottom-space` 为页脚留位，或用 `--limr-reader-min-height` 覆盖最小高度。内嵌小卡片可设 `fillHeight={false}`。计算使用滚动坐标中的固定起点，普通滚动不会改变最小高度。`Markdown` 额外接受 `interactive`（默认 true，控制选区监听）、`followOutput` 和样式属性。
 
@@ -47,9 +50,9 @@ const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
 </div>
 ```
 
-同步侧栏没有独立滚动条，也不接受滚轮、触摸或聚焦引起的列表滚动。悬浮正文角标时移动侧栏；悬浮侧栏卡片时锁住当前卡片与相邻条目位置，让正文平滑位移至关联位置。正文位移不改变布局高度，测量锚点时扣除动画中的实时位移，避免位置反馈循环。展开/收起保留交互来源与 hover；点击空白处清除卡片与角标的激活状态并恢复正文位置，Esc 收起并把焦点还给角标。长回答的正文仍可在卡片内滚动，隐藏原生滚动条，卡片高度受侧栏剩余空间限制。
+同步侧栏没有独立滚动条，也不接受滚轮、触摸或聚焦引起的列表滚动。悬浮正文角标时移动侧栏；悬浮侧栏卡片时锁住当前卡片的命中位置，让正文平滑位移至关联位置。其他条目根据实际高度重新排列，收起时无需移开鼠标就会归位。正文位移不改变布局高度，测量锚点时扣除动画中的实时位移，避免位置反馈循环。展开/收起保留交互来源与 hover；点击空白处清除卡片与角标的激活状态并恢复正文位置，Esc 收起并把焦点还给角标。长回答的正文仍可在卡片内滚动，隐藏原生滚动条，卡片高度受侧栏剩余空间限制。
 
-在独立抽屉等场景使用 `<AnnotationSidebar sync="none" />`。它保留正常列表流，不读取正文的对齐位置，也展示没有锚点的角注，宿主自行约束高度与滚动。`positioner(items, {activeId, gap})` 可以替换同步侧栏的对齐算法；items 含 occurrence ID、相对侧栏的角标顶部和卡片高度，返回 ID 到顶部距离的 Map。默认优先对齐 hover/激活角标；无激活条目时跟随正文当前阅读位置。前面的卡片允许返回负位置并在侧栏内裁切，不会为了保留前面条目而挤走当前卡片；卡片顺序和间隔仍然保留。
+在独立抽屉等场景使用 `<AnnotationSidebar sync="none" />`。它保留正常列表流，不读取正文的对齐位置，也展示没有锚点的角注，宿主自行约束高度与滚动。`positioner(items, {activeId, gap})` 可以替换同步侧栏的对齐算法；items 含 occurrence ID、相对侧栏的关联文本起始行顶部（`anchorTop`）和卡片高度，返回 ID 到顶部距离的 Map。绑定文本范围的脚注按片段第一个可见字符所在行对齐，末尾角标位置不变；内嵌引用等仅有角标的脚注按角标对齐。默认优先对齐 hover/激活条目；无激活条目时跟随正文当前阅读位置。前面的卡片允许返回负位置并在侧栏内裁切，不会为了保留前面条目而挤走当前卡片；卡片顺序和间隔仍然保留。
 
 `renderCard({occurrence, active, activate})` 替换侧栏卡片外壳；单个角注的内容通常通过 `AnnotationType.Content` 替换。需要完全自主的布局时，用 `useAnchor(occurrenceId)` 获得实时角标元素、视口矩形和正文矩形，再自行放置组件。
 
@@ -80,13 +83,18 @@ const [annotations, setAnnotations] = useState<Annotation[]>([
 
 `useLiMR()` 提供：
 
-- `addAnnotation(annotation)`、`updateAnnotation(id, patch)`、`removeAnnotation(id)`。
-- `activateAnnotation(annotationIdOrOccurrenceId)`、`scrollToAnnotation(occurrenceId)`。
-- `addHighlight(highlight)`、`removeHighlight(id)`、`clearSelection()`。
+- `addAnnotation(annotation, { highlight?, edit? })`、`updateAnnotation(id, patch)`、`removeAnnotation(id)`。
+- `removeAnnotationsAt(ranges)`：删除与这些原文范围完全匹配的绑定，保留 annotation 的其他 anchors。
+- `editAnnotation(id | null)`：进入指定 annotation 的编辑态并激活；传 null 结束编辑。
+- `activateAnnotation(annotationIdOrOccurrenceId | null)`、`scrollToAnnotation(occurrenceId)`、`clearSelection()`。
 - `scrollToHeading(headingId)`、`invalidateAnnotation(id)`。
 - `document`：底层 `DocumentEngine`，可读取/订阅快照；`signal` 随阅读器卸载而取消。
 
-高亮格式：`{id, range, style?, color?}`。style 支持 `background`、`underline`、`dotted`、`wavy`，默认背景色。高亮是基于当前原文坐标的装饰；应用替换或编辑原文时需同时维护其范围。角注和高亮都是 React 渲染的节点，不在渲染后拆分或修改 React 管理的 DOM。
+脚注、旁注、笔记、提问与高亮都使用 `Annotation`，通过同一组命令绑定原文。添加有锚点的内容 annotation 时，默认同时创建或复用该片段的高亮；传 `highlight: false` 可跳过，传 `HighlightData` 可指定外观。`edit: true` 同时激活并进入编辑态，模块的 `Content` 通过 `editing` 决定显示表单。编辑草稿由模块管理，建议存入 annotation data，以便跨侧栏/浮层切换时保留。
+
+高亮格式为 `{ id, type: 'highlight', anchors, data: { color?, style?, hidden? } }`，也支持 `range` 简写。`HighlightData.style` 支持 `background`、`underline`、`dotted`、`wavy`，默认背景色。高亮不产生角标和侧栏条目；`hidden` 只隐藏装饰，保留绑定。激活一个 annotation 时，其他片段的高亮暂时隐藏，结束激活后恢复。
+
+语义范围保留在 React 节点中；装饰绘制层独立维护，不拆分或替换正文的文字 DOM。高亮绘制在文字后方，重叠时后添加的高亮优先命中。`updateAnnotation` 保留 ID 和叠放顺序，`addAnnotation` 替换同 ID 时会将它移到顶层。`onHighlightHover(annotation | null)` 和 `onHighlightClick(annotation)` 接收 `Annotation<HighlightData>`。点击高亮会打开工具栏，`context.highlight` 指向该 annotation，`context.annotations` 包含该片段的全部 annotation，`context.selection` 表示它的原文范围。
 
 ## 选区和动作
 
@@ -96,17 +104,29 @@ const [annotations, setAnnotations] = useState<Annotation[]>([
 | --- | --- |
 | `text` | 浏览器选中的可见文本 |
 | `raw` | 映射到原始输入的范围与原文 |
-| `syntax` | 补全与选区交叠的强调、链接、代码、公式或自定义原子语法 |
+| `syntax` | 两端分别吸附紧邻的标准 Markdown 标记，忽略间隙空白；不增加未选中的普通文字 |
 | `blocks` | 所在的完整段落、标题、列表项等区块，可含多个范围 |
 | `quality` | `exact`、`atomic` 或 `unmapped` |
 | `settled` | 拖动调整选区时为 false |
 | `documentId` / `revision` | 选区对应的文档版本 |
 
-公式、图片属于原子节点，结果覆盖整个语法节点，并标为 `atomic`。行内代码及围栏代码提供字面量源码映射，支持部分选择；它们的 `syntax` 结果仍补全整个语法。自定义组件应渲染提供的 `children` / `renderChildren` / `renderValue` 来保留正文映射，或声明原子选择。生成的 UI 文字不应冒充原文；可加 `data-limr-ignore` 排除按钮和标签。
+`syntax` 不扩展普通文本。开头只吸附该侧紧邻的起始标记，结尾只吸附结束标记，嵌套标记逐层吸附。例如从 `***first word***` 选择 `first` 得到 `***first`，选择 `word` 得到 `word***`，选择中间的 `st wo` 则不变。列表、标题、强调、链接、代码和公式使用同一规则；自定义语法块的内部 Markdown 正常处理，外层标签或指令围栏不参与吸附。
 
-`SelectionAction` 含 `id`、`label`、`icon?`、`visible?`、`disabled?`、`run?`、`render?`。`run(context)` 支持 async；错误在菜单中显示。context 包含三种选区、当时的文档快照、文档命令和 `signal`。这个 signal 的生命期是阅读器，关闭菜单不会中止已开始的请求，卸载会取消。
+公式、图片属于原子节点，浏览器选区映射得到的 `raw` 已覆盖整个节点，并标为 `atomic`。行内代码及围栏代码支持部分选择，只有选到对应内容边界时 `syntax` 才吸附该侧定界符。默认高亮、笔记、提问和助手插件使用 `syntax.ranges` 创建 annotation；原始 Annotation API 仍精确保留调用者传入的范围。完整覆盖行内代码的高亮包含两端留白；吸附了结束标记的脚注位于格式节点外，代码中间的脚注仍跟随精确字符位置。
 
-`render(context)` 提供单项自定义槽位，例如输入框；`SelectionToolbar render={...}` 可以替换整个工具条。显式 actions 会按 ID 覆盖插件提供的同名动作。`Markdown` 不挂载菜单，需要应用自行提供 `SelectionToolbar`；`Reader` 已组合它。
+自定义组件应渲染提供的 `children` / `renderChildren` / `renderValue` 来保留正文映射，或声明原子选择。生成的 UI 文字不应冒充原文；可加 `data-limr-ignore` 排除按钮和标签。
+
+`Reader` 和 `SelectionToolbar` 默认提供 `highlightPalette()`、`highlightSelection()`、`copyText()`、`deleteAnnotations()`，并追加插件动作。显式 `actions` 替换默认列表，按 ID 覆盖插件同名动作；`actions={[]}` 只去掉内置动作，插件动作仍保留。`Markdown` 不挂载菜单，需要应用自行提供 `SelectionToolbar`。
+
+`SelectionAction` 必须提供 `id`、`label`、`icon`。`label` 和 `icon` 可通过 `(context) => …` 动态生成。可选字段为 `visible`、`disabled`、`run`、`onHover`、`renderExpanded` 和 `render`。`placement: 'start' | 'end'` 控制两端顺序，`tone: 'danger'` 表示删除类操作。`successLabel` / `successIcon` 在动作成功后显示 2.4 秒，默认原位淡出淡入。建议使用圆润、居中、方形 viewBox 的 SVG；骨架通过固定图标槽统一大小，内置 `ToolIcon` 可用于插件。
+
+`run(context)` 支持 async，错误在菜单中显示。`ToolbarActionContext` 包含选区、文档快照、`annotations`、`highlight`、`locale`、文档命令和 `signal`，以及 `busy`、`expanded`、`expand()`、`collapse()`、`run(operation)`。`highlightAppearance` / `setHighlightAppearance()` 管理下一次创建高亮的外观，工具栏中的 `addAnnotation` 会沿用它。这个 signal 的生命期是阅读器，关闭菜单不会中止已开始的请求，卸载会取消。展开面板里的异步操作应使用 `context.run(...)`，复用忙碌状态和错误处理。
+
+`renderExpanded(context)` 返回插件自己的面板；悬浮动作自动展开，没有独立的展开指示器。未配置 `run` 时点击动作切换展开；有 `run` 时可自行调用 `expand()`，触屏也使用同一个按钮。聚焦动作后按上下方向键展开并进入面板。`onHover(context)` 可补充悬浮行为。面板可放输入框、颜色或样式选择器，输入时保留选区快照。Escape 先收起面板并归还焦点，再次按下关闭工具栏；左右方向键在工具之间移动。`render(context)` 保留完整自定义单项槽位，`SelectionToolbar render={...}` 可接管整个工具条，这两种完全自绘入口的控件、图标与可访问性由调用方负责。
+
+骨架优先在选区下方显示，并预留统一的展开预算；下方不足时选择空间较多的一侧。`SelectionToolbar.maxPanelHeight` 默认 260px，可由 `--limr-toolbar-panel-max-height` 覆盖。实际可用高度通过 `--limr-toolbar-panel-height` 传给面板，正文宽度通过 `--limr-toolbar-panel-width` 控制。骨架负责按内容溢出显示不占布局宽度的 3px 滚动条，插件按正常文档流响应式排版即可，无需再包一层滚动容器。面板不足最大高度时随内容收缩。
+
+`highlightPalette({ colors? })` 的色块面板提供七种默认颜色和四种高亮样式，不显示预览文本。`highlightColors` 导出默认色板；`colors` 为 `{ color, label, labelZh? }[]`。`highlightSelection()` 直接添加高亮；只有高亮时隐藏该按钮，有其他注释时变为隐藏/显示高亮。颜色和样式对已有高亮即时应用。`deleteAnnotations()` 删除当前片段的全部绑定，超过一个非高亮 annotation 时，仅悬浮或键盘聚焦删除按钮才展开红色说明，计数不包含高亮。受控 `annotations` 要提供 `onAnnotationsChange` 才能接受修改。
 
 ## 状态 hooks 和 core
 

@@ -30,16 +30,41 @@ export function mapText(source: string, value: string, range: SourceRange, optio
 export function selectionFromRange(document: DocumentSnapshot, raw: SourceRange, options: { text?: string; quality?: SelectionSnapshot['quality']; settled?: boolean } = {}): SelectionSnapshot {
   const initial = { start: Math.max(0, raw.start), end: Math.min(document.source.length, raw.end) };
   const syntax = { ...initial };
-  const semantic = new Set(['strong', 'emphasis', 'delete', 'link', 'linkReference', 'image', 'imageReference', 'inlineCode', 'code', 'math', 'inlineMath']);
-  // Only boundary ancestors can expand a contiguous interval. Fully enclosed
-  // subtrees need no walk, even when a selection spans thousands of blocks.
+  const containers = new Set(['strong', 'emphasis', 'delete', 'link', 'linkReference', 'heading', 'listItem', 'blockquote']);
+  const source = document.source;
+  const whitespace = (start: number, end: number) => !source.slice(start, end).trim();
+  // Walk boundary ancestors inside-out. Each edge absorbs only its adjacent
+  // delimiter, never the unselected words inside an ancestor. Custom component
+  // tags remain boundaries; their Markdown children still participate normally.
   function expand(node: MarkdownNode) {
     const range = rangeOf(node);
     if (!intersects(range, syntax) || range.start >= syntax.start && range.end <= syntax.end) return;
-    if (semantic.has(node.type) || node.selection === 'atomic') {
-      syntax.start = Math.min(syntax.start, range.start); syntax.end = Math.max(syntax.end, range.end);
-    } else {
-      node.children?.forEach(expand);
+    node.children?.forEach(expand);
+    let content: SourceRange | undefined;
+    if (containers.has(node.type) && node.children?.length) {
+      content = { start: rangeOf(node.children[0]).start, end: rangeOf(node.children.at(-1)!).end };
+    } else if (node.type === 'inlineCode' || node.type === 'inlineMath') {
+      const length = (node.type === 'inlineCode' ? /^`+/ : /^\$+/).exec(source.slice(range.start, range.end))?.[0].length ?? 0;
+      content = { start: range.start + length, end: range.end - length };
+    } else if (node.type === 'code' || node.type === 'math') {
+      const raw = source.slice(range.start, range.end);
+      const opening = /^[ \t]*(`{3,}|~{3,}|\${2,})[^\r\n]*(?:\r\n|\r|\n)/.exec(raw);
+      if (opening) {
+        const fence = opening[1];
+        const closing = /(?:\r\n|\r|\n)[ \t]*(`+|~+|\$+)[ \t]*$/.exec(raw);
+        const closed = closing && closing[1][0] === fence[0] && closing[1].length >= fence.length;
+        content = { start: range.start + opening[0].length, end: closed ? range.start + closing.index : range.end };
+      }
+    }
+    if (content) {
+      if (syntax.start > range.start && syntax.start < range.end && (syntax.start <= content.start || whitespace(content.start, syntax.start))) syntax.start = range.start;
+      if (syntax.end < range.end && syntax.end > range.start && (syntax.end >= content.end || whitespace(syntax.end, content.end))) syntax.end = range.end;
+    }
+    if (node.type === 'blockquote') {
+      // Continuation lines have their own quote prefixes, independent of the
+      // paragraph's first line. Do not consume earlier, unselected quote text.
+      const line = Math.max(range.start, source.lastIndexOf('\n', syntax.start - 1) + 1);
+      if (/^[ \t]*(?:>[ \t]*)+$/.test(source.slice(line, syntax.start))) syntax.start = line;
     }
   }
   let lo = 0, hi = document.blocks.length;

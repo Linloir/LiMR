@@ -5,7 +5,14 @@ const lastAnswer = (page: Page) => reader(page).getByRole('button', { name: '询
 async function alignedCard(page: Page, marker: Locator) {
   const id = await marker.getAttribute('data-limr-anchor');
   const card = reader(page).locator(`[data-occurrence="${id}"]`);
-  await expect.poll(async () => Math.abs((await card.boundingBox())!.y - (await marker.boundingBox())!.y)).toBeLessThan(1);
+  // Fixture assistants bind “重要内容”; embedded citations only have a marker.
+  const ranged = await card.getAttribute('data-type') === 'assistant';
+  await expect.poll(async () => {
+    const top = ranged ? await reader(page).locator('.limr-reader-content strong').first().evaluate(element => {
+      const range = document.createRange(); range.selectNodeContents(element); return range.getClientRects()[0].top;
+    }) : (await marker.boundingBox())!.y;
+    return Math.abs((await card.boundingBox())!.y - top);
+  }).toBeLessThan(1);
   return card;
 }
 async function pageGeometry(page: Page) {
@@ -16,6 +23,25 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1800, height: 1000 });
   await page.goto('/?fixture=sidebar');
   await page.evaluate(() => document.fonts.ready);
+});
+
+test('sidebar toggle underline responds only to its text or keyboard focus', async ({ page }) => {
+  await lastAnswer(page).hover();
+  const card = await alignedCard(page, lastAnswer(page));
+  const heading = card.locator('.limr-sidebar-card-heading');
+  const toggle = card.locator('.limr-sidebar-toggle');
+  const underline = toggle.locator('.limr-underline');
+  await card.locator('.limr-sidebar-reference').hover();
+  await expect(underline).toHaveCSS('background-size', '0% 1px');
+  await heading.hover({ position: { x: 8, y: 10 } });
+  await expect(underline).toHaveCSS('background-size', '0% 1px');
+  await toggle.hover();
+  await expect(underline).toHaveCSS('background-size', '100% 1px');
+  await card.locator('.limr-sidebar-reference').hover();
+  await expect(underline).toHaveCSS('background-size', '0% 1px');
+  await page.keyboard.press('Tab');
+  await heading.focus();
+  await expect(underline).toHaveCSS('background-size', '100% 1px');
 });
 
 test('dense notes stay inside a short document through hover, toggles, additions and streaming', async ({ page }) => {
@@ -277,4 +303,17 @@ test('wide columns grow without changing container breakpoints, and body scroll 
   await page.setViewportSize({ width: 900, height: 850 });
   await expect(reader(page).locator('.limr-sidebar')).toHaveCount(0);
   await expect(page.locator('.limr-annotation-overlay')).toBeVisible();
+});
+
+test('collapsing a hovered card returns later cards without moving the pointer', async ({ page }) => {
+  const cards = reader(page).locator('.limr-sidebar-card');
+  const card = cards.nth(1), following = cards.nth(2);
+  await card.locator('.limr-sidebar-card-heading').hover();
+  await expect.poll(() => card.evaluate(element => element.getAnimations({ subtree: true }).filter(animation => animation.playState === 'running').length)).toBe(0);
+  const initial = (await following.boundingBox())!.y;
+  await card.locator('.limr-sidebar-card-heading').click();
+  await expect.poll(async () => (await following.boundingBox())!.y).toBeGreaterThan(initial + 30);
+  await card.locator('.limr-sidebar-card-heading').click();
+  await expect(card).toHaveAttribute('data-active', 'true');
+  await expect.poll(async () => (await following.boundingBox())!.y).toBeCloseTo(initial, 0);
 });

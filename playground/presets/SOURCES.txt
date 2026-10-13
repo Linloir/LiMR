@@ -1,0 +1,6 @@
+Express upstream README: sha256 600f9f3a8fe35c9657e3bb61d2afbfee9bfe788a764892596bef49ede3c9ef0e
+Axios upstream README: sha256 a3f20983025240b0dc3383c0b6958459956bcd908221ec9c1fab864eb8f651d7
+Alice upstream text: sha256 01b38ea4c710a84bc18d0bd41271a5a1a92b94e97b2812f4dece97d4a694725e
+scikit-learn source PDF: sha256 1c338a6b3c6c1dcafda3990a8098b8b50dd6c77616361396fb75f6822c6e0778
+
+Fetched 2026-10-13. Original URLs and licenses are included in each Markdown preset.

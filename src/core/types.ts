@@ -67,11 +67,11 @@ export interface AnnotationOccurrence extends AnnotationAnchor {
   annotationIds: readonly string[];
   embedded?: boolean;
 }
-export interface Highlight {
-  id: string;
-  range: SourceRange;
+/** Data for the built-in `highlight` annotation type. */
+export interface HighlightData {
   color?: string;
   style?: 'background' | 'underline' | 'dotted' | 'wavy';
+  hidden?: boolean;
 }
 export interface Block {
   id: string;
@@ -117,6 +117,7 @@ export interface SelectionSnapshot {
   text: string;
   quality: 'exact' | 'atomic' | 'unmapped';
   raw: SelectionResult;
+  /** Absorb adjacent standard Markdown delimiters independently at each edge. */
   syntax: SelectionResult;
   blocks: SelectionResult;
   /** False while a pointer selection is being adjusted. */
