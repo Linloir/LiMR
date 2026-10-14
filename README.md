@@ -4,7 +4,9 @@
 
 **简体中文** · [English](README.en.md)
 
-**Linloir’s limr Is a Markdown Renderer.** 面向长文阅读和流式输出的 React Markdown 渲染器。正文、目录、引用卡片、选区和高亮共享文档状态，也可以拆开组合到自己的界面中。
+**Linloir’s limr Is a Markdown Renderer.** 
+
+LiMR 是一个面向长文阅读和流式输出的 React Markdown 渲染器，提供开箱即用的优雅外观和丰富的自定义扩展能力。基础包支持丰富的自定义语法块、角标、侧栏旁注和自带的工具栏，并且支持流式追加、Knuth-Plass 快速排版等功能，并且可以通过编写模块插件的形式扩展渲染器的能力。
 
 [在线 Playground](https://linloir.github.io/LiMR/) · [中文文档](docs/zh-CN/README.md) · [English docs](docs/en/README.md) · [AI Skills](docs/zh-CN/ai-skills.md)
 

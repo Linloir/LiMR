@@ -4,7 +4,9 @@
 
 [简体中文](README.md) · **English**
 
-**Linloir’s limr Is a Markdown Renderer.** A React Markdown renderer for long documents and streaming output. Body text, navigation, reference cards, selections, and highlights share one document state, and can also be composed into your own interface.
+**Linloir’s limr Is a Markdown Renderer.** 
+
+LiMR is a React Markdown renderer designed for long-form reading and streaming output, offering an elegant, out-of-the-box appearance alongside extensive customization capabilities. The core package supports a wide range of custom syntax blocks, footnotes, side notes, and a built-in toolbar; it also features streaming content appending and Knuth-Plass fast typesetting, while allowing for functional expansion through modular plugins.
 
 [Live Playground](https://linloir.github.io/LiMR/) · [English docs](docs/en/README.md) · [中文文档](docs/zh-CN/README.md) · [AI Skills](docs/en/ai-skills.md)
 
