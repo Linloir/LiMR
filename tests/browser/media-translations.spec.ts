@@ -137,7 +137,7 @@ for (const nested of [false, true]) test(`fragment and footnote links animate in
 });
 
 test('dropdowns reveal downward, fade their contents, and can reverse on rapid reopen', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/playground');
   const trigger = page.getByRole('button', { name: '加载', exact: true });
   await trigger.click();
   const menu = page.locator('#demo-load-menu');
@@ -154,7 +154,7 @@ test('dropdowns reveal downward, fade their contents, and can reverse on rapid r
 
 test('paper presets render local illustrations, real captions and paired translations', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/');
+  await page.goto('/#/playground');
   for (const name of ['Feature Visualization', '可解释性的基础积木']) {
     await page.getByRole('button', { name: '加载', exact: true }).click();
     await page.getByRole('button', { name, exact: false }).click();

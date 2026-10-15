@@ -140,7 +140,7 @@ export class DocumentEngine {
       }
       if (node.type === 'annotationReference') {
         const range = rangeOf(node);
-        const occurrence: AnnotationOccurrence = { id: `${this.id}-ref-${range.start}`, range, annotationIds: node.annotationIds as string[], embedded: true, ...(node.referenceRange ? { referenceRange: node.referenceRange as AnnotationOccurrence['referenceRange'] } : {}) };
+        const occurrence: AnnotationOccurrence = { id: `${this.id}-ref-${range.start}`, range, annotationIds: node.annotationIds as string[], embedded: true, ...(node.referenceRange ? { referenceRange: node.referenceRange as AnnotationOccurrence['referenceRange'] } : {}), ...(node.referenceColor ? { referenceColor: String(node.referenceColor) } : {}) };
         if (node.sourceAnnotationRange) {
           const reference = node.sourceAnnotationRange as SourceAnnotationRange;
           const ranges = annotationRanges.get(reference.id) ?? [];

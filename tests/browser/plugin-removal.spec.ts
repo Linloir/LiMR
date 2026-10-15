@@ -8,7 +8,7 @@ async function plugins(page: Page) {
   return page.getByRole('group', { name: '插件', exact: true });
 }
 async function load(page: Page, source: string, annotations: unknown[] = []) {
-  await page.goto('/');
+  await page.goto('/#/playground');
   await page.evaluate(value => localStorage.setItem('limr-playground-document', JSON.stringify(value)), { version: 2, source, annotations });
   await page.getByRole('button', { name: '加载', exact: true }).click();
   await page.getByRole('button', { name: '加载已保存文本' }).click();

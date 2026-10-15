@@ -32,6 +32,7 @@ export function sourceAnnotations(): RendererExtension {
           const attributes = Object.fromEntries(Object.entries(attrs).filter(([key]) => !['id', 'ranges', 'type', 'body'].includes(key)));
           const data = type === 'highlight' ? {
             ...attributes,
+            color: String(attrs.color ?? 'var(--limr-inline-highlight, #6B9BD2)'),
             style: ['background', 'underline', 'dotted', 'wavy'].includes(String(attrs.style)) ? attrs.style as HighlightData['style'] : 'background',
             hidden: attrs.hidden === true || attrs.hidden === 'true', readOnly: true,
           } satisfies HighlightData : { ...attributes, body };
@@ -83,7 +84,7 @@ export function sourceAnnotations(): RendererExtension {
           const previous = node.children![index - 1], markerRange = rangeOf(child);
           const scoped = previous?.type === 'embeddedHighlight' && rangeOf(previous).end === markerRange.start;
           const range = scoped ? previous.highlightRange as SourceAnnotationRange['range'] : { start: markerRange.start, end: markerRange.start };
-          if (scoped) delete previous.annotation;
+          if (scoped) { delete previous.annotation; child.referenceColor = previous.highlightColor; }
           child.referenceRange = range;
           child.sourceAnnotationRange = { id: String(child.sourceRangeId), range, markerRange, syntaxRange: scoped ? rangeOf(previous) : range } satisfies SourceAnnotationRange;
         });

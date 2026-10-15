@@ -54,7 +54,7 @@ test('touch expands from the measured preview and closes back to it with fade an
   const card = page.locator('.limr-annotation-expanded');
   await expect(card).toBeAttached();
   const entry = await card.evaluate(element => {
-    const effect = element.getAnimations()[0].effect!;
+    const effect = element.getAnimations().find(animation => !(animation instanceof CSSTransition))!.effect!;
     return { rect: element.querySelector('.limr-overlay-surface')!.getBoundingClientRect().toJSON(), duration: effect.getTiming().duration, easing: effect.getTiming().easing };
   });
   const anchor = (await marker.boundingBox())!;
@@ -73,7 +73,7 @@ test('touch expands from the measured preview and closes back to it with fade an
   const closing = await card.evaluate(async element => {
     (element.querySelector('.limr-overlay-close') as HTMLButtonElement).click();
     await new Promise(requestAnimationFrame);
-    const animations = element.getAnimations({ subtree: true });
+    const animations = element.getAnimations({ subtree: true }).filter(animation => !(animation instanceof CSSTransition));
     for (const animation of animations) { animation.pause(); animation.currentTime = 80; }
     const opacity = Number(getComputedStyle(element).opacity);
     const midway = element.querySelector('.limr-overlay-surface')!.getBoundingClientRect().toJSON();

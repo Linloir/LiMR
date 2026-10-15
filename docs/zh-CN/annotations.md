@@ -6,7 +6,7 @@
 
 ## 数据模型
 
-`Annotation` 是数据，`AnnotationType` 是插件注册的呈现和加载逻辑，`AnnotationOccurrence` 是一次出现位置。一个标注可以通过 anchors 出现在多处；一个引用角标可以关联多条标注。
+`Annotation` 是数据，`AnnotationType` 是插件注册的呈现和加载逻辑，`AnnotationOccurrence` 是一次出现位置。一个标注可以通过 anchors 出现在多处；同一位置的每条内容标注各有一个独立角标、侧栏条目和窄屏浮层。
 
 ```ts
 import type { Annotation } from '@linloir/limr';
@@ -67,7 +67,7 @@ export const annotations: readonly Annotation[] = [{
 
 Citation 默认 `highlight: 'hover'`。角标或侧栏条目悬浮、或引用处于 activate 状态时，用类型 color 的 18% 底色高亮关联文本。底色绘制在文字下方；点击激活后，移开鼠标仍保留，取消激活且不再悬浮后才隐藏。同一个明确范围的激活与悬浮引用不会叠加加深颜色。该效果不更新 annotations，也不改变已保存高亮的 hidden 设置。带范围的 `<ref>文本</ref>` 使用所包裹的文本；自闭合 `<ref />` 和独立命名脚注的范围是角标位置上的零长度，不绘制段落高亮。紧邻 `==文本==` 的脚注使用这段明确的文本范围。外部范围引用使用自身范围，并以该范围首行对齐侧栏。
 
-侧栏联动使用正文位移动画，不改变页面滚动范围。绘制层在动画过程中及结束、取消时更新可见片段，因此从视口外移入的文本也会同步获得当前悬浮或激活高亮。
+点击或悬浮角标会对齐侧栏条目，侧栏悬浮不会移动正文，也不改变页面滚动范围。绘制层随页面滚动更新可见片段，保留当前悬浮或激活引用的高亮状态。
 
 使用 `replaceExtension(standard(), citation({ highlight: false }))` 关闭该效果。其他类型也可显式启用 highlight: 'hover'。
 
@@ -88,10 +88,22 @@ Citation 默认 `highlight: 'hover'`。角标或侧栏条目悬浮、或引用�
 
 ## 源码中的命名范围
 
-默认 `sourceAnnotations()` 模块将 `==文本==[^%%limr:r1%%]` 与 `:::limr-annotation` 定义关联。[语法文档](syntax.md#保存在-markdown-中的标注)列出了完整写法和覆盖规则。定义会生成普通 `Annotation` 及解析好的 `anchors`，同一命名范围的多条内容标注共用一个内嵌角标。
+默认 `sourceAnnotations()` 模块将 `==文本==[^%%limr:r1%%]` 与 `:::limr-annotation` 定义关联。[语法文档](syntax.md#保存在-markdown-中的标注)列出了完整写法和覆盖规则。定义会生成普通 `Annotation` 及解析好的 `anchors`，同一命名范围的每条内容标注生成独立角标。解析快照仍记录源码中的引用组，运行时 occurrence 以 markerId 关联该源码位置。
 
 `DocumentSnapshot.annotationRanges` 将区分大小写的范围 ID 映射到各个出现位置。每个 `SourceAnnotationRange` 包含 `range`（引用文本）、`syntaxRange`（原始 `==…==` 跨度）和 `markerRange`（保留脚注角标）。三者都是未改写源码的 UTF-16 坐标。没有范围的保留角标，其 `range` 和 `syntaxRange` 长度为零。
 
 `Annotation.source` 记录负责该语法的模块、定义源码 `ranges` 和可选的命名 `rangeIds`。重复 ID 只暴露最后一份数据，但保留所有定义跨度，供源码编辑器更新或删除时一并处理，避免旧定义重新生效。普通 `==文本==` 高亮的所属模块为 `inline-highlights`，命名定义为 `source-annotations`。这些元数据属于当前解析结果，原文变化后应重新生成。
 
 源码标注默认只读。`standard()` 提供通用解析与序列化；显式提供 `onSourceChange` 后，默认高亮与任务可更新 Markdown，无需额外写回插件、数据库或编辑器组件。标注类型负责卡片与编辑 UI，Playground 的内联笔记和提问由示例插件注册。模块新增时使用 target: source 选择原文，普通 addAnnotation 仍存外部数据；默认高亮动作在原文可编辑时主动选择 source。已有标注的更新/删除遵循其来源，外部数据继续使用 `annotations` 与 `onAnnotationsChange`。修改 API 详见[项目集成](integration.md)和[扩展开发](extensions.md)。
+
+## 密集侧栏
+
+通过 `<Reader sidebarCollapse />` 或 `<AnnotationSidebar collapseOverflow />` 开启自动折叠；两者默认关闭。Playground 工具栏提供全局「旁注折叠」下拉选项（开启 / 关闭），默认开启，切换文章后继续生效。自定义 positioner 用于未开启自动折叠的布局。
+
+布局比较相邻条目的位移代价与折叠代价，优先保留完整条目，允许轻度避让；只有连续区域足够拥挤时才形成可折叠组，不受段落边界限制，也不单独折叠一条。折叠区域的跨度有上限，布局稳定后还会尝试释放条目，减少不必要的折叠。收起高度让最后一个条目露出约三分之二，渐隐覆盖至少半个条目，提示剩余内容；分组没有展开按钮，也不接管滚轮或触摸滚动。
+
+点击或悬浮角标时，分组位置与内容位移使用同一动画对齐目标卡片，卡片始终留在原列表中。仅悬浮时，鼠标移入对应卡片会维持位置，离开后回到原来的顶部位置；点击激活后固定位置，直到关闭或取消激活。临时悬浮其他角标后，会回到激活项。侧栏悬浮不会移动正文。动画使用缓存的几何信息和 transform，支持反向打断和减少动态效果设置，不增加页面高度或产生尾部空白。渐隐固定在裁剪窗口边缘，并随真实溢出距离减小，完整进入可见区的条目不再淡出。
+
+零长度标注的灰色引用栏显示角标前的可读上下文，按栏宽截取并在两端加省略号；这不会扩大高亮或工具栏的实际范围。点击高亮或角标都会打开选区工具栏，动作仍遵循插件能力与源码编辑权限。
+
+对于 `==文本==` 后接脚注或命名标注的内联范围，仅显式且未隐藏的 highlight 定义提供常驻高亮。没有定义或 hidden=true 时只在悬浮时显色，优先采用 highlight 的 color，再使用默认内联高亮色。已有可见高亮的范围不会再叠加悬浮底色。单独的 `==文本==` 仍是常驻内联高亮。

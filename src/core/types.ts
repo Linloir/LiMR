@@ -82,6 +82,10 @@ export interface AnnotationOccurrence extends AnnotationAnchor {
   id: string;
   annotationIds: readonly string[];
   embedded?: boolean;
+  /** Source marker shared by independently presented annotation occurrences. */
+  markerId?: string;
+  /** Inline range fallback color; explicit highlight definitions take priority. */
+  referenceColor?: string;
   /** Optional referenced text range, distinct from the marker's source range. */
   referenceRange?: SourceRange;
 }

@@ -134,7 +134,7 @@ test('edge placement and rapid marker changes reveal from the current marker on 
 
 test('overlay scrollbar reserves no width, stays hidden during motion and fades after scrolling', async ({ page }) => {
   await page.setViewportSize({ width: 700, height: 650 });
-  await page.goto('/'); await page.getByRole('button', { name: '编辑', exact: true }).click();
+  await page.goto('/#/playground'); await page.getByRole('button', { name: '编辑', exact: true }).click();
   const paragraphs = Array.from({ length: 30 }, (_, i) => `Paragraph ${i}. A long annotation with stable line wrapping.`).join('&#10;&#10;');
   await page.getByRole('textbox', { name: 'Markdown source' }).fill(`Text<ref id="long" />.\n\n<citation id="long" title="Long annotation" description="${paragraphs}" />`);
   await page.getByRole('button', { name: '保存', exact: true }).click();
@@ -165,7 +165,7 @@ test('overlay scrollbar reserves no width, stays hidden during motion and fades 
 
 test('editing has two columns and matches source blocks in both scroll directions', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/'); await page.getByRole('button', { name: '编辑', exact: true }).click();
+  await page.goto('/#/playground'); await page.getByRole('button', { name: '编辑', exact: true }).click();
   const source = Array.from({ length: 40 }, (_, i) => `## Section ${i}\n\n${'Readable paragraph. '.repeat(12)}\n\nAnother paragraph.\n`).join('\n');
   const editor = page.getByRole('textbox', { name: 'Markdown source' });
   await editor.fill(source);

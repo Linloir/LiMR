@@ -20,7 +20,7 @@ for (const width of [390, 560]) test(`mobile note cards stay anchored and assist
       return animation;
     };
   }, { source, annotations });
-  await page.goto('/');
+  await page.goto('/#/playground');
   await page.getByRole('button', { name: '加载', exact: true }).click();
   await page.getByRole('button', { name: '加载已保存文本' }).click();
   await page.evaluate(() => document.fonts.ready);

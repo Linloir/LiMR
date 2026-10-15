@@ -62,8 +62,14 @@ test('callouts share note label and body typography while retaining folding', as
   }));
   expect(bodies).toHaveLength(2);
   expect(bodies[1]).toEqual(bodies[0]);
+  const topPadding = await callout.evaluate(element => getComputedStyle(element).paddingTop);
   await callout.getByRole('button', { name: 'Collapse callout', exact: true }).click();
   await expect.poll(async () => (await callout.locator('.limr-collapse').boundingBox())!.height).toBe(0);
+  await expect(callout).toHaveCSS('padding-top', topPadding);
+  await expect.poll(() => callout.evaluate(element => {
+    const outer = element.getBoundingClientRect(), title = element.querySelector('.limr-callout-title')!.getBoundingClientRect();
+    return Math.abs(title.top - outer.top - (outer.bottom - title.bottom));
+  })).toBeLessThan(.5);
   await callout.getByRole('button', { name: 'Expand callout', exact: true }).click();
   await expect(callout.locator('.limr-block-content')).toBeVisible();
 });

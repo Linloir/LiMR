@@ -1,11 +1,10 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { useAppearance, useDocument, useIsomorphicLayoutEffect, useLocale, useRuntime, useStoreSelector, useTheme } from '../react/context';
-import type { Annotation, AnnotationOccurrence } from '../core';
-import type { AnnotationSidebarPreviewProps, StyledProps } from '../react/types';
-import type { ComponentType } from 'react';
-import { AnnotationGroup } from './AnnotationContent';
-import { Collapse } from './Collapse';
+import type { AnnotationOccurrence } from '../core';
+import type { StyledProps } from '../react/types';
+import { SidebarCardBody } from './SidebarCardBody';
+import { AdaptiveAnnotationSidebar } from './AdaptiveAnnotationSidebar';
 import { annotationReferenceText } from './annotation-reference';
 import { sourceRangeStartRect } from '../react/source-geometry';
 import { useOverflowFade } from '../react/overflow-fade';
@@ -36,26 +35,16 @@ export const alignSidebar: SidebarPositioner = (items, { activeId, gap, height, 
 
 export interface AnnotationSidebarProps extends StyledProps {
   sync?: 'document' | 'none';
+  /** Bound dense annotation regions; reveal overflow on demand. Default false. */
+  collapseOverflow?: boolean;
   gap?: number;
   positioner?: SidebarPositioner;
   renderCard?: (props: { occurrence: AnnotationOccurrence; active: boolean; activate: () => void }) => ReactNode;
 }
-/** Position changes on scroll do not change a card's content. Keep its nested
- * renderer, disclosure controls and plugin preview out of the scroll render. */
-const SidebarCardBody = memo(function SidebarCardBody({ occurrence, annotation, annotations, reference, active, title, toggleLabel, Preview, activate }: {
-  occurrence: AnnotationOccurrence; annotation?: Annotation; annotations: readonly Annotation[]; reference: string; active: boolean; title: string; toggleLabel: string;
-  Preview?: ComponentType<AnnotationSidebarPreviewProps<any>> | false; activate: (id: string) => void;
-}) {
-  return <>
-    {reference && <div className="limr-sidebar-reference" title={reference}><p className="limr-sidebar-excerpt">{reference}</p></div>}
-    <div className="limr-sidebar-card-body">
-      <button type="button" className="limr-sidebar-card-heading" onClick={() => activate(occurrence.id)} aria-expanded={active}>{title}<span className="limr-sidebar-toggle"><span key={String(active)} className="limr-button-label limr-underline">{toggleLabel}</span></span></button>
-      {Preview && annotation && <Collapse open={!active} keepMounted className="limr-sidebar-preview-panel"><div className="limr-sidebar-preview"><Preview annotation={annotation} data={annotation.data} occurrence={occurrence} annotations={annotations} referenceText={reference} /></div></Collapse>}
-      <Collapse open={active} className="limr-sidebar-expansion"><div className="limr-sidebar-card-content"><AnnotationGroup occurrence={occurrence} presentation="sidebar" enabled={active} /></div></Collapse>
-    </div>
-  </>;
-});
-export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = alignSidebar, renderCard, className, style }: AnnotationSidebarProps) {
+export function AnnotationSidebar(props: AnnotationSidebarProps) {
+  return props.collapseOverflow && props.sync !== 'none' ? <AdaptiveAnnotationSidebar {...props} /> : <AlignedAnnotationSidebar {...props} />;
+}
+function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = alignSidebar, renderCard, className, style }: AnnotationSidebarProps) {
   const runtime = useRuntime();
   const document = useDocument();
   const appearance = useAppearance();
@@ -211,11 +200,9 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
     const origin = positioner(sidebarItems.map(item => item.id === releasing.id && releasing.top !== undefined ? { ...item, anchorTop: releasing.top } : item), { ...positionContext, activeId: releasing.id, prioritizeActive: true });
     for (const [id, top] of positions) positions.set(id, top + ((origin.get(id) ?? top) - top) * (1 - releasing.progress));
   }
-  const lockedAnchor = locked ? anchorTops.get(locked.id) ?? locked.top : 0;
-  // Footer packing must not disable reverse alignment. Keep the hovered card
-  // under the pointer and move its referenced text, even at the rail boundary.
-  const displacement = sync === 'document' && locked ? (positions.get(locked.id) ?? locked.top) - lockedAnchor : 0;
-  useIsomorphicLayoutEffect(() => { if (sync === 'document') runtime.documentOffset.set(displacement); }, [runtime, displacement, sync]);
+  // Sidebar interactions never translate prose. Marker interaction owns
+  // alignment; wheel/page scrolling cannot feed back through a hovered card.
+  useIsomorphicLayoutEffect(() => { if (sync === 'document') runtime.documentOffset.set(0); }, [runtime, sync]);
   const lockCard = useCallback((id: string) => {
     // Keep the original resting position while this card is hovered or active.
     // Relocking its boundary-raised top would prevent a collapse from moving
@@ -271,7 +258,7 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
         onClick={event => {
           if ((!isActive || collapseOnContentClick) && !renderCard && !event.defaultPrevented && !(event.target as Element).closest('button,a,input,select,textarea,summary,[role="button"],[role="link"],[contenteditable="true"],[data-limr-card-interactive]') && window.getSelection()?.isCollapsed !== false) activate();
         }}>
-        {renderCard ? renderCard({ occurrence, active: isActive, activate }) : <SidebarCardBody occurrence={occurrence} annotation={annotation} annotations={annotationGroups.get(occurrence.id)!} reference={references.get(occurrence.id) ?? ''} active={isActive} title={definition?.label ?? annotation?.type ?? 'Reference'} toggleLabel={isActive ? locale.collapse : locale.expand} Preview={Preview} activate={activateCard} />}
+        {renderCard ? renderCard({ occurrence, active: isActive, activate }) : <SidebarCardBody occurrence={occurrence} annotation={annotation} annotations={annotationGroups.get(occurrence.id)!} reference={references.get(occurrence.id) ?? ''} point={decorations.referenceRanges.get(occurrence.id)?.start === decorations.referenceRanges.get(occurrence.id)?.end} active={isActive} title={definition?.label ?? annotation?.type ?? 'Reference'} toggleLabel={isActive ? locale.collapse : locale.expand} Preview={Preview} activate={activateCard} />}
       </div>;
     })}
   </aside>;

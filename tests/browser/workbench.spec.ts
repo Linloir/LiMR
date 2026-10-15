@@ -11,7 +11,7 @@ async function important(page: Page) {
 
 for (const width of [560, 1440]) test(`reading note modules keep borderless editor focus at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 1000 });
-  await page.goto('/');
+  await page.goto('/#/playground');
   for (const label of ['旁注', '笔记', '提问', '脚注']) {
     await important(page);
     await page.getByRole('toolbar').getByRole('button', { name: label, exact: true }).click();
@@ -29,7 +29,7 @@ for (const width of [560, 1440]) test(`reading note modules keep borderless edit
 test('notes open directly in the sidebar, share highlights, and support editing and deletion', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/'); await important(page);
+  await page.goto('/#/playground'); await important(page);
   const toolbar = page.getByRole('toolbar');
   await toolbar.getByRole('button', { name: '旁注', exact: true }).click();
   const card = page.locator('.limr-sidebar-card[data-type="margin-note"]');
@@ -70,7 +70,7 @@ test('notes open directly in the sidebar, share highlights, and support editing 
 });
 
 test('text save/load, file import/export and presets share the editor while streaming uses the current draft', async ({ page }) => {
-  await page.goto('/'); await page.getByRole('button', { name: '编辑', exact: true }).click();
+  await page.goto('/#/playground'); await page.getByRole('button', { name: '编辑', exact: true }).click();
   const source = '# My current draft\n\n' + 'This text belongs to this session. '.repeat(30);
   const editor = page.getByRole('textbox', { name: 'Markdown source' });
   await editor.fill(source);
@@ -103,7 +103,7 @@ test('text save/load, file import/export and presets share the editor while stre
 });
 
 test('refresh starts with the default document and preset, retaining only explicitly saved drafts for manual loading', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/playground');
   const saved = '# Saved draft\n\nKeep only when explicitly loaded.';
   await page.evaluate(source => localStorage.setItem('limr-playground-document', JSON.stringify({ version: 2, source, annotations: [] })), saved);
   await page.reload();
@@ -125,7 +125,7 @@ test('refresh starts with the default document and preset, retaining only explic
 
 test('the same page runs the assistant and supports light/dark controls on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/'); await page.getByRole('button', { name: '深色', exact: true }).click();
+  await page.goto('/#/playground'); await page.getByRole('button', { name: '深色', exact: true }).click();
   await important(page);
   await expect(page.getByRole('toolbar')).toHaveAttribute('data-limr-theme', 'dark');
   await page.getByRole('toolbar').getByRole('button', { name: '询问助手', exact: true }).click();
@@ -141,7 +141,7 @@ test('the same page runs the assistant and supports light/dark controls on mobil
 
 test('copying an existing highlight preserves decoded attribute text and literal code', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto('/'); await page.getByRole('button', { name: '编辑', exact: true }).click();
+  await page.goto('/#/playground'); await page.getByRole('button', { name: '编辑', exact: true }).click();
   await page.getByRole('textbox', { name: 'Markdown source' }).fill('<definition title="Title &amp; 😀"><content>Body</content></definition>\n\n```ts\ntest & value\n```');
   for (const [selector, expected] of [['.limr-definition-title', 'Title & 😀'], ['.limr-code-block code', 'test & value']]) {
     const text = page.locator(selector); await text.scrollIntoViewIfNeeded();
@@ -156,7 +156,7 @@ test('copying an existing highlight preserves decoded attribute text and literal
 
 test('mobile annotations open an editor, preserve drafts on resize, and remain editable after saving', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/'); await important(page);
+  await page.goto('/#/playground'); await important(page);
   await page.getByRole('toolbar').getByRole('button', { name: '脚注', exact: true }).click();
   const overlay = page.locator('.limr-annotation-preview');
   await expect(overlay).toBeVisible();
@@ -180,7 +180,7 @@ test('mobile annotations open an editor, preserve drafts on resize, and remain e
 
 test('activating an annotation temporarily masks other fragments and restores them on dismissal', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/'); await page.getByRole('button', { name: '编辑', exact: true }).click();
+  await page.goto('/#/playground'); await page.getByRole('button', { name: '编辑', exact: true }).click();
   await page.getByRole('textbox', { name: 'Markdown source' }).fill('# Focus\n\n**Alpha** and **Bravo** are separate fragments.');
   await page.getByRole('button', { name: '保存', exact: true }).click();
   for (const word of ['Alpha', 'Bravo']) {
@@ -206,7 +206,7 @@ test('activating an annotation temporarily masks other fragments and restores th
 for (const [presentation, width] of [['sidebar', 1440], ['overlay', 900]] as const) {
   test(`dismissing note editing in the ${presentation} restores highlight actions and preserves the draft`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/'); await page.getByRole('button', { name: '编辑', exact: true }).click();
+    await page.goto('/#/playground'); await page.getByRole('button', { name: '编辑', exact: true }).click();
     await page.getByRole('textbox', { name: 'Markdown source' }).fill('# Highlight actions\n\n**Alpha** and **Bravo** are separate fragments.\n\n**Charlie** remains unmarked.');
     await page.getByRole('button', { name: '保存', exact: true }).click();
     const toolbar = page.getByRole('toolbar');
@@ -253,7 +253,7 @@ for (const [presentation, width] of [['sidebar', 1440], ['overlay', 900]] as con
 
 test('load and plugin dropdowns work in reading mode and plugin choices stay open for multiple selections', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 700 });
-  await page.goto('/');
+  await page.goto('/#/playground');
   await page.getByRole('button', { name: '加载', exact: true }).click();
   const presets = page.getByRole('group', { name: '预设文本' });
   await expect(presets.getByRole('button')).toHaveCount(12);

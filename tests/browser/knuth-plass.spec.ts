@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 for (const width of [1440, 800, 390]) test(`typography dropdown stays within the viewport at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 1000 });
-  await page.goto('/');
+  await page.goto('/#/playground');
   await expect(page.locator('.limr-reader-content > article')).toHaveAttribute('data-limr-typography', 'standard');
   await page.getByRole('button', { name: '排版模式', exact: true }).click();
   const menu = page.locator('#demo-typography-menu');
@@ -18,7 +18,7 @@ test('scikit-learn scroll keeps cached paragraphs and exact selection/highlight 
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.setViewportSize({ width: 1380, height: 1000 });
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/');
+  await page.goto('/#/playground');
   await page.getByRole('button', { name: '加载', exact: true }).click();
   await page.getByRole('button', { name: 'scikit-learn 论文', exact: false }).click();
   await page.getByRole('button', { name: '排版模式', exact: true }).click();

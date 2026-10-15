@@ -114,7 +114,7 @@ createRoot(document.getElementById('root')).render(h(Fragment, null,
   h(Reader, { source: '# Package consumer\\n\\nChoose **this passage** with $x^2$.\\n\\n<reading-tip>\\n\\nA plugin **tip**.\\n\\n</reading-tip>', plugins, appearance: 'paper', toc: false, sidebar: false }),
   h(Reader, { source: 'Independent classic reader.', toc: false, sidebar: false }),
   h(Reader, { documentId: 'template', source: 'A **template passage**.\\n\\n<reading-tip title="Template">\\n\\nA template tip.\\n\\n</reading-tip>', plugins: [templateTools()], locale: chinese, toc: false, sidebar: false }),
-  h(Reader, { documentId: 'modules', source: '> [!tip] Tip\\n> Built in.\\n\\n==Marked==[^n]\\n\\n[^n]: Packed footnote.\\n\\n::mermaid\\nflowchart LR\\nA-->B\\n::', typography: 'knuth-plass', locale: chinese, toc: false, sidebar: false })
+  h(Reader, { documentId: 'modules', source: '> [!tip] Tip\\n> Built in.\\n\\n==Standalone== and ==Marked==[^n]\\n\\n[^n]: Packed footnote.\\n\\n::mermaid\\nflowchart LR\\nA-->B\\n::', typography: 'knuth-plass', locale: chinese, toc: false, sidebar: false })
 ));
 `);
   // Serve the actual installed tarballs, never an alias back into the repo.

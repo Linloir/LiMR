@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 async function edit(page: Page, source?: string) {
-  await page.goto('/');
+  await page.goto('/#/playground');
   await page.getByRole('button', { name: '编辑', exact: true }).click();
   const editor = page.getByRole('textbox', { name: 'Markdown source' });
   if (source !== undefined) await editor.fill(source);

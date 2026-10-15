@@ -5,6 +5,8 @@ import { stats, order } from '../shared/stats';
 
 const metadata = await environment();
 const paper = await readFile(`${root}/playground/presets/scikit-learn-paper.md`, 'utf8');
+const playgroundURL = new URL(process.env.BENCH_URL ?? 'http://127.0.0.1:4174/LiMR/');
+playgroundURL.hash = '/playground';
 const browser = await chromium.launch({ args: ['--enable-precise-memory-info'] });
 const results = [];
 async function settle(page: Page, kp: boolean) {
@@ -29,7 +31,7 @@ try {
     await cdp.send('Performance.enable');
     const metrics = async () => Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map((m: { name: string; value: number }) => [m.name, m.value])) as Record<string, number>;
     try {
-      await page.goto(process.env.BENCH_URL ?? 'http://127.0.0.1:4174/LiMR/');
+      await page.goto(playgroundURL.href);
       await page.getByRole('button', { name: '加载', exact: true }).click();
       await page.getByRole('button', { name: 'scikit-learn 论文', exact: false }).click();
       await page.evaluate(() => document.fonts.ready);

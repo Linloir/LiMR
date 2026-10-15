@@ -122,19 +122,19 @@ test('marker collapse preserves hover, and blank space clears the marker and car
   await expect(marker).toBeFocused();
 });
 
-test('single and grouped citations keep separate bottom spacing and assistant uses the common inset', async ({ page }) => {
+test('independent citations keep consistent bottom spacing and assistant uses the common inset', async ({ page }) => {
   const citations = reader(page).locator('.limr-reader-content .limr-mark[aria-label="引用"]');
   const insets: number[] = [];
   for (let i = 0; i < 2; i++) {
     await citations.nth(i).click();
     const card = await alignedCard(page, citations.nth(i));
-    await expect(card.locator('.limr-annotation-entry')).toHaveCount(i + 1);
+    await expect(card.locator('.limr-annotation-entry')).toHaveCount(1);
     const body = card.locator('.limr-sidebar-card-body');
     insets.push(await body.evaluate(element => parseFloat(getComputedStyle(element).paddingBottom)));
     expect(await body.evaluate(element => parseFloat(getComputedStyle(element).paddingTop))).toBeCloseTo(9.6, 1);
   }
-  expect(insets[1]).toBeCloseTo(16 + 9.6 - 3, 1);
-  expect(insets[1] - insets[0]).toBeCloseTo(2, 1);
+  expect(insets[1]).toBeCloseTo(16 + 9.6 - 5, 1);
+  expect(insets[1] - insets[0]).toBeCloseTo(0, 1);
   await lastAnswer(page).click();
   const answer = await alignedCard(page, lastAnswer(page));
   const insetsAnswer = await answer.locator('.limr-sidebar-card-body').evaluate(element => { const css = getComputedStyle(element); return { top: parseFloat(css.paddingTop), bottom: parseFloat(css.paddingBottom) }; });
@@ -160,7 +160,7 @@ test('module title, accent, body, excerpt and rich inline colors remain independ
   }
 });
 
-test('short readers fill available height and sidebar hover moves the document without moving its hit area', async ({ page }) => {
+test('short readers fill available height and sidebar hover preserves both prose and its hit area', async ({ page }) => {
   const canvas = reader(page), rail = canvas.locator('.limr-sidebar');
   const initial = await pageGeometry(page);
   const bounds = (await canvas.boundingBox())!;
@@ -187,10 +187,12 @@ test('short readers fill available height and sidebar hover moves the document w
   expect(frames.every(frame => frame.active)).toBe(true);
   expect(new Set(frames.map(frame => frame.height))).toEqual(new Set([initial.height]));
   expect(new Set(frames.map(frame => frame.scroll))).toEqual(new Set([initial.top]));
-  await alignedCard(page, marker);
+  expect((await marker.boundingBox())!.y).toBeCloseTo(markerTop, 0);
+  await expect(canvas.locator('.limr-reader-content > article')).toHaveCSS('translate', 'none');
   await card.getByRole('button').click();
   await expect(card).toHaveAttribute('data-expanded', 'true');
-  await alignedCard(page, marker);
+  expect((await marker.boundingBox())!.y).toBeCloseTo(markerTop, 0);
+  await expect(canvas.locator('.limr-reader-content > article')).toHaveCSS('translate', 'none');
   expect((await card.boundingBox())!.y).toBeCloseTo(cardTop, 0);
   await card.getByRole('button').click();
   await expect(card).toHaveAttribute('data-active', 'true');
@@ -211,7 +213,7 @@ test('reference strips show rendered anchored text above the title in collapsed 
   const citation = reader(page).locator('.limr-reader-content .limr-mark[aria-label="引用"]').first();
   await citation.click();
   const citationCard = await alignedCard(page, citation);
-  await expect(citationCard.locator('.limr-sidebar-reference')).toHaveCount(0);
+  await expect(citationCard.locator('.limr-sidebar-reference')).toContainText('…单条引用…');
 });
 
 test('reference, title, preview and expanded content share an inset across themes and text directions', async ({ page }) => {
@@ -266,7 +268,7 @@ test('assistant questions survive answer streaming and citations provide readabl
   await page.getByRole('button', { name: 'Stream answer', exact: true }).click();
   await expect(assistant.locator('.limr-sidebar-preview')).toHaveText('问题 1：请解释这段内容，并给出一个具体的例子。');
   const markers = reader(page).locator('.limr-reader-content .limr-mark[aria-label="引用"]');
-  const expected = ['Markdown 的语法与参考示例。支持 富文本 描述。', '第一条引用的描述。 · Markdown 的语法与参考示例。支持 富文本 描述。', '简短摘要 & 示例', 'https://example.com/reference', 'Title fallback'];
+  const expected = ['Markdown 的语法与参考示例。支持 富文本 描述。', '第一条引用的描述。', 'Markdown 的语法与参考示例。支持 富文本 描述。', '简短摘要 & 示例', 'https://example.com/reference', 'Title fallback'];
   for (let i = 0; i < expected.length; i++) {
     await markers.nth(i).hover();
     const card = await alignedCard(page, markers.nth(i));

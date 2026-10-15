@@ -13,7 +13,7 @@ async function selectImportant(page: Page) {
 test('desktop rendering, selections, highlights and aligned citation cards', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/');
+  await page.goto('/#/playground');
   await expect(page.locator('.limr-reader[data-sidebar]')).toBeVisible();
   await expect(page.locator('.limr-definition')).toHaveCount(1);
   await expect(page.locator('.katex').first()).toBeAttached();
@@ -49,7 +49,7 @@ test('desktop rendering, selections, highlights and aligned citation cards', asy
 
 test('TOC wraps, retains its title and follows active headings within scroll limits', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/');
+  await page.goto('/#/playground');
   await page.getByRole('button', { name: '编辑', exact: true }).click();
   await page.getByRole('button', { name: '加载', exact: true }).click();
   await page.getByRole('button', { name: '长文阅读' }).click();
@@ -129,7 +129,7 @@ test('custom scroll root keeps TOC and sidebar aligned with the body', async ({ 
   await expect(link).toHaveAttribute('aria-current', 'location');
   expect(await root.evaluate(element => element.scrollTop)).toBeGreaterThan(500);
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
-  await expect(root.locator('.limr-sidebar-reference')).toHaveCount(0);
+  await expect.poll(() => root.locator('.limr-sidebar-reference').count()).toBeGreaterThan(0);
   const offsets = await page.evaluate(() => Array.from(document.querySelectorAll('[data-limr-anchor]')).map(marker => {
     const card = document.querySelector(`[data-occurrence="${marker.getAttribute('data-limr-anchor')}"]`);
     if (!card) return 999;
@@ -154,7 +154,7 @@ test('multiple readers scope heading IDs and radio groups', async ({ page }) => 
 test('touch marker pins a citation without an expansion control', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
-  await page.goto('http://127.0.0.1:4173/');
+  await page.goto('http://127.0.0.1:4173/#/playground');
   await page.locator('.limr-mark').first().tap();
   await expect(page.locator('.limr-annotation-preview')).toHaveAttribute('data-pinned', 'true');
   await expect(page.locator('.limr-annotation-expanded')).toHaveCount(0);
@@ -223,7 +223,7 @@ test('annotation requests survive preview expansion, cache hits and payload inva
 });
 
 test('native text bindings preserve entities, escapes, emoji and partial inline code', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/playground');
   await page.getByRole('button', { name: '编辑', exact: true }).click();
   await page.getByRole('textbox', { name: 'Markdown source' }).fill('A &amp; \\* 😀 plus **bold** and `code`.');
   await page.locator('.limr-reader-content strong').evaluate(strong => {

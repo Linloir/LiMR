@@ -184,6 +184,7 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       const state = runtime.interaction.get(), decorations = runtime.decorations.get();
       if (occurrenceId === state.hovered) return true;
       if (occurrenceId !== state.active) return false;
+      if (decorations.occurrences.find(item => item.id === occurrenceId)?.referenceColor) return false;
       // Two occurrences can quote the same paragraph. Keep it lightly painted
       // once when a pinned reference and another hovered reference coincide.
       const hovered = decorations.highlights.get(`reference-${state.hovered}`);
@@ -381,9 +382,8 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       const active = runtime.interaction.get().activeHighlight;
       if (active && !hits.some(hit => hit.id === active)) runtime.clearSelection();
       feedback();
-      // Sidebar alignment translates the prose without scroll/resize events.
-      // Repaint newly visible text throughout that transition, including when
-      // it reverses, rather than retaining only the starting viewport's paint.
+      // A host stylesheet can translate prose without scroll/resize events.
+      // Keep newly visible text painted through that transition and reversal.
       if (translating) {
         translating = container.getAnimations().some(animation => animation instanceof CSSTransition && animation.transitionProperty === 'translate' && animation.playState === 'running');
         if (translating) schedule();
@@ -448,7 +448,7 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       for (let index = hits.length - 1; index >= 0; index--) {
         const { rect, id } = hits[index];
         const highlight = decorations.highlights.get(id);
-        if (highlight?.occurrenceId || highlight?.hidden || focused && highlight && !sameRange(focused, highlight.range)) continue;
+        if (highlight?.occurrenceId && !referenceActive(highlight.occurrenceId) || highlight?.hidden || focused && highlight && !sameRange(focused, highlight.range)) continue;
         if (event.clientX >= rect.left && event.clientX <= rect.left + rect.width && event.clientY >= rect.top && event.clientY <= rect.top + rect.height) return id;
       }
       return null;
@@ -462,6 +462,7 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       const id = hitAt(event); if (!id) return;
       event.preventDefault();
       const highlight = runtime.decorations.get().highlights.get(id)!;
+      if (highlight.occurrenceId) { runtime.activate(highlight.occurrenceId); return; }
       const text: string[] = [];
       let atomic = false;
       // Capture rendered text from the same bindings used by selection. AST

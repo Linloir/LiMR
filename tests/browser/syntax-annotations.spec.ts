@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function source(page: Page, markdown: string) {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto('/');
+  await page.goto('/#/playground');
   await page.getByRole('button', { name: '编辑', exact: true }).click();
   await page.getByRole('textbox', { name: 'Markdown source' }).fill(markdown);
   await page.getByRole('button', { name: '保存', exact: true }).click();

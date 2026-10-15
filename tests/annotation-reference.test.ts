@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { annotationReferenceRange, createDocument } from '../src/core';
 import { standard } from '../src/extensions';
-import { annotationReferenceText } from '../src/components/annotation-reference';
+import { annotationReferenceText, fitPointReference } from '../src/components/annotation-reference';
 
 test('anchored excerpts preserve readable rich text, entities and partial selections', () => {
   const source = '# 标题\n\n前文 **重要内容**，&amp; `code` 后文。';
@@ -11,11 +11,11 @@ test('anchored excerpts preserve readable rich text, entities and partial select
   expect(quote(source.indexOf('重要') + 1, source.indexOf('重要') + 3)).toBe('要内');
 });
 
-test('point citation markers have empty excerpts and preserve their source spans', () => {
+test('point citation excerpts use preceding text without changing their source spans', () => {
   const source = '# 标题\n\n关联 **内容**<ref id="one" /> 与更多内容<ref id="two" />。\n\n<citation id="one" title="One" />\n\n<citation id="two" title="Two" />';
   const document = createDocument(source, { extensions: standard() }).getSnapshot();
   for (const occurrence of document.occurrences) {
-    expect(annotationReferenceText(document, occurrence)).toBe('');
+    expect(annotationReferenceText(document, occurrence)).toMatch(/^…关联 内容(?: 与更多内容)?…$/);
     expect(annotationReferenceRange(document, occurrence)).toEqual({ start: occurrence.range.start, end: occurrence.range.start });
     expect(source.slice(occurrence.range.start, occurrence.range.end)).toMatch(/^<ref /);
   }
@@ -33,4 +33,14 @@ test('scoped references use only their explicit rich content', () => {
     expect(source.slice(occurrence.range.start, occurrence.range.end)).toBe(`<ref id="one">${expected[index]}</ref>`);
   });
   expect(document.occurrences.map(occurrence => annotationReferenceText(document, occurrence))).toEqual(['Heading', 'paragraph', 'Cell']);
+});
+
+test('point excerpts stay inside prose and fit the suffix without splitting graphemes', () => {
+  const source = 'Unrelated paragraph.\n\n普通 **脚注** &amp; `code` 在这里[^n]，后面的内容。\n\n[^n]: Definition';
+  const document = createDocument(source, { extensions: standard() }).getSnapshot();
+  const reference = annotationReferenceText(document, document.occurrences[0]);
+  expect(reference).toBe('…普通 脚注 & code 在这里…');
+  const measure = (text: string) => [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)].length * 10;
+  expect(fitPointReference('…前文👩‍💻尾部…', 50, measure)).toBe('…👩‍💻尾部…');
+  expect(fitPointReference(reference, 50, measure)).toBe('…在这里…');
 });

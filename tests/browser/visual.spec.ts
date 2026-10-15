@@ -143,7 +143,7 @@ test('optional traditional endnote selections and highlights follow rendered ref
 });
 
 test('attribute titles select exact source and retain highlights, including entities and repeated text', async ({ page }) => {
-  await page.goto('/'); await page.getByRole('button', { name: '编辑', exact: true }).click();
+  await page.goto('/#/playground'); await page.getByRole('button', { name: '编辑', exact: true }).click();
   const source = 'Repeated title\n\n<definition title="Repeated &amp; 😀 \\* title"><content>Repeated title body.</content></definition>\n\n<question title="正确 &amp; 解释" answer="[0]"><question-sel>A</question-sel><question-sel>B</question-sel></question>\n\n:::definition{title="指令 &amp; 标题"}\n\nContent\n\n:::';
   await page.getByRole('textbox', { name: 'Markdown source' }).fill(source);
   for (const [selector, raw, text] of [

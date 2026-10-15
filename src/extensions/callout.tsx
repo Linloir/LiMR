@@ -29,7 +29,7 @@ function Callout({ node, renderChildren, renderAttribute }: NodeRendererProps) {
   const [expanded, setExpanded] = useState(fold !== '-' && fold !== 'closed');
   const content = <div className="limr-block-content">{renderChildren(body)}</div>;
   const label = <span>{title ? renderChildren(title.children ?? []) : node.attributes?.title ? renderAttribute('title') : <span data-limr-ignore="true">{name.charAt(0).toUpperCase() + name.slice(1)}</span>}</span>;
-  return <aside className="limr-note limr-callout" data-callout={name} data-callout-type={type} style={{ '--limr-callout-color': types[type] } as CSSProperties}>
+  return <aside className="limr-note limr-callout" data-callout={name} data-callout-type={type} data-collapsed={fold && !expanded || undefined} style={{ '--limr-callout-color': types[type] } as CSSProperties}>
     <div className="limr-card-label limr-callout-title">{label}{fold && <button type="button" className="limr-callout-toggle" aria-label={expanded ? zh ? '收起提示块' : 'Collapse callout' : zh ? '展开提示块' : 'Expand callout'} aria-expanded={expanded} onClick={() => setExpanded(value => !value)} data-limr-ignore="true"><ToolIcon name="chevron" /></button>}</div>
     {fold ? <Collapse open={expanded} keepMounted>{content}</Collapse> : content}
   </aside>;

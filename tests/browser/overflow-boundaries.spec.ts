@@ -1,16 +1,17 @@
 import { expect, test, type Page } from '@playwright/test';
-import { referenceTop } from './annotation-geometry';
 
 async function paper(page: Page, title = 'Feature Visualization') {
   await page.setViewportSize({ width: 1800, height: 1000 });
-  await page.goto('/');
+  await page.goto('/#/playground');
+  await page.getByRole('button', { name: '旁注折叠', exact: true }).click();
+  await page.locator('#demo-sidebar-collapse-menu').getByRole('button', { name: '关闭', exact: true }).click();
   await page.getByRole('button', { name: '加载', exact: true }).click();
   await page.getByRole('button', { name: title, exact: false }).click();
   await page.evaluate(() => document.fonts.ready);
   await page.locator('.limr-reader-content > article > [data-limr-block]').last().scrollIntoViewIfNeeded();
 }
 
-test('footer cards pack into free space at rest and retain reverse alignment on hover', async ({ page }) => {
+test('footer cards pack into free space at rest and keep prose still on sidebar hover', async ({ page }) => {
   await paper(page);
   const rail = page.locator('.limr-sidebar'), cards = rail.locator('.limr-sidebar-card');
   const last = cards.last(), previous = cards.nth(await cards.count() - 2);
@@ -19,11 +20,11 @@ test('footer cards pack into free space at rest and retain reverse alignment on 
     return a.y >= r.y && b.y + b.height <= r.y + r.height + 1 && a.y + a.height + 13 <= b.y;
   }).toBe(true);
   const article = page.locator('.limr-reader-content > article');
-  const marker = page.locator(`[data-limr-anchor="${await last.getAttribute('data-occurrence')}"]`);
+  await last.locator('.limr-sidebar-card-heading').scrollIntoViewIfNeeded();
   const before = await page.evaluate(() => ({ height: document.documentElement.scrollHeight, top: scrollY }));
   await last.locator('.limr-sidebar-card-heading').hover();
   await expect(last).toHaveAttribute('data-active', 'true');
-  await expect.poll(async () => Math.abs((await last.boundingBox())!.y - await referenceTop(marker))).toBeLessThan(1);
+  await expect(article).toHaveCSS('translate', 'none');
   await last.locator('.limr-sidebar-card-heading').click();
   await expect(last).toHaveAttribute('data-expanded', 'true');
   await expect.poll(async () => {
@@ -190,7 +191,7 @@ for (const nested of [false, true]) test(`prose fades follow the first painted s
 });
 
 test('translation dropdown shares menu motion and hover styling and closes with keyboard focus restored', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#/playground');
   const trigger = page.getByRole('button', { name: '全局翻译展示模式', exact: true });
   await trigger.click();
   const menu = page.locator('#demo-translation-menu');

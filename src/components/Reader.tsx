@@ -13,15 +13,17 @@ export interface ReaderProps extends Omit<DocumentProviderProps, 'children'>, St
   actions?: readonly SelectionAction[];
   toc?: boolean;
   sidebar?: boolean;
+  /** Fold crowded consecutive annotation ranges; default false. */
+  sidebarCollapse?: boolean;
   followOutput?: boolean;
   sidebarBreakpoint?: number;
   /** Fill unused viewport height without deriving the layout from annotations. */
   fillHeight?: boolean;
 }
-export function Reader({ actions, toc = true, sidebar = true, followOutput = false, sidebarBreakpoint = 1120, fillHeight = true, className, style, ...provider }: ReaderProps) {
-  return <DocumentProvider {...provider}><ReaderLayout actions={actions} toc={toc} sidebar={sidebar} followOutput={followOutput} sidebarBreakpoint={sidebarBreakpoint} fillHeight={fillHeight} className={className} style={style} /></DocumentProvider>;
+export function Reader({ actions, toc = true, sidebar = true, sidebarCollapse = false, followOutput = false, sidebarBreakpoint = 1120, fillHeight = true, className, style, ...provider }: ReaderProps) {
+  return <DocumentProvider {...provider}><ReaderLayout actions={actions} toc={toc} sidebar={sidebar} sidebarCollapse={sidebarCollapse} followOutput={followOutput} sidebarBreakpoint={sidebarBreakpoint} fillHeight={fillHeight} className={className} style={style} /></DocumentProvider>;
 }
-function ReaderLayout({ actions, toc, sidebar, followOutput, sidebarBreakpoint, fillHeight, className, style }: Pick<ReaderProps, 'actions' | 'toc' | 'sidebar' | 'followOutput' | 'className' | 'style' | 'fillHeight'> & { sidebarBreakpoint: number }) {
+function ReaderLayout({ actions, toc, sidebar, sidebarCollapse, followOutput, sidebarBreakpoint, fillHeight, className, style }: Pick<ReaderProps, 'actions' | 'toc' | 'sidebar' | 'sidebarCollapse' | 'followOutput' | 'className' | 'style' | 'fillHeight'> & { sidebarBreakpoint: number }) {
   const runtime = useRuntime();
   const scrollRoot = useStoreSelector(runtime.configuration, config => config.scrollRoot);
   const layout = useStoreSelector(runtime.layout, value => value);
@@ -87,7 +89,7 @@ function ReaderLayout({ actions, toc, sidebar, followOutput, sidebarBreakpoint, 
   return <div ref={ref} className={`limr-reader ${className ?? ''}`} style={{ '--limr-reader-available-height': fillHeight ? `${availableHeight}px` : undefined, ...style } as CSSProperties} data-fill-height={fillHeight || undefined} data-sidebar={sidebarVisible || undefined} data-toc={toc && width >= 800 || undefined} data-limr-theme={theme} data-limr-appearance={appearance}>
     {toc && <><div ref={tocRail} className="limr-reader-toc"><TableOfContents /></div><MobileContents /></>}
     <main ref={content} className="limr-reader-content"><Markdown followOutput={followOutput} /></main>
-    {sidebarVisible && <AnnotationSidebar />}
+    {sidebarVisible && <AnnotationSidebar collapseOverflow={sidebarCollapse} />}
     <AnnotationOverlay disabled={sidebarVisible} />
     <SelectionToolbar actions={actions} />
   </div>;

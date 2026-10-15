@@ -489,7 +489,7 @@ Only the exact, case-sensitive `[^%%limr:<id>%%]` spelling activates this mode. 
 | `style`, `color`, `hidden` | Highlight appearance; `hidden="true"` hides paint without deleting the annotation |
 | Body | Markdown content exposed as `data.body`; other scalar attributes are passed to the owning annotation module |
 
-A range can have several content annotations but only one effective highlight: the last highlight definition targeting that range wins. On reserved ranges, `==…==` names the content span and does not create an additional default blue highlight. An annotation referencing an unknown range keeps its definition and has no visible occurrence until the range exists. Unknown annotation types preserve their data and referenced text, but have no annotation UI until a module registers the type.
+A range can have several content annotations but only one effective highlight: the last highlight definition targeting that range wins. On reserved ranges, `==…==` names the content span. Without an explicit highlight, or with hidden=true, feedback appears only on hover, using highlight.color when supplied and otherwise the default inline highlight color. Visible explicit paint is drawn once, and every content annotation has its own marker. An annotation referencing an unknown range keeps its definition and has no visible occurrence until the range exists. Unknown annotation types preserve their data and referenced text, but have no annotation UI until a module registers the type.
 
 The equivalent component forms are supported, including the two-colon fallback:
 

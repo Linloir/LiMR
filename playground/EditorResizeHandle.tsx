@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 
-export function EditorResizeHandle({ container, ratio }: { container: RefObject<HTMLDivElement | null>; ratio: RefObject<number> }) {
+export function EditorResizeHandle({ container, ratio, locale = 'zh-CN' }: { container: RefObject<HTMLDivElement | null>; ratio: RefObject<number>; locale?: 'zh-CN' | 'en' }) {
   const [value, setValue] = useState(ratio.current);
   const [dragging, setDragging] = useState(false);
   const pointer = useRef<number | null>(null);
@@ -26,9 +26,9 @@ export function EditorResizeHandle({ container, ratio }: { container: RefObject<
     observer.observe(element); apply(ratio.current);
     return () => { observer.disconnect(); element.removeAttribute('data-resizing'); };
   }, [container, ratio]);
-  return <div className="demo-editor-resize" role="separator" tabIndex={0} aria-label="调整编辑器宽度" aria-orientation="vertical"
+  return <div className="demo-editor-resize" role="separator" tabIndex={0} aria-label={locale === 'en' ? 'Resize editor width' : '调整编辑器宽度'} aria-orientation="vertical"
     aria-controls="demo-editor-pane demo-preview-pane" aria-valuenow={Math.round(value * 100)} aria-valuemin={Math.round(bounds().min * 100)} aria-valuemax={Math.round(bounds().max * 100)}
-    title="拖动或用方向键调整宽度，双击恢复均分" data-dragging={dragging || undefined}
+    title={locale === 'en' ? 'Drag or use arrow keys to resize; double-click to restore equal widths' : '拖动或用方向键调整宽度，双击恢复均分'} data-dragging={dragging || undefined}
     onPointerDown={event => {
       if (event.button !== 0) return;
       event.preventDefault(); event.currentTarget.focus({ preventScroll: true }); event.currentTarget.setPointerCapture(event.pointerId);

@@ -340,12 +340,12 @@
      page overflow, scroll anchoring or the rail's own origin. overflow: clip
      also prevents wheel, touch and focus from independently scrolling it. */
   .limr-sidebar[data-sync='document'] { align-self: stretch; min-height: 0; contain: size layout; overflow: clip; overflow-anchor: none; }
-  :is(.limr-sidebar,.limr-reader-content,.limr-toc-scroll) { --limr-fade-top: 0px; --limr-fade-bottom: 0px; }
-  :is(.limr-sidebar,.limr-reader-content,.limr-toc-scroll)[data-overflow-top] { --limr-fade-top: var(--limr-overflow-fade-size, 24px); }
-  :is(.limr-sidebar,.limr-reader-content,.limr-toc-scroll)[data-overflow-bottom] { --limr-fade-bottom: var(--limr-overflow-fade-size, 24px); }
+  :is(.limr-sidebar,.limr-reader-content,.limr-toc-scroll,.limr-sidebar-cluster-list) { --limr-fade-top: 0px; --limr-fade-bottom: 0px; }
+  :is(.limr-sidebar,.limr-reader-content,.limr-toc-scroll,.limr-sidebar-cluster-list)[data-overflow-top] { --limr-fade-top: var(--limr-overflow-fade-size, 24px); }
+  :is(.limr-sidebar,.limr-reader-content,.limr-toc-scroll,.limr-sidebar-cluster-list)[data-overflow-bottom] { --limr-fade-bottom: var(--limr-overflow-fade-size, 24px); }
   /* Keep a viewport-sized gradient image stable while scrolling; only move its
      position instead of rebuilding gradient stops across the entire document. */
-  :is(.limr-sidebar,.limr-reader-content,.limr-toc-scroll):is([data-overflow-top],[data-overflow-bottom]) {
+  :is(.limr-sidebar,.limr-reader-content,.limr-toc-scroll,.limr-sidebar-cluster-list):is([data-overflow-top],[data-overflow-bottom]) {
     mask-image: linear-gradient(to bottom, transparent, #000 var(--limr-fade-top), #000 calc(100% - var(--limr-fade-bottom)), transparent);
     mask-size: 100% calc(var(--limr-fade-end, 100%) - var(--limr-fade-start, 0px));
     mask-position: 0 var(--limr-fade-start, 0px); mask-repeat: no-repeat;
@@ -384,6 +384,12 @@
   .limr-sidebar-card[data-citations] .limr-sidebar-card-content { padding-block: calc(1rem - 2px) 0; }
   .limr-sidebar-card[data-citations] .limr-annotation-entry + .limr-annotation-entry { margin-top: calc(var(--limr-citation-gap) - 2px); padding-top: calc(var(--limr-citation-gap) + 2px); }
   .limr-sidebar-card[data-citations] .limr-annotation-entry:has(.limr-annotation-markdown) + .limr-annotation-entry { margin-top: calc(1rem - 2px); }
+  .limr-sidebar-cluster { position: absolute; top: 0; inset-inline: 0; visibility: hidden; }
+  .limr-sidebar-cluster[data-ready] { visibility: visible; }
+  .limr-sidebar-cluster-list { position: relative; overflow: clip; overflow-anchor: none; }
+  .limr-sidebar-cluster-items { display: flex; flex-direction: column; }
+  .limr-sidebar-cluster .limr-sidebar-card { flex: none; position: relative; transition: border-color var(--limr-motion) var(--limr-ease), background-color var(--limr-motion) var(--limr-ease); }
+
   .limr-annotation-entry + .limr-annotation-entry { border-top: 1px solid var(--limr-border, #e5e2dc); margin-top: 1rem; padding-top: 1rem; }
   .limr-annotation-markdown { font-size: inherit; line-height: 1.7; }
   .limr-annotation-editor-input { display: block; width: 100%; min-height: 1.6em; padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; color: var(--limr-text, #3d3a36); font: inherit; line-height: 1.6; resize: none; overflow: hidden; }
@@ -534,8 +540,10 @@
     [data-limr-theme='auto'] .limr-block-tools { background: #37332dcc; box-shadow: 0 1px 5px #0002, inset 0 0 0 1px #ffffff10; color: #c7c0b6; }
     [data-limr-theme='auto'] .limr-block-tools > button:enabled:hover { color: #f0ebe4; }
   }
-  .limr-callout { border-color: var(--limr-callout-color); background: color-mix(in srgb, var(--limr-callout-color) 8%, transparent); }
-  .limr-callout-title { display: flex; align-items: center; gap: .5em; }
+  .limr-callout { border-color: var(--limr-callout-color); background: color-mix(in srgb, var(--limr-callout-color) 8%, transparent); transition: padding-bottom var(--limr-motion-slow) var(--limr-ease); }
+  .limr-callout-title { display: flex; align-items: center; gap: .5em; transition: margin-bottom var(--limr-motion-slow) var(--limr-ease); }
+  .limr-callout[data-collapsed] { padding-bottom: .85rem; }
+  .limr-callout[data-collapsed] > .limr-callout-title { margin-bottom: 0; }
   .limr-callout-title > span { flex: 1; }
   .limr-callout-toggle { border: 0; border-radius: 5px; background: transparent; padding: 2px; margin-block: -2px; display: inline-flex; }
   .limr-callout-toggle:hover { background: color-mix(in srgb, var(--limr-callout-color) 12%, transparent); }

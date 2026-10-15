@@ -45,6 +45,7 @@ export interface InteractionState {
   active: string | null;
   editing: string | null;
   activeHighlight: string | null;
+  toolbarOccurrence?: string | null;
   hoveredHighlight: string | null;
   hoverSource?: 'marker' | 'sidebar' | null;
   activeSource?: 'marker' | 'sidebar' | null;
@@ -272,7 +273,9 @@ export class ReaderRuntime {
     this.configuration.get().onAnnotationHover?.(this.decorations.get().occurrences.find(item => item.id === id) ?? null);
   }
   activate(id: string | null, source: 'marker' | 'sidebar' = 'marker') {
-    this.updateInteraction({ active: id, activeSource: id ? source : null, hovered: null, hoverSource: null });
+    this.updateInteraction({ active: id, activeSource: id ? source : null, hovered: null, hoverSource: null,
+      toolbarOccurrence: source === 'marker' ? id : null, ...(id ? { selection: null, activeHighlight: null } : {}),
+    });
     const occurrence = this.decorations.get().occurrences.find(item => item.id === id);
     if (occurrence) this.configuration.get().onAnnotationClick?.(occurrence);
   }
@@ -282,7 +285,7 @@ export class ReaderRuntime {
     this.configuration.get().onHighlightHover?.(id ? this.decorations.get().annotations.get(this.decorations.get().highlights.get(id)?.annotationId ?? '') as Annotation<HighlightData> ?? null : null);
   }
   activateHighlight(id: string | null) {
-    this.updateInteraction({ activeHighlight: id, selection: null });
+    this.updateInteraction({ activeHighlight: id, selection: null, toolbarOccurrence: null });
     const highlight = id && this.decorations.get().highlights.get(id);
     if (highlight) this.configuration.get().onHighlightClick?.(this.decorations.get().annotations.get(highlight.annotationId) as Annotation<HighlightData>);
     else this.highlightReference = null;
@@ -292,7 +295,7 @@ export class ReaderRuntime {
     const selection = typeof window === 'undefined' ? null : window.getSelection();
     if (selection?.anchorNode && this.content?.contains(selection.anchorNode)) selection.removeAllRanges();
     this.highlightReference = null;
-    this.updateInteraction({ selection: null, activeHighlight: null });
+    this.updateInteraction({ selection: null, activeHighlight: null, toolbarOccurrence: null });
   }
   prepareTextBindings(element: Element) {
     const block = element.closest<HTMLElement>('[data-limr-block]');
@@ -316,7 +319,11 @@ export class ReaderRuntime {
         // An installed citation module can still explain a missing definition.
         return annotation ? this.supportsAnnotation(annotation) : this.annotationTypes.has('citation');
       });
-      return annotationIds.length ? [annotationIds.length === occurrence.annotationIds.length ? occurrence : { ...occurrence, annotationIds }] : [];
+      // Keep the parsed source group intact, but give every annotation its own
+      // stable marker/card identity, including while modules are removed.
+      return [...new Set(annotationIds)].map(id => ({ ...occurrence,
+        id: `${occurrence.id}:${encodeURIComponent(id)}`, markerId: occurrence.id, annotationIds: [id],
+      }));
     });
     const allHighlights: PaintHighlight[] = [];
     for (const annotation of annotations.values()) {
@@ -332,14 +339,23 @@ export class ReaderRuntime {
     }
     occurrences.sort((a, b) => a.range.end - b.range.end || a.id.localeCompare(b.id));
     const referenceRanges = new Map(occurrences.map(occurrence => [occurrence.id, annotationReferenceRange(doc, occurrence)]));
+    const savedHighlights = new Map<string, PaintHighlight>();
+    for (const item of allHighlights) {
+      const key = `${item.range.start}:${item.range.end}`, previous = savedHighlights.get(key);
+      if (!previous || previous.hidden || !item.hidden) savedHighlights.set(key, item);
+    }
     for (const occurrence of occurrences) {
       const annotation = annotations.get(occurrence.annotationIds[0]);
       const definition = annotation && this.annotationTypes.get(annotation.type);
-      if (!annotation || definition?.highlight !== 'hover') continue;
+      if (!annotation || definition?.highlight !== 'hover' && !occurrence.referenceColor) continue;
       const range = referenceRanges.get(occurrence.id)!;
       if (range.start === range.end) continue;
+      const explicit = savedHighlights.get(`${range.start}:${range.end}`);
+      // A visible saved highlight is already the hover target. Hidden ones
+      // still own the color, without becoming persistent or painted twice.
+      if (explicit && !explicit.hidden) continue;
       const id = `reference-${occurrence.id}`;
-      const value: PaintHighlight = { id, annotationId: annotation.id, occurrenceId: occurrence.id, range, color: definition.color ?? defaultHighlight.color, style: 'background' };
+      const value: PaintHighlight = { id, annotationId: annotation.id, occurrenceId: occurrence.id, range, color: explicit?.color ?? occurrence.referenceColor ?? definition?.color ?? defaultHighlight.color, style: 'background' };
       const old = previous.highlights.get(id);
       allHighlights.push(old && old.occurrenceId === value.occurrenceId && old.annotationId === value.annotationId && sameRange(old.range, range) && old.color === value.color ? old : value);
     }

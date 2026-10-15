@@ -10,8 +10,9 @@ const Content: NodeRenderer = ({ children }) => <>{children}</>;
 export function inlineHighlights(options: InlineHighlightOptions = {}): RendererExtension {
   const decorate = (node: MarkdownNode, range: SourceRange) => {
     node.type = 'embeddedHighlight'; node.highlightRange = range;
+    node.highlightColor = options.color ?? 'var(--limr-inline-highlight, #6B9BD2)';
     node.annotation = { id: `inline-highlight:${rangeOf(node).start}`, type: 'highlight', range,
-      data: { color: options.color ?? 'var(--limr-inline-highlight, #6B9BD2)', style: 'background', readOnly: true },
+      data: { color: String(node.highlightColor), style: 'background', readOnly: true },
       source: { module: 'inline-highlights', ranges: [rangeOf(node)] },
     } satisfies Annotation<HighlightData>;
   };

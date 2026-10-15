@@ -8,6 +8,7 @@ import type { TextToken, ViewConfiguration } from './types';
 import { bindCompactText, compactTextNodes } from './text-binding';
 import { literalValue, mapLiteral } from './literal';
 import { StreamText } from './stream-text';
+import { StreamSelectionBoundary } from './stream-selection';
 import { StreamEntrance } from './stream-effect';
 import { KnuthPlassBoundary } from './knuth-plass-boundary';
 import { SourceTaskItem, TaskText } from '../components/TaskCheckbox';
@@ -28,6 +29,12 @@ interface RenderContext {
 }
 interface BlockElement { id: string; range: Block['range']; pending: boolean; ref: (element: HTMLElement | null) => void }
 const blockAttributes = (block?: BlockElement) => block ? { 'data-limr-block': block.id, 'data-source-start': block.range.start, 'data-source-end': block.range.end, 'data-pending': block.pending || undefined } : {};
+
+function EmbeddedAnnotationMarkers({ id }: { id: string }) {
+  const runtime = useRuntime();
+  const occurrences = useStoreSelector(runtime.decorations, state => state.occurrences);
+  return <>{occurrences.filter(item => item.markerId === id).map(occurrence => <AnnotationMarker key={occurrence.id} occurrence={occurrence} />)}</>;
+}
 
 export function AnnotationMarker({ occurrence: supplied }: { occurrence: AnnotationOccurrence }) {
   const runtime = useRuntime();
@@ -61,7 +68,6 @@ export function AnnotationMarker({ occurrence: supplied }: { occurrence: Annotat
       if (hovering) runtime.hover(occurrence.id);
     }}>
     <span className="limr-mark-icon">{Custom && annotation ? <Custom annotation={annotation} active={active} /> : icon ?? '•'}</span>
-    {occurrence.annotationIds.length > 1 && <span className="limr-mark-count">{occurrence.annotationIds.length}</span>}
   </button></span>;
 }
 
@@ -269,7 +275,7 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trail
       case 'footnoteReference': return <Fragment key={key}><FootnoteReference node={node} />{trailing}</Fragment>;
       case 'annotationReference': {
         const Tag = node.inline ? 'span' : 'div';
-        element = <Tag>{children}<AnnotationMarker occurrence={{ id: `${runtime.document.id}-ref-${rangeOf(node).start}`, range: rangeOf(node), annotationIds: node.annotationIds as string[], embedded: true }} /></Tag>; break;
+        element = <Tag>{children}<EmbeddedAnnotationMarkers id={`${runtime.document.id}-ref-${rangeOf(node).start}`} /></Tag>; break;
       }
       case 'html': element = <span className="limr-literal">{node.value}</span>; break;
       case 'component': element = children; break;
@@ -356,7 +362,7 @@ export const BlockView = memo(function BlockView({ block, runtime, components, e
   if (!footnoteId && ['definition', 'footnoteDefinition', 'annotationDefinition'].includes(block.node.type)) return null;
   const context: RenderContext = { runtime, block, marks, afterMarks, highlights, occurrences, compact, live: streamed.current, revealFrom, blockElement: { id: block.id, range: block.range, pending: block.pending, ref: observe } };
   const content = footnoteId ? <li id={`${runtime.document.id}-fn-${encodeURIComponent(footnoteId)}`} {...blockAttributes(context.blockElement)} ref={observe}>{block.node.children?.map((child, index) => renderNode(child, { ...context, blockElement: undefined }, index))}</li> : renderNode(block.node, context);
-  return <KnuthPlassBoundary element={getElement} runtime={runtime} enabled={typography === 'knuth-plass'} pending={block.pending} options={knuthPlass}>{content}</KnuthPlassBoundary>;
+  return <StreamSelectionBoundary element={getElement} enabled={streamed.current}><KnuthPlassBoundary element={getElement} runtime={runtime} enabled={typography === 'knuth-plass'} pending={block.pending} options={knuthPlass}>{content}</KnuthPlassBoundary></StreamSelectionBoundary>;
 });
 
 export function Footnotes() {

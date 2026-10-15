@@ -56,11 +56,11 @@ Reader、Markdown 与 DocumentProvider 接受：
 
 | 组件 | 额外属性及默认值 |
 | --- | --- |
-| Reader | toc=true、sidebar=true、fillHeight=true、sidebarBreakpoint=1120、actions、followOutput=false、className/style |
+| Reader | toc=true、sidebar=true、sidebarCollapse=false、fillHeight=true、sidebarBreakpoint=1120、actions、followOutput=false、className/style |
 | Markdown | interactive=true、followOutput=false、className/style |
 | DocumentProvider | children；为下方组件提供上下文 |
 | TableOfContents | title、maxDepth=6、followActive=true、topInset=24、updateHash=false、className/style |
-| AnnotationSidebar | sync='document' / 'none'、gap=14、positioner=alignSidebar、renderCard、className/style |
+| AnnotationSidebar | sync='document' / 'none'、collapseOverflow=false、gap=14、positioner=alignSidebar、renderCard、className/style |
 | AnnotationOverlay | disabled=false、portalRoot、previewWidth=340、maxHeight='80dvh' |
 | SelectionToolbar | actions、portalRoot、maxPanelHeight=260、render、className/style |
 | AnnotationCard | AnnotationOverlayCardProps 加必填 title 和可选 bodyLabel |

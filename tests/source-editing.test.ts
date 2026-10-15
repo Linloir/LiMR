@@ -107,7 +107,7 @@ describe('source annotation serialization', () => {
     expect(snapshot.annotations[0].anchors?.[0].range).toEqual({ start: 7, end: 16 });
     expect(runtime.decorations.get().occurrences).toHaveLength(1);
     expect(runtime.interaction.get().editing).toBe('new');
-    expect(runtime.interaction.get().active).toBe(snapshot.occurrences[0].id);
+    expect(runtime.interaction.get().active).toBe(runtime.decorations.get().occurrences[0].id);
   });
   it('updates, upserts and removes definitions without resurrecting duplicate IDs', () => {
     const { runtime } = setup(fixture + '\n:::limr-annotation{#n1 ranges="r1" type="footnote"}\nNewest\n:::\n');

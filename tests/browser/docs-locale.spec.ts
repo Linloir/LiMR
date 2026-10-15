@@ -8,8 +8,8 @@ async function setup(page: Page, language = 'en') {
   }, { source: draft, language });
 }
 async function loadDraft(page: Page) {
-  await page.getByRole('button', { name: '加载', exact: true }).click();
-  await page.getByRole('button', { name: '加载已保存文本' }).click();
+  await page.getByRole('button', { name: 'Load', exact: true }).click();
+  await page.getByRole('button', { name: 'Load saved document' }).click();
 }
 async function select(page: Page, selector = '.limr-reader-content strong') {
   const target = page.locator(selector).first();
@@ -33,9 +33,9 @@ async function openPalette(page: Page) {
 }
 
 test('Docs navigation keeps the draft, switches language, and offers downloadable skills', async ({ page }) => {
-  await setup(page); await page.goto('/'); await loadDraft(page);
+  await setup(page); await page.goto('/#/playground'); await loadDraft(page);
   const navigation = page.getByRole('navigation', { name: '页面 / Pages' });
-  await expect(navigation.getByRole('link')).toHaveText(['Playground', 'Docs', 'GitHub']);
+  await expect(navigation.getByRole('link')).toHaveText(['Home', 'Playground', 'Docs', 'GitHub']);
   await navigation.getByRole('link', { name: 'Docs', exact: true }).click();
   await expect(page).toHaveURL(/#\/docs\/en\/README$/);
   await page.locator('.demo-docs-links').getByRole('link', { name: 'Built-in modules', exact: true }).click();
@@ -75,13 +75,13 @@ test('the syntax document renders working exercises, math, figures, citations, a
 });
 
 test('English plugin labels and editors follow locale without translating saved content', async ({ page }) => {
-  await setup(page); await page.goto('/'); await loadDraft(page); await select(page);
+  await setup(page); await page.goto('/#/playground'); await loadDraft(page); await select(page);
   for (const name of ['Margin note', 'Note', 'Question', 'Footnote', 'Ask assistant']) await expect(page.getByRole('toolbar').getByRole('button', { name, exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Margin note', exact: true }).click();
   const field = page.getByRole('textbox', { name: 'Margin note content' });
   await field.fill('Keep my own words'); await page.getByRole('button', { name: 'Submit', exact: true }).click();
-  await page.getByRole('button', { name: '编辑', exact: true }).click();
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.locator('.demo-commandbar').getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.locator('.demo-commandbar').getByRole('button', { name: 'Save', exact: true }).click();
   await page.getByRole('button', { name: '界面语言 / Reader language' }).click();
   await page.getByRole('button', { name: '中文', exact: true }).click();
   await expect(page.locator('.limr-sidebar-card[data-type="margin-note"]')).toContainText('旁注');
@@ -117,7 +117,7 @@ for (const width of [320, 390, 1280]) test(`expanded tools fit their action row 
 
 test('a wide action row fits all highlight styles on one line with intact English labels', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 950 });
-  await setup(page); await page.goto('/'); await loadDraft(page);
+  await setup(page); await page.goto('/#/playground'); await loadDraft(page);
   const toolbar = await openPalette(page);
   const geometry = await toolbar.locator('.limr-highlight-styles button').evaluateAll(elements => elements.map(element => {
     const label = element.querySelector('.limr-underline')!;
@@ -128,7 +128,7 @@ test('a wide action row fits all highlight styles on one line with intact Englis
 });
 
 test('Playground centers the reading column and balances outer margins while the sidebar gains space', async ({ page }) => {
-  await setup(page); await page.goto('/'); await loadDraft(page);
+  await setup(page); await page.goto('/#/playground'); await loadDraft(page);
   let previousSidebar = 0;
   for (const width of [390, 900, 1280, 1800, 2560]) {
     await page.setViewportSize({ width, height: 1000 });

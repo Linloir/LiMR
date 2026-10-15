@@ -6,7 +6,7 @@
 
 ## Data model
 
-Annotation stores data, AnnotationType registers presentation/loading, and AnnotationOccurrence describes one location. One annotation can have multiple anchors; one citation marker can refer to several annotations.
+Annotation stores data, AnnotationType registers presentation/loading, and AnnotationOccurrence describes one location. One annotation can have multiple anchors; each content annotation at a shared location has its own marker, sidebar item, and narrow-screen card.
 
 ```ts
 import type { Annotation } from '@linloir/limr';
@@ -67,7 +67,7 @@ addAnnotation accepts highlight: false to suppress automatic persistent highligh
 
 Citations default to highlight: 'hover'. Hovering a marker or sidebar item, or activating a reference, paints the referenced text with an 18% tint of the type's color behind the text. Clicking pins the highlight after the pointer leaves; it disappears once the reference is neither active nor hovered. Active and hovered references to the same explicit range do not stack their tints. This feedback never updates annotations or saved hidden settings. A scoped `<ref>text</ref>` uses its enclosed text. A self-closing `<ref />` or standalone named footnote uses a zero-length range at the marker and paints no paragraph. Footnotes directly after `==text==` use that explicit text range. External references use their own range; the first line anchors sidebar alignment.
 
-Sidebar alignment translates the prose without changing the page's scroll range. Paint updates throughout that animation and on completion or cancellation, so text entering from outside the viewport receives the current hover or active feedback.
+Clicking or hovering a marker aligns its sidebar item. Sidebar hover leaves the prose and page scroll range unchanged. Paint updates as the page scrolls, preserving feedback for the current hovered or active reference.
 
 Disable it with replaceExtension(standard(), citation({ highlight: false })). Other types can opt into highlight: 'hover'.
 
@@ -88,10 +88,22 @@ Action signals abort when the reader is disposed, not when the menu closes. Pres
 
 ## Source-authored ranges
 
-The default `sourceAnnotations()` module resolves `==text==[^%%limr:r1%%]` together with `:::limr-annotation` definitions. See [syntax](syntax.md#annotations-stored-in-markdown) for the complete grammar and precedence rules. Definitions become ordinary `Annotation` values with resolved `anchors`; several content annotations share the embedded marker at each named range.
+The default `sourceAnnotations()` module resolves `==text==[^%%limr:r1%%]` together with `:::limr-annotation` definitions. See [syntax](syntax.md#annotations-stored-in-markdown) for the complete grammar and precedence rules. Definitions become ordinary `Annotation` values with resolved `anchors`; each content annotation receives an independent marker at each named range. The parsed snapshot retains the source reference group; runtime occurrences link to that source location through markerId.
 
 `DocumentSnapshot.annotationRanges` maps each case-sensitive range ID to its occurrences. Each `SourceAnnotationRange` contains `range` (the referenced text), `syntaxRange` (the original `==…==` span), and `markerRange` (the reserved footnote marker). All three use original UTF-16 source coordinates. For an unscoped reserved marker, `range` and `syntaxRange` are zero-length.
 
 `Annotation.source` identifies the owning module, its defining syntax `ranges`, and optional named `rangeIds`. Duplicate IDs retain all their definition spans while exposing only the final value, so a source editor can delete or rewrite an annotation without revealing an older definition. Plain `==text==` highlights identify `inline-highlights` as their source owner; named definitions identify `source-annotations`. Source metadata belongs to the current parsed document and should be regenerated after source changes.
 
 Source annotations are read-only by default. `standard()` provides generic parsing and serialization; supplying `onSourceChange` enables default highlights and tasks to update Markdown without another writing plugin, database or editor component. Annotation types own cards and editor UI; Playground inline notes and questions are registered by example plugins. Modules choose source with target: source, while ordinary addAnnotation remains external; the default highlight action chooses source when editing is enabled. Updates/deletion follow existing annotations’ origins, and external data continues through `annotations` and `onAnnotationsChange`. See [application integration](integration.md) and [extension development](extensions.md) for the mutation API.
+
+## Dense sidebars
+
+Enable automatic folding with `<Reader sidebarCollapse />` or `<AnnotationSidebar collapseOverflow />`; both default to false. Playground enables it by default and provides a global “旁注折叠” (sidebar folding) dropdown with “开启” (on) and “关闭” (off) options in the toolbar that remains effective across articles. A custom positioner applies when automatic folding is disabled.
+
+The layout compares displacement and folding penalties, preserving complete items whenever mild displacement is sufficient. Only crowded consecutive regions form foldable groups, independently of paragraph boundaries; a single item is never folded on its own. The region span is bounded, and a refinement pass releases cards when space permits. A collapsed window exposes roughly two thirds of its last visible card, with a fade covering at least half of that card to indicate further content. Groups have no expand button and do not capture wheel or touch scrolling.
+
+Clicking or hovering a marker aligns its card by moving the group and translating its contents on one animation clock, keeping each card in its original list. Entering a hovered card preserves its position; leaving returns to the original top position. Clicking pins the active card until it is closed or dismissed, including after temporarily hovering another marker. Sidebar hover never moves the body text. Cached geometry and transforms support interrupted reversals and reduced-motion preferences without increasing page height or adding empty trailing space. Fades stay on the clipping window and shrink with the actual overflow, so fully revealed cards are no longer dimmed.
+
+Point annotations show readable context before their marker in the gray reference strip, fitted to its width with ellipses on both ends. The actual highlight and toolbar ranges remain zero-length. Clicking either a highlight or a marker opens the selection toolbar, subject to plugin capabilities and source-editing permissions.
+
+For inline ranges written as `==text==` followed by a footnote or named annotation, only an explicit, visible highlight definition supplies persistent paint. Missing or hidden definitions produce hover-only feedback, using the highlight color when supplied and otherwise the default inline highlight color. A visible highlight never receives a second hover background. Standalone `==text==` remains a persistent inline highlight.

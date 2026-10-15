@@ -49,7 +49,7 @@ test('citation paint is hidden by default, light, behind text and isolated to th
   await expect(paint.first()).toHaveCSS('opacity', '1');
   await expect(marker).toHaveAttribute('aria-expanded', 'true');
   await page.mouse.click(10, 10);
-  await expect(paint.first()).toHaveCSS('opacity', '0');
+  await unpainted(paint);
   await expect(reader(page).locator('[data-paint="saved"]').first()).toHaveCSS('opacity', '1');
   await expect(reader(page).locator('[data-paint="hidden"]').first()).toHaveCSS('opacity', '0');
   // The hover decoration does not insert user-editable marks into the text.
@@ -61,7 +61,7 @@ test('citation paint is hidden by default, light, behind text and isolated to th
   await expect(paint.first()).toHaveCSS('opacity', '1');
 });
 
-for (const nested of [false, true]) test(`citation hover aligns both directions${nested ? ' inside a nested scroll root' : ''}`, async ({ page }) => {
+for (const nested of [false, true]) test(`citation markers align cards while sidebar hover keeps prose still${nested ? ' inside a nested scroll root' : ''}`, async ({ page }) => {
   if (nested) {
     await page.goto('/?fixture=sidebar&citations&nested');
     await page.evaluate(() => document.fonts.ready);
@@ -81,9 +81,8 @@ for (const nested of [false, true]) test(`citation hover aligns both directions$
   const rest = (await card.boundingBox())!.y;
   await card.locator('.limr-sidebar-card-heading').hover();
   await expect(card).toHaveAttribute('data-locked', 'true');
-  await aligned(page, marker, card);
   expect((await card.boundingBox())!.y).toBeCloseTo(rest, 0);
-  expect(Math.abs(await referenceTop(marker) - initialReference)).toBeGreaterThan(40);
+  expect(await referenceTop(marker)).toBeCloseTo(initialReference, 0);
   await expect((await referencePaint(page, marker)).first()).toHaveCSS('opacity', '1');
   expect(await geometry()).toEqual(initial);
   await page.mouse.move(10, 10);
@@ -92,7 +91,7 @@ for (const nested of [false, true]) test(`citation hover aligns both directions$
 });
 
 test('ranged citations and narrow overlay previews use the same temporary paint', async ({ page }) => {
-  const marker = markers(page).nth(3), paint = await referencePaint(page, marker);
+  const marker = reader(page).locator('[data-limr-anchor="sidebar-fixture-ranged-0"]'), paint = await referencePaint(page, marker);
   await marker.hover();
   await expect(paint.first()).toHaveCSS('opacity', '1');
   const text = reader(page).locator('strong').filter({ hasText: 'selected passage' });
@@ -132,15 +131,15 @@ test('pinned citation highlights survive hover transfers and clear when deactiva
   await page.mouse.move(10, 10);
   await page.keyboard.press('Escape');
   await expect(marker).toHaveAttribute('aria-expanded', 'false');
-  await expect(paint.first()).toHaveCSS('opacity', '0');
+  await unpainted(paint);
   await marker.click();
   await marker.click();
   await expect(paint.first()).toHaveCSS('opacity', '1');
   await page.mouse.move(10, 10);
-  await expect(paint.first()).toHaveCSS('opacity', '0');
+  await unpainted(paint);
 });
 
-for (const nested of [false, true]) test(`sidebar hover paints text entering from above the viewport${nested ? ' inside a nested scroll root' : ''}`, async ({ page }) => {
+for (const nested of [false, true]) test(`sidebar hover keeps offscreen prose fixed until the page is scrolled${nested ? ' inside a nested scroll root' : ''}`, async ({ page }) => {
   await page.goto(`/?fixture=sidebar&citations&viewport${nested ? '&nested' : ''}`);
   await page.evaluate(() => document.fonts.ready);
   await markers(page).first().click();
@@ -161,25 +160,25 @@ for (const nested of [false, true]) test(`sidebar hover paints text entering fro
   const id = candidates[0], card = reader(page).locator(`[data-occurrence="${id}"]`);
   const marker = reader(page).locator(`[data-limr-anchor="${id}"]`), paint = await referencePaint(page, marker);
   await expect(paint).toHaveCount(0);
+  const original = await referenceTop(marker);
   await card.locator('.limr-sidebar-card-heading').hover();
+  await expect(card).toHaveAttribute('data-active', 'true');
+  await expect(reader(page).locator('.limr-reader-content > article')).toHaveCSS('translate', 'none');
+  expect(await referenceTop(marker)).toBeCloseTo(original, 0);
+  await expect(paint).toHaveCount(0);
+  await marker.scrollIntoViewIfNeeded(); await marker.hover();
   await aligned(page, marker, card);
   await expect(paint.first()).toHaveCSS('opacity', '1');
   await expect(paint.first()).toBeInViewport();
-  // Interrupt the return animation and re-enter without waiting for layout.
-  const heading = (await card.locator('.limr-sidebar-card-heading').boundingBox())!;
   await page.mouse.move(10, 10);
-  await page.waitForTimeout(30);
-  await page.mouse.move(heading.x + 10, heading.y + heading.height / 2);
-  await aligned(page, marker, card);
-  await expect(paint.first()).toHaveCSS('opacity', '1');
-  await page.mouse.move(10, 10);
-  await settled(page);
-  await expect(paint).toHaveCount(0);
+
 });
 
-for (const width of [1800, 1380]) test(`scikit-learn's dense bibliography remains reachable and aligns in both directions at ${width}px`, async ({ page }) => {
+for (const width of [1800, 1380]) test(`scikit-learn's unfolded bibliography remains reachable with stable prose at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 1000 });
-  await page.goto('/');
+  await page.goto('/#/playground');
+  await page.getByRole('button', { name: '旁注折叠', exact: true }).click();
+  await page.locator('#demo-sidebar-collapse-menu').getByRole('button', { name: '关闭', exact: true }).click();
   await page.getByRole('button', { name: '加载', exact: true }).click();
   await page.getByRole('button', { name: 'scikit-learn 论文', exact: false }).click();
   await page.evaluate(() => document.fonts.ready);
@@ -203,7 +202,7 @@ for (const width of [1800, 1380]) test(`scikit-learn's dense bibliography remain
   const offscreenPaint = await referencePaint(page, offscreenMarker);
   await expect(offscreenPaint).toHaveCount(0);
   await offscreenCard.locator('.limr-sidebar-card-heading').hover();
-  await expect.poll(async () => Math.abs((await offscreenCard.boundingBox())!.y - await referenceTop(offscreenMarker))).toBeLessThan(1);
+  await expect(reader(page).locator('.limr-reader-content > article')).toHaveCSS('translate', 'none');
   await expect(offscreenPaint).toHaveCount(0);
   await offscreenCard.locator('.limr-sidebar-card-heading').click();
   await page.mouse.move(10, 10);
@@ -212,11 +211,12 @@ for (const width of [1800, 1380]) test(`scikit-learn's dense bibliography remain
   await settled(page);
   await expect(offscreenPaint).toHaveCount(0);
   for (const marker of await references.all()) {
+    await marker.evaluate(element => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
     await marker.hover();
     const id = await marker.getAttribute('data-limr-anchor');
     const card = reader(page).locator(`[data-occurrence="${id}"]`);
     await expect(card).toHaveAttribute('data-active', 'true');
-    await expect.poll(async () => Math.abs((await card.boundingBox())!.y - await referenceTop(marker))).toBeLessThan(1);
+    await aligned(page, marker, card);
     const bounds = (await card.boundingBox())!, rail = (await reader(page).locator('.limr-sidebar').boundingBox())!;
     expect(bounds.y + bounds.height).toBeLessThanOrEqual(rail.y + rail.height + 1);
     await expect(card.locator('.limr-sidebar-card-heading')).toBeInViewport();
@@ -229,7 +229,7 @@ for (const width of [1800, 1380]) test(`scikit-learn's dense bibliography remain
   await last.locator('.limr-sidebar-card-heading').click();
   await expect(last).toHaveAttribute('data-expanded', 'true');
   await settled(page);
-  await expect.poll(async () => Math.abs((await last.boundingBox())!.y - await referenceTop(references.last()))).toBeLessThan(1);
+  await expect(reader(page).locator('.limr-reader-content > article')).toHaveCSS('translate', 'none');
   await expect(last.locator('.limr-citation-title')).toBeInViewport();
   await page.mouse.click(10, 10);
   await settled(page);
@@ -243,7 +243,7 @@ for (const width of [1800, 1380]) test(`scikit-learn's dense bibliography remain
     const before = (await card.boundingBox())!.y, scroll = await page.evaluate(() => scrollY);
     await card.locator('.limr-sidebar-card-heading').hover();
     await expect(card).toHaveAttribute('data-locked', 'true');
-    await expect.poll(async () => Math.abs((await card.boundingBox())!.y - await referenceTop(marker))).toBeLessThan(1);
+    await expect(reader(page).locator('.limr-reader-content > article')).toHaveCSS('translate', 'none');
     expect((await card.boundingBox())!.y).toBeCloseTo(before, 0);
     expect(await page.evaluate(() => scrollY)).toBe(scroll);
     await page.mouse.move(10, 10);

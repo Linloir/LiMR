@@ -80,18 +80,21 @@ test('standalone footnotes and self-closing refs keep zero-length hover ranges',
   }
 });
 
-test('reserved ranges render shared note/question markers with one winning highlight and no fallback body', async ({ page }) => {
+test('reserved ranges render independent note/question markers with one winning highlight and no fallback body', async ({ page }) => {
   await page.evaluate(() => window.limrStream({ source: 'Before ==named **range**==[^%%limr:r1%%] after.\n\n[^%%limr:r1%%]: Ordinary fallback body\n\n:::limr-annotation{#h1 ranges="r1" type="highlight" color="#E5C07B"}\n:::\n\n:::limr-annotation{#h2 ranges="r1" type="highlight" color="#81B29A"}\n:::\n\n:::limr-annotation{#n1 ranges="r1" type="footnote"}\nStored **note**.\n:::\n\n:::limr-annotation{#q1 ranges="r1" type="question"}\nWhy cache?\n:::', streaming: false, sidebar: true }));
   const article = page.locator('.limr-reader-content > article');
   await expect(article).not.toContainText('%%limr');
   await expect(article).not.toContainText('Ordinary fallback body');
-  await expect(article.locator('.limr-mark')).toHaveCount(1);
-  await expect(article.locator('.limr-mark-count')).toHaveText('2');
+  await expect(article.locator('.limr-mark')).toHaveCount(2);
+  await expect(article.locator('.limr-mark-count')).toHaveCount(0);
   await expect(article.locator('[data-paint="h1"]')).toHaveCount(0);
   await expect(article.locator('[data-paint="h2"]').first()).toHaveCSS('--limr-highlight', '#81B29A');
-  await article.locator('.limr-mark').click();
+  await article.locator('.limr-mark').first().click();
   const card = page.locator('.limr-sidebar-card,.limr-overlay-positioner').filter({ hasText: 'Stored note.' });
-  await expect(card).toContainText('Why cache?');
+  await expect(card).not.toContainText('Why cache?');
+  await article.locator('.limr-mark').nth(1).click();
+  await expect(page.locator('.limr-sidebar-card[data-expanded],.limr-overlay-positioner')).toContainText('Why cache?');
+  await article.locator('.limr-mark').first().click();
   await expect(card.locator('strong')).toHaveText('note');
 });
 
@@ -112,8 +115,26 @@ test('streaming highlight text selection survives closing delimiters and a follo
   await expect(page.locator('article > p')).not.toContainText('==');
 });
 
+test('shortening selected streaming text keeps native endpoints valid', async ({ page }) => {
+  const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+  await page.evaluate(() => window.limrStream({ source: '==selected words', effect: false }));
+  await page.locator('article > p mark').evaluate(element => {
+    const text = document.createTreeWalker(element, NodeFilter.SHOW_TEXT).nextNode()!;
+    getSelection()!.setBaseAndExtent(text, 0, text, 12);
+  });
+  await page.evaluate(() => window.limrStream({ source: '==sel', effect: false }));
+  await expect(page.locator('article > p mark')).toHaveText('sel');
+  expect(await page.evaluate(() => {
+    const selection = getSelection()!;
+    return [selection.anchorNode, selection.focusNode].every(node => node?.isConnected)
+      && selection.anchorOffset <= (selection.anchorNode!.textContent?.length ?? 0)
+      && selection.focusOffset <= (selection.focusNode!.textContent?.length ?? 0);
+  })).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 test('KP keeps authored highlights and footnote anchors through resize and mode changes', async ({ page }) => {
-  const source = ('Some ==highlighted **words**==^[A footnote] with rich typography. ').repeat(12);
+  const source = ('Some ==standalone== and ==highlighted **words**==^[A footnote] with rich typography. ').repeat(12);
   await page.evaluate(source => window.limrStream({ source, typography: 'knuth-plass', streaming: false }), source);
   const paragraph = page.locator('.limr-reader-content > article > p');
   await expect(paragraph).toHaveAttribute('data-limr-kp');

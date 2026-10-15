@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ReaderRuntime } from '../src/react/runtime';
-import { citation } from '../src/extensions';
+import { citation, standard } from '../src/extensions';
 
 describe('application plugin commands and resource identity', () => {
   it('adds, activates, streams and removes arbitrary annotation types', () => {
@@ -75,9 +75,9 @@ describe('citation hover highlights', () => {
     const onAnnotationsChange = vi.fn();
     const runtime = new ReaderRuntime('citations', source, false, { extensions: [citation({ color: '#14b8a6' })], annotations: [], onAnnotationsChange });
     const { occurrences, highlights, referenceRanges, annotations } = runtime.decorations.get();
-    expect(occurrences).toHaveLength(3);
-    expect(highlights.size).toBe(3);
-    expect(referenceRanges.get(occurrences[0].id)).not.toEqual(referenceRanges.get(occurrences[1].id));
+    expect(occurrences).toHaveLength(4);
+    expect(highlights.size).toBe(4);
+    expect(referenceRanges.get(occurrences[0].id)).toEqual(referenceRanges.get(occurrences[1].id));
     expect(referenceRanges.get(occurrences[2].id)).not.toEqual(referenceRanges.get(occurrences[0].id));
     for (const occurrence of occurrences) expect(highlights.get(`reference-${occurrence.id}`)).toMatchObject({ occurrenceId: occurrence.id, color: '#14b8a6', range: referenceRanges.get(occurrence.id) });
     runtime.hover(occurrences[1].id);
@@ -98,7 +98,7 @@ describe('citation hover highlights', () => {
     expect([...runtime.decorations.get().highlights.values()].every(highlight => highlight.color === 'var(--custom-citation)')).toBe(true);
     runtime.configure({ extensions, annotationTypes: citation({ highlight: false }).annotationTypes });
     expect(runtime.decorations.get().highlights.size).toBe(0);
-    expect(runtime.decorations.get().occurrences).toHaveLength(3);
+    expect(runtime.decorations.get().occurrences).toHaveLength(4);
   });
 
   it('supports ranged citations while preserving explicit saved and hidden highlights', () => {
@@ -130,6 +130,35 @@ describe('citation hover highlights', () => {
 });
 
 describe('annotations on a shared text fragment', () => {
+  for (const mode of ['absent', 'hidden', 'visible']) it(`inline annotations use ${mode} explicit highlight without duplicate paint`, () => {
+    const source = '==Words==[^%%limr:r%%]\n\n:::limr-annotation{#note ranges="r" type="footnote"}\nA note\n:::\n\n:::limr-annotation{#other ranges="r" type="footnote"}\nAnother note\n:::'
+      + (mode === 'absent' ? '' : `\n\n:::limr-annotation{#color ranges="r" type="highlight" color="#C08FA3" hidden="${mode === 'hidden'}"}\n:::`);
+    const runtime = new ReaderRuntime('inline', source, false, { extensions: standard() });
+    const { occurrences, highlights } = runtime.decorations.get();
+    expect(occurrences.map(item => item.annotationIds)).toEqual([['note'], ['other']]);
+    expect(new Set(occurrences.map(item => item.id)).size).toBe(2);
+    expect(new Set(occurrences.map(item => item.markerId)).size).toBe(1);
+    const transient = [...highlights.values()].filter(item => item.occurrenceId);
+    expect(transient).toHaveLength(mode === 'visible' ? 0 : 2);
+    for (const paint of transient) expect(paint.color).toBe(mode === 'hidden' ? '#C08FA3' : 'var(--limr-inline-highlight, #6B9BD2)');
+    expect([...highlights.values()].filter(item => !item.occurrenceId && !item.hidden)).toHaveLength(mode === 'visible' ? 1 : 0);
+    runtime.activate(occurrences[1].id);
+    expect(runtime.interaction.get().toolbarOccurrence).toBe(occurrences[1].id);
+    runtime.clearSelection();
+    expect(runtime.interaction.get().toolbarOccurrence).toBeNull();
+    runtime.dispose();
+  });
+  it('ordinary annotations reuse explicit paint and retain independent toolbar targets', () => {
+    const runtime = new ReaderRuntime('ordinary', 'Shared words', false, { annotationTypes: [{ type: 'note', label: 'Note', highlight: 'hover' }] });
+    runtime.commands.addAnnotation({ id: 'paint', type: 'highlight', range: { start: 0, end: 12 } });
+    for (const id of ['first', 'second']) runtime.commands.addAnnotation({ id, type: 'note', range: { start: 0, end: 12 } });
+    const { occurrences, highlights } = runtime.decorations.get();
+    expect(occurrences).toHaveLength(2);
+    expect(highlights.size).toBe(1);
+    runtime.activate(occurrences[1].id);
+    expect(runtime.interaction.get()).toMatchObject({ active: occurrences[1].id, toolbarOccurrence: occurrences[1].id });
+    runtime.dispose();
+  });
   it('adds a default highlight once and keeps multiple content types independent', () => {
     const runtime = new ReaderRuntime('shared', 'One fragment and another', false, { annotationTypes: [{ type: 'note', label: 'Note' }, { type: 'question', label: 'Question' }] });
     const range = { start: 0, end: 12 };

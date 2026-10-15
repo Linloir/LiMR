@@ -39,7 +39,7 @@ describe('installed annotation capabilities', () => {
     const source = '==word==[^%%limr:r%%]\n\n:::limr-annotation{#custom ranges="r" type="custom"}\nPrivate body\n:::\n\n:::limr-annotation{#note ranges="r" type="footnote"}\nPublic body\n:::';
     const extensions = standard();
     const runtime = new ReaderRuntime('mixed', source, false, { extensions: [...extensions, custom] });
-    expect(runtime.decorations.get().occurrences[0].annotationIds).toEqual(['custom', 'note']);
+    expect(runtime.decorations.get().occurrences.map(item => item.annotationIds)).toEqual([['custom'], ['note']]);
     runtime.configure({ extensions });
     expect(runtime.document.getSnapshot().source).toBe(source);
     expect(runtime.document.getSnapshot().occurrences[0].annotationIds).toEqual(['custom', 'note']);
@@ -48,7 +48,7 @@ describe('installed annotation capabilities', () => {
     const html = renderToStaticMarkup(<Markdown source={source} />);
     expect(html).toContain('word'); expect(html).not.toContain('limr-mark-count'); expect(html).not.toContain('Custom body');
     runtime.configure({ extensions: [...extensions, custom] });
-    expect(runtime.decorations.get().occurrences[0].annotationIds).toEqual(['custom', 'note']);
+    expect(runtime.decorations.get().occurrences.map(item => item.annotationIds)).toEqual([['custom'], ['note']]);
   });
   it('does not render unsupported unanchored cards in an unsynchronized sidebar', () => {
     const annotations = [{ id: 'hidden', type: 'custom' }];

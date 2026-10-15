@@ -29,7 +29,7 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
   const config = useStoreSelector(runtime.configuration, value => value);
   const paint = interaction.activeHighlight ? decorations.highlights.get(interaction.activeHighlight) : null;
   const active = decorations.occurrences.find(item => item.id === interaction.active);
-  const hiddenActive = active && [...decorations.highlights.values()].some(item => item.hidden && sameRange(item.range, active.range));
+  const markerActive = active && interaction.toolbarOccurrence === active.id;
   const combined = useMemo(() => {
     const map = new Map((actions ?? defaults).map(action => [action.id, action]));
     config.extensions?.forEach(extension => extension.actions?.forEach(action => map.set(action.id, action)));
@@ -53,11 +53,11 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
     // Dismissed annotations can retain their edit state for later resumption.
     // Only the active annotation's editor suppresses highlight actions.
     if (interaction.editing && active?.annotationIds.includes(interaction.editing)) return null;
-    const range = paint?.range ?? (hiddenActive ? active?.range : undefined);
+    const range = paint?.range ?? (markerActive ? decorations.referenceRanges.get(active.id) : undefined);
     return range ? selectionFromRange(documentSnapshot, range, {
-      text: atomicSelectionText(runtime, [range]) ?? (paint ? runtime.highlightReference?.text ?? annotationReferenceText(documentSnapshot, { id: paint.id, annotationIds: [], range }) : annotationReferenceText(documentSnapshot, active!)),
+      text: range.start === range.end ? '' : atomicSelectionText(runtime, [range]) ?? (paint ? runtime.highlightReference?.text ?? annotationReferenceText(documentSnapshot, { id: paint.id, annotationIds: [], range }) : annotationReferenceText(documentSnapshot, active!)),
     }) : null;
-  }, [documentSnapshot, paint, active, selection, interaction.editing, hiddenActive]);
+  }, [documentSnapshot, paint, active, selection, interaction.editing, markerActive, decorations.referenceRanges]);
   const blockReference = useMemo(() => {
     const ranges = effectiveSelection?.raw.ranges;
     if (ranges?.length !== 1) return null;
@@ -67,7 +67,7 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
     return runtime.content?.querySelector<HTMLElement>(`[data-limr-atomic="block"][data-source-start="${start}"][data-source-end="${end}"]`) ?? null;
   }, [runtime, effectiveSelection]);
   const annotations = useMemo(() => effectiveSelection ? [...decorations.annotations.values()].filter(annotation =>
-    runtime.supportsAnnotation(annotation) && resolveAnnotationAnchors(annotation, documentSnapshot).some(anchor => [...effectiveSelection.raw.ranges, ...effectiveSelection.syntax.ranges].some(range => sameRange(anchor.range, range)))) : [], [runtime, decorations, effectiveSelection, documentSnapshot]);
+    runtime.supportsAnnotation(annotation) && (markerActive && active.annotationIds.includes(annotation.id) || resolveAnnotationAnchors(annotation, documentSnapshot).some(anchor => [...effectiveSelection.raw.ranges, ...effectiveSelection.syntax.ranges].some(range => sameRange(anchor.range, range))))) : [], [runtime, decorations, effectiveSelection, documentSnapshot, markerActive, active]);
   const highlight = (paint ? decorations.annotations.get(paint.annotationId) : annotations.find(annotation => annotation.type === 'highlight')) as Annotation<HighlightData> | undefined;
   const highlightAppearance = highlight?.data ?? preferredHighlight;
   const context: ActionContext | null = effectiveSelection ? {
@@ -92,7 +92,7 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
       const limit = Math.max(0, parseFloat(getComputedStyle(elements.floating).getPropertyValue('--limr-toolbar-panel-max-height')) || maxPanelHeight);
       const needed = row + (hasPanels ? limit : 0) + 24;
       // Reserve the same budget while closed or expanded, so hover never moves the action row.
-      const next = blockReference || below >= needed || below >= above ? 'bottom' : 'top';
+      const next = markerActive && above >= row + 24 ? 'top' : blockReference || below >= needed || below >= above ? 'bottom' : 'top';
       const room = next === 'bottom' ? below : above;
       elements.floating.style.setProperty('--limr-toolbar-panel-height', `${Math.max(0, Math.min(limit, room - row - 24))}px`);
       elements.floating.style.setProperty('--limr-toolbar-available-height', `${room}px`);

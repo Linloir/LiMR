@@ -81,7 +81,11 @@ export function footnotes(options: Partial<AnnotationType<FootnoteData>> = {}): 
         }
         node.children.forEach((child, index) => {
           const previous = node.children![index - 1];
-          if (child.type === 'annotationReference' && previous?.type === 'embeddedHighlight' && rangeOf(previous).end === rangeOf(child).start) child.referenceRange = previous.highlightRange as SourceRange;
+          if (child.type === 'annotationReference' && previous?.type === 'embeddedHighlight' && rangeOf(previous).end === rangeOf(child).start) {
+            child.referenceRange = previous.highlightRange as SourceRange;
+            child.referenceColor = previous.highlightColor;
+            delete previous.annotation;
+          }
         });
       };
       visit(root);

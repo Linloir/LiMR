@@ -6,7 +6,7 @@ async function typography(page: Page, mode: string) {
 }
 
 async function loadSource(page: Page, source: string) {
-  await page.goto('/');
+  await page.goto('/#/playground');
   await page.getByRole('button', { name: '编辑', exact: true }).click();
   await page.getByRole('textbox', { name: 'Markdown source' }).fill(source);
   await page.getByRole('button', { name: '保存', exact: true }).click();

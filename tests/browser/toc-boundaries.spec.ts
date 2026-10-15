@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function axios(page: Page) {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/');
+  await page.goto('/#/playground');
   await page.getByRole('button', { name: '加载', exact: true }).click();
   await page.getByRole('button', { name: 'Axios README', exact: false }).click();
   await page.evaluate(() => document.fonts.ready);
