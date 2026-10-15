@@ -45,7 +45,6 @@ describe('source annotation writer boundaries', () => {
     ['existing inner range', 'Before ==words==[^%%limr:r%%] after.\n\n:::limr-annotation{#n ranges="r" type="footnote"}\nNote\n:::', [{ start: 10, end: 12 }]],
     ['new intersecting ranges', 'abcdefgh', [{ start: 1, end: 5 }, { start: 3, end: 7 }]],
     ['new nested ranges', 'abcdefgh', [{ start: 1, end: 7 }, { start: 3, end: 5 }]],
-    ['partial emphasis', '**bold** plain', [{ start: 4, end: 11 }]],
     ['inside code', 'Use `const value` here', [{ start: 7, end: 11 }]],
     ['inside URL', '[text](https://example.com)', [{ start: 9, end: 14 }]],
     ['half entity', 'An &amp; entity', [{ start: 5, end: 8 }]],

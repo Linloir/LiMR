@@ -441,7 +441,7 @@ flowchart LR
     脚注的第二段。
 ```
 
-高亮支持内部富文本，转义字符、代码和公式中的 `==` 保持字面量。高亮颜色可由 CSS `--limr-inline-highlight` 或 `inlineHighlights({ color })` 覆盖。未启用源码编辑时，工具栏只提供复制按钮和单行提示“Markdown 内嵌高亮，不支持编辑”。
+高亮支持内部富文本，转义字符、代码和公式中的 `==` 保持字面量。高亮颜色可由 CSS `--limr-inline-highlight` 或 `inlineHighlights({ color })` 覆盖。未启用源码编辑时，工具栏只提供复制按钮和左对齐提示“Markdown 内嵌高亮，不支持编辑”；提示按操作按钮行的可用宽度换行。
 
 脚注显示圆润评论角标；宽屏为侧栏条目，窄屏为悬浮卡片。卡片和侧栏会显示命名脚注的原始标签，例如 `note`。紧邻高亮的脚注引用这段高亮，独立脚注的范围为角标位置上的零长度；命名脚注可重复引用。`::highlight`、`::footnote{id="note"}` 和 `::footnote-ref{id="note"}` 可表达相同模块的容器形式。移除 `footnotes` 模块可恢复 GFM 的上标和文末脚注。
 

@@ -49,9 +49,15 @@ for (const width of [1500, 560]) for (const mode of ['absent', 'hidden', 'visibl
       await expect(overlay).toContainText(index ? 'question body' : 'note body');
       await expect(overlay).not.toContainText(index ? 'note body' : 'question body');
     }
-    await markers.nth(index).click(); await expect(page.getByRole('toolbar')).toBeVisible();
-    if (mode === 'absent') await expect(page.getByRole('toolbar')).not.toHaveAttribute('data-highlight');
-    else await expect(page.getByRole('toolbar')).toHaveAttribute('data-highlight', 'paint');
+    await markers.nth(index).click();
+    if (width < 1120) {
+      await expect(page.locator('.limr-annotation-overlay')).toHaveAttribute('data-pinned', 'true');
+      await expect(page.getByRole('toolbar')).toHaveCount(0);
+    } else {
+      await expect(page.getByRole('toolbar')).toBeVisible();
+      if (mode === 'absent') await expect(page.getByRole('toolbar')).not.toHaveAttribute('data-highlight');
+      else await expect(page.getByRole('toolbar')).toHaveAttribute('data-highlight', 'paint');
+    }
     await page.keyboard.press('Escape'); await page.mouse.move(5, 5);
   }
   if (mode === 'visible') {

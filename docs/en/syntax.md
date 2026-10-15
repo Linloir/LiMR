@@ -439,7 +439,7 @@ Rendered result; expand the nested reminder:
     A second paragraph.
 ```
 
-Highlights preserve rich inline formatting. Escaped punctuation, code and math do not create highlights. Override the blue through `--limr-inline-highlight` or `inlineHighlights({ color })`. Without source editing, their toolbar contains only a copy button and a single-line, left-aligned read-only hint.
+Highlights preserve rich inline formatting. Escaped punctuation, code and math do not create highlights. Override the blue through `--limr-inline-highlight` or `inlineHighlights({ color })`. Without source editing, their toolbar contains only a copy button and a left-aligned read-only hint that wraps within the action row's available width.
 
 Footnotes use rounded comment markers, sidebar items on wide readers, and floating cards on narrow readers. Adjacent footnotes reference precisely the highlighted text; standalone markers have zero-length ranges at their insertion positions. Named definitions can be reused, and their original label (such as `note`) appears in the card and sidebar. `::highlight`, `::footnote{id="note"}`, and `::footnote-ref{id="note"}` provide component forms. Removing the `footnotes` module restores GFM superscripts and endnotes.
 

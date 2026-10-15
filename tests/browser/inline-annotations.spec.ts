@@ -25,7 +25,7 @@ test('hint and answer animate on their very first expansion, including after a c
   }
 });
 
-test('embedded blue highlights hover and open a copy-only toolbar with an unwrapped hint', async ({ page, context }) => {
+test('embedded blue highlights hover and open a copy-only toolbar whose hint fits the action width', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.evaluate(() => window.limrStream({ source: 'Before ==blue **bold** &amp; 😀== after.', streaming: false, chinese: true }));
   const mark = page.locator('article > p mark').first(), paint = page.locator('.limr-paint-background').first();
@@ -37,7 +37,9 @@ test('embedded blue highlights hover and open a copy-only toolbar with an unwrap
   await expect(toolbar.getByRole('button')).toHaveCount(1);
   const hint = toolbar.locator('.limr-toolbar-readonly-hint');
   await expect(hint).toHaveText('Markdown 内嵌高亮，不支持编辑');
-  await expect(hint).toHaveCSS('white-space', 'nowrap'); await expect(hint).toHaveCSS('text-align', 'start');
+  await expect(hint).toHaveCSS('white-space', 'normal'); await expect(hint).toHaveCSS('text-align', 'start');
+  expect((await hint.boundingBox())!.width + 16).toBeCloseTo((await toolbar.locator('.limr-toolbar-actions').boundingBox())!.width, 1);
+  expect(await hint.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
   await toolbar.getByRole('button', { name: '复制', exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('blue bold & 😀');
   const before = await paint.evaluate(element => getComputedStyle(element).backgroundColor);
@@ -78,6 +80,35 @@ test('standalone footnotes and self-closing refs keep zero-length hover ranges',
     await marker.hover(); await marker.click();
     await expect(article.locator('.limr-paint-rect[data-reference]')).toHaveCount(0);
   }
+});
+
+test('opening a footnote overlay dismisses the previous highlight toolbar and native selection', async ({ page }) => {
+  await page.setViewportSize({ width: 560, height: 950 });
+  await page.evaluate(() => window.limrStream({ source: 'Before ==highlighted **words**==[^%%limr:r%%] after.\n\n:::limr-annotation{#paint ranges="r" type="highlight" color="#E5C07B"}\n:::\n\n:::limr-annotation{#note ranges="r" type="footnote"}\nA useful footnote.\n:::', streaming: false }));
+  const text = page.locator('.limr-reader-content strong');
+  const marker = page.locator('.limr-reader-content .limr-mark');
+  const toolbar = page.getByRole('toolbar');
+  const overlay = page.locator('.limr-annotation-overlay');
+  await text.click(); await expect(toolbar).toBeVisible();
+  await marker.hover();
+  await expect(overlay).toContainText('A useful footnote.');
+  await expect(toolbar).toHaveCount(0);
+  await marker.click();
+  await expect(overlay).toHaveAttribute('data-pinned', 'true');
+  await expect(toolbar).toHaveCount(0);
+  await overlay.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(overlay).toHaveCount(0);
+  await text.evaluate(element => {
+    const range = document.createRange(); range.selectNodeContents(element);
+    getSelection()!.removeAllRanges(); getSelection()!.addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+  });
+  await expect(toolbar).toBeVisible();
+  await marker.click();
+  await expect(overlay).toHaveAttribute('data-pinned', 'true');
+  await expect(toolbar).toHaveCount(0);
+  expect(await page.evaluate(() => getSelection()?.isCollapsed)).toBe(true);
+  await expect(page.locator('#stream-selection')).toHaveText('null');
 });
 
 test('reserved ranges render independent note/question markers with one winning highlight and no fallback body', async ({ page }) => {

@@ -22,9 +22,10 @@ function serialize(annotation: Annotation, rangeIds: readonly string[], newline:
   return `${fence}limr-annotation{${encoded}}${newline}${body ? body + newline : ''}${fence}`;
 }
 
-/** Delimiters may surround complete inline nodes, or text within one inline
- * parent. Crossing half of an emphasis/link or an escape/entity changes Markdown. */
-function validateInlineRange(document: DocumentSnapshot, range: SourceRange) {
+/** Each delimiter pair must stay in one inline parent. A visual selection can
+ * cross partially selected formatting nodes; split those edges into named
+ * ranges instead of moving Markdown delimiters or including unselected text. */
+function inlineRangeParts(document: DocumentSnapshot, range: SourceRange): SourceRange[] {
   const { source } = document;
   const boundary = (children: readonly MarkdownNode[], offset: number) => children.some(child => {
     const span = rangeOf(child);
@@ -33,13 +34,17 @@ function validateInlineRange(document: DocumentSnapshot, range: SourceRange) {
     const mapped = mapText(source, child.value ?? '', span);
     return mapped.starts.includes(offset) || mapped.ends.includes(offset);
   });
-  let valid = false;
+  const descendantBoundary = (node: MarkdownNode, offset: number): boolean => !!node.children && (boundary(node.children, offset)
+    || node.children.some(child => inlineContainers.has(child.type) && rangeOf(child).start < offset && rangeOf(child).end > offset && descendantBoundary(child, offset)));
+  let valid = false, container: MarkdownNode | undefined;
   for (const block of document.blocks) {
     if (block.range.end < range.start || block.range.start > range.end) continue;
     walk(block.node, node => {
       if (!inlineContainers.has(node.type) || !node.children?.length) return;
       const span = rangeOf(node);
       if (span.start <= range.start && span.end >= range.end && boundary(node.children, range.start) && boundary(node.children, range.end)) valid = true;
+      if (['paragraph', 'heading', 'tableCell'].includes(node.type) && span.start <= range.start && span.end >= range.end
+        && descendantBoundary(node, range.start) && descendantBoundary(node, range.end)) container = node;
     });
   }
   const brokenBoundary = [range.start, range.end].some(offset => {
@@ -47,7 +52,29 @@ function validateInlineRange(document: DocumentSnapshot, range: SourceRange) {
     const slashes = /\\+$/.exec(source.slice(0, offset))?.[0].length ?? 0;
     return previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff || slashes % 2 === 1 || source[offset - 1] === '=' || source[offset] === '=';
   });
-  if (!valid || brokenBoundary || /\r?\n\s*\r?\n|(?<!\\)==/.test(source.slice(range.start, range.end))) throw new Error('Source annotations need an inline text range with complete Markdown boundaries inside one paragraph, heading or table cell.');
+  const invalid = () => { throw new Error('Source annotations need an inline text range with complete Markdown boundaries inside one paragraph, heading or table cell.'); };
+  if (!valid && !container || brokenBoundary || /\r?\n\s*\r?\n|(?<!\\)==/.test(source.slice(range.start, range.end))) invalid();
+  if (valid) return [range];
+  const split = (node: MarkdownNode): SourceRange[] => {
+    const parts: SourceRange[] = [];
+    let pending: SourceRange | undefined;
+    const flush = () => { if (pending) parts.push(pending); pending = undefined; };
+    for (const child of node.children ?? []) {
+      const span = rangeOf(child);
+      if (span.end <= range.start || span.start >= range.end) continue;
+      if (child.type === 'text' || span.start >= range.start && span.end <= range.end) {
+        const selected = { start: Math.max(span.start, range.start), end: Math.min(span.end, range.end) };
+        if (pending) pending.end = selected.end; else pending = selected;
+      } else {
+        if (!inlineContainers.has(child.type)) invalid();
+        flush(); parts.push(...split(child));
+      }
+    }
+    flush(); return parts;
+  };
+  const parts = split(container!);
+  if (!parts.length) invalid();
+  return parts;
 }
 
 function validateAppend(document: DocumentSnapshot) {
@@ -105,7 +132,7 @@ export function editSourceAnnotations(change: SourceAnnotationChange, document: 
     const inline = inlineHighlights.find(item => resolveAnnotationAnchors(item, document).some(anchor => sameRange(anchor.range, range)));
     if (existingSyntax.some(span => overlaps(range, span)) || newRanges.some(span => overlaps(range, span)) || inlineHighlights.some(item => item !== inline && item.source!.ranges.some(span => overlaps(range, span) || range.start === range.end && range.start === span.end))) throw new Error('Source annotation ranges cannot overlap or nest; reuse the existing exact range or select a separate range.');
     // The body of an existing highlight is already inside its own == delimiters.
-    if (!inline) validateInlineRange(document, range);
+    if (!inline) inlineRangeParts(document, range);
     const id = `r-${crypto.randomUUID()}`, marker = `[^%%limr:${id}%%]`;
     if (inline) {
       edits.push({ range: inline.source!.ranges[0], text: `==${source.slice(range.start, range.end)}==${marker}` });
@@ -119,10 +146,20 @@ export function editSourceAnnotations(change: SourceAnnotationChange, document: 
     }
     newRanges.push(range); bindings.set(key(range), id); return id;
   };
+  // The automatic highlight and its note receive the same segment IDs even
+  // though both commands still describe the original, continuous selection.
+  const groupedBindings = new Map<string, string[]>();
+  const createRanges = (range: SourceRange): string[] => {
+    const cached = groupedBindings.get(key(range));
+    if (cached) return cached;
+    const reusable = bindings.has(key(range)) || inlineHighlights.some(item => resolveAnnotationAnchors(item, document).some(anchor => sameRange(anchor.range, range)));
+    const ids = (reusable ? [range] : inlineRangeParts(document, range)).map(createRange);
+    groupedBindings.set(key(range), ids); return ids;
+  };
   for (const annotation of changed) {
     const anchors = resolveAnnotationAnchors(annotation, document);
     if (!anchors.length) throw new Error('A source annotation requires an anchor in the current document.');
-    const ids = [...new Set(anchors.map(anchor => createRange(anchor.range)))];
+    const ids = [...new Set(anchors.flatMap(anchor => createRanges(anchor.range)))];
     definitionIds.set(annotation.id, ids); ids.forEach(id => activeRangeIds.add(id));
   }
   const rewritten = finalAnnotations.filter(annotation => !definitionIds.has(annotation.id) && annotation.source?.module === 'source-annotations' && annotation.source.rangeIds?.some(id => splits.has(id)));

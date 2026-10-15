@@ -17,6 +17,7 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
   const editing = useStoreSelector(runtime.interaction, state => state.editing);
   const active = useStoreSelector(runtime.interaction, state => state.active);
   const hovered = useStoreSelector(runtime.interaction, state => state.hovered);
+  const toolbarOccurrence = useStoreSelector(runtime.interaction, state => state.toolbarOccurrence);
   const occurrences = useStoreSelector(runtime.decorations, state => state.occurrences);
   useSyncExternalStore(runtime.layout.subscribe, runtime.layout.get, runtime.layout.get);
   const [preview, setPreview] = useState<string | null>(null);
@@ -50,6 +51,13 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
   const [lastExpanded, setLastExpanded] = useState(false);
   const [lastPinned, setLastPinned] = useState(false);
   const open = !!wanted && !disabled;
+  useIsomorphicLayoutEffect(() => {
+    // A floating card owns this interaction. Clear both native text selection
+    // and the marker/highlight toolbar, including when a preview is pinned.
+    // Sidebar cards leave their marker toolbar available because this overlay
+    // is disabled there.
+    if (open) runtime.clearSelection();
+  }, [runtime, open, id, pinned, toolbarOccurrence]);
   useSyncExternalStore(open ? runtime.viewport.subscribe : idleSubscribe, runtime.viewport.get, runtime.viewport.get);
   useEffect(() => {
     if (open) { setRetained(wanted!); setLastExpanded(expanded); setLastPinned(pinned); }

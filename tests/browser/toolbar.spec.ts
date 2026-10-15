@@ -211,3 +211,29 @@ test('an external skin reaches the portalled toolbar and overrides its panel con
   const widths = await toolbar.evaluate(element => ({ row: element.querySelector('.limr-toolbar-actions')!.getBoundingClientRect().width, panel: element.querySelector('.limr-toolbar-panel')!.getBoundingClientRect().width }));
   expect(widths.panel).toBe(widths.row);
 });
+
+test('errors and custom content fill the action width and wrap long words without resizing the toolbar', async ({ page }) => {
+  await page.goto('/?fixture=toolbar&wide'); await select(page);
+  const toolbar = page.getByRole('toolbar');
+  const actions = toolbar.locator('.limr-toolbar-actions');
+  const originalWidth = (await actions.boundingBox())!.width;
+  expect(originalWidth).toBeGreaterThan(350);
+  await toolbar.getByRole('button', { name: 'Custom annotation integration', exact: true }).hover();
+  const panel = toolbar.locator('.limr-toolbar-panel');
+  await expect(panel).toBeVisible();
+  expect((await panel.boundingBox())!.width).toBeCloseTo(originalWidth, 1);
+  const details = panel.locator('[data-toolbar-details]');
+  const detailsWidth = await details.evaluate(element => ({ width: element.getBoundingClientRect().width, parent: element.parentElement!.getBoundingClientRect().width, overflow: element.scrollWidth - element.clientWidth }));
+  expect(detailsWidth.width).toBeCloseTo(detailsWidth.parent, 1);
+  expect(detailsWidth.overflow).toBeLessThanOrEqual(1);
+  await toolbar.getByRole('button', { name: 'Fail action', exact: true }).click();
+  const error = toolbar.getByRole('alert');
+  await expect(error).toContainText('The annotation integration could not complete');
+  expect((await actions.boundingBox())!.width).toBeCloseTo(originalWidth, 1);
+  expect((await error.boundingBox())!.width).toBeCloseTo(originalWidth, 1);
+  expect(await error.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(async () => (await toolbar.boundingBox())!.width).toBeLessThanOrEqual(370);
+  expect((await error.boundingBox())!.width).toBeCloseTo((await actions.boundingBox())!.width, 1);
+  expect(await error.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+});

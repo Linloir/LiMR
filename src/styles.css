@@ -461,8 +461,10 @@
   .limr-tool-icon :where(*) { max-inline-size: 100% !important; max-block-size: 100% !important; min-inline-size: 0 !important; min-block-size: 0 !important; }
   .limr-tool-icon :where(svg,img) { display: block; width: 100% !important; height: 100% !important; object-fit: contain; flex: none; }
   .limr-tool-icon :where(div,span,i,b,strong,em) { display: inline-flex; align-items: center; justify-content: center; font-size: inherit !important; line-height: 1 !important; }
-  /* Only the actions determine toolbar width. Panel contents cannot enlarge it. */
-  .limr-toolbar-panel { display: flex; contain: inline-size; min-width: 0; min-height: 0; align-self: stretch; max-height: var(--limr-toolbar-panel-height, 260px); overflow: hidden; text-align: start; margin-top: 4px; border-top: 1px solid var(--limr-toolbar-border, var(--limr-border, #e5e2dc)); animation: limr-tool-float 300ms cubic-bezier(.16,1,.3,1) both, limr-tool-fade 220ms ease 35ms both; }
+  /* Only the actions determine toolbar width. Panels, hints and errors fill
+     that width without contributing their own intrinsic text width. */
+  .limr-toolbar-panel,.limr-toolbar-delete-warning,.limr-toolbar-readonly-hint,.limr-action-error { contain: inline-size; min-width: 0; align-self: stretch; overflow-wrap: anywhere; }
+  .limr-toolbar-panel { display: flex; min-height: 0; max-height: var(--limr-toolbar-panel-height, 260px); overflow: hidden; text-align: start; margin-top: 4px; border-top: 1px solid var(--limr-toolbar-border, var(--limr-border, #e5e2dc)); animation: limr-tool-float 300ms cubic-bezier(.16,1,.3,1) both, limr-tool-fade 220ms ease 35ms both; }
   .limr-toolbar-panel .limr-overlay-content { padding: 10px 9px 4px; scroll-padding-block: 8px; }
   .limr-toolbar-panel .limr-overlay-scroll { width: 100%; min-width: 0; }
   .limr-toolbar-panel .limr-overlay-scroll-inner { width: 100%; min-width: 0; overflow-wrap: anywhere; }
@@ -476,7 +478,7 @@
   [data-placement^='top'] .limr-toolbar-delete-warning { order: -1; }
   .limr-toolbar-delete-hint { margin: 4px 8px 5px; font-size: 11px; color: var(--limr-error, #b45858); }
   .limr-selection-toolbar[data-readonly] { width: max-content; }
-  .limr-toolbar-readonly-hint { margin: 4px 8px 5px; font-size: 11px; line-height: 1.6; color: var(--limr-secondary, #7b756e); white-space: nowrap; text-align: start; }
+  .limr-toolbar-readonly-hint { margin: 4px 8px 5px; font-size: 11px; line-height: 1.6; color: var(--limr-secondary, #7b756e); white-space: normal; text-align: start; }
   .limr-highlight-settings fieldset { border: 0; padding: 0; margin: 0 0 12px; min-width: 0; }
   .limr-highlight-settings legend { margin-bottom: 7px; padding: 0; color: var(--limr-secondary, #7b756e); font-size: 11px; }
   .limr-highlight-colors { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 9px; }
@@ -490,7 +492,7 @@
   .limr-highlight-style-label { text-align: center; }
   .limr-highlight-styles button svg { width: 21px; height: 21px; }
   .limr-highlight-styles [aria-pressed='true'] { color: var(--limr-toolbar-accent, var(--limr-accent, #8a7865)); border-color: currentColor; }
-  .limr-action-error { display: block; max-width: 300px; padding: .5rem; color: #b45858; }
+  .limr-action-error { display: block; padding: .5rem; color: #b45858; }
   @keyframes limr-tool-float { from { transform: translateY(var(--limr-tool-offset)); } to { transform: translateY(0); } }
   @keyframes limr-tool-fade { from { opacity: 0; } to { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { [data-limr-appearance] *, [data-limr-appearance] *::before, [data-limr-appearance] *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; transition-duration: .01ms !important; transition-delay: 0ms !important; scroll-behavior: auto !important; } }

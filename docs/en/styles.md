@@ -84,7 +84,7 @@ Mermaid diagrams support drag panning, native touch/trackpad scrolling, arrow ke
 
 Export CSS, include it in files, and mark sideEffects as ["**/*.css"]. A theme does not need React or parser runtime dependencies. Scope rules to an appearance name and check light, dark, auto, portals, and two differently themed readers on the same page.
 
-Expanded toolbar panels use the full available toolbar width. The action row and available viewport determine its width; expanded content does not contribute intrinsic width or enlarge the toolbar. Highlight options use intrinsic text widths and wrap as whole items, aligned to the start. Multiline underlines need an inner inline span rather than a direct flex child.
+Expanded toolbar panels, hints and error messages fill the action row's available width, retaining their own padding and margins. The action row and available viewport determine the toolbar width; these contents do not contribute intrinsic width or enlarge it. Long text and unbroken strings wrap within that space. Highlight options use intrinsic text widths and wrap as whole items, aligned to the start. Multiline underlines need an inner inline span rather than a direct flex child.
 
 ## Paragraph layout and streaming
 
