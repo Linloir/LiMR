@@ -1,7 +1,7 @@
 {
-  "version": "1.1.0",
-  "sourceCommit": "fa417c237af987308a59c0254731ac9460966887",
-  "builtAt": "2026-10-15T02:44:20.129417+00:00",
-  "packageSHA256": "3cde2e51c2402d9ef70bf934a97e6b222100f30e3592139b3e4d75207c2826fb",
+  "version": "1.1.1",
+  "sourceCommit": "57182e3a377056f54737e298a23453ff9bbe85cc",
+  "builtAt": "2026-10-15T12:33:24.231573+00:00",
+  "packageSHA256": "2bcbff0c2c6bc81edafbe24b96d87642eba2b399540a3dd7cc66c2fb07543e9a",
   "lockfileSHA256": "c3264f2e09b17af4097cd38e194844fc8e8143a84e939f0978ff415ad0562ee4"
 }
