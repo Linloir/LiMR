@@ -5,24 +5,25 @@ import { useLocale } from '../react/context';
 import type { AnnotationContentProps, AnnotationOverlayCardProps, AnnotationSidebarPreviewProps, AnnotationType, RendererExtension } from '../react/types';
 import { AnnotationCard } from '../components/AnnotationCard';
 import { ToolIcon } from '../components/ToolIcon';
-import { AnnotationMarkdown } from './annotations';
 import { point, sliceChildren, textTokens } from './inline-source';
+import { SourceAnnotationBody } from './source-annotation-actions';
 
-export interface FootnoteData { body: string }
+export interface FootnoteData { body: string; title?: string }
 const idFor = (identifier: unknown) => `footnote:${String(identifier).trim().replace(/\s+/g, ' ').toLowerCase()}`;
 function Icon() { return <ToolIcon name="comment" />; }
-function Content({ data }: AnnotationContentProps<FootnoteData>) { return <AnnotationMarkdown source={data?.body ?? ''} />; }
-function Card(props: AnnotationOverlayCardProps<FootnoteData>) { return <AnnotationCard {...props} title={useLocale().footnotes} />; }
+function Content(props: AnnotationContentProps<FootnoteData>) { return <>{props.presentation === 'sidebar' && props.data?.title && <small className="limr-footnote-title">{props.data.title}</small>}<SourceAnnotationBody {...props} /></>; }
+function Card(props: AnnotationOverlayCardProps<FootnoteData>) { const label = useLocale().footnotes; return <AnnotationCard {...props} title={props.annotation.data?.title ? `${label} · ${props.annotation.data.title}` : label} />; }
 function Preview({ data }: AnnotationSidebarPreviewProps<FootnoteData>) {
   const summary = useMemo(() => textContent(fromMarkdown(data?.body ?? '') as unknown as MarkdownNode).replace(/\s+/g, ' ').trim(), [data?.body]);
-  return summary ? <span title={summary}>{summary}</span> : null;
+  const text = [data?.title, summary].filter(Boolean).join(' · ');
+  return text ? <span title={text}>{text}</span> : null;
 }
 
 /** GFM definitions keep their AST identity for incremental parsing, but their
  * references use the same marker/sidebar/overlay contract as other modules. */
 export function footnotes(options: Partial<AnnotationType<FootnoteData>> = {}): RendererExtension {
   const type = options.type ?? 'footnote';
-  const definition = (id: string, body: string): Annotation<FootnoteData> => ({ id, type, data: { body } });
+  const definition = (id: string, body: string, title?: string): Annotation<FootnoteData> => ({ id, type, data: { body, ...(title ? { title } : {}) } });
   return {
     name: 'footnotes', tags: ['footnote', 'footnote-ref'], scope: 'local',
     annotationTypes: [{ type, label: locale => locale.footnotes, icon: Icon, color: '#6B9BD2', highlight: 'hover', Content, ...options,
@@ -34,7 +35,7 @@ export function footnotes(options: Partial<AnnotationType<FootnoteData>> = {}): 
           // Remove only the footnote container indentation; retain nested lists,
           // paragraphs, code, rich inline content and original line endings.
           const body = raw.replace(/^\[\^[^\]]+\]:[ \t]*/, '').replace(/(\r\n|\r|\n)(?: {4}|\t)/g, '$1');
-          node.annotation = definition(idFor(node.identifier), body); return;
+          node.annotation = definition(idFor(node.identifier), body, String(node.label ?? node.identifier)); return;
         }
         if (node.type === 'footnoteReference') {
           node.type = 'annotationReference'; node.inline = true; node.annotationIds = [idFor(node.identifier)]; return;
@@ -44,7 +45,7 @@ export function footnotes(options: Partial<AnnotationType<FootnoteData>> = {}): 
           const id = idFor(node.attributes?.id ?? '');
           if (node.name === 'footnote') {
             const first = node.children?.[0], last = node.children?.at(-1);
-            node.type = 'annotationDefinition'; node.annotation = definition(id, first && last ? source.slice(rangeOf(first).start, rangeOf(last).end) : String(node.attributes?.body ?? ''));
+            node.type = 'annotationDefinition'; node.annotation = definition(id, first && last ? source.slice(rangeOf(first).start, rangeOf(last).end) : String(node.attributes?.body ?? ''), String(node.attributes?.title ?? node.attributes?.id ?? ''));
             return;
           }
           node.type = 'annotationReference'; node.annotationIds = [id]; return;

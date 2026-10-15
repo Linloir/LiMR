@@ -58,14 +58,17 @@ These modules ship in `@linloir/limr`; no separate npm installations are require
 | `translations()` | `translations` | `<translations>` original, translated, and parallel views |
 | `mermaid()` | `mermaid` | Mermaid fences / `::mermaid`, image/source, zoom and copy |
 | `callout()` | `callout` | Obsidian callout types, aliases and nested quotes / `::callout` |
-| `inlineHighlights()` | `inline-highlights` | `==text==` and `::highlight`, blue read-only highlights |
+| `inlineHighlights()` | `inline-highlights` | `==text==` and `::highlight`, blue highlights; read-only until source editing is enabled |
 | `footnotes()` | `footnotes` | `[^id]` / `^[body]`, comment markers and cards; `::footnote` / `::footnote-ref` |
+| `sourceAnnotations()` | `source-annotations` | `[^%%limr:id%%]` named ranges, `limr-annotation` definitions and generic serialization; modules register types and cards |
 
 Import these functions from `@linloir/limr` or `@linloir/limr/extensions`. `standard()` is a convenience function returning an array, not an additional module.
 
 `Reader`, standalone `Markdown`, and `DocumentProvider` automatically use `standard()` when `extensions` is omitted. Your first `<Reader source={source} />` therefore supports these capabilities. Components inside a shared Provider inherit its configuration. Core-only `createDocument()` starts with CommonMark; extensions must be explicit, and it does not display React UI.
 
-Highlight, copy, and annotation deletion are built-in toolbar actions. Default modules recognize `==text==` and Markdown footnotes. Source-authored highlights offer copying but no toolbar editing. The Playground's editable margin notes, reading notes, questions, footnote annotations, and simulated assistant come from example plugins and **are not automatically installed in every Reader**. The `question()` exercise module is also separate from question annotations.
+Highlight, copy and annotation deletion are built-in toolbar actions. Defaults recognize `==text==`, Markdown footnotes and named source annotations. Supplying `onSourceChange` enables default task toggles and source highlight edits; the default highlight action also stores new highlights in source. `sourceAnnotations()` provides generic serialization without owning a content type. Ordinary addAnnotation stays external; modules choose source with target: source. Playground inline notes, margin notes, reading notes and the simulated assistant are example plugins and **are not automatically installed in every Reader**. The reading notes example registers type="question" cards, separately from `question()` exercises in the document body.
+
+On narrow screens, Playground’s ordinary reading notes stay in small cards near their anchors and edit in place; the simulated assistant can still expand. These are example-module overlay policies. The library’s `overlay.expand` continues to support anchored or centered expansion.
 
 ## Choosing a configuration
 
@@ -79,6 +82,6 @@ You do not need to call `standard()` when the defaults suffice. For customizatio
 
 To remove one module, filter the array: `standard().filter(module => module.name !== 'video')`. Use `extensions={[]}` when extension syntax is unnecessary.
 
-Do not append `plugins={[video()]}` while the default video module is present: duplicate module names, tags, or directives throw. Without the corresponding module, unknown tags render as text, unknown directives may retain only their inner Markdown, and unknown annotation data remains with generic fallback UI. See [architecture and behavior](architecture.md) for the precise boundaries.
+Do not append `plugins={[video()]}` while the default video module is present: duplicate module names, tags, or directives throw. Without the corresponding module, unknown tags render as text, unknown directives may retain only their inner Markdown, and unknown annotation data is retained without markers, cards or interactions until its type is registered again. See [architecture and behavior](architecture.md) for the precise boundaries.
 
 Next, try the [syntax examples](syntax.md), create modules with [extension development](extensions.md), or distribute them using [plugin packages](plugin-packages.md).

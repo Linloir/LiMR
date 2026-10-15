@@ -1,6 +1,7 @@
 import { mapText, rangeOf, type MarkdownNode } from '../core';
 import type { NodeRenderer } from './types';
 import type { ReaderRuntime, SourceBinding } from './runtime';
+import { literalValue, mapLiteral } from './literal';
 
 const atomic = new Set(['inlineCode', 'code', 'math', 'inlineMath', 'image', 'imageReference', 'html']);
 const hidden = new Set(['definition', 'footnoteDefinition', 'annotationDefinition', 'footnoteReference']);
@@ -12,7 +13,13 @@ export function compactTextNodes(node: MarkdownNode, components: Readonly<Record
   const texts: MarkdownNode[] = [];
   let supported = true;
   const visit = (node: MarkdownNode) => {
-    if (node.selection === 'atomic' || atomic.has(node.type) || hidden.has(node.type)) return;
+    if (node.selection === 'atomic' || hidden.has(node.type)) return;
+    if (node.type === 'inlineCode') {
+      if (components[node.type] || overrides?.has(node.type)) { supported = false; return; }
+      if (literalValue(node)) texts.push(node);
+      return;
+    }
+    if (atomic.has(node.type)) return;
     if (!ordinary.has(node.type) || components[node.type] || overrides?.has(node.type)) { supported = false; return; }
     if (node.type === 'text') { if (node.value) texts.push(node); return; }
     node.children?.forEach(visit);
@@ -22,12 +29,16 @@ export function compactTextNodes(node: MarkdownNode, components: Readonly<Record
 }
 
 function bindingFor(node: MarkdownNode, source: string): SourceBinding {
-  const range = rangeOf(node), value = node.value ?? '';
+  const range = rangeOf(node), literal = node.type === 'inlineCode', value = literal ? literalValue(node) : node.value ?? '';
   // Retain only this node's raw slice, never the history of streaming prefixes.
   const raw = source.slice(range.start, range.end);
   const direct = raw === value;
   let mapping: ReturnType<typeof mapText> | undefined;
-  const mapped = () => mapping ??= mapText(raw, value, { start: 0, end: raw.length });
+  const payload = node.valueRange as { start: number; end: number } | undefined;
+  const mapped = () => mapping ??= literal ? mapLiteral(raw, {
+    ...node, position: { start: { offset: 0, line: 0, column: 0 }, end: { offset: raw.length, line: 0, column: 0 } },
+    ...(payload ? { valueRange: { start: payload.start - range.start, end: payload.end - range.start } } : {}),
+  }) : mapText(raw, value, { start: 0, end: raw.length });
   return {
     range, atomic: false,
     get exact() { return direct || mapped().exact; },
@@ -43,6 +54,7 @@ export function bindCompactText(element: HTMLElement, nodes: readonly MarkdownNo
   const bound: Node[] = [];
   const clear = () => bound.forEach(node => runtime.bindings.delete(node));
   const bindings = nodes.map(node => bindingFor(node, runtime.document.getSnapshot().source));
+  const values = nodes.map(node => node.type === 'inlineCode' ? literalValue(node) : node.value ?? '');
   const walker = element.ownerDocument.createTreeWalker(element, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       if (node.nodeType === Node.ELEMENT_NODE) {
@@ -58,7 +70,7 @@ export function bindCompactText(element: HTMLElement, nodes: readonly MarkdownNo
     if (!value) continue;
     const parts: { start: number; end: number; offset: number; binding: SourceBinding }[] = [];
     for (let at = 0; at < value.length;) {
-      const expected = nodes[index]?.value ?? '';
+      const expected = values[index] ?? '';
       const size = Math.min(value.length - at, expected.length - inValue);
       if (size <= 0 || value.slice(at, at + size) !== expected.slice(inValue, inValue + size)) { clear(); return () => {}; }
       parts.push({ start: at, end: at + size, offset: inValue, binding: bindings[index] });
@@ -66,7 +78,7 @@ export function bindCompactText(element: HTMLElement, nodes: readonly MarkdownNo
       if (inValue === expected.length) { index++; inValue = 0; }
     }
     const first = parts[0], last = parts[parts.length - 1];
-    runtime.bindings.set(text, parts.length === 1 && first.offset === 0 && value === nodes[index - 1]?.value ? first.binding : {
+    runtime.bindings.set(text, parts.length === 1 && first.offset === 0 && value === values[index - 1] ? first.binding : {
       range: { start: first.binding.range.start, end: last.binding.range.end }, atomic: false,
       get exact() { return parts.every(part => part.binding.exact); },
       resolve(offset, edge) {

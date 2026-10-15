@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { fromMarkdown } from 'mdast-util-from-markdown';
-import { safeUrl, textContent, walk } from '../core/tree';
+import { rangeOf, safeUrl, textContent, walk } from '../core/tree';
 import type { MarkdownNode } from '../core/types';
 import type { AnnotationContentProps, AnnotationOverlayCardProps, AnnotationSidebarPreviewProps, AnnotationType, NodeRenderer, RendererExtension } from '../react/types';
 import { Markdown, type MarkdownProps } from '../react/Markdown';
@@ -64,6 +64,8 @@ export function citation(options: Partial<AnnotationType<CitationData>> = {}): R
           try { const parsed = JSON.parse(value); ids = Array.isArray(parsed) ? parsed.map(String) : [String(parsed)]; }
           catch { ids = value.split(',').map(id => id.trim()).filter(Boolean); }
           node.type = 'annotationReference'; node.annotationIds = ids;
+          const first = node.children?.[0], last = node.children?.at(-1);
+          if (first && last) node.referenceRange = { start: rangeOf(first).start, end: rangeOf(last).end };
         }
       });
     },

@@ -33,6 +33,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 | annotationTypes | 按 type 追加/覆盖标注呈现 |
 | annotations | 不传则内部管理；传入则受控 |
 | onAnnotationsChange | 下一份外部标注数组，包含 highlight；受控编辑必须回传 |
+| onSourceChange | 可选 `(source, { document, edits }) => boolean \| void`；显式启用原文编辑，返回 false 拒绝事务 |
 | theme | light，可选 dark / auto |
 | appearance | classic，传播到 portal 的样式作用域 |
 | locale | english，可传 chinese 或 Partial&lt;LiMRLocale&gt; |
@@ -63,13 +64,14 @@ Reader、Markdown 与 DocumentProvider 接受：
 | AnnotationOverlay | disabled=false、portalRoot、previewWidth=340、maxHeight='80dvh' |
 | SelectionToolbar | actions、portalRoot、maxPanelHeight=260、render、className/style |
 | AnnotationCard | AnnotationOverlayCardProps 加必填 title 和可选 bodyLabel |
+| AnnotationEditor | value/onChange、onSubmit/onCancel、label 必填；onBlur、placeholder、submitLabel、cancelLabel 可选；submitDisabled=false、autoFocus=true |
 | AnnotationContent | annotationId、presentation、expanded=true、enabled=true |
 | AnnotationGroup | occurrence、presentation、expanded=true、enabled=true |
 | AnnotationMarkdown | MarkdownProps，source 必填；默认 interactive=false |
 | InlineMarker | label 必填，color、children 和 button 属性/ref |
 | ToolIcon | name 与 SVG 属性；如 note、copy、highlight、comment、zoom-in、zoom-out、source、image |
 
-除独立 Markdown 和 Reader 外，共享组件/hooks 应位于 Provider 内。AnnotationCard 是浮层内容模板，不负责自建 portal。sidebar.renderCard 接收 `{ occurrence, active, activate }`；toolbar.render 接收 `{ context, actions, run }`。
+共享文档组件/hooks 应位于 Provider 内，独立 Markdown 和 Reader 会建立自己的文档。AnnotationEditor 是受控 UI，可独立使用；AnnotationCard 是浮层内容模板，不负责自建 portal。sidebar.renderCard 接收 `{ occurrence, active, activate }`；toolbar.render 接收 `{ context, actions, run }`。
 
 `SidebarPositioner` 接收 `{ id, anchorTop, height }[]` 与 `{ activeId, gap, height?, prioritizeActive? }`，返回 ID 到 top 的映射。anchorTop 是关联文本首行的位置；prioritizeActive 区分悬浮/激活条目与随阅读位置选择的条目。默认 alignSidebar 在静止时收拢文末卡片，交互时优先保留当前条目的对齐。
 
@@ -106,10 +108,16 @@ createDocument(source?, { id?, extensions?, streaming? }) 返回 DocumentEngine�
 
 核心默认 extensions=[]。纯核心使用带 micromark/mdast 的 SyntaxExtension；从 React 扩展入口导入 standard 不再是严格的无 React 依赖路径。
 
-DocumentSnapshot 包含 id、revision、source、streaming、blocks、headings、definitions、footnotes、footnoteOrder、annotations、occurrences、diagnostics、metrics。这里 annotations 是**源内解析得到的数据**；外部受控数据使用 useAnnotations，不要混淆两个集合。
+DocumentSnapshot 包含 id、revision、source、streaming、blocks、headings、definitions、footnotes、footnoteOrder、annotations、annotationRanges、occurrences、diagnostics、metrics。这里 annotations 是**源内解析得到的数据**；外部受控数据使用 useAnnotations，不要混淆两个集合。annotationRanges 将命名范围 ID 映射到 SourceAnnotationRange 数组（range、syntaxRange、markerRange 均为原文 UTF-16 坐标）。
 
 其他核心导出包括 walk、textContent、rangeOf、intersects、safeUrl、mapText、selectionFromRange、replaceExtension、resolveAnnotationAnchors、annotationReferenceRange、sameRange、defaultHighlight、LruCache、ResourceCache。ResourceCache.acquire 返回 promise/release；invalidate 可按 key 或全部失效。
 
-`inlineHighlights({ color?, component? })` 与 `footnotes(annotationTypeOptions?)` 都在 `standard()` 中。`HighlightData.readOnly` 限制默认高亮工具栏为复制与提示；`AnnotationOccurrence.referenceRange` 可将角标的源位置与它引用的文字范围分开。
+`inlineHighlights({ color?, component? })`、`footnotes(annotationTypeOptions?)`、`sourceAnnotations()` 都在 `standard()` 中。`HighlightData.readOnly` 默认限制源内高亮工具栏为复制与提示；启用原文编辑且模块支持写回时可编辑。`AnnotationOccurrence.referenceRange` 将角标源位置与引用范围分开；独立引用的 referenceRange 为角标起点的零长度范围。
+
+`useLiMR()` 与动作 context 提供 `canEditSource()`、`canEditAnnotation(id)`、`editSource(edits, { revision? })`。`SourceEdit` 为 `{ range: { start, end }, text }`，同一批次全部相对修改前原文；越界、重叠和过期 revision 会抛错。`editSource` 原子接受后立即更新文档，宿主回传新的 source；返回 false 表示宿主拒绝。`applySourceEdits(source, edits)` 是对应的纯核心函数。流式生成期间拒绝编辑。
+
+`addAnnotation(annotation, { target: 'source' })` 明确选择原文写回；target 默认为 annotations。`standard()` 的 sourceAnnotations 已安装公开的 `editSourceAnnotations` 通用序列化器。提供 onSourceChange 后，默认任务框可修改，默认 highlightSelection 动作新建高亮时选择 source；普通 addAnnotation 不改变默认存储目标。类型、卡片和专用动作仍由模块提供。`TaskCheckbox` 是默认禁用的菱形 UI 组件，可接收 checked、disabled、onChange、label、ideographic；默认 Markdown 渲染器负责根据编辑能力启用它。
+
+`RendererExtension.sourceEditing.annotations(change, document)` 返回 `SourceEdit[]` 或 undefined；change 包含 added、updated（previous/annotation）、removed。后注册的处理器优先，undefined 委托前一个。源内 `Annotation.source` 包含 module、全部重复定义的 ranges，以及可选 rangeIds；这些是解析结果，不应跨 revision 持久化。详见[原文编辑集成](integration.md#原文编辑与本地文件)和[模块写回](extensions.md#模块写回原文)。
 
 核心还导出 `knuthPlass(items, lengths, options?)`、`prepareKnuthPlass(items)`、`texBadness` 及对应类型。准备后的函数可按不同宽度求解同一段落，复用前缀和。

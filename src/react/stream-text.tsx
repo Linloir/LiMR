@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import { useIsomorphicLayoutEffect, useRuntime } from './context';
 import { animateStream, streamEffect } from './stream-effect';
 
 /** React owns the host and initial SSR text. This leaf owns append-only text
  * mutations: appendData preserves native Range endpoints; textContent does not.
  * Animation wrappers are compacted only after the selection leaves the leaf. */
-export function StreamText({ value, animateInitial = true }: { value: string; animateInitial?: boolean }) {
+export const StreamText = memo(function StreamText({ value, animateInitial = true }: { value: string; animateInitial?: boolean }) {
   const runtime = useRuntime();
   const initial = useRef(value), previous = useRef(value);
   const element = useRef<HTMLSpanElement>(null);
@@ -32,7 +32,13 @@ export function StreamText({ value, animateInitial = true }: { value: string; an
       const animation = animateStream(element, effect);
       if (!animation) return;
       animations.current.add(animation);
-      void animation.finished.then(() => { animations.current.delete(animation); if (element.hasAttribute('data-limr-increment')) element.dataset.limrIncrementDone = ''; compact(); }, () => animations.current.delete(animation));
+      void animation.finished.then(() => {
+        animations.current.delete(animation);
+        // An initial entrance owns no temporary wrapper. Only appended runs
+        // need compaction; scanning/normalizing every completed cell entrance
+        // adds avoidable work to growing tables without changing their DOM.
+        if (element.hasAttribute('data-limr-increment')) { element.dataset.limrIncrementDone = ''; compact(); }
+      }, () => animations.current.delete(animation));
     };
     if (!mounted.current) { mounted.current = true; if (animateInitial && value && runtime.document.getSnapshot().streaming) animate(host); }
     if (value === previous.current) return;
@@ -79,4 +85,4 @@ export function StreamText({ value, animateInitial = true }: { value: string; an
     return () => { document?.removeEventListener('selectionchange', compact); for (const animation of animations.current) animation.cancel(); animations.current.clear(); };
   }, []);
   return <span ref={element} data-limr-stream-text="">{initial.current}</span>;
-}
+});

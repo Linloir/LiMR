@@ -115,3 +115,69 @@ export function ReadingRoom({ source }: { source: string }) {
 ## 从答案回到假设
 
 技术阅读最容易漏掉的部分，往往是“这个方法在什么条件下有用”。返回开头的积分例子：等距采样是否必要？函数在区间内是否连续？计算每个采样值的代价是否相同？如果把区间反过来，结果的符号又会如何变化？这些问题能够把一个已经算完的例子，变成下一次探索的起点。
+
+## 把推理画出来
+
+```mermaid
+flowchart LR
+  A[选择区间与采样数] --> B[计算离散近似]
+  B --> C[与解析结果比较]
+  C --> D{误差是否满足要求}
+  D -->|否| E[增加采样并再次计算]
+  E --> B
+  D -->|是| F[记录条件与结论]
+```
+
+图表可以缩放、平移，或切换到源码；选中它时，复制的是完整图表语法。
+
+> [!info]+ 先看误差，再看小数位
+> 表格、公式、代码和图表都在描述同一条推理链。把它们联系起来，比单独记住一个结果更有用。
+
+::definition{title="收敛"}
+当离散规模逐渐增加时，近似结果趋向一个确定的极限。这里可以同时容纳 **中文解释**、行内代码 `steps` 与数学符号 $n$。
+::
+
+::question{title="哪两项有助于验证数值程序？"}
+::question-content
+请选择所有合适的做法。
+::
+::question-sel-grp{multi="true" answer="[0,2]"}
+::question-sel
+与可解析求解的简单输入比较。
+::
+::question-sel
+只检查输出是否有足够多位小数。
+::
+::question-sel
+改变采样数量，观察误差的变化。
+::
+::
+::question-hint
+需要同时确认数值和它随输入变化的规律。
+::
+::question-answer
+第一项与第三项。单个输出看起来精确，不能替代对算法行为的检查。
+::
+::
+
+## 两种阅读方式
+
+<translations default="both">
+
+<origin>
+A useful numerical result explains both its value and the conditions under which it can be trusted.
+
+</origin>
+
+<translation>
+有用的数值结果不仅给出数值，还说明我们在什么条件下可以相信它。
+
+</translation>
+
+</translations>
+
+<extras>
+
+<extra title="回到定义" url="https://en.wikipedia.org/wiki/Trapezoidal_rule" desc="在阅读资料之间保留一条可以回去的路。" />
+
+</extras>

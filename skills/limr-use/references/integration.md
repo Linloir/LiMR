@@ -20,7 +20,7 @@ Markdown is body-only, with no automatic toolbar. A composed DocumentProvider co
 
 Reader supports annotations/onAnnotationsChange. Supplying annotations makes it controlled; updates require a callback and a new array. Store data per article and supply a stable documentId. Changing Reader.key resets its internal state, not host state.
 
-Annotation is { id, type, data?, range?, anchors? }. Anchors are { range, documentId?, revision?, quote?, id? }. All offsets use the unmodified source's UTF-16 indices with an exclusive end. A quote relocates only when it matches uniquely; ambiguous or mismatched anchors can be omitted.
+Annotation is { id, type, data?, range?, anchors?, source? }. source contains parsed module/ranges/rangeIds metadata; do not persist its offsets across revisions. Anchors are { range, documentId?, revision?, quote?, id? }. All offsets use the unmodified source's UTF-16 indices with an exclusive end. A quote relocates only when it matches uniquely; ambiguous or mismatched anchors can be omitted.
 
 Selection exposes text, quality, settled, and raw/syntax/blocks (each with ranges and sourceText). Preserve all selected ranges and quote each original slice. Syntax absorbs adjacent standard delimiters, not unselected words or custom outer tags. Code can be selected partially; math/images/Mermaid and selection:atomic widgets select as a whole. Toolbar/native copying serializes each atom's complete original source, including $ delimiters, fences, or custom tags; surrounding ordinary text remains rendered text. A single atomic block anchors its toolbar below the block. Block-local copy buttons may deliberately copy only code, a URL, or another module-specific value.
 
@@ -42,8 +42,12 @@ Read the actual installed package exports/peer dependencies. Import its factory,
 
 rendererOverrides replaces views without changing syntax: each rule has type, component, and optional when(node,{pending,incomplete,ancestors}). Last matching rules win; host rules override extension rules. This restricts where a renderer applies, not what third-party JavaScript can execute.
 
-Missing plugin annotations retain data but show generic markers/unavailable cards. The Playground's plugin switches disable action entries while leaving renderers installed. If an application wants to hide unsupported types, merge untouched hidden records back into persistence on edits.
+Missing plugin annotations retain data without markers, cards or type-specific interactions; reinstalling the type restores them. Playground switches install/uninstall complete modules, including renderers. Persist the complete annotations array: selection actions and removeAnnotationsAt preserve unsupported records, while explicit updateAnnotation/removeAnnotation can still manage them by ID.
 
 Use docs shipped under node_modules/@linloir/limr/docs when available. Public source: https://github.com/Linloir/LiMR . Do not rely on internal src/dist imports.
 
 The Playground always refreshes to its default document and standard typography. Edits are stored only through explicit Save, then opened manually from the saved-draft menu; locale preference persists separately. Reader itself supplies no persistence.
+
+## Source editing (1.1.0+)
+
+Provide `onSourceChange(next, { document, edits })` to opt into original Markdown edits; return false to decline, otherwise echo source and queue file saves in the host. Do not return the write Promise. `useLiMR()`/action contexts expose canEditSource(), canEditAnnotation(id), and editSource(edits,{revision?}). SourceEdit is {range,text}; validate against the same UTF-16 revision, with no overlaps. Streaming disables editing. Default sourceAnnotations parses named ranges/definitions and supplies the generic editSourceAnnotations serializer. onSourceChange alone enables default task toggles and source highlight editing; the default highlightSelection action chooses source when enabled. Type modules own cards and dedicated actions: Playground inlineNotes supplies its type/action, and readingNotes supplies question cards. addAnnotation itself defaults to external storage; target: source explicitly chooses source serialization, and existing annotations retain their origin on update. Unsupported cross-block/code/intersecting or partial-syntax ranges reject without changing source. Existing external annotations retain onAnnotationsChange persistence.

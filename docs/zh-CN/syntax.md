@@ -26,6 +26,7 @@
 | `callout()` | `callout` | 有类型、标题、折叠状态的注释块 | `> [!type]`、`::callout` |
 | `inlineHighlights()` | `inline-highlights` | 源码内嵌高亮 | `==文字==`、`::highlight` |
 | `footnotes()` | `footnotes` | 评论角标和脚注卡片 | `[^id]`、`^[正文]`、`::footnote`、`::footnote-ref` |
+| `sourceAnnotations()` | `source-annotations` | 命名范围与保存在 Markdown 中的标注 | `[^%%limr:id%%]`、`::limr-annotation` |
 
 这些是 Markdown 中允许的静态标签，不是任意 MDX/HTML 执行环境。使用字符串属性，如 `multi="true"`、`answer="[0,2]"`；不要使用 `answer={[0,2]}`、事件函数或展开属性。未注册 HTML 按文本显示；表达式不执行并可能产生诊断。嵌套块的标签和正文之间保留空行。
 
@@ -229,7 +230,7 @@ $$
 
 `citation` 的 ID 读取 `cite-id`，其次 `id`；说明读取 `desc`，其次 `description`。`ref` 读取 `cite-from-ids`、`ids`、`id`，支持 JSON 数组或逗号分隔字符串。定义本身不占正文位置，同一个定义可以被多个角标引用。
 
-Citation 默认不提供展开大卡片，点击固定预览；摘要按 `summary → description → 安全 URL → title` 回退，去掉 Markdown 标记。正文显示 `description`，没有时显示 `summary`。悬浮或激活时临时高亮引用所在的最近文本块（段落、标题、列表项或表格单元格），不写入已保存高亮；外部范围标注使用绑定范围。配置与存储见[标注与选区](annotations.md)。
+Citation 默认不提供展开大卡片，点击固定预览；摘要按 `summary → description → 安全 URL → title` 回退，去掉 Markdown 标记。正文显示 `description`，没有时显示 `summary`。`<ref id="a">文本</ref>` 在悬浮或激活时临时高亮其明确包裹的文本，不写入已保存高亮。自闭合的 `<ref id="a" />` 是角标位置上的零长度引用，不再高亮整个段落；外部范围标注使用绑定范围。配置与存储见[标注与选区](annotations.md)。
 
 ## 图片、图组与图注
 
@@ -353,7 +354,7 @@ Original **Markdown**.
 
 ## 选择与替换
 
-工具栏创建的高亮存为 annotation；`==高亮==` 由源码定义，只提供复制工具栏。默认模块的全部已注册标签都支持同名 `::` 指令。自定义标签需注册插件。使用完整清单配置或替换默认模块，见[扩展开发](extensions.md)。
+工具栏创建的高亮存为 annotation；`==高亮==` 由源码定义，默认只提供复制工具栏。传入 `onSourceChange` 后，默认工具栏创建或修改的高亮、任务勾选会保存到 Markdown；模块也可用 target: source 添加源内标注。常规 addAnnotation 仍保存外部数据，详见[项目集成](integration.md)。默认模块的全部已注册标签都支持同名 `::` 指令。自定义标签需注册插件。使用完整清单配置或替换默认模块，见[扩展开发](extensions.md)。
 
 ## 双冒号组件写法
 
@@ -374,7 +375,7 @@ Original **Markdown**.
 ::
 ```
 
-可用名称包括 `gfm`、`definition`、`title`、`content`、`question` 及其已有子标签、`extras`、`extra`、`video`、`md-video`、`figures`、`figure`、`figcaption`、`caption`、`img`、`citation`、`ref`、`translations`、`origin`、`translation`、`code`（别名 `code-highlight`）、`math`、`mermaid`、`callout`、`highlight`、`footnote`、`footnote-ref`。`::code{lang="typescript"}` 与 `::math` 的正文保持字面量。
+可用名称包括 `gfm`、`definition`、`title`、`content`、`question` 及其已有子标签、`extras`、`extra`、`video`、`md-video`、`figures`、`figure`、`figcaption`、`caption`、`img`、`citation`、`ref`、`translations`、`origin`、`translation`、`code`（别名 `code-highlight`）、`math`、`mermaid`、`callout`、`highlight`、`footnote`、`footnote-ref`、`limr-annotation`。`::code{lang="typescript"}` 与 `::math` 的正文保持字面量。
 
 标准 Markdown 围栏、JSX、单冒号行内指令和原有三冒号容器继续可用。最终文档中没有配对闭合的双冒号行，保留原有 leaf directive 语义。这里兼容的是组件语法，不包含 CoMark 的 YAML 属性、命名插槽和 frontmatter。
 
@@ -440,9 +441,9 @@ flowchart LR
     脚注的第二段。
 ```
 
-高亮支持内部富文本，转义字符、代码和公式中的 `==` 保持字面量。高亮颜色可由 CSS `--limr-inline-highlight` 或 `inlineHighlights({ color })` 覆盖。工具栏只提供复制按钮和单行提示“Markdown 内嵌高亮，不支持编辑”。
+高亮支持内部富文本，转义字符、代码和公式中的 `==` 保持字面量。高亮颜色可由 CSS `--limr-inline-highlight` 或 `inlineHighlights({ color })` 覆盖。未启用源码编辑时，工具栏只提供复制按钮和单行提示“Markdown 内嵌高亮，不支持编辑”。
 
-脚注显示圆润评论角标；宽屏为侧栏 item，窄屏为悬浮卡片，标题是“脚注”。紧邻高亮的脚注引用这段高亮，独立脚注引用所在段落；命名脚注可重复引用。`::highlight`、`::footnote{id="note"}` 和 `::footnote-ref{id="note"}` 可表达相同模块的容器形式。移除 `footnotes` 模块可恢复 GFM 的上标和文末脚注。
+脚注显示圆润评论角标；宽屏为侧栏条目，窄屏为悬浮卡片。卡片和侧栏会显示命名脚注的原始标签，例如 `note`。紧邻高亮的脚注引用这段高亮，独立脚注的范围为角标位置上的零长度；命名脚注可重复引用。`::highlight`、`::footnote{id="note"}` 和 `::footnote-ref{id="note"}` 可表达相同模块的容器形式。移除 `footnotes` 模块可恢复 GFM 的上标和文末脚注。
 
 实际效果，点击高亮或评论角标：
 
@@ -455,3 +456,55 @@ flowchart LR
 [^syntax-source-highlight]: 脚注正文。
 
     脚注的第二段。
+
+
+## 保存在 Markdown 中的标注
+
+`standard()` 默认在 `inlineHighlights()` 和 `footnotes()` 后启用 `sourceAnnotations()`。使用保留的脚注标签，把命名范围关联到一条或多条标注定义：
+
+```markdown
+abcd==efg==[^%%limr:r1%%]
+
+[^%%limr:r1%%]: 普通 Markdown 阅读器使用的兜底说明。
+
+:::limr-annotation{#h1 ranges="r1" type="highlight" style="background" color="#E5C07B" hidden="false"}
+:::
+
+:::limr-annotation{#n1 ranges="r1" type="footnote"}
+这是一条普通笔记，可以使用 **Markdown**。
+:::
+
+:::limr-annotation{#q1 ranges="r1" type="question"}
+为什么这里需要先检查缓存？
+:::
+```
+
+`sourceAnnotations()` 只负责通用语法与序列化，不注册提问卡片。上例的 highlight 是内置类型，footnote 由默认脚注模块提供，question 需由模块注册；Playground 使用[阅读笔记示例](../../examples/notes.tsx)提供该类型及卡片。
+
+只有严格匹配、区分大小写的 `[^%%limr:<id>%%]` 才激活此模式。建议使用 `r1`、`my-range` 或 UUID 这样的稳定范围 ID；`r1` 与 `R1` 不同。ID 不含空白、`%` 或 `]`。不支持 URL 形式的标签，Markdown 自动链接解析可能消耗其源码位置。`[^%%limr:r1%%]:` 兜底定义可省略，LiMR 隐藏该定义，以 `limr-annotation` 的正文作为标注内容。也支持没有紧邻高亮的保留角标，此时范围长度为零。
+
+| 字段 | 含义 |
+| --- | --- |
+| `#n1` 或 `id="n1"` | 标注 ID；同 ID 的最后一条定义覆盖前面的定义 |
+| `ranges="r1 r2"` | 用空白或逗号分隔的命名范围；同一个范围 ID 可在多处出现 |
+| `type` | 标注类型，如 `highlight`、`footnote`、`question`；默认 `footnote` |
+| `style`、`color`、`hidden` | 高亮外观；`hidden="true"` 只隐藏绘制，不删除标注 |
+| 正文 | Markdown 内容，通过 `data.body` 交给标注模块；其他标量属性也交给对应模块 |
+
+一个范围可以关联多条内容标注，但最多生效一个高亮：最后一个指向该范围的高亮定义覆盖之前的高亮。保留范围中的 `==…==` 只声明文本跨度，不额外生成默认蓝色高亮。引用尚不存在范围的标注会保留定义，直到范围出现才显示角标；未知标注类型保留数据和所引用的正文，直到模块注册该类型才显示标注界面。
+
+同样支持 HTML 组件形式和双冒号兜底形式：
+
+```markdown
+<limr-annotation id="n1" ranges="r1" type="footnote">
+
+这是一条支持 **Markdown** 的笔记。
+
+</limr-annotation>
+
+::limr-annotation{#q1 ranges="r1" type="question"}
+为什么这里需要先检查缓存？
+::
+```
+
+定义可在命名范围之前或之后。流式期间，不完整的定义头部和正文保持隐藏，块闭合后再与已经解析的范围关联。源码元数据和编辑约定详见[标注与选区](annotations.md)。

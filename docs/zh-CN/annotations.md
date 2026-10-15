@@ -55,9 +55,9 @@ export const annotations: readonly Annotation[] = [{
 | 命令 | 行为 |
 | --- | --- |
 | `addAnnotation(annotation, options?)` | 添加/替换同 ID 数据；普通内容标注默认同时补充共享高亮 |
-| `updateAnnotation(id, partial)` | 浅合并标注字段；data 是整体替换，更新时保留需要的字段 |
+| `updateAnnotation(id, partial)` | 浅合并标注字段，但保持原 id 与 source 来源元数据不变；data 是整体替换，更新时保留需要的字段 |
 | `removeAnnotation(id)` | 移除这一条标注，其他标注和共享高亮保留 |
-| `removeAnnotationsAt(ranges)` | 移除精确匹配片段上的标注及高亮；保留它们其他位置的锚点 |
+| `removeAnnotationsAt(ranges)` | 移除精确匹配片段上当前支持的标注及高亮；保留其他位置的锚点和未注册类型 |
 | `editAnnotation(id / null)` | 切换共享编辑状态；设置 ID 时也激活卡片 |
 | `activateAnnotation(id / null)` | 激活标注的首个 occurrence，也接受 occurrence ID |
 
@@ -65,7 +65,7 @@ export const annotations: readonly Annotation[] = [{
 
 ## Citation 的临时高亮
 
-Citation 默认 `highlight: 'hover'`。角标或侧栏条目悬浮、或引用处于 activate 状态时，用类型 color 的 18% 底色高亮关联文本。底色绘制在文字下方；点击激活后，移开鼠标仍保留，取消激活且不再悬浮后才隐藏。同一段落的激活与悬浮引用不会叠加加深颜色。该效果不更新 annotations，也不改变已保存高亮的 hidden 设置。嵌入 ref 使用最近的段落、标题、列表项或表格单元格；外部范围引用使用自身范围，并以该范围首行对齐侧栏。
+Citation 默认 `highlight: 'hover'`。角标或侧栏条目悬浮、或引用处于 activate 状态时，用类型 color 的 18% 底色高亮关联文本。底色绘制在文字下方；点击激活后，移开鼠标仍保留，取消激活且不再悬浮后才隐藏。同一个明确范围的激活与悬浮引用不会叠加加深颜色。该效果不更新 annotations，也不改变已保存高亮的 hidden 设置。带范围的 `<ref>文本</ref>` 使用所包裹的文本；自闭合 `<ref />` 和独立命名脚注的范围是角标位置上的零长度，不绘制段落高亮。紧邻 `==文本==` 的脚注使用这段明确的文本范围。外部范围引用使用自身范围，并以该范围首行对齐侧栏。
 
 侧栏联动使用正文位移动画，不改变页面滚动范围。绘制层在动画过程中及结束、取消时更新可见片段，因此从视口外移入的文本也会同步获得当前悬浮或激活高亮。
 
@@ -73,9 +73,9 @@ Citation 默认 `highlight: 'hover'`。角标或侧栏条目悬浮、或引用�
 
 ## 缺少插件时
 
-当前实现**不会静默忽略未知 annotation 类型**。数据和范围仍保留，可能显示通用圆点角标；没有 Content 时卡片显示本地化的“不可用”及类型名称。缺失 citation 定义也可能显示不可用提示。要保证呈现，应安装对应插件，或由应用决定暂时隐藏哪些标注。
+只有已注册的标注类型才创建角标、卡片、悬浮反馈和编辑控件。卸载插件会移除这些界面并清理相关激活状态；混合引用仍保留其中已注册的条目。未知类型保留在原始标注数据和源码定义中，重新安装模块后恢复展示。已注册类型缺少 Content，或 citation 模块已安装但引用定义缺失时，仍可显示本地化的不可用提示。
 
-若应用过滤不支持的类型，保留完整的持久化原始数组，并在写回时合并仍隐藏的数据，避免卸载插件导致数据丢失。Playground 的插件勾选目前只启用/关闭动作入口，仍保留卡片渲染器，因此不会模拟完整卸载插件。
+持久化时保留完整的 `annotations` 数组。选区工具栏上下文和 `removeAnnotationsAt` 只处理当前支持的类型，因此删除可见高亮不会误删同范围隐藏的笔记。显式 `updateAnnotation(id, ...)` 和 `removeAnnotation(id)` 仍可按 ID 管理保存的数据。Playground 的插件开关安装或卸载完整模块，包括其渲染器；修改 Markdown 的权限开关与插件安装相互独立。
 
 ## 卡片与异步资源
 
@@ -84,3 +84,14 @@ Citation 默认 `highlight: 'hover'`。角标或侧栏条目悬浮、或引用�
 `load(annotation, { signal })` 在内容显示时才调用，同一阅读器内复用请求和有限缓存，不在不同 Reader 间共享。Preview 不调用 load。Content 接收 data、loading、error、retry、editing、presentation、expanded；处理加载和错误 UI 是模块的职责。可通过 useLiMR().invalidateAnnotation(id) 刷新。
 
 动作的 signal 在阅读器销毁时取消，关闭菜单不会取消动作。调用 updateAnnotation 更新流式答案时同时保留问题字段；“停止生成”、重试、认证、会话和保存由应用 adapter 管理。参考[助手示例](../../examples/assistant.tsx)和[扩展开发](extensions.md)。
+
+
+## 源码中的命名范围
+
+默认 `sourceAnnotations()` 模块将 `==文本==[^%%limr:r1%%]` 与 `:::limr-annotation` 定义关联。[语法文档](syntax.md#保存在-markdown-中的标注)列出了完整写法和覆盖规则。定义会生成普通 `Annotation` 及解析好的 `anchors`，同一命名范围的多条内容标注共用一个内嵌角标。
+
+`DocumentSnapshot.annotationRanges` 将区分大小写的范围 ID 映射到各个出现位置。每个 `SourceAnnotationRange` 包含 `range`（引用文本）、`syntaxRange`（原始 `==…==` 跨度）和 `markerRange`（保留脚注角标）。三者都是未改写源码的 UTF-16 坐标。没有范围的保留角标，其 `range` 和 `syntaxRange` 长度为零。
+
+`Annotation.source` 记录负责该语法的模块、定义源码 `ranges` 和可选的命名 `rangeIds`。重复 ID 只暴露最后一份数据，但保留所有定义跨度，供源码编辑器更新或删除时一并处理，避免旧定义重新生效。普通 `==文本==` 高亮的所属模块为 `inline-highlights`，命名定义为 `source-annotations`。这些元数据属于当前解析结果，原文变化后应重新生成。
+
+源码标注默认只读。`standard()` 提供通用解析与序列化；显式提供 `onSourceChange` 后，默认高亮与任务可更新 Markdown，无需额外写回插件、数据库或编辑器组件。标注类型负责卡片与编辑 UI，Playground 的内联笔记和提问由示例插件注册。模块新增时使用 target: source 选择原文，普通 addAnnotation 仍存外部数据；默认高亮动作在原文可编辑时主动选择 source。已有标注的更新/删除遵循其来源，外部数据继续使用 `annotations` 与 `onAnnotationsChange`。修改 API 详见[项目集成](integration.md)和[扩展开发](extensions.md)。

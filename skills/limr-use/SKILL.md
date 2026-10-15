@@ -14,7 +14,7 @@ Choose Reader for the complete UI, Markdown for body-only rendering, or one Docu
 
 Append third-party factories through a stable plugins array. extensions replaces the entire list; use standard() and replaceExtension() to change defaults. Verify package existence and public exports before suggesting an npm install. Repository @limr-example packages are unpublished examples.
 
-Persist controlled annotations immutably and return every onAnnotationsChange value. Keep unknown types in storage even if the host filters them from a view. Unknown annotation types currently show generic/unavailable UI, not silent omission. Use original UTF-16 ranges, stable document IDs, and quotes; avoid DOM-derived offsets.
+Persist controlled annotations immutably and return every onAnnotationsChange value. Unknown annotation types remain in storage without markers, cards or type-specific interactions; registering their module restores the UI. Preserve the complete annotations array when saving. Use original UTF-16 ranges, stable document IDs, and quotes; avoid DOM-derived offsets.
 
 Use locale={chinese} or english for built-in labels. locale does not translate source. In 1.0.0, plugins can use the public useLocale() hook and locale.language, and AnnotationType.label may resolve from the locale. Confirm these exports before using them against 0.1.0.
 

@@ -58,14 +58,17 @@ export function Article() {
 | `translations()` | `translations` | `<translations>` 包含原文与译文，切换原文、译文、对照 |
 | `mermaid()` | `mermaid` | Mermaid 围栏 / `::mermaid`，图像、源码、缩放和复制 |
 | `callout()` | `callout` | Obsidian callout 类型、别名和嵌套注释 / `::callout` |
-| `inlineHighlights()` | `inline-highlights` | `==文字==` 和 `::highlight`，默认蓝色只读高亮 |
+| `inlineHighlights()` | `inline-highlights` | `==文字==` 和 `::highlight`，默认蓝色高亮；启用原文编辑前只读 |
 | `footnotes()` | `footnotes` | `[^id]`、`^[正文]`，评论角标与脚注卡片；`::footnote` / `::footnote-ref` |
+| `sourceAnnotations()` | `source-annotations` | `[^%%limr:id%%]` 命名范围、`limr-annotation` 定义与通用序列化；类型和卡片由模块注册 |
 
 所有函数都可以从 `@linloir/limr` 或 `@linloir/limr/extensions` 导入。`standard()` 是便捷组合函数，自身不是额外的模块；它的返回值是数组。
 
 `Reader`、独立使用的 `Markdown`、`DocumentProvider` 在未传 `extensions` 时自动使用 `standard()`，因此最初的 `<Reader source={source} />` 就支持这些能力。共享 Provider 内的组件使用 Provider 的配置。纯核心 `createDocument()` 默认只启用 CommonMark；需要时显式传入扩展，它不负责显示 React UI。
 
-高亮、复制、删除选区标注是工具栏自带动作。`==文字==` 和 Markdown 脚注由默认模块自动识别；源码中的高亮只可复制，不能通过工具栏编辑。Playground 的可编辑旁注、笔记、提问、脚注和模拟 AI 问答来自示例插件，**没有自动装进每个 Reader**。`question()` 的练习题与“提问”标注也不是同一功能。
+高亮、复制、删除选区标注是工具栏自带动作。`==文字==`、Markdown 脚注和命名范围标注由默认模块识别。提供 `onSourceChange` 后，默认任务勾选和源码高亮可编辑；默认高亮动作也会把新增高亮存入原文。`sourceAnnotations()` 提供通用序列化，不绑定特定内容类型；常规 addAnnotation 仍更新外部 annotations，模块可用 target: source 选择原文。Playground 的内联笔记、旁注、阅读笔记和模拟 AI 问答来自示例插件，**没有自动装进每个 Reader**。type="question" 的提问卡片由阅读笔记示例注册，与 `question()` 的正文练习题不同。
+
+Playground 的普通阅读笔记在窄屏保持锚点附近的小卡片，直接在卡片内编辑；模拟助手仍可展开。这是示例模块各自的 overlay 策略，库的 `overlay.expand` 仍支持锚点展开或居中展开。
 
 ## 按需要组合
 
@@ -79,6 +82,6 @@ export function Article() {
 
 移除一个模块也可以过滤数组：`standard().filter(module => module.name !== 'video')`。不需要扩展语法时传 `extensions={[]}`。
 
-不要通过 `plugins={[video()]}` 再次追加已默认存在的视频模块：重复模块名、标签或指令会报错。模块没有启用时，未知标签按文本显示；未知指令可能仅留下内部 Markdown；已有的未知标注数据保留并显示通用回退。完整边界见[架构与行为](architecture.md)。
+不要通过 `plugins={[video()]}` 再次追加已默认存在的视频模块：重复模块名、标签或指令会报错。模块没有启用时，未知标签按文本显示；未知指令可能仅留下内部 Markdown；已有的未知标注数据继续保留，但不显示专用角标、卡片或交互；重新注册类型后恢复显示。完整边界见[架构与行为](architecture.md)。
 
 接下来可以直接试读[语法示例](syntax.md)，或参考[扩展开发](extensions.md)创建模块、[插件模块包](plugin-packages.md)打包分发。

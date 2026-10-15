@@ -67,7 +67,7 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
     return runtime.content?.querySelector<HTMLElement>(`[data-limr-atomic="block"][data-source-start="${start}"][data-source-end="${end}"]`) ?? null;
   }, [runtime, effectiveSelection]);
   const annotations = useMemo(() => effectiveSelection ? [...decorations.annotations.values()].filter(annotation =>
-    resolveAnnotationAnchors(annotation, documentSnapshot).some(anchor => [...effectiveSelection.raw.ranges, ...effectiveSelection.syntax.ranges].some(range => sameRange(anchor.range, range)))) : [], [decorations, effectiveSelection, documentSnapshot]);
+    runtime.supportsAnnotation(annotation) && resolveAnnotationAnchors(annotation, documentSnapshot).some(anchor => [...effectiveSelection.raw.ranges, ...effectiveSelection.syntax.ranges].some(range => sameRange(anchor.range, range)))) : [], [runtime, decorations, effectiveSelection, documentSnapshot]);
   const highlight = (paint ? decorations.annotations.get(paint.annotationId) : annotations.find(annotation => annotation.type === 'highlight')) as Annotation<HighlightData> | undefined;
   const highlightAppearance = highlight?.data ?? preferredHighlight;
   const context: ActionContext | null = effectiveSelection ? {
@@ -75,7 +75,7 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
     addAnnotation: (annotation, options) => runtime.commands.addAnnotation(annotation, { highlight: highlightAppearance, ...options }),
     document: documentSnapshot, signal: runtime.signal, clearSelection: () => runtime.clearSelection(),
   } : null;
-  const readOnly = highlight?.data?.readOnly === true;
+  const readOnly = highlight?.data?.readOnly === true && !runtime.commands.canEditAnnotation(highlight.id);
   const available = context ? readOnly ? [defaults[2]] : combined.filter(action => action.visible?.(context) ?? true) : [];
   const expandedAction = available.find(action => action.id === expanded && action.renderExpanded);
   const hasPanels = available.some(action => action.renderExpanded);

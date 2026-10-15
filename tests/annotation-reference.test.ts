@@ -11,22 +11,26 @@ test('anchored excerpts preserve readable rich text, entities and partial select
   expect(quote(source.indexOf('重要') + 1, source.indexOf('重要') + 3)).toBe('要内');
 });
 
-test('embedded citation excerpts use the surrounding paragraph without reference markup', () => {
+test('point citation markers have empty excerpts and preserve their source spans', () => {
   const source = '# 标题\n\n关联 **内容**<ref id="one" /> 与更多内容<ref id="two" />。\n\n<citation id="one" title="One" />\n\n<citation id="two" title="Two" />';
   const document = createDocument(source, { extensions: standard() }).getSnapshot();
-  for (const occurrence of document.occurrences) expect(annotationReferenceText(document, occurrence)).toBe('关联 内容 与更多内容。');
+  for (const occurrence of document.occurrences) {
+    expect(annotationReferenceText(document, occurrence)).toBe('');
+    expect(annotationReferenceRange(document, occurrence)).toEqual({ start: occurrence.range.start, end: occurrence.range.start });
+    expect(source.slice(occurrence.range.start, occurrence.range.end)).toMatch(/^<ref /);
+  }
   expect(document.occurrences).toHaveLength(2);
 });
 
-test('embedded references resolve the nearest paragraph, heading or table cell while retaining marker ranges', () => {
-  const source = '# Heading<ref id="one" />\n\n- First paragraph.\n\n  Second **paragraph**<ref id="one" />.\n\n| Left | Right |\n| --- | --- |\n| Cell<ref id="one" /> | Other cell |\n\n<citation id="one" title="One" />';
+test('scoped references use only their explicit rich content', () => {
+  const source = '# Before <ref id="one">Heading</ref>\n\n- First paragraph.\n\n  Second <ref id="one">**paragraph**</ref>.\n\n| Left | Right |\n| --- | --- |\n| <ref id="one">Cell</ref> | Other cell |\n\n<citation id="one" title="One" />';
   const document = createDocument(source, { extensions: standard() }).getSnapshot();
-  const expected = ['# Heading<ref id="one" />', 'Second **paragraph**<ref id="one" />.', '| Cell<ref id="one" /> '];
+  const expected = ['Heading', '**paragraph**', 'Cell'];
   expect(document.occurrences).toHaveLength(expected.length);
   document.occurrences.forEach((occurrence, index) => {
     const range = annotationReferenceRange(document, occurrence);
     expect(source.slice(range.start, range.end)).toBe(expected[index]);
-    expect(source.slice(occurrence.range.start, occurrence.range.end)).toBe('<ref id="one" />');
+    expect(source.slice(occurrence.range.start, occurrence.range.end)).toBe(`<ref id="one">${expected[index]}</ref>`);
   });
-  expect(document.occurrences.map(occurrence => annotationReferenceText(document, occurrence))).toEqual(['Heading', 'Second paragraph.', 'Cell']);
+  expect(document.occurrences.map(occurrence => annotationReferenceText(document, occurrence))).toEqual(['Heading', 'paragraph', 'Cell']);
 });

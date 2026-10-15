@@ -34,8 +34,12 @@ Annotation loading uses bounded per-reader caching; releasing consumers can canc
 
 ## Fallback behavior
 
-Unknown HTML/custom tags remain inert source text. In the default configuration, unknown directives render their children. Unknown annotation types retain data and show generic markers/unavailable content rather than silently disappearing. Syntax recovery, transform diagnostics, and client renderer boundaries have distinct scopes; see [extensions](extensions.md).
+Unknown HTML/custom tags remain inert source text. In the default configuration, unknown directives render their children. Unknown annotation types retain data without markers, cards, or type-specific interactions; registering their module restores presentation. Removing a syntax module reparses the unchanged source with the remaining modules. Syntax recovery, transform diagnostics, and client renderer boundaries have distinct scopes; see [extensions](extensions.md).
 
 ## Validation boundaries
 
 The repository includes parser/offset/SSR unit tests, real Chromium interaction regressions, and separate React 18/19 npm-consumer checks. Intercepted media, mobile viewport simulation, and performance fixtures are not proof of remote playback, physical-device acceptance, or universal performance.
+
+## Source editing capability
+
+Parsing and rendering never implicitly rewrite input. The sourceAnnotations module in standard resolves named ranges and definitions into ordinary Annotation objects and supplies the generic editSourceAnnotations serializer; modules register types, cards and dedicated actions. Supplying onSourceChange allows default tasks/highlights and module actions to submit atomic edits against one revision through editSource. Core validates coordinates and overlaps, default or custom handlers serialize formats, and the host or integration module owns acceptance, file persistence and undo. Source annotations share the sidebar, overlay and toolbar; external annotation persistence stays separate without another editor wrapper.

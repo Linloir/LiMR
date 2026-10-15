@@ -1,6 +1,6 @@
 # LiMR
 
-[![package version](https://img.shields.io/badge/version-1.0.1-blue.svg)](package.json)
+[![package version](https://img.shields.io/badge/version-1.1.0-blue.svg)](package.json)
 
 **简体中文** · [English](README.en.md)
 
@@ -54,7 +54,7 @@ export function Answer({ text, generating }: { text: string; generating: boolean
 | 应用集成 | 受控标注、原始 UTF-16 坐标、多个独立阅读器、内部滚动容器、SSR |
 | 扩展 | 自定义语法、按条件替换渲染组件、标注类型、选区动作、流式效果、参数与 CSS 主题包 |
 
-默认模块包括 `citation` 和 Markdown 脚注卡片；`highlight` 支持应用创建的可编辑高亮，`==文字==` 则生成只读源码高亮。`[^id]` 与 `^[正文]` 显示评论角标及侧栏/浮层，也可紧接在高亮后面。笔记、提问和聊天标注由应用插件提供，`question()` 是练习题正文模块。完整写法见[语法手册](docs/zh-CN/syntax.md)。
+默认模块包括引用、Markdown 脚注，以及 `==文字==[^%%limr:id%%]` 与 `:::limr-annotation` 组成的内嵌标注。一个范围可绑定多条已注册类型的标注和一个高亮；独立引用只关联角标所在位置。`standard()` 提供通用解析与写回能力；显式传入 `onSourceChange` 后，默认工具栏高亮和任务勾选即可修改 Markdown，文件保存由宿主或接入模块负责。普通 `addAnnotation` 仍保存外部数据，模块通过 `target: 'source'` 选择原文存储。标注类型、卡片和专用动作由模块提供；Playground 的内联笔记与提问是示例插件，`question()` 则是练习题正文模块。见[语法手册](docs/zh-CN/syntax.md)和[本地文件集成](docs/zh-CN/integration.md#原文编辑与本地文件)。
 
 ```markdown
 <definition title="定义">

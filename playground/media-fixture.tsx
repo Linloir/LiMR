@@ -77,7 +77,7 @@ export function MediaFixture() {
 
 export function TranslationDetailsFixture() {
   const [selection, setSelection] = useState<SelectionSnapshot | null>(null);
-  const source = '<translations>\n\n<origin>\n\n## Original heading\n\nOriginal **selectable** words.<ref id="paired" />\n\n</origin>\n\n<translation>\n\n## 译文标题\n\n中文 **可选择** 内容。<ref id="paired" />\n\n</translation>\n\n</translations>\n\n<citation id="paired" title="Paired reference" description="Only visible occurrences belong in the sidebar." />';
+  const source = '<translations>\n\n<origin>\n\n## Original heading\n\n<ref id="paired">Original **selectable** words.</ref>\n\n</origin>\n\n<translation>\n\n## 译文标题\n\n<ref id="paired">中文 **可选择** 内容。</ref>\n\n</translation>\n\n</translations>\n\n<citation id="paired" title="Paired reference" description="Only visible occurrences belong in the sidebar." />';
   return <><Reader source={source} onSelectionChange={setSelection} /><output data-testid="translation-selection" hidden>{JSON.stringify(selection)}</output></>;
 }
 

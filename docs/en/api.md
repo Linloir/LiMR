@@ -33,6 +33,7 @@ Reader, Markdown, and DocumentProvider accept:
 | annotationTypes | Add/override presentation by type |
 | annotations | Internal state if omitted; controlled if supplied |
 | onAnnotationsChange | Next external annotation array, including highlights; required to accept controlled edits |
+| onSourceChange | Optional `(source, { document, edits }) => boolean \| void`; explicitly enables source editing; return false to decline a transaction |
 | theme | light, dark, or auto |
 | appearance | classic; CSS scope propagated to portals |
 | locale | english; accepts chinese or Partial&lt;LiMRLocale&gt; |
@@ -63,13 +64,14 @@ The default locale is english. Missing partial keys fall back to English. locale
 | AnnotationOverlay | disabled=false, portalRoot, previewWidth=340, maxHeight='80dvh' |
 | SelectionToolbar | actions, portalRoot, maxPanelHeight=260, render, className/style |
 | AnnotationCard | AnnotationOverlayCardProps plus required title and optional bodyLabel |
+| AnnotationEditor | Required value/onChange, onSubmit/onCancel and label; optional onBlur, placeholder, submitLabel, cancelLabel; submitDisabled=false, autoFocus=true |
 | AnnotationContent | annotationId, presentation, expanded=true, enabled=true |
 | AnnotationGroup | occurrence, presentation, expanded=true, enabled=true |
 | AnnotationMarkdown | MarkdownProps with required source; interactive=false by default |
 | InlineMarker | Required label, color, children, button props/ref |
 | ToolIcon | name and SVG props; e.g. note, copy, highlight, comment, zoom-in, zoom-out, source, image |
 
-Shared views/hooks require a provider, except standalone Markdown and Reader. AnnotationCard is an interior template, not its own portal. sidebar.renderCard receives occurrence/active/activate; toolbar.render receives context/actions/run.
+Shared document views/hooks require a provider; standalone Markdown and Reader create their own documents. AnnotationEditor is controlled UI and can be used independently. AnnotationCard is an interior template, not its own portal. sidebar.renderCard receives occurrence/active/activate; toolbar.render receives context/actions/run.
 
 `SidebarPositioner` receives `{ id, anchorTop, height }[]` and `{ activeId, gap, height?, prioritizeActive? }`, returning a map of IDs to top positions. anchorTop is the first line of referenced text; prioritizeActive distinguishes hovered or active items from the item selected by reading position. The default alignSidebar packs footer cards at rest and prioritizes the current item during interaction.
 
@@ -106,10 +108,16 @@ createDocument(source?, { id?, extensions?, streaming? }) returns DocumentEngine
 
 Core defaults to extensions=[]. Use SyntaxExtension with micromark/mdast for a strictly React-free parser; importing standard from the React extension entry introduces React dependencies.
 
-DocumentSnapshot contains id, revision, source, streaming, blocks, headings, definitions, footnotes, footnoteOrder, annotations, occurrences, diagnostics, and metrics. Its annotations are **parsed from source**. Use useAnnotations for merged external data.
+DocumentSnapshot contains id, revision, source, streaming, blocks, headings, definitions, footnotes, footnoteOrder, annotations, annotationRanges, occurrences, diagnostics, and metrics. Its annotations are **parsed from source**. Use useAnnotations for merged external data. annotationRanges maps named IDs to SourceAnnotationRange arrays (range, syntaxRange and markerRange use original UTF-16 source coordinates).
 
 Other core exports include walk, textContent, rangeOf, intersects, safeUrl, mapText, selectionFromRange, replaceExtension, resolveAnnotationAnchors, annotationReferenceRange, sameRange, defaultHighlight, LruCache, and ResourceCache. ResourceCache.acquire returns promise/release; invalidate clears a key or everything.
 
-`inlineHighlights({ color?, component? })` and `footnotes(annotationTypeOptions?)` are included in `standard()`. `HighlightData.readOnly` limits the default highlight toolbar to copying and a hint; `AnnotationOccurrence.referenceRange` separates a marker's source location from the text it references.
+`inlineHighlights({ color?, component? })`, `footnotes(annotationTypeOptions?)` and `sourceAnnotations()` are included in `standard()`. `HighlightData.readOnly` defaults to a copy-only toolbar; source editing makes supported authored highlights editable. `AnnotationOccurrence.referenceRange` separates the marker location from its referenced text. Standalone references have a zero-length referenceRange at their marker start.
+
+`useLiMR()` and action contexts expose `canEditSource()`, `canEditAnnotation(id)` and `editSource(edits, { revision? })`. A `SourceEdit` is `{ range: { start, end }, text }`; all edits address the same original source. Invalid, overlapping or stale-revision edits throw. Accepted edits update the document atomically and immediately; the host echoes the new source. A false result means the host declined. `applySourceEdits(source, edits)` is the equivalent pure core utility. Editing is unavailable during streaming.
+
+`addAnnotation(annotation, { target: 'source' })` explicitly chooses source storage; target defaults to annotations. The sourceAnnotations module in `standard()` installs the public `editSourceAnnotations` generic serializer. Supplying onSourceChange enables default task toggles and makes the default highlightSelection action choose source for new highlights; ordinary addAnnotation keeps its default storage target. Modules still own types, cards and dedicated actions. `TaskCheckbox` is a disabled-by-default diamond UI primitive with checked, disabled, onChange, label and ideographic props; the default Markdown renderer enables it according to editing capability.
+
+`RendererExtension.sourceEditing.annotations(change, document)` returns `SourceEdit[]` or undefined. change contains added, updated (previous/annotation) and removed. Later handlers take precedence; undefined delegates to the previous handler. Parsed `Annotation.source` contains module, ranges for every duplicate definition, and optional rangeIds; do not persist these coordinates across revisions. See [source integration](integration.md#source-editing-and-local-files) and [module serialization](extensions.md#modules-writing-source).
 
 Core also exports `knuthPlass(items, lengths, options?)`, `prepareKnuthPlass(items)`, `texBadness`, and their types. The prepared function reuses prefix sums when solving the same paragraph at multiple widths.

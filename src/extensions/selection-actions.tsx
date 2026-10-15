@@ -66,7 +66,7 @@ export function highlightSelection(): SelectionAction {
     run: context => {
       if (context.highlight) context.updateAnnotation(context.highlight.id, { data: { ...context.highlight.data, hidden: !context.highlight.data?.hidden } });
       else {
-        context.addAnnotation({ id: `highlight-${crypto.randomUUID()}`, type: 'highlight', data: { ...context.highlightAppearance, hidden: false }, anchors: context.selection.syntax.ranges.map(range => ({ range, documentId: context.document.id, quote: context.document.source.slice(range.start, range.end) })) });
+        context.addAnnotation({ id: `highlight-${crypto.randomUUID()}`, type: 'highlight', data: { ...context.highlightAppearance, hidden: false }, anchors: context.selection.syntax.ranges.map(range => ({ range, documentId: context.document.id, quote: context.document.source.slice(range.start, range.end) })) }, { target: context.canEditSource() ? 'source' : 'annotations' });
         context.clearSelection();
       }
     },

@@ -102,7 +102,39 @@ export function SavedArticle({ id, source }: { id: string; source: string }) {
 }
 ```
 
-This illustrates state for one article. In an application, load/store annotations by article ID and replace the array on navigation; a React key does not clear host state. Omit annotations for internal state. When supplied, accept edits through onAnnotationsChange and pass the new array back, or editing throws. Do not mutate arrays or data in place. See [annotations and selection](annotations.md) for persistence and relocation rules.
+This illustrates state for one article. In an application, load/store annotations by article ID and replace the array on navigation; a React key does not clear host state. Omit annotations for internal state. When annotations is supplied, editing without onAnnotationsChange throws. With a handler installed, pass the new array back to update the controlled UI. Do not mutate arrays or data in place. See [annotations and selection](annotations.md) for persistence and relocation rules.
+
+## Source editing and local files
+
+The default reader leaves source unchanged; external annotations continue through onAnnotationsChange. `standard()` already includes generic source annotation parsing and serialization. A local Markdown preview supplies onSourceChange to enable task toggles and source highlight editing in the default toolbar, without another writing plugin:
+
+```tsx
+import { useState } from 'react';
+import { Reader } from '@linloir/limr';
+
+export function LocalMarkdown({ initialSource, queueSave }: {
+  initialSource: string;
+  queueSave: (source: string) => void;
+}) {
+  const [source, setSource] = useState(initialSource);
+  return <Reader source={source} onSourceChange={next => {
+    setSource(next);
+    queueSave(next);
+  }} />;
+}
+```
+
+The host's queueSave owns ordered writes, debouncing, disk conflicts and failure UI. The callback synchronously returns void/true to accept the in-memory edit; false or a thrown error leaves the document unchanged. Do not return the file-write Promise. A failed save does not roll back memory automatically: keep dirty state and retry in the host. The second callback argument contains the pre-edit document for undo and version checks. LiMR does not access the filesystem.
+
+Ordinary `addAnnotation(annotation)` still writes external annotations. A module calls `addAnnotation(annotation, { target: 'source' })` to choose source storage. The default highlightSelection action chooses source when editing is enabled, and external storage otherwise. Updates/deletion follow the existing annotation's origin. Sidebar, overlay and toolbar share these commands. Type modules own editor UI and drafts and submit through updateAnnotation; source data uses the default or custom sourceEditing.annotations serializer and onSourceChange, while external data uses onAnnotationsChange. After a source transaction is synchronously accepted, LiMR immediately updates its internal document; controlled external annotations update their presentation when the host passes back the new annotations array.
+
+The [inline notes plugin](../../examples/inline-notes.tsx) is a Playground example, **not part of standard()**. It provides only its annotation type, card and add/edit action, reusing the default serializer. The [reading notes example](../../examples/notes.tsx) provides type="question" cards. Playground’s “allow Markdown edits” switch controls onSourceChange; when enabled, highlights, tasks and installed modules’ source edits update the editor. Type-module installation and editing permission are independent; ordinary notes remain external annotations.
+
+The default serializer converts an ordinary `==highlight==` into a named range on its first appearance edit. Deleting its final annotation unwraps the range while preserving text. Task toggles replace only the marker character, keeping list syntax, indentation and line endings. Source body editors commit when leaving edit mode and preserve drafts across responsive sidebar/overlay changes.
+
+The public editSourceAnnotations serializer supports complete inline Markdown boundaries inside paragraphs, headings and table cells, plus zero-length positions. Multiple annotations can reuse an exact range. Cross-block/code ranges, split formatting/entity boundaries and new nested/overlapping ranges are rejected without changing source. Close trailing code/HTML blocks before appending definitions. Modules can supply another serializer for other formats. Existing ordinary Markdown footnotes/citations retain their own module's editing behavior and are not implicitly converted. Source definitions and controlled external annotations can coexist with distinct IDs; existing external annotations still use onAnnotationsChange.
+
+Source editing is disabled during streaming. Async modules should retain document.revision and pass it to editSource to avoid applying stale offsets. Read coordinates from the next snapshot after edits; do not cache Annotation.source coordinates across revisions. See [API](api.md) and [extension development](extensions.md#modules-writing-source).
 
 ## Global translation mode
 
@@ -152,3 +184,5 @@ Import a factory from a real plugin package and create a stable plugins array ou
 | Nested scrolling targets the wrong place | Pass the actual scrolling DOM element as scrollRoot |
 | Portal colors differ from the reader | Scope CSS by data-limr-appearance |
 | Streaming repeatedly reparses everything | Keep extensions/plugins stable and check document-scoped transforms |
+
+Echoing a source prop never emits onSourceChange; only edit commands emit it. Identical source reuses the current snapshot without reparsing, so a file watcher echo does not cause recursive updates.

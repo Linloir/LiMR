@@ -125,6 +125,18 @@ export const savePassage = defineExtension({
 
 与上面的 note 扩展一起安装。SelectionAction 必须有 id、label、icon，可提供 visible、disabled、run、onHover、renderExpanded 或 render。面板操作通过 context.run 使用工具栏的 busy/error 处理。上下文包含选区、完整文档快照、同片段 annotations/highlight、locale、取消信号与命令。动作 ID 冲突时后者覆盖；宿主显式 actions 的同 ID 项最终优先。
 
+## 模块写回原文
+
+模块无需引入第二套编辑组件或文件 API。`useLiMR()` 和选区动作 context 都能调用 `editSource([{ range, text }], { revision })`；先用 `canEditSource()` 检查宿主是否启用能力。坐标为当前原文 UTF-16 偏移，整个事务都相对同一个 revision，校验完成后才会调用宿主的 onSourceChange。默认任务渲染器使用这一能力，仅修改勾选字符。
+
+标注继续使用 addAnnotation / updateAnnotation / removeAnnotation / removeAnnotationsAt。普通 addAnnotation 保存外部数据；`{ target: 'source' }` 选择原文，默认高亮动作会在可编辑时选择该目标。standard 中的 sourceAnnotations 已提供通用序列化器；需要自定义格式时，模块可通过 `RendererExtension.sourceEditing.annotations(change, document)` 覆盖这些命令的序列化。change 为 `{ added, updated: [{ previous, annotation }], removed }`；返回一组 SourceEdit 原子处理整次命令，undefined 表示交给较早注册的处理器。后注册插件可覆盖较早注册的序列化器；处理器应为纯函数，不自行写文件或调用回调。读取 previous.source 可以定位原有定义，包括重复 ID 的全部定义，避免删除后旧定义重新出现。
+
+默认公开序列化器 editSourceAnnotations 支持 `{ body: string, ...标量属性 }`，内嵌 highlight 使用 color/style/hidden；仅提供这种数据的类型插件无需重复安装序列化器。sourceAnnotations 不注册特定内容类型或提问卡片。自定义复杂数据应提供自己的处理器；内置处理器会拒绝无法无损表达的数据。编辑 UI 仍由类型的 Content 负责，可用 canEditAnnotation(id) 判断可编辑性、editAnnotation(id/null) 共享编辑状态，再用 updateAnnotation 提交。已有外部 annotations 不会因开启 source 编辑而被迁移。
+
+公开组件 `AnnotationEditor` 提供无边框、随内容和宽度自动增高的受控输入，以及取消/提交按钮。调用者管理 value、草稿、保存和撤销，通过 onChange/onSubmit/onCancel 接收操作；可选 onBlur 只在焦点离开整个编辑器容器时触发，切到内部按钮不会触发。Escape 取消，Ctrl/Cmd+Enter 提交，输入法组字期间不拦截这些按键。普通阅读笔记示例与源内正文编辑器共同复用此 UI，各自保留状态和持久化策略；组件本身不保存标注或访问文件。
+
+原文编辑可否进行与文件是否保存成功是两件事；宿主同步接受修改并负责保存队列、撤销、错误与冲突 UI。详见[本地文件集成](integration.md#原文编辑与本地文件)。
+
 ## 参数
 
 ```tsx
@@ -151,7 +163,7 @@ export const glossary = defineExtension({
 
 SyntaxExtension 支持 micromark、mdast、tags、directives、display、selection、literal、transform 和 scope。transform 默认全文作用域；仅依赖当前局部子树、不会回写前文或读取全局文档语义时才声明 scope: local。context.source 仍是原始全文，position 必须保持原始 UTF-16 坐标。插件不要先用正则替换 source 再解析。
 
-未知特殊标签安全显示整段原文，内部 Markdown 也作为原文显示。默认配置的未知指令则渲染内部 Markdown，丢弃指令外层标记；未安装任何指令扩展时按基础 Markdown 解析。已注册的未闭合标签和容器携带 node.incomplete，之后追加继续恢复；半截头部暂缓显示或交由模块展示 loading；无效 JSX 仍可能回退并记录 diagnostics；结束必须 finish 或 streaming=false。扩展 transform 的异常记录为 diagnostic；客户端渲染边界可回退源码，但 React 错误边界不负责捕获服务端渲染异常。
+未知特殊标签安全显示整段原文，内部 Markdown 也作为原文显示。默认配置的未知指令则渲染内部 Markdown，丢弃指令外层标记；未安装任何指令扩展时按基础 Markdown 解析。移除模块后，使用剩余语法能力重新解析未改写的原文。未注册标注类型保留数据，但不显示角标、卡片或编辑界面；重新安装模块后恢复。选区操作和持久化行为见[标注与选区](annotations.md#缺少插件时)。已注册的未闭合标签和容器携带 node.incomplete，之后追加继续恢复；半截头部暂缓显示或交由模块展示 loading；无效 JSX 仍可能回退并记录 diagnostics；结束必须 finish 或 streaming=false。扩展 transform 的异常记录为 diagnostic；客户端渲染边界可回退源码，但 React 错误边界不负责捕获服务端渲染异常。
 
 验证应覆盖标签/指令、中文与 emoji、源坐标、流式结束与一次性解析等价、SSR，以及新增交互的浏览器行为。独立分发还需验证真实打包消费，见[插件模块包](plugin-packages.md)。
 

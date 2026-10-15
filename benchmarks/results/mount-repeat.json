@@ -1,6 +1,6 @@
 {
   "environment": {
-    "date": "2026-10-13T17:31:01.385Z",
+    "date": "2026-10-14T15:29:23.386Z",
     "timezone": "Asia/Shanghai",
     "node": "v20.19.5",
     "mode": "production",
@@ -8,15 +8,17 @@
     "cpu": "13th Gen Intel(R) Core(TM) i7-13700",
     "logicalCPUs": 24,
     "memoryBytes": 33457602560,
-    "freeMemoryBytes": 6463090688,
+    "freeMemoryBytes": 9926598656,
     "loadAverage": [
-      1.71,
-      1.81,
-      1.94
+      2.29,
+      1.94,
+      1.8
     ],
-    "revision": "1e318ea408fb743fe15ca831e59ac7ccfe85c4e0",
-    "sourceSHA256": "8a09189f783dc1888446e0f0c96b2059db30142a6a545e769777ce0325fee4a1",
-    "harnessSHA256": "cfbba7765c59555b06fa921c28cf20f9ab4320713db6a4ee3301879b69741d1f",
+    "revision": "3910dfd364ba4a8939bd91e3ff7a1f21fe7f6b8e",
+    "sourceSHA256": "7d611b8294bc48063de34423206d51e786dd50f7722387cb78f9bb623c088d37",
+    "harnessSHA256": "f4de09dc072c347a7ebcfc89e5b2c0a63a53c3eded531f95b8b6de201a268022",
+    "playgroundSHA256": "163fff00251f126131632a72db5d33682c560d14995d7c1d1f7d0a7f7734e8d7",
+    "examplesSHA256": "f430c8d15a4d1f3ae8854b3ab556f9fcc3d0b07007e6803ce38eaa1c02fbce37",
     "lockSHA256": "c3264f2e09b17af4097cd38e194844fc8e8143a84e939f0978ff415ad0562ee4",
     "versions": {
       "react": "19.3.0",
@@ -30,7 +32,7 @@
       "katex": "0.19.0",
       "shiki": "4.5.0"
     },
-    "liMR": "1.0.1",
+    "liMR": "1.1.0",
     "cpuThrottle": 1,
     "network": "Local production preview; no network or CPU throttling",
     "viewport": {
@@ -43,12 +45,386 @@
     "trials": 3,
     "readingTrials": 3,
     "sections": 240,
-    "suite": "full"
+    "suite": "full",
+    "profiling": false,
+    "buildProcess": "reused-bundle"
   },
   "methodology": {
+    "build": "Production Vite build runs in a child that exits before browser measurement, releasing build-only heap for all three libraries. Preview and build share the same config. This reduces unrelated controller memory, without claiming a proven cause/fix for historical native-layout stalls. BENCH_NO_BUILD reuses an existing unchanged bundle.",
     "fullDOM": "Production React. GFM only, native code, identical neutral CSS. No virtualisation, animation, highlight or deferred rendering. Fresh page per trial, two small warmups, cyclic/reversed renderer order. Each synchronous flushSync commit includes forced layout; one rAF between chunks; separate final=true commit included. CDP TaskDuration also captures asynchronous browser work. Final semantic DOM compared to react-markdown + remark-gfm outside timing. JS heap measured after CDP GC, not total process memory.",
-    "reading": "Independent cold browser context per renderer, production build. LiMR and Markstream retain default plugins/options and vendor CSS; react-markdown uses remark-gfm, remark-math, rehype-katex and an async Shiki component, neutral article CSS. LiMR default Markdown + full styles including Maple; Markstream default MarkdownRender + CSS with optional stream-diffs and KaTeX installed. Real local images; unique code/math. First readable frame is a two-rAF DOM-readiness proxy, not FCP/LCP. Compositor wheel gesture over 7 seconds, then middle/end seeks. Scroll rAF telemetry excludes snapshot scans and GC. Resource totals are measured local transfers, not npm installation or compressed bundle sizes."
+    "reading": "Independent cold browser context per renderer, production build. LiMR and Markstream retain default plugins/options and vendor CSS; react-markdown uses remark-gfm, remark-math, rehype-katex and an async Shiki component, neutral article CSS. LiMR default Markdown + full styles including Maple; Markstream default MarkdownRender + CSS with optional stream-diffs and KaTeX installed. Real local images; unique code/math. First readable frame is a two-rAF DOM-readiness proxy, not FCP/LCP. Compositor wheel gesture over 7 seconds, then middle/end seeks. Scroll rAF telemetry excludes snapshot scans and GC. Resource totals are measured local transfers, not npm installation or compressed bundle sizes.",
+    "hostSnapshots": "Full-DOM trials record host/procfs and renderer process/main-thread CPU before and after the whole run, outside page commit timing. These boundaries include trailing rAFs and adjacent CDP metric calls, not only flushSync. CPU ticks use clockTicksPerSecond; process CPU includes workers. Node RSS/heap is also recorded around build and reference SSR. No periodic sampling or tracing is enabled in ordinary runs. Host-wide pressure/reclaim counters show correlation, not process attribution. Unavailable OS fields are null."
   },
+  "preconditions": [
+    {
+      "phase": "before-build",
+      "state": {
+        "startedAt": "2026-10-14T15:29:23.504Z",
+        "at": "2026-10-14T15:29:23.505Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 347725824,
+          "heapTotal": 114102272,
+          "heapUsed": 71928584,
+          "external": 54309164,
+          "arrayBuffers": 36111277,
+          "usage": {
+            "userCPUTime": 1074591,
+            "systemCPUTime": 211662,
+            "maxRSS": 339576,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 88718,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 4381,
+            "involuntaryContextSwitches": 3
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9805224038,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "3609052 kB",
+          "MemAvailable": "9665584 kB",
+          "Cached": "4092384 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21242892 kB",
+          "SReclaimable": "869920 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "29846176 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608641829\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28247523328,
+        "renderers": []
+      }
+    },
+    {
+      "phase": "after-build",
+      "state": {
+        "startedAt": "2026-10-14T15:29:23.506Z",
+        "at": "2026-10-14T15:29:23.506Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 347725824,
+          "heapTotal": 114102272,
+          "heapUsed": 72104576,
+          "external": 54707262,
+          "arrayBuffers": 36509335,
+          "usage": {
+            "userCPUTime": 1075654,
+            "systemCPUTime": 211871,
+            "maxRSS": 339576,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 88727,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 4431,
+            "involuntaryContextSwitches": 3
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9805224049,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "3609052 kB",
+          "MemAvailable": "9665584 kB",
+          "Cached": "4092384 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21243256 kB",
+          "SReclaimable": "869920 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "29846544 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608641829\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28247523328,
+        "renderers": []
+      }
+    },
+    {
+      "phase": "static-large:before-reference",
+      "state": {
+        "startedAt": "2026-10-14T15:29:23.550Z",
+        "at": "2026-10-14T15:29:23.551Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 349102080,
+          "heapTotal": 114733056,
+          "heapUsed": 75437280,
+          "external": 55158101,
+          "arrayBuffers": 36924275,
+          "usage": {
+            "userCPUTime": 1100888,
+            "systemCPUTime": 220177,
+            "maxRSS": 340920,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 89598,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 4572,
+            "involuntaryContextSwitches": 3
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9805234920,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "3579580 kB",
+          "MemAvailable": "9636120 kB",
+          "Cached": "4092384 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21271248 kB",
+          "SReclaimable": "869920 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "30104544 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608642090\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28280324096,
+        "renderers": []
+      }
+    },
+    {
+      "phase": "static-large:after-reference",
+      "state": {
+        "startedAt": "2026-10-14T15:29:26.196Z",
+        "at": "2026-10-14T15:29:26.203Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 691396608,
+          "heapTotal": 450965504,
+          "heapUsed": 417331240,
+          "external": 18719099,
+          "arrayBuffers": 486649,
+          "usage": {
+            "userCPUTime": 3951134,
+            "systemCPUTime": 1215416,
+            "maxRSS": 678376,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 701057,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 14826,
+            "involuntaryContextSwitches": 15
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9805895555,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "3067040 kB",
+          "MemAvailable": "9123816 kB",
+          "Cached": "4092804 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21617724 kB",
+          "SReclaimable": "869956 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "30333176 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608647180\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28643680256,
+        "renderers": []
+      }
+    }
+  ],
   "results": [
     {
       "suite": "full-dom",
@@ -58,42 +434,293 @@
       "trial": 0,
       "characters": 877782,
       "updates": 1,
-      "totalMs": 1172.6000000238419,
-      "p95Ms": 1172.6000000238419,
-      "maxMs": 1172.6000000238419,
-      "finalMs": 1172.6000000238419,
-      "wallMs": 1220.5,
+      "totalMs": 939.3999999761581,
+      "p95Ms": 939.3999999761581,
+      "maxMs": 939.3999999761581,
+      "finalMs": 939.3999999761581,
+      "wallMs": 1005.3999999761581,
       "telemetry": {
         "phase": "full-dom",
         "frames": 3,
         "frameSamplesMs": [
-          3.299999952316284,
-          1200,
-          16.59999999999991
+          -0.6999999999999886,
+          983.3,
+          16.700000000000045
         ],
-        "frameP95Ms": 1200,
-        "frameP99Ms": 1200,
-        "frameMaxMs": 1200,
+        "frameP95Ms": 983.3,
+        "frameP99Ms": 983.3,
+        "frameMaxMs": 983.3,
         "framesOver33Ms": 1,
         "longTasks": [
           {
-            "at": 282.7000000476837,
-            "duration": 1183,
+            "at": 290.60000002384186,
+            "duration": 951,
+            "phase": "full-dom"
+          },
+          {
+            "at": 1241.8999999761581,
+            "duration": 58,
             "phase": "full-dom"
           }
         ],
         "layoutShifts": []
       },
       "samples": [
-        1172.6000000238419
+        939.3999999761581
       ],
-      "mainThreadMs": 1233.654,
-      "layoutMs": 135.156,
-      "retainedHeapBytes": 59825504,
-      "heapBefore": 3018108,
-      "heapAfter": 62843612,
+      "processBefore": {
+        "startedAt": "2026-10-14T15:29:26.512Z",
+        "at": "2026-10-14T15:29:26.513Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 694149120,
+          "heapTotal": 452698112,
+          "heapUsed": 424268032,
+          "external": 21209631,
+          "arrayBuffers": 2977181,
+          "usage": {
+            "userCPUTime": 4048863,
+            "systemCPUTime": 1215416,
+            "maxRSS": 678376,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 702090,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 15026,
+            "involuntaryContextSwitches": 16
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9805922971,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "3046656 kB",
+          "MemAvailable": "9103432 kB",
+          "Cached": "4098712 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21651096 kB",
+          "SReclaimable": "869956 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31178796 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608647724\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28686442496,
+        "renderers": [
+          {
+            "pid": 3928747,
+            "process": {
+              "minflt": 18323,
+              "majflt": 0,
+              "utime": 18,
+              "stime": 4
+            },
+            "mainThread": {
+              "minflt": 8420,
+              "majflt": 0,
+              "utime": 10,
+              "stime": 0
+            },
+            "status": {
+              "VmSize": "1518314556 kB",
+              "VmRSS": "127908 kB",
+              "RssAnon": "27960 kB",
+              "RssFile": "94324 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "174",
+              "nonvoluntary_ctxt_switches": "0"
+            }
+          }
+        ]
+      },
+      "processAfter": {
+        "startedAt": "2026-10-14T15:29:27.543Z",
+        "at": "2026-10-14T15:29:27.544Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 695132160,
+          "heapTotal": 453603328,
+          "heapUsed": 426831376,
+          "external": 21810972,
+          "arrayBuffers": 3578522,
+          "usage": {
+            "userCPUTime": 4059356,
+            "systemCPUTime": 1215416,
+            "maxRSS": 678840,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 702554,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 15103,
+            "involuntaryContextSwitches": 16
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9806054005,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2790344 kB",
+          "MemAvailable": "8847132 kB",
+          "Cached": "4098708 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21953956 kB",
+          "SReclaimable": "869956 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31402908 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608649046\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28997820416,
+        "renderers": [
+          {
+            "pid": 3928747,
+            "process": {
+              "minflt": 131563,
+              "majflt": 0,
+              "utime": 208,
+              "stime": 29
+            },
+            "mainThread": {
+              "minflt": 74420,
+              "majflt": 0,
+              "utime": 98,
+              "stime": 11
+            },
+            "status": {
+              "VmSize": "1518314556 kB",
+              "VmRSS": "429484 kB",
+              "RssAnon": "328900 kB",
+              "RssFile": "94960 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "618",
+              "nonvoluntary_ctxt_switches": "4"
+            }
+          }
+        ]
+      },
+      "systemBefore": {
+        "at": "2026-10-14T15:29:26.514Z",
+        "freeMemoryBytes": 9321914368,
+        "loadAverage": [
+          2.18,
+          1.92,
+          1.8
+        ]
+      },
+      "systemAfter": {
+        "at": "2026-10-14T15:29:27.865Z",
+        "freeMemoryBytes": 9039880192,
+        "loadAverage": [
+          2.18,
+          1.92,
+          1.8
+        ]
+      },
+      "mainThreadMs": 1019.4129999999999,
+      "layoutMs": 189.75300000000001,
+      "retainedHeapBytes": 57167372,
+      "heapBefore": 3031356,
+      "heapAfter": 60198728,
       "validation": {
-        "elements": 40002,
+        "elements": 38002,
         "textCharacters": 721783,
         "height": 615476,
         "headings": 2000,
@@ -112,40 +739,286 @@
       "trial": 0,
       "characters": 877782,
       "updates": 1,
-      "totalMs": 1096.699999988079,
-      "p95Ms": 1096.699999988079,
-      "maxMs": 1096.699999988079,
-      "finalMs": 1096.699999988079,
-      "wallMs": 1139.1000000238419,
+      "totalMs": 1266,
+      "p95Ms": 1266,
+      "maxMs": 1266,
+      "finalMs": 1266,
+      "wallMs": 1317.3999999761581,
       "telemetry": {
         "phase": "full-dom",
         "frames": 3,
         "frameSamplesMs": [
-          5.3000000238418465,
-          1116.7,
-          16.5
+          0.6000000238418579,
+          1299.9,
+          16.59999999999991
         ],
-        "frameP95Ms": 1116.7,
-        "frameP99Ms": 1116.7,
-        "frameMaxMs": 1116.7,
+        "frameP95Ms": 1299.9,
+        "frameP99Ms": 1299.9,
+        "frameMaxMs": 1299.9,
         "framesOver33Ms": 1,
         "longTasks": [
           {
-            "at": 271.19999998807907,
-            "duration": 1107,
+            "at": 278.2000000476837,
+            "duration": 1278,
             "phase": "full-dom"
           }
         ],
         "layoutShifts": []
       },
       "samples": [
-        1096.699999988079
+        1266
       ],
-      "mainThreadMs": 1152.528,
-      "layoutMs": 107.627,
-      "retainedHeapBytes": 13726316,
-      "heapBefore": 3596356,
-      "heapAfter": 17322672,
+      "processBefore": {
+        "startedAt": "2026-10-14T15:29:28.161Z",
+        "at": "2026-10-14T15:29:28.162Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 696201216,
+          "heapTotal": 454496256,
+          "heapUsed": 419136408,
+          "external": 21112703,
+          "arrayBuffers": 2880253,
+          "usage": {
+            "userCPUTime": 4118136,
+            "systemCPUTime": 1226417,
+            "maxRSS": 681528,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 703766,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 15351,
+            "involuntaryContextSwitches": 16
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9806110607,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2966736 kB",
+          "MemAvailable": "9023532 kB",
+          "Cached": "4098716 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21654428 kB",
+          "SReclaimable": "869956 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31208648 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608649849\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28691623936,
+        "renderers": [
+          {
+            "pid": 3928819,
+            "process": {
+              "minflt": 18185,
+              "majflt": 0,
+              "utime": 18,
+              "stime": 5
+            },
+            "mainThread": {
+              "minflt": 8419,
+              "majflt": 0,
+              "utime": 9,
+              "stime": 2
+            },
+            "status": {
+              "VmSize": "1518273576 kB",
+              "VmRSS": "126960 kB",
+              "RssAnon": "27844 kB",
+              "RssFile": "93492 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "164",
+              "nonvoluntary_ctxt_switches": "0"
+            }
+          }
+        ]
+      },
+      "processAfter": {
+        "startedAt": "2026-10-14T15:29:29.505Z",
+        "at": "2026-10-14T15:29:29.509Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 697184256,
+          "heapTotal": 455401472,
+          "heapUsed": 421644136,
+          "external": 21722071,
+          "arrayBuffers": 3489621,
+          "usage": {
+            "userCPUTime": 4125810,
+            "systemCPUTime": 1227479,
+            "maxRSS": 681528,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 703991,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 15432,
+            "involuntaryContextSwitches": 16
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9806316117,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2618856 kB",
+          "MemAvailable": "8675652 kB",
+          "Cached": "4098716 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "22043992 kB",
+          "SReclaimable": "869956 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31410952 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608651507\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 29092085760,
+        "renderers": [
+          {
+            "pid": 3928819,
+            "process": {
+              "minflt": 195068,
+              "majflt": 0,
+              "utime": 216,
+              "stime": 29
+            },
+            "mainThread": {
+              "minflt": 143823,
+              "majflt": 0,
+              "utime": 125,
+              "stime": 17
+            },
+            "status": {
+              "VmSize": "1518314556 kB",
+              "VmRSS": "516804 kB",
+              "RssAnon": "417180 kB",
+              "RssFile": "94000 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "624",
+              "nonvoluntary_ctxt_switches": "4"
+            }
+          }
+        ]
+      },
+      "systemBefore": {
+        "at": "2026-10-14T15:29:28.163Z",
+        "freeMemoryBytes": 9240096768,
+        "loadAverage": [
+          2.18,
+          1.92,
+          1.8
+        ]
+      },
+      "systemAfter": {
+        "at": "2026-10-14T15:29:29.763Z",
+        "freeMemoryBytes": 9054928896,
+        "loadAverage": [
+          2.18,
+          1.92,
+          1.8
+        ]
+      },
+      "mainThreadMs": 1325.856,
+      "layoutMs": 121.279,
+      "retainedHeapBytes": 13797300,
+      "heapBefore": 3596292,
+      "heapAfter": 17393592,
       "validation": {
         "elements": 36001,
         "textCharacters": 735782,
@@ -166,50 +1039,296 @@
       "trial": 0,
       "characters": 877782,
       "updates": 1,
-      "totalMs": 770.5,
-      "p95Ms": 770.5,
-      "maxMs": 770.5,
-      "finalMs": 770.5,
-      "wallMs": 910.5,
+      "totalMs": 906.5,
+      "p95Ms": 906.5,
+      "maxMs": 906.5,
+      "finalMs": 906.5,
+      "wallMs": 1059.8999999761581,
       "telemetry": {
         "phase": "full-dom",
         "frames": 3,
         "frameSamplesMs": [
-          2.9000000238418693,
-          833.3,
-          66.70000000000005
+          0.8999999999999773,
+          966.6,
+          83.29999999999995
         ],
-        "frameP95Ms": 833.3,
-        "frameP99Ms": 833.3,
-        "frameMaxMs": 833.3,
+        "frameP95Ms": 966.6,
+        "frameP99Ms": 966.6,
+        "frameMaxMs": 966.6,
         "framesOver33Ms": 2,
         "longTasks": [
           {
-            "at": 278.19999998807907,
-            "duration": 792,
+            "at": 331.10000002384186,
+            "duration": 929,
             "phase": "full-dom"
           },
           {
-            "at": 1070.300000011921,
-            "duration": 59,
+            "at": 1260.7999999523163,
+            "duration": 61,
             "phase": "full-dom"
           },
           {
-            "at": 1129.5,
-            "duration": 68,
+            "at": 1322.3999999761581,
+            "duration": 77,
             "phase": "full-dom"
           }
         ],
         "layoutShifts": []
       },
       "samples": [
-        770.5
+        906.5
       ],
-      "mainThreadMs": 922.688,
-      "layoutMs": 168.221,
-      "retainedHeapBytes": 132475500,
-      "heapBefore": 3974748,
-      "heapAfter": 136450248,
+      "processBefore": {
+        "startedAt": "2026-10-14T15:29:30.113Z",
+        "at": "2026-10-14T15:29:30.114Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 699346944,
+          "heapTotal": 457383936,
+          "heapUsed": 429388304,
+          "external": 24320181,
+          "arrayBuffers": 6087731,
+          "usage": {
+            "userCPUTime": 4203337,
+            "systemCPUTime": 1230245,
+            "maxRSS": 682956,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 704808,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 15672,
+            "involuntaryContextSwitches": 17
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9806374757,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2848176 kB",
+          "MemAvailable": "8904992 kB",
+          "Cached": "4098728 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21659172 kB",
+          "SReclaimable": "869956 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31238548 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608652634\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28695199744,
+        "renderers": [
+          {
+            "pid": 3928894,
+            "process": {
+              "minflt": 18218,
+              "majflt": 0,
+              "utime": 23,
+              "stime": 6
+            },
+            "mainThread": {
+              "minflt": 8718,
+              "majflt": 0,
+              "utime": 12,
+              "stime": 3
+            },
+            "status": {
+              "VmSize": "1518306424 kB",
+              "VmRSS": "129920 kB",
+              "RssAnon": "29684 kB",
+              "RssFile": "94612 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "164",
+              "nonvoluntary_ctxt_switches": "0"
+            }
+          }
+        ]
+      },
+      "processAfter": {
+        "startedAt": "2026-10-14T15:29:31.196Z",
+        "at": "2026-10-14T15:29:31.208Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 696266752,
+          "heapTotal": 454074368,
+          "heapUsed": 414655200,
+          "external": 24921569,
+          "arrayBuffers": 936988,
+          "usage": {
+            "userCPUTime": 4217858,
+            "systemCPUTime": 1232597,
+            "maxRSS": 684300,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 705166,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 15778,
+            "involuntaryContextSwitches": 54
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9806543031,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2508112 kB",
+          "MemAvailable": "8564896 kB",
+          "Cached": "4098728 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "22113084 kB",
+          "SReclaimable": "869924 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31529972 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608654441\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 29163765760,
+        "renderers": [
+          {
+            "pid": 3928894,
+            "process": {
+              "minflt": 163037,
+              "majflt": 0,
+              "utime": 205,
+              "stime": 31
+            },
+            "mainThread": {
+              "minflt": 108143,
+              "majflt": 0,
+              "utime": 103,
+              "stime": 14
+            },
+            "status": {
+              "VmSize": "1518314620 kB",
+              "VmRSS": "586544 kB",
+              "RssAnon": "485796 kB",
+              "RssFile": "95124 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "491",
+              "nonvoluntary_ctxt_switches": "3"
+            }
+          }
+        ]
+      },
+      "systemBefore": {
+        "at": "2026-10-14T15:29:30.115Z",
+        "freeMemoryBytes": 9118711808,
+        "loadAverage": [
+          2.18,
+          1.92,
+          1.8
+        ]
+      },
+      "systemAfter": {
+        "at": "2026-10-14T15:29:31.576Z",
+        "freeMemoryBytes": 8835063808,
+        "loadAverage": [
+          2.17,
+          1.92,
+          1.8
+        ]
+      },
+      "mainThreadMs": 1072.4349999999997,
+      "layoutMs": 169.97799999999998,
+      "retainedHeapBytes": 132474896,
+      "heapBefore": 3978820,
+      "heapAfter": 136453716,
       "validation": {
         "elements": 152001,
         "textCharacters": 721783,
@@ -230,40 +1349,286 @@
       "trial": 1,
       "characters": 877782,
       "updates": 1,
-      "totalMs": 1146.4000000357628,
-      "p95Ms": 1146.4000000357628,
-      "maxMs": 1146.4000000357628,
-      "finalMs": 1146.4000000357628,
-      "wallMs": 1187.9000000357628,
+      "totalMs": 1287.3000000715256,
+      "p95Ms": 1287.3000000715256,
+      "maxMs": 1287.3000000715256,
+      "finalMs": 1287.3000000715256,
+      "wallMs": 1337,
       "telemetry": {
         "phase": "full-dom",
         "frames": 3,
         "frameSamplesMs": [
-          4.400000011920952,
-          1166.6,
-          16.59999999999991
+          2.6000000000000227,
+          1316.6,
+          16.700000000000045
         ],
-        "frameP95Ms": 1166.6,
-        "frameP99Ms": 1166.6,
-        "frameMaxMs": 1166.6,
+        "frameP95Ms": 1316.6,
+        "frameP99Ms": 1316.6,
+        "frameMaxMs": 1316.6,
         "framesOver33Ms": 1,
         "longTasks": [
           {
-            "at": 255,
-            "duration": 1158,
+            "at": 273.39999997615814,
+            "duration": 1298,
             "phase": "full-dom"
           }
         ],
         "layoutShifts": []
       },
       "samples": [
-        1146.4000000357628
+        1287.3000000715256
       ],
-      "mainThreadMs": 1201.288,
-      "layoutMs": 115.13499999999999,
-      "retainedHeapBytes": 13792920,
-      "heapBefore": 3597212,
-      "heapAfter": 17390132,
+      "processBefore": {
+        "startedAt": "2026-10-14T15:29:31.877Z",
+        "at": "2026-10-14T15:29:31.878Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 698232832,
+          "heapTotal": 456056832,
+          "heapUsed": 422612952,
+          "external": 21898447,
+          "arrayBuffers": 3665997,
+          "usage": {
+            "userCPUTime": 4278304,
+            "systemCPUTime": 1238133,
+            "maxRSS": 684300,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 705805,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 16010,
+            "involuntaryContextSwitches": 59
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9806605192,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2957716 kB",
+          "MemAvailable": "9014512 kB",
+          "Cached": "4098740 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21654472 kB",
+          "SReclaimable": "869924 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31193044 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608656849\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28691791872,
+        "renderers": [
+          {
+            "pid": 3928964,
+            "process": {
+              "minflt": 18138,
+              "majflt": 0,
+              "utime": 19,
+              "stime": 5
+            },
+            "mainThread": {
+              "minflt": 8492,
+              "majflt": 0,
+              "utime": 9,
+              "stime": 2
+            },
+            "status": {
+              "VmSize": "1518257184 kB",
+              "VmRSS": "126616 kB",
+              "RssAnon": "27372 kB",
+              "RssFile": "93620 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "155",
+              "nonvoluntary_ctxt_switches": "0"
+            }
+          }
+        ]
+      },
+      "processAfter": {
+        "startedAt": "2026-10-14T15:29:33.244Z",
+        "at": "2026-10-14T15:29:33.246Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 699215872,
+          "heapTotal": 456962048,
+          "heapUsed": 425123264,
+          "external": 22499687,
+          "arrayBuffers": 4267237,
+          "usage": {
+            "userCPUTime": 4288482,
+            "systemCPUTime": 1238713,
+            "maxRSS": 684300,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 706030,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 16088,
+            "involuntaryContextSwitches": 59
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9806801345,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2598608 kB",
+          "MemAvailable": "8655516 kB",
+          "Cached": "4098752 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "22043024 kB",
+          "SReclaimable": "870020 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31427252 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608659949\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 29089918976,
+        "renderers": [
+          {
+            "pid": 3928964,
+            "process": {
+              "minflt": 195817,
+              "majflt": 0,
+              "utime": 219,
+              "stime": 32
+            },
+            "mainThread": {
+              "minflt": 143385,
+              "majflt": 0,
+              "utime": 125,
+              "stime": 20
+            },
+            "status": {
+              "VmSize": "1518314556 kB",
+              "VmRSS": "518040 kB",
+              "RssAnon": "418352 kB",
+              "RssFile": "94064 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "540",
+              "nonvoluntary_ctxt_switches": "19"
+            }
+          }
+        ]
+      },
+      "systemBefore": {
+        "at": "2026-10-14T15:29:31.878Z",
+        "freeMemoryBytes": 9230860288,
+        "loadAverage": [
+          2.17,
+          1.92,
+          1.8
+        ]
+      },
+      "systemAfter": {
+        "at": "2026-10-14T15:29:33.532Z",
+        "freeMemoryBytes": 8928903168,
+        "loadAverage": [
+          2.17,
+          1.92,
+          1.8
+        ]
+      },
+      "mainThreadMs": 1351.966,
+      "layoutMs": 134.859,
+      "retainedHeapBytes": 13729740,
+      "heapBefore": 3597112,
+      "heapAfter": 17326852,
       "validation": {
         "elements": 36001,
         "textCharacters": 735782,
@@ -284,50 +1649,296 @@
       "trial": 1,
       "characters": 877782,
       "updates": 1,
-      "totalMs": 763.7000000476837,
-      "p95Ms": 763.7000000476837,
-      "maxMs": 763.7000000476837,
-      "finalMs": 763.7000000476837,
-      "wallMs": 905,
+      "totalMs": 847.5,
+      "p95Ms": 847.5,
+      "maxMs": 847.5,
+      "finalMs": 847.5,
+      "wallMs": 1037.2000000476837,
       "telemetry": {
         "phase": "full-dom",
         "frames": 3,
         "frameSamplesMs": [
-          -0.30000000000001137,
-          816.5999999999999,
-          83.29999999999995
+          0.09999997615813072,
+          933.3,
+          100
         ],
-        "frameP95Ms": 816.5999999999999,
-        "frameP99Ms": 816.5999999999999,
-        "frameMaxMs": 816.5999999999999,
+        "frameP95Ms": 933.3,
+        "frameP99Ms": 933.3,
+        "frameMaxMs": 933.3,
         "framesOver33Ms": 2,
         "longTasks": [
           {
-            "at": 281.89999997615814,
-            "duration": 788,
+            "at": 295.10000002384186,
+            "duration": 873,
             "phase": "full-dom"
           },
           {
-            "at": 1070.300000011921,
-            "duration": 56,
+            "at": 1168.6000000238419,
+            "duration": 83,
             "phase": "full-dom"
           },
           {
-            "at": 1127.0999999642372,
-            "duration": 69,
+            "at": 1252.3000000715256,
+            "duration": 89,
             "phase": "full-dom"
           }
         ],
         "layoutShifts": []
       },
       "samples": [
-        763.7000000476837
+        847.5
       ],
-      "mainThreadMs": 919.063,
-      "layoutMs": 174.639,
-      "retainedHeapBytes": 132472728,
-      "heapBefore": 3974472,
-      "heapAfter": 136447200,
+      "processBefore": {
+        "startedAt": "2026-10-14T15:29:33.844Z",
+        "at": "2026-10-14T15:29:33.845Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 701575168,
+          "heapTotal": 458944512,
+          "heapUsed": 432911920,
+          "external": 25117800,
+          "arrayBuffers": 6885350,
+          "usage": {
+            "userCPUTime": 4349958,
+            "systemCPUTime": 1245185,
+            "maxRSS": 685132,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 706645,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 16322,
+            "involuntaryContextSwitches": 60
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9806862824,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2822956 kB",
+          "MemAvailable": "8879880 kB",
+          "Cached": "4098764 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21660616 kB",
+          "SReclaimable": "870020 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31229556 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608661520\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28697464832,
+        "renderers": [
+          {
+            "pid": 3929035,
+            "process": {
+              "minflt": 17956,
+              "majflt": 0,
+              "utime": 20,
+              "stime": 4
+            },
+            "mainThread": {
+              "minflt": 8824,
+              "majflt": 0,
+              "utime": 11,
+              "stime": 2
+            },
+            "status": {
+              "VmSize": "1518281772 kB",
+              "VmRSS": "129560 kB",
+              "RssAnon": "29516 kB",
+              "RssFile": "94420 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "146",
+              "nonvoluntary_ctxt_switches": "0"
+            }
+          }
+        ]
+      },
+      "processAfter": {
+        "startedAt": "2026-10-14T15:29:34.906Z",
+        "at": "2026-10-14T15:29:34.909Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 697352192,
+          "heapTotal": 455385088,
+          "heapUsed": 415720936,
+          "external": 19340228,
+          "arrayBuffers": 1107778,
+          "usage": {
+            "userCPUTime": 4360873,
+            "systemCPUTime": 1245963,
+            "maxRSS": 686476,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 707003,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 16422,
+            "involuntaryContextSwitches": 61
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9807030210,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2454180 kB",
+          "MemAvailable": "8511104 kB",
+          "Cached": "4098764 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "22111588 kB",
+          "SReclaimable": "870020 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31544868 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608662696\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 29160964096,
+        "renderers": [
+          {
+            "pid": 3929035,
+            "process": {
+              "minflt": 162839,
+              "majflt": 0,
+              "utime": 184,
+              "stime": 33
+            },
+            "mainThread": {
+              "minflt": 107959,
+              "majflt": 0,
+              "utime": 96,
+              "stime": 17
+            },
+            "status": {
+              "VmSize": "1518314556 kB",
+              "VmRSS": "586936 kB",
+              "RssAnon": "486252 kB",
+              "RssFile": "95060 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "455",
+              "nonvoluntary_ctxt_switches": "2"
+            }
+          }
+        ]
+      },
+      "systemBefore": {
+        "at": "2026-10-14T15:29:33.846Z",
+        "freeMemoryBytes": 9092997120,
+        "loadAverage": [
+          2.17,
+          1.92,
+          1.8
+        ]
+      },
+      "systemAfter": {
+        "at": "2026-10-14T15:29:35.295Z",
+        "freeMemoryBytes": 8783609856,
+        "loadAverage": [
+          2.17,
+          1.92,
+          1.8
+        ]
+      },
+      "mainThreadMs": 1049.916,
+      "layoutMs": 169.614,
+      "retainedHeapBytes": 132474152,
+      "heapBefore": 3974516,
+      "heapAfter": 136448668,
       "validation": {
         "elements": 152001,
         "textCharacters": 721783,
@@ -348,42 +1959,293 @@
       "trial": 1,
       "characters": 877782,
       "updates": 1,
-      "totalMs": 1224.4000000357628,
-      "p95Ms": 1224.4000000357628,
-      "maxMs": 1224.4000000357628,
-      "finalMs": 1224.4000000357628,
-      "wallMs": 1274.199999988079,
+      "totalMs": 946.0999999046326,
+      "p95Ms": 946.0999999046326,
+      "maxMs": 946.0999999046326,
+      "finalMs": 946.0999999046326,
+      "wallMs": 1004.6999999284744,
       "telemetry": {
         "phase": "full-dom",
         "frames": 3,
         "frameSamplesMs": [
-          4.6999999761581535,
-          1250,
-          16.700000000000045
+          0.40000004768370445,
+          983.3,
+          16.799999999999955
         ],
-        "frameP95Ms": 1250,
-        "frameP99Ms": 1250,
-        "frameMaxMs": 1250,
+        "frameP95Ms": 983.3,
+        "frameP99Ms": 983.3,
+        "frameMaxMs": 983.3,
         "framesOver33Ms": 1,
         "longTasks": [
           {
-            "at": 263.60000002384186,
-            "duration": 1235,
+            "at": 273.59999990463257,
+            "duration": 958,
+            "phase": "full-dom"
+          },
+          {
+            "at": 1232,
+            "duration": 52,
             "phase": "full-dom"
           }
         ],
         "layoutShifts": []
       },
       "samples": [
-        1224.4000000357628
+        946.0999999046326
       ],
-      "mainThreadMs": 1287.249,
-      "layoutMs": 120.99700000000001,
-      "retainedHeapBytes": 59823860,
-      "heapBefore": 3018028,
-      "heapAfter": 62841888,
+      "processBefore": {
+        "startedAt": "2026-10-14T15:29:35.595Z",
+        "at": "2026-10-14T15:29:35.596Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 699514880,
+          "heapTotal": 457629696,
+          "heapUsed": 423920768,
+          "external": 21897124,
+          "arrayBuffers": 3664674,
+          "usage": {
+            "userCPUTime": 4425373,
+            "systemCPUTime": 1250916,
+            "maxRSS": 686476,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 707598,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 16637,
+            "involuntaryContextSwitches": 61
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9807095409,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2873444 kB",
+          "MemAvailable": "8930392 kB",
+          "Cached": "4098776 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21657328 kB",
+          "SReclaimable": "870024 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31240224 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608665680\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28693811200,
+        "renderers": [
+          {
+            "pid": 3929099,
+            "process": {
+              "minflt": 18317,
+              "majflt": 0,
+              "utime": 18,
+              "stime": 6
+            },
+            "mainThread": {
+              "minflt": 8075,
+              "majflt": 0,
+              "utime": 10,
+              "stime": 2
+            },
+            "status": {
+              "VmSize": "1518290032 kB",
+              "VmRSS": "127860 kB",
+              "RssAnon": "27724 kB",
+              "RssFile": "94512 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "184",
+              "nonvoluntary_ctxt_switches": "0"
+            }
+          }
+        ]
+      },
+      "processAfter": {
+        "startedAt": "2026-10-14T15:29:36.623Z",
+        "at": "2026-10-14T15:29:36.624Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 700301312,
+          "heapTotal": 458534912,
+          "heapUsed": 426451328,
+          "external": 22506401,
+          "arrayBuffers": 4273951,
+          "usage": {
+            "userCPUTime": 4428020,
+            "systemCPUTime": 1254837,
+            "maxRSS": 686476,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 707820,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 16734,
+            "involuntaryContextSwitches": 61
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9807224673,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2626300 kB",
+          "MemAvailable": "8683252 kB",
+          "Cached": "4098780 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21958928 kB",
+          "SReclaimable": "870024 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31422728 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608666724\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 29002526720,
+        "renderers": [
+          {
+            "pid": 3929099,
+            "process": {
+              "minflt": 130758,
+              "majflt": 0,
+              "utime": 205,
+              "stime": 33
+            },
+            "mainThread": {
+              "minflt": 75780,
+              "majflt": 0,
+              "utime": 98,
+              "stime": 13
+            },
+            "status": {
+              "VmSize": "1518314620 kB",
+              "VmRSS": "429844 kB",
+              "RssAnon": "329260 kB",
+              "RssFile": "94960 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "592",
+              "nonvoluntary_ctxt_switches": "2"
+            }
+          }
+        ]
+      },
+      "systemBefore": {
+        "at": "2026-10-14T15:29:35.597Z",
+        "freeMemoryBytes": 9144721408,
+        "loadAverage": [
+          2.17,
+          1.92,
+          1.8
+        ]
+      },
+      "systemAfter": {
+        "at": "2026-10-14T15:29:36.962Z",
+        "freeMemoryBytes": 8870813696,
+        "loadAverage": [
+          2.07,
+          1.91,
+          1.79
+        ]
+      },
+      "mainThreadMs": 1018.3050000000001,
+      "layoutMs": 174.69500000000002,
+      "retainedHeapBytes": 57168224,
+      "heapBefore": 3032064,
+      "heapAfter": 60200288,
       "validation": {
-        "elements": 40002,
+        "elements": 38002,
         "textCharacters": 721783,
         "height": 615476,
         "headings": 2000,
@@ -402,36 +2264,341 @@
       "trial": 2,
       "characters": 877782,
       "updates": 1,
-      "totalMs": 882.9000000357628,
-      "p95Ms": 882.9000000357628,
-      "maxMs": 882.9000000357628,
-      "finalMs": 882.9000000357628,
-      "wallMs": 1031.8999999761581,
+      "totalMs": 819.1000000238419,
+      "p95Ms": 819.1000000238419,
+      "maxMs": 819.1000000238419,
+      "finalMs": 819.1000000238419,
+      "wallMs": 974.2999999523163,
       "telemetry": {
         "phase": "full-dom",
         "frames": 3,
         "frameSamplesMs": [
-          0.8000000000000114,
-          950,
-          66.70000000000005
+          0.40000007152559647,
+          883.4,
+          83.20000000000005
         ],
-        "frameP95Ms": 950,
-        "frameP99Ms": 950,
-        "frameMaxMs": 950,
+        "frameP95Ms": 883.4,
+        "frameP99Ms": 883.4,
+        "frameMaxMs": 883.4,
         "framesOver33Ms": 2,
         "longTasks": [
           {
-            "at": 303.5,
-            "duration": 904,
+            "at": 299.89999997615814,
+            "duration": 841,
             "phase": "full-dom"
           },
           {
-            "at": 1208.0999999642372,
-            "duration": 62,
+            "at": 1141.1999999284744,
+            "duration": 67,
             "phase": "full-dom"
           },
           {
-            "at": 1270.7999999523163,
+            "at": 1208.6999999284744,
+            "duration": 74,
+            "phase": "full-dom"
+          }
+        ],
+        "layoutShifts": []
+      },
+      "samples": [
+        819.1000000238419
+      ],
+      "processBefore": {
+        "startedAt": "2026-10-14T15:29:37.277Z",
+        "at": "2026-10-14T15:29:37.278Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 702070784,
+          "heapTotal": 460517376,
+          "heapUsed": 434323088,
+          "external": 25144352,
+          "arrayBuffers": 6911902,
+          "usage": {
+            "userCPUTime": 4491148,
+            "systemCPUTime": 1260313,
+            "maxRSS": 686476,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 708484,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 16984,
+            "involuntaryContextSwitches": 62
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9807286043,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2715048 kB",
+          "MemAvailable": "8772016 kB",
+          "Cached": "4098788 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21661052 kB",
+          "SReclaimable": "870024 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31234100 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608668662\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28698030080,
+        "renderers": [
+          {
+            "pid": 3929166,
+            "process": {
+              "minflt": 18953,
+              "majflt": 0,
+              "utime": 19,
+              "stime": 5
+            },
+            "mainThread": {
+              "minflt": 8877,
+              "majflt": 0,
+              "utime": 10,
+              "stime": 2
+            },
+            "status": {
+              "VmSize": "1518281836 kB",
+              "VmRSS": "130080 kB",
+              "RssAnon": "29972 kB",
+              "RssFile": "94484 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "195",
+              "nonvoluntary_ctxt_switches": "0"
+            }
+          }
+        ]
+      },
+      "processAfter": {
+        "startedAt": "2026-10-14T15:29:38.276Z",
+        "at": "2026-10-14T15:29:38.283Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 697896960,
+          "heapTotal": 456171520,
+          "heapUsed": 416774512,
+          "external": 19496023,
+          "arrayBuffers": 1263573,
+          "usage": {
+            "userCPUTime": 4503476,
+            "systemCPUTime": 1261466,
+            "maxRSS": 687152,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 708836,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 17088,
+            "involuntaryContextSwitches": 64
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9807445000,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2395492 kB",
+          "MemAvailable": "8452472 kB",
+          "Cached": "4098788 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "22111568 kB",
+          "SReclaimable": "870024 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31545452 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608669959\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 29162209280,
+        "renderers": [
+          {
+            "pid": 3929166,
+            "process": {
+              "minflt": 163512,
+              "majflt": 0,
+              "utime": 179,
+              "stime": 36
+            },
+            "mainThread": {
+              "minflt": 108024,
+              "majflt": 0,
+              "utime": 90,
+              "stime": 17
+            },
+            "status": {
+              "VmSize": "1518314620 kB",
+              "VmRSS": "587688 kB",
+              "RssAnon": "486940 kB",
+              "RssFile": "95124 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "566",
+              "nonvoluntary_ctxt_switches": "2"
+            }
+          }
+        ]
+      },
+      "systemBefore": {
+        "at": "2026-10-14T15:29:37.279Z",
+        "freeMemoryBytes": 8982544384,
+        "loadAverage": [
+          2.07,
+          1.91,
+          1.79
+        ]
+      },
+      "systemAfter": {
+        "at": "2026-10-14T15:29:38.631Z",
+        "freeMemoryBytes": 8742518784,
+        "loadAverage": [
+          2.07,
+          1.91,
+          1.79
+        ]
+      },
+      "mainThreadMs": 987.0040000000001,
+      "layoutMs": 162.129,
+      "retainedHeapBytes": 132476848,
+      "heapBefore": 3974608,
+      "heapAfter": 136451456,
+      "validation": {
+        "elements": 152001,
+        "textCharacters": 721783,
+        "height": 615476,
+        "headings": 2000,
+        "rows": 4000,
+        "codeBlocks": 0,
+        "valid": true,
+        "mismatch": []
+      },
+      "errors": []
+    },
+    {
+      "suite": "full-dom",
+      "scenario": "static-large",
+      "sourceSHA256": "ccf323a0f1272d6a5605f0f3f12c9bf0de1f791f191991583c48abdf47963a4c",
+      "renderer": "limr",
+      "trial": 2,
+      "characters": 877782,
+      "updates": 1,
+      "totalMs": 950.5,
+      "p95Ms": 950.5,
+      "maxMs": 950.5,
+      "finalMs": 950.5,
+      "wallMs": 1032.8999999761581,
+      "telemetry": {
+        "phase": "full-dom",
+        "frames": 3,
+        "frameSamplesMs": [
+          -0.6999999761581535,
+          1016.5999999999999,
+          16.700000000000045
+        ],
+        "frameP95Ms": 1016.5999999999999,
+        "frameP99Ms": 1016.5999999999999,
+        "frameMaxMs": 1016.5999999999999,
+        "framesOver33Ms": 1,
+        "longTasks": [
+          {
+            "at": 281.39999997615814,
+            "duration": 964,
+            "phase": "full-dom"
+          },
+          {
+            "at": 1245.3999999761581,
             "duration": 73,
             "phase": "full-dom"
           }
@@ -439,69 +2606,261 @@
         "layoutShifts": []
       },
       "samples": [
-        882.9000000357628
+        950.5
       ],
-      "mainThreadMs": 1044.1019999999999,
-      "layoutMs": 187.648,
-      "retainedHeapBytes": 132462156,
-      "heapBefore": 3979472,
-      "heapAfter": 136441628,
-      "validation": {
-        "elements": 152001,
-        "textCharacters": 721783,
-        "height": 615476,
-        "headings": 2000,
-        "rows": 4000,
-        "codeBlocks": 0,
-        "valid": true,
-        "mismatch": []
-      },
-      "errors": []
-    },
-    {
-      "suite": "full-dom",
-      "scenario": "static-large",
-      "sourceSHA256": "ccf323a0f1272d6a5605f0f3f12c9bf0de1f791f191991583c48abdf47963a4c",
-      "renderer": "limr",
-      "trial": 2,
-      "characters": 877782,
-      "updates": 1,
-      "totalMs": 1357.7000000476837,
-      "p95Ms": 1357.7000000476837,
-      "maxMs": 1357.7000000476837,
-      "finalMs": 1357.7000000476837,
-      "wallMs": 1408.800000011921,
-      "telemetry": {
-        "phase": "full-dom",
-        "frames": 3,
-        "frameSamplesMs": [
-          5.200000023841881,
-          1383.3000000000002,
-          16.699999999999818
-        ],
-        "frameP95Ms": 1383.3000000000002,
-        "frameP99Ms": 1383.3000000000002,
-        "frameMaxMs": 1383.3000000000002,
-        "framesOver33Ms": 1,
-        "longTasks": [
-          {
-            "at": 270.39999997615814,
-            "duration": 1368,
-            "phase": "full-dom"
+      "processBefore": {
+        "startedAt": "2026-10-14T15:29:38.944Z",
+        "at": "2026-10-14T15:29:38.945Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 699863040,
+          "heapTotal": 458153984,
+          "heapUsed": 424539312,
+          "external": 22072520,
+          "arrayBuffers": 3840070,
+          "usage": {
+            "userCPUTime": 4559956,
+            "systemCPUTime": 1269393,
+            "maxRSS": 687152,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 709383,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 17310,
+            "involuntaryContextSwitches": 68
           }
-        ],
-        "layoutShifts": []
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9807498040,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2885640 kB",
+          "MemAvailable": "8942628 kB",
+          "Cached": "4098796 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21656592 kB",
+          "SReclaimable": "870024 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31438652 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608675501\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28695404544,
+        "renderers": [
+          {
+            "pid": 3929221,
+            "process": {
+              "minflt": 17692,
+              "majflt": 0,
+              "utime": 18,
+              "stime": 5
+            },
+            "mainThread": {
+              "minflt": 8019,
+              "majflt": 0,
+              "utime": 9,
+              "stime": 2
+            },
+            "status": {
+              "VmSize": "1518273576 kB",
+              "VmRSS": "127212 kB",
+              "RssAnon": "27200 kB",
+              "RssFile": "94388 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "180",
+              "nonvoluntary_ctxt_switches": "1"
+            }
+          }
+        ]
       },
-      "samples": [
-        1357.7000000476837
-      ],
-      "mainThreadMs": 1421.498,
-      "layoutMs": 129.07,
-      "retainedHeapBytes": 59812788,
-      "heapBefore": 3017916,
-      "heapAfter": 62830704,
+      "processAfter": {
+        "startedAt": "2026-10-14T15:29:40.002Z",
+        "at": "2026-10-14T15:29:40.003Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 598466560,
+          "heapTotal": 459059200,
+          "heapUsed": 427078104,
+          "external": 22682048,
+          "arrayBuffers": 4449598,
+          "usage": {
+            "userCPUTime": 4602074,
+            "systemCPUTime": 1283132,
+            "maxRSS": 687152,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 711517,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 17723,
+            "involuntaryContextSwitches": 68
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9807630574,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2730256 kB",
+          "MemAvailable": "8787284 kB",
+          "Cached": "4098800 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21856708 kB",
+          "SReclaimable": "870056 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31418376 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608677430\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28895830016,
+        "renderers": [
+          {
+            "pid": 3929221,
+            "process": {
+              "minflt": 129731,
+              "majflt": 0,
+              "utime": 206,
+              "stime": 32
+            },
+            "mainThread": {
+              "minflt": 74628,
+              "majflt": 0,
+              "utime": 99,
+              "stime": 14
+            },
+            "status": {
+              "VmSize": "1518314556 kB",
+              "VmRSS": "426204 kB",
+              "RssAnon": "325684 kB",
+              "RssFile": "94896 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "691",
+              "nonvoluntary_ctxt_switches": "3"
+            }
+          }
+        ]
+      },
+      "systemBefore": {
+        "at": "2026-10-14T15:29:38.946Z",
+        "freeMemoryBytes": 9157251072,
+        "loadAverage": [
+          2.07,
+          1.91,
+          1.79
+        ]
+      },
+      "systemAfter": {
+        "at": "2026-10-14T15:29:40.314Z",
+        "freeMemoryBytes": 9093451776,
+        "loadAverage": [
+          2.07,
+          1.91,
+          1.79
+        ]
+      },
+      "mainThreadMs": 1046.454,
+      "layoutMs": 213.92,
+      "retainedHeapBytes": 57164084,
+      "heapBefore": 3031292,
+      "heapAfter": 60195376,
       "validation": {
-        "elements": 40002,
+        "elements": 38002,
         "textCharacters": 721783,
         "height": 615476,
         "headings": 2000,
@@ -520,40 +2879,286 @@
       "trial": 2,
       "characters": 877782,
       "updates": 1,
-      "totalMs": 1264.8999999761581,
-      "p95Ms": 1264.8999999761581,
-      "maxMs": 1264.8999999761581,
-      "finalMs": 1264.8999999761581,
-      "wallMs": 1321.4000000357628,
+      "totalMs": 1309.8000000715256,
+      "p95Ms": 1309.8000000715256,
+      "maxMs": 1309.8000000715256,
+      "finalMs": 1309.8000000715256,
+      "wallMs": 1365.1000000238419,
       "telemetry": {
         "phase": "full-dom",
         "frames": 3,
         "frameSamplesMs": [
-          4.199999999999989,
-          1300,
-          16.59999999999991
+          -1.7999999761581194,
+          1350,
+          16.600000000000136
         ],
-        "frameP95Ms": 1300,
-        "frameP99Ms": 1300,
-        "frameMaxMs": 1300,
+        "frameP95Ms": 1350,
+        "frameP99Ms": 1350,
+        "frameMaxMs": 1350,
         "framesOver33Ms": 1,
         "longTasks": [
           {
-            "at": 266.69999998807907,
-            "duration": 1275,
+            "at": 282,
+            "duration": 1321,
             "phase": "full-dom"
           }
         ],
         "layoutShifts": []
       },
       "samples": [
-        1264.8999999761581
+        1309.8000000715256
       ],
-      "mainThreadMs": 1329.6999999999998,
-      "layoutMs": 125.203,
-      "retainedHeapBytes": 13729732,
-      "heapBefore": 3596304,
-      "heapAfter": 17326036,
+      "processBefore": {
+        "startedAt": "2026-10-14T15:29:40.613Z",
+        "at": "2026-10-14T15:29:40.613Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 600608768,
+          "heapTotal": 461041664,
+          "heapUsed": 435128648,
+          "external": 25451890,
+          "arrayBuffers": 7219440,
+          "usage": {
+            "userCPUTime": 4663780,
+            "systemCPUTime": 1293213,
+            "maxRSS": 687152,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 712235,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 17979,
+            "involuntaryContextSwitches": 68
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9807684012,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2985560 kB",
+          "MemAvailable": "9042592 kB",
+          "Cached": "4098812 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21561168 kB",
+          "SReclaimable": "870056 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31235512 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608678569\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28592246784,
+        "renderers": [
+          {
+            "pid": 3929295,
+            "process": {
+              "minflt": 18380,
+              "majflt": 0,
+              "utime": 16,
+              "stime": 7
+            },
+            "mainThread": {
+              "minflt": 8344,
+              "majflt": 0,
+              "utime": 7,
+              "stime": 4
+            },
+            "status": {
+              "VmSize": "1518290032 kB",
+              "VmRSS": "127156 kB",
+              "RssAnon": "27916 kB",
+              "RssFile": "93616 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "164",
+              "nonvoluntary_ctxt_switches": "0"
+            }
+          }
+        ]
+      },
+      "processAfter": {
+        "startedAt": "2026-10-14T15:29:42.023Z",
+        "at": "2026-10-14T15:29:42.025Z",
+        "clockTicksPerSecond": 100,
+        "node": {
+          "pid": 3928601,
+          "rss": 595914752,
+          "heapTotal": 457482240,
+          "heapUsed": 417518784,
+          "external": 19676115,
+          "arrayBuffers": 1443665,
+          "usage": {
+            "userCPUTime": 4674013,
+            "systemCPUTime": 1293852,
+            "maxRSS": 687152,
+            "sharedMemorySize": 0,
+            "unsharedDataSize": 0,
+            "unsharedStackSize": 0,
+            "minorPageFault": 712589,
+            "majorPageFault": 0,
+            "swappedOut": 0,
+            "fsRead": 0,
+            "fsWrite": 0,
+            "ipcSent": 0,
+            "ipcReceived": 0,
+            "signalsCount": 0,
+            "voluntaryContextSwitches": 18095,
+            "involuntaryContextSwitches": 68
+          }
+        },
+        "vmstat": {
+          "pswpin": 20970,
+          "pswpout": 374599,
+          "allocstall_dma32": 0,
+          "allocstall_normal": 4220,
+          "allocstall_movable": 17382,
+          "allocstall_device": 0,
+          "pgfault": 9807883394,
+          "pgmajfault": 79824,
+          "pgsteal_kswapd": 15605068,
+          "pgsteal_direct": 1288915,
+          "pgsteal_khugepaged": 638,
+          "pgsteal_proactive": 0,
+          "pgscan_kswapd": 21273565,
+          "pgscan_direct": 1575477,
+          "pgscan_khugepaged": 1056,
+          "pgscan_proactive": 0,
+          "pgscan_direct_throttle": 0,
+          "pgscan_anon": 4931500,
+          "pgscan_file": 17918598,
+          "pgsteal_anon": 385217,
+          "pgsteal_file": 16509404,
+          "compact_migrate_scanned": 421977542,
+          "compact_free_scanned": 3075212716,
+          "compact_isolated": 49165611,
+          "compact_stall": 3389,
+          "compact_fail": 1675,
+          "compact_success": 1714,
+          "compact_daemon_wake": 3448,
+          "compact_daemon_migrate_scanned": 377899842,
+          "compact_daemon_free_scanned": 3047406290,
+          "thp_fault_alloc": 9311,
+          "thp_fault_fallback": 219,
+          "thp_fault_fallback_charge": 0,
+          "thp_collapse_alloc": 253,
+          "thp_collapse_alloc_failed": 3,
+          "thp_split_page": 34,
+          "thp_split_page_failed": 0,
+          "thp_split_pmd": 6890,
+          "thp_split_pud": 0
+        },
+        "meminfo": {
+          "MemFree": "2661004 kB",
+          "MemAvailable": "8718044 kB",
+          "Cached": "4098812 kB",
+          "SwapTotal": "8388608 kB",
+          "SwapFree": "6914356 kB",
+          "AnonPages": "21918224 kB",
+          "SReclaimable": "870056 kB",
+          "CommitLimit": "24725328 kB",
+          "Committed_AS": "31421416 kB",
+          "AnonHugePages": "14336 kB"
+        },
+        "cpuPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=608679976\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+        "memoryPressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=213184310\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=211572119\n",
+        "cgroupEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "cgroupCurrent": 28959547392,
+        "renderers": [
+          {
+            "pid": 3929295,
+            "process": {
+              "minflt": 195651,
+              "majflt": 0,
+              "utime": 227,
+              "stime": 33
+            },
+            "mainThread": {
+              "minflt": 142510,
+              "majflt": 0,
+              "utime": 129,
+              "stime": 19
+            },
+            "status": {
+              "VmSize": "1518314620 kB",
+              "VmRSS": "489444 kB",
+              "RssAnon": "389820 kB",
+              "RssFile": "94000 kB",
+              "VmSwap": "0 kB",
+              "voluntary_ctxt_switches": "594",
+              "nonvoluntary_ctxt_switches": "1"
+            }
+          }
+        ]
+      },
+      "systemBefore": {
+        "at": "2026-10-14T15:29:40.614Z",
+        "freeMemoryBytes": 9259614208,
+        "loadAverage": [
+          2.07,
+          1.91,
+          1.79
+        ]
+      },
+      "systemAfter": {
+        "at": "2026-10-14T15:29:42.329Z",
+        "freeMemoryBytes": 9137582080,
+        "loadAverage": [
+          2.07,
+          1.91,
+          1.8
+        ]
+      },
+      "mainThreadMs": 1394.739,
+      "layoutMs": 126.196,
+      "retainedHeapBytes": 13729748,
+      "heapBefore": 3596476,
+      "heapAfter": 17326224,
       "validation": {
         "elements": 36001,
         "textCharacters": 735782,

@@ -6,7 +6,7 @@ const lastAnswer = (page: Page) => reader(page).getByRole('button', { name: '询
 async function alignedCard(page: Page, marker: Locator) {
   const id = await marker.getAttribute('data-limr-anchor');
   const card = reader(page).locator(`[data-occurrence="${id}"]`);
-  // Fixture assistants bind “重要内容”; embedded citations quote a paragraph.
+  // Fixture assistants bind “重要内容”; self-closing citations bind a point.
   const ranged = await card.getAttribute('data-type') === 'assistant';
   await expect.poll(async () => {
     const top = ranged ? await reader(page).locator('.limr-reader-content strong').first().evaluate(element => {
@@ -211,7 +211,7 @@ test('reference strips show rendered anchored text above the title in collapsed 
   const citation = reader(page).locator('.limr-reader-content .limr-mark[aria-label="引用"]').first();
   await citation.click();
   const citationCard = await alignedCard(page, citation);
-  await expect(citationCard.locator('.limr-sidebar-reference')).toHaveText('单条引用与多条引用。');
+  await expect(citationCard.locator('.limr-sidebar-reference')).toHaveCount(0);
 });
 
 test('reference, title, preview and expanded content share an inset across themes and text directions', async ({ page }) => {

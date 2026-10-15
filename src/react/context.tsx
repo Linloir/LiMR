@@ -106,6 +106,10 @@ export function useAnchor(id: string) {
 }
 export function useLiMR() {
   const runtime = useRuntime();
+  // Commands keep stable identities, while controls that query the source
+  // capability still refresh when the host enables editing or streaming ends.
+  useStoreSelector(runtime.configuration, config => !!config.onSourceChange);
+  useDocumentSelector(document => document.streaming);
   return useMemo(() => ({
     ...runtime.commands,
     document: runtime.document,

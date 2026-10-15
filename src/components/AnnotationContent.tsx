@@ -21,6 +21,7 @@ export function AnnotationContent({ annotationId, presentation, expanded = true,
   const retry = () => runtime.invalidateAnnotation(annotationId);
   const Content = definition?.Content;
   const current = loaded.id === annotationId ? loaded : { loading: !!definition?.load, error: null, data: undefined };
+  if (!definition) return null;
   if (!annotation) return <span className="limr-muted">{runtime.locale.unavailable} · {annotationId}</span>;
   if (!Content) return <span className="limr-muted">{runtime.locale.unavailable} · {annotation.type}</span>;
   return <Content editing={editing} annotation={annotation} data={definition?.load ? current.data ?? annotation.data : annotation.data} loading={definition?.load ? current.loading : false} error={current.error} retry={retry} presentation={presentation} expanded={expanded} />;

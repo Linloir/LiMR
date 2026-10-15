@@ -1,4 +1,4 @@
-import { annotationReferenceRange, createDocument, defaultHighlight, resolveAnnotationAnchors, sameRange, ResourceCache, selectionFromRange } from '../core';
+import { annotationReferenceRange, applySourceEdits, createDocument, defaultHighlight, resolveAnnotationAnchors, sameRange, ResourceCache, selectionFromRange } from '../core';
 import { intersects } from '../core/tree';
 import type { Annotation, AnnotationOccurrence, DocumentEngine, DocumentSnapshot, HighlightData, SelectionSnapshot, SourceRange } from '../core';
 import type { AnnotationType, DocumentCommands, LiMRLocale, NodeRenderer, RendererExtension, ViewConfiguration } from './types';
@@ -108,9 +108,32 @@ export class ReaderRuntime {
   private taskController = new AbortController();
   get signal() { return this.taskController.signal; }
   readonly commands: DocumentCommands = {
+    canEditSource: () => !!this.configuration.get().onSourceChange && !this.document.getSnapshot().streaming,
+    canEditAnnotation: id => {
+      const annotation = this.decorations.get().annotations.get(id);
+      if (!annotation || !this.supportsAnnotation(annotation)) return false;
+      if (annotation.source) return this.commands.canEditSource() && !!this.configuration.get().extensions?.some(extension => extension.sourceEditing);
+      if (this.document.getSnapshot().annotations.some(item => item.id === id)) return false;
+      const config = this.configuration.get();
+      return config.annotations === undefined || !!config.onAnnotationsChange;
+    },
+    editSource: (edits, options) => {
+      const document = this.document.getSnapshot(), accept = this.configuration.get().onSourceChange;
+      if (!accept) throw new Error('Source editing requires onSourceChange.');
+      if (document.streaming) throw new Error('Source editing is unavailable while streaming.');
+      if (options?.revision !== undefined && options.revision !== document.revision) throw new Error('Source edit belongs to a stale document revision.');
+      const next = applySourceEdits(document.source, edits);
+      if (next === document.source) return true;
+      if (accept(next, { document, edits }) === false) return false;
+      // Publish immediately so successive commands in one event use the accepted
+      // revision. React's controlled source prop can echo it on its next render.
+      this.document.update(next);
+      return true;
+    },
     addAnnotation: (annotation, options = {}) => {
-      this.changeAnnotations(items => {
-        const next = [...items.filter(item => item.id !== annotation.id), annotation];
+      const accepted = this.changeAnnotations(items => {
+        const previous = items.find(item => item.id === annotation.id);
+        const next = [...items.filter(item => item.id !== annotation.id), previous?.source ? { ...annotation, source: previous.source } : annotation];
         if (annotation.type !== 'highlight' && options.highlight !== false && (options.highlight !== undefined || this.annotationTypes.get(annotation.type)?.highlight !== 'hover')) {
           const doc = this.document.getSnapshot();
           for (const anchor of resolveAnnotationAnchors(annotation, doc)) {
@@ -119,35 +142,62 @@ export class ReaderRuntime {
           }
         }
         return next;
-      });
-      if (options.edit) this.commands.editAnnotation(annotation.id);
+      }, options.target);
+      if (accepted && options.edit) this.commands.editAnnotation(annotation.id);
     },
-    updateAnnotation: (id, update) => this.changeAnnotations(items => items.map(item => item.id === id ? { ...item, ...update, id } : item)),
+    updateAnnotation: (id, update) => this.changeAnnotations(items => items.map(item => item.id === id ? { ...item, ...update, id, source: item.source } : item)),
     removeAnnotation: id => this.changeAnnotations(items => items.filter(item => item.id !== id)),
     removeAnnotationsAt: ranges => this.changeAnnotations(items => items.flatMap(item => {
+      if (!this.supportsAnnotation(item)) return [item];
       const anchors = item.anchors ?? (item.range ? [{ range: item.range }] : []);
       const keep = anchors.filter(anchor => !resolveAnnotationAnchors({ ...item, range: undefined, anchors: [anchor] }, this.document.getSnapshot()).some(resolved => ranges.some(range => sameRange(range, resolved.range))));
       if (keep.length === anchors.length) return [item];
       return keep.length ? [{ ...item, range: undefined, anchors: keep }] : [];
     })),
     editAnnotation: id => {
+      const annotation = id && (this.decorations.get().annotations.get(id) ?? this.pendingAnnotations?.value.find(item => item.id === id));
+      if (id && (!annotation || !this.supportsAnnotation(annotation))) return;
       this.updateInteraction({ editing: id });
       if (id) this.commands.activateAnnotation(id);
     },
     activateAnnotation: id => {
       const occurrence = this.decorations.get().occurrences.find(item => item.id === id || item.annotationIds.includes(id ?? ''));
-      this.pendingOpen = id && !occurrence ? id : null;
+      const annotation = id && (this.decorations.get().annotations.get(id) ?? this.pendingAnnotations?.value.find(item => item.id === id));
+      this.pendingOpen = id && !occurrence && (!annotation || this.supportsAnnotation(annotation)) ? id : null;
       this.activate(occurrence?.id ?? null);
     },
   };
-  private changeAnnotations(update: (items: readonly Annotation[]) => readonly Annotation[]) {
+  private changeAnnotations(update: (items: readonly Annotation[]) => readonly Annotation[], target: 'annotations' | 'source' = 'annotations') {
     const config = this.configuration.get();
-    const current = this.pendingAnnotations && this.pendingAnnotations.input === config.annotations ? this.pendingAnnotations.value : config.annotations ?? this.localAnnotations;
+    const external = this.pendingAnnotations && this.pendingAnnotations.input === config.annotations ? this.pendingAnnotations.value : config.annotations ?? this.localAnnotations;
+    const document = this.document.getSnapshot();
+    const authored = document.annotations.filter(annotation => annotation.source && !external.some(item => item.id === annotation.id));
+    const current = [...authored, ...external];
     const next = update(current);
-    if (config.annotations !== undefined && !config.onAnnotationsChange) throw new Error('Controlled annotations require onAnnotationsChange to accept edits.');
-    if (config.annotations === undefined) { this.localAnnotations = next; this.rebuildDecorations(); }
-    else this.pendingAnnotations = { input: config.annotations, value: next };
-    config.onAnnotationsChange?.(next);
+    const before = new Map(current.map(item => [item.id, item])), after = new Map(next.map(item => [item.id, item]));
+    const added = next.filter(item => !before.has(item.id));
+    const updated = next.filter(item => item.source && before.has(item.id) && before.get(item.id) !== item).map(annotation => ({ previous: before.get(annotation.id)!, annotation }));
+    const removed = authored.filter(item => !after.has(item.id));
+    const handlers = config.onSourceChange ? config.extensions?.flatMap(extension => extension.sourceEditing ? [extension.sourceEditing.annotations] : []) ?? [] : [];
+    const sourceAdded = target === 'source' ? added : [];
+    const sourceChange = { added: sourceAdded, updated, removed };
+    let edits: readonly import('../core').SourceEdit[] | undefined;
+    if (sourceAdded.length || updated.length || removed.length) for (let index = handlers.length - 1; index >= 0; index--) {
+      edits = handlers[index](sourceChange, document);
+      if (edits !== undefined) break;
+    }
+    if ((sourceAdded.length || updated.length || removed.length) && !edits) throw new Error('This Markdown annotation is read-only; enable onSourceChange and its source editing module.');
+    const sourceIds = new Set([...authored, ...(edits ? sourceAdded : [])].map(item => item.id));
+    const nextExternal = next.filter(item => !sourceIds.has(item.id));
+    const externalChanged = external.length !== nextExternal.length || external.some((item, index) => item !== nextExternal[index]);
+    if (externalChanged && config.annotations !== undefined && !config.onAnnotationsChange) throw new Error('Controlled annotations require onAnnotationsChange to accept edits.');
+    if (edits && !this.commands.editSource(edits, { revision: document.revision })) return false;
+    if (externalChanged) {
+      if (config.annotations === undefined) { this.localAnnotations = nextExternal; this.rebuildDecorations(); }
+      else this.pendingAnnotations = { input: config.annotations, value: nextExternal };
+      config.onAnnotationsChange?.(nextExternal);
+    }
+    return true;
   }
   start() { if (this.taskController.signal.aborted) this.taskController = new AbortController(); }
   dispose() { this.taskController.abort(); this.resources.invalidate(); this.resourceKeys.clear(); }
@@ -200,6 +250,8 @@ export class ReaderRuntime {
       return [type.type, resolved];
     }));
   }
+  /** Stored data stays available when its presentation module is uninstalled. */
+  supportsAnnotation(annotation: Annotation) { return annotation.type === 'highlight' || this.annotationTypes.has(annotation.type); }
   configure(config: ViewConfiguration) {
     const old = this.configuration.get();
     if (this.pendingAnnotations?.input !== config.annotations) this.pendingAnnotations = undefined;
@@ -258,16 +310,24 @@ export class ReaderRuntime {
     }
     const versions = this.resourceVersions.get();
     if ([...versions.keys()].some(id => !annotations.has(id))) this.resourceVersions.set(new Map([...versions].filter(([id]) => annotations.has(id))));
-    const occurrences: AnnotationOccurrence[] = [...doc.occurrences];
+    const occurrences: AnnotationOccurrence[] = doc.occurrences.flatMap(occurrence => {
+      const annotationIds = occurrence.annotationIds.filter(id => {
+        const annotation = annotations.get(id);
+        // An installed citation module can still explain a missing definition.
+        return annotation ? this.supportsAnnotation(annotation) : this.annotationTypes.has('citation');
+      });
+      return annotationIds.length ? [annotationIds.length === occurrence.annotationIds.length ? occurrence : { ...occurrence, annotationIds }] : [];
+    });
     const allHighlights: PaintHighlight[] = [];
     for (const annotation of annotations.values()) {
+      if (!this.supportsAnnotation(annotation)) continue;
       resolveAnnotationAnchors(annotation, doc).forEach((anchor, index) => {
         if (annotation.type === 'highlight') {
           const id = index ? `${annotation.id}:${index}` : annotation.id;
           const value = { ...(annotation.data as HighlightData), id, annotationId: annotation.id, range: anchor.range };
           const old = previous.highlights.get(id);
           allHighlights.push(old && !old.occurrenceId && sameRange(old.range, value.range) && old.color === value.color && old.style === value.style && old.hidden === value.hidden && old.readOnly === value.readOnly ? old : value);
-        } else occurrences.push({ ...anchor, id: anchor.id ?? `${doc.id}-${annotation.id}-${index}`, annotationIds: [annotation.id] });
+        } else if (annotation.source?.module !== 'source-annotations') occurrences.push({ ...anchor, id: anchor.id ?? `${doc.id}-${annotation.id}-${index}`, annotationIds: [annotation.id] });
       });
     }
     occurrences.sort((a, b) => a.range.end - b.range.end || a.id.localeCompare(b.id));
@@ -298,7 +358,8 @@ export class ReaderRuntime {
     const highlights = new Map(allHighlights.map(item => [item.id, item]));
     this.decorations.set({ annotations, highlights, occurrences, referenceRanges, byBlock: sameBlocks ? previous.byBlock : byBlock });
     const state = this.interaction.get();
-    if (state.editing && !annotations.has(state.editing) && this.pendingOpen !== state.editing) this.updateInteraction({ editing: null });
+    if (this.pendingOpen && annotations.has(this.pendingOpen) && !this.supportsAnnotation(annotations.get(this.pendingOpen)!)) this.pendingOpen = null;
+    if (state.editing && (!annotations.has(state.editing) || !this.supportsAnnotation(annotations.get(state.editing)!)) && this.pendingOpen !== state.editing) this.updateInteraction({ editing: null });
     if (state.activeHighlight && !highlights.has(state.activeHighlight)) this.activateHighlight(null);
     if (state.hoveredHighlight && !highlights.has(state.hoveredHighlight)) this.hoverHighlight(null);
     if (state.active && !occurrences.some(item => item.id === state.active)) this.activate(null);

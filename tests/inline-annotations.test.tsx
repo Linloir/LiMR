@@ -36,7 +36,7 @@ describe('Markdown-authored highlights and footnotes', () => {
     const snapshot = parse(source);
     expect(snapshot.occurrences.map(item => item.annotationIds)).toEqual([['footnote:b'], ['footnote:a'], ['footnote:b']]);
     expect(snapshot.footnoteOrder).toEqual([]);
-    expect(snapshot.annotations.find(item => item.id === 'footnote:b')?.data).toEqual({ body: '**Second**.\n\nAnother paragraph.\n\n    literal code' });
+    expect(snapshot.annotations.find(item => item.id === 'footnote:b')?.data).toEqual({ title: 'b', body: '**Second**.\n\nAnother paragraph.\n\n    literal code' });
     const html = renderToStaticMarkup(<Markdown source={source} />);
     expect(html.match(/data-limr-marker=/g)).toHaveLength(3);
     expect(html).not.toContain('<sup'); expect(html).not.toContain('limr-footnotes');
@@ -51,8 +51,8 @@ describe('Markdown-authored highlights and footnotes', () => {
     const source = 'Text[^NOTE].\n\n[^note]: First body.\n\n[^NOTE]: Duplicate body.';
     const document = createDocument('', { extensions, streaming: true });
     for (const chunk of source.match(/.{1,7}|\n/g)!) document.append(chunk);
-    expect(document.finish().annotations.find(item => item.id === 'footnote:note')?.data).toEqual({ body: 'First body.' });
-    expect(document.update(source.replace('First body.', 'Edited first body.')).annotations.find(item => item.id === 'footnote:note')?.data).toEqual({ body: 'Edited first body.' });
+    expect(document.finish().annotations.find(item => item.id === 'footnote:note')?.data).toEqual({ title: 'note', body: 'First body.' });
+    expect(document.update(source.replace('First body.', 'Edited first body.')).annotations.find(item => item.id === 'footnote:note')?.data).toEqual({ title: 'note', body: 'Edited first body.' });
   });
   it('supports the same capabilities through :: containers', () => {
     const snapshot = parse('::highlight\nHighlighted\n::\n\n::footnote{id="n"}\n**Body**\n::\n\n::footnote-ref{id="n"}\n::');

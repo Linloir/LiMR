@@ -97,3 +97,7 @@ KP 按需加载，对视口附近的稳定段落排版；离开视口后保留 D
 默认 loading 使用固定 32×32 viewBox、22px 显示尺寸、粗轨道和伸缩弧线；旋转、增长、收缩均为非线性缓动，围绕固定圆心运动，颜色跟随 `--limr-secondary`。新增文字与特殊块只做透明度淡入，不增加背景色，段落结束时不再次播放出现动画。插件可用 `streaming.effect` 替换共享动画，Reader 可用 `streamEffect` 单独覆盖。
 
 源码高亮的默认蓝色由 `--limr-inline-highlight` 控制，也可通过 `inlineHighlights({ color })` 替换模块。默认只读工具栏的说明可用 `locale.inlineHighlightHint` 本地化。
+
+任务列表使用与问答选项一致的菱形勾选框。标记按字体的拉丁大写高度或 CJK 字面高度定尺寸并对齐首行，不随 line-height 增高；原生 checkbox 保留键盘与无障碍语义。未勾选正文颜色较淡，勾选后加深；未勾选项悬浮时加深，并复用问答选项逐行从左向右出现的下划线。默认不可修改；提供 onSourceChange 后，默认任务渲染器允许点击并更新原文，无需额外插件。
+
+Callout 使用与注释、释义、提问一致的小字号标签和正文排版，不显示前置类型图标；可折叠 callout 仅保留折叠箭头。

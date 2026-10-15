@@ -67,7 +67,7 @@ for (const nested of [false, true]) test(`citation hover aligns both directions$
     await page.evaluate(() => document.fonts.ready);
     await settled(page);
   }
-  const marker = markers(page).nth(1), id = await marker.getAttribute('data-limr-anchor');
+  const marker = markers(page).nth(2), id = await marker.getAttribute('data-limr-anchor');
   const card = reader(page).locator(`[data-occurrence="${id}"]`);
   const initialCard = (await card.boundingBox())!.y;
   const initialReference = await referenceTop(marker);
@@ -119,10 +119,10 @@ test('pinned citation highlights survive hover transfers and clear when deactiva
   await marker.click();
   await page.mouse.move(10, 10);
   await expect(paint.first()).toHaveCSS('opacity', '1');
-  // A second reference to the same paragraph must not darken it by stacking.
+  // A second explicit range in the same paragraph preserves the first pin.
   await markers(page).nth(1).hover();
   await settled(page);
-  expect(await paints(page).evaluateAll(elements => new Set(elements.filter(element => getComputedStyle(element).opacity !== '0').map(element => (element as HTMLElement).dataset.paint)).size)).toBe(1);
+  expect(await paints(page).evaluateAll(elements => new Set(elements.filter(element => getComputedStyle(element).opacity !== '0').map(element => (element as HTMLElement).dataset.paint)).size)).toBe(2);
   await page.mouse.move(10, 10);
   await expect(paint.first()).toHaveCSS('opacity', '1');
   // A reference to another paragraph can be hovered without erasing the pin.
@@ -186,8 +186,8 @@ for (const width of [1800, 1380]) test(`scikit-learn's dense bibliography remain
   const references = reader(page).locator('.limr-reader-content ol .limr-mark');
   await expect(references).toHaveCount(16);
   const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight);
-  // The packed rail can expose a card whose source text is still offscreen.
-  // Moving that text into view must create paint with the current hover state.
+  // The packed rail can expose a point reference whose marker is offscreen.
+  // Aligning it must not manufacture a whole-paragraph highlight.
   await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight * .55));
   await settled(page);
   const candidates = await reader(page).locator('.limr-sidebar-card').evaluateAll(elements => elements.filter(card => {
@@ -204,11 +204,10 @@ for (const width of [1800, 1380]) test(`scikit-learn's dense bibliography remain
   await expect(offscreenPaint).toHaveCount(0);
   await offscreenCard.locator('.limr-sidebar-card-heading').hover();
   await expect.poll(async () => Math.abs((await offscreenCard.boundingBox())!.y - await referenceTop(offscreenMarker))).toBeLessThan(1);
-  await expect(offscreenPaint.first()).toHaveCSS('opacity', '1');
-  await expect(offscreenPaint.first()).toBeInViewport();
+  await expect(offscreenPaint).toHaveCount(0);
   await offscreenCard.locator('.limr-sidebar-card-heading').click();
   await page.mouse.move(10, 10);
-  await expect(offscreenPaint.first()).toHaveCSS('opacity', '1');
+  await expect(offscreenPaint).toHaveCount(0);
   await page.mouse.click(10, 10);
   await settled(page);
   await expect(offscreenPaint).toHaveCount(0);
@@ -284,5 +283,5 @@ for (const width of [1800, 1380]) test(`scikit-learn's dense bibliography remain
   await page.mouse.click(10, 10);
   await expect(releaseMarker).toHaveAttribute('aria-expanded', 'false');
   await expect(reader(page).locator('.limr-sidebar')).not.toHaveAttribute('data-releasing', '');
-  await expect((await referencePaint(page, releaseMarker)).first()).toHaveCSS('opacity', '0');
+  await expect(await referencePaint(page, releaseMarker)).toHaveCount(0);
 });

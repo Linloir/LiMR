@@ -20,6 +20,8 @@ AnnotationType<T> has type, label, optional icon/color/highlight, Content, Marke
 
 Content receives annotation, data, loading, error, retry, presentation ('preview'|'expanded'|'sidebar'), expanded, and editing. It renders the resource/loading/error/editor states. AnnotationMarkdown renders nested Markdown with an isolated selection scope.
 
+AnnotationEditor is controlled borderless UI with automatic height, value/onChange, onSubmit/onCancel, label and optional onBlur. The caller owns drafts, save/cancel semantics and persistence. onBlur runs only when focus leaves the entire editor, including its action buttons; the component itself does not save data. Ordinary and source-backed notes can share this UI without sharing storage.
+
 overlay.Card receives annotation, occurrence, presentation, expanded, pinned, canExpand, expand, collapse, close, and children. It owns the full interior; children contains shared Content. AnnotationCard is an optional layout requiring title. Expansion is opt-in: {placement:'anchor'|'center',width?,height?,maxHeight?}, false, or an annotation resolver. previewWidth is independent. Preserve keyboard-accessible controls when drawing a custom card.
 
 sidebar.Preview receives local annotation/data, occurrence, all annotations in the group, and referenceText. It must not trigger load. Return null or set Preview:false to omit it. previewLines defaults to 2. Color fields include previewColor, color, borderColor, titleColor, textColor, excerptColor. collapseOnContentClick defaults to false. The first annotation type owns grouped preview/presentation. Do not duplicate shell padding; use shared CSS variables.
@@ -34,9 +36,9 @@ ActionContext includes selection, document, annotations, highlight, locale, clea
 
 For atomic widgets, selection.text and default/native copy preserve the entire original range, including delimiters, mapped attributes, and nested content. Outermost atomic ownership takes precedence. Ordinary text adjacent to an atom keeps rendered spelling. Partial code selections remain supported. A single atomic block anchors the toolbar below the block; custom block-local copy actions define their own copied value. Default copy feedback measures changing button width and uses eased width/opacity/scale transitions with reduced-motion support.
 
-Commands: addAnnotation(annotation,{highlight?,edit?}), updateAnnotation(id,partial), removeAnnotation(id), removeAnnotationsAt(ranges), editAnnotation(id|null), activateAnnotation(id|null). Updates shallow-merge annotation fields and replace data. Preserve immutable data and fields such as the initial question during answer streaming. Controlled hosts must return onAnnotationsChange results.
+Commands: addAnnotation(annotation,{highlight?,edit?,target?}), updateAnnotation(id,partial), removeAnnotation(id), removeAnnotationsAt(ranges), editAnnotation(id|null), activateAnnotation(id|null). Updates shallow-merge annotation fields and replace data. Preserve immutable data and fields such as the initial question during answer streaming. Controlled hosts must return onAnnotationsChange results.
 
-Unknown types still produce generic/unavailable UI. Never delete hidden records to simulate plugin uninstallation. A plugin-only action should not create data for a type it fails to register.
+Unknown types retain their data without markers, cards or type-specific interactions. Uninstalling a plugin removes its UI; registering the type restores it. Selection actions and removeAnnotationsAt only target supported types, preserving hidden records. Persist the complete annotations array. A registered type without Content can still show unavailable UI; a plugin-only action should not create data for a type it fails to register.
 
 ## Parameters, locales, and styles
 
@@ -49,3 +51,7 @@ CSS is explicitly imported. For themes use [data-limr-appearance='your-theme']; 
 ## Consumer verification
 
 Build ESM and .d.ts, pack, install into a temporary React consumer without source aliases, and exercise exported CSS. Test supported React versions rather than claiming compatibility from one host. Check final streaming vs one-shot parse equivalence for syntax changes, source offsets for entities/emoji, and actual browser states for card/toolbar/portal behavior. Test loader cancellation and isolation if adding remote data. No real network service is required by the starter.
+
+## Source writing (1.1.0+)
+
+Source modification is an opt-in host capability (`onSourceChange`). Modules use canEditSource()/canEditAnnotation(id), shared annotation commands, or atomic editSource([{range,text}],{revision}). `RendererExtension.sourceEditing.annotations(change, document)` owns serialization of added/updated/removed records into SourceEdit[]; later handlers take priority and undefined delegates. Keep the handler pure; host owns file I/O, conflicts and undo. Annotation.source identifies module, all duplicate definition ranges and optional named rangeIds. The sourceAnnotations module in standard installs the public editSourceAnnotations serializer for Markdown body and scalar attributes, without owning a content type. Type/card/action plugins reuse it; only complex custom formats need another serializer. onSourceChange enables default tasks and source highlights, and the default highlightSelection action chooses source when enabled; ordinary addAnnotation still defaults to external data unless target: source is explicit. Coordinates always belong to the pre-edit snapshot and must be reread after edits. No source editing during streaming.

@@ -1,6 +1,6 @@
 # LiMR
 
-[![package version](https://img.shields.io/badge/version-1.0.1-blue.svg)](package.json)
+[![package version](https://img.shields.io/badge/version-1.1.0-blue.svg)](package.json)
 
 [简体中文](README.md) · **English**
 
@@ -54,7 +54,7 @@ export function Answer({ text, generating }: { text: string; generating: boolean
 | Integration | Controlled annotations, original UTF-16 offsets, isolated readers, nested scroll containers, SSR |
 | Extensions | Custom syntax, conditional renderer replacement, annotation types, selection actions, streaming effects, parameters, CSS theme packages |
 
-Defaults include `citation` and Markdown footnote cards. `highlight` supports editable application annotations; `==text==` creates read-only source highlights. `[^id]` and `^[body]` use comment markers with sidebar/overlay cards, including immediately after highlights. Notes, questions, and chat annotations belong to application plugins; `question()` renders exercises. See the [syntax reference](docs/en/syntax.md).
+Defaults include citations, Markdown footnotes, and embedded annotations using `==text==[^%%limr:id%%]` with `:::limr-annotation`. A range can share multiple registered annotation types and one highlight; standalone references bind only to their marker position. `standard()` includes generic parsing and serialization. Supplying `onSourceChange` enables default toolbar highlights and task toggles to update Markdown; the host or integration module saves the file. Ordinary `addAnnotation` stays external, while modules choose source storage with `target: 'source'`. Modules own types, cards and dedicated actions. Playground inline notes and question annotations are example plugins; `question()` is the separate exercise module. See [syntax](docs/en/syntax.md) and [local file integration](docs/en/integration.md#source-editing-and-local-files).
 
 ```markdown
 <definition title="Definition">

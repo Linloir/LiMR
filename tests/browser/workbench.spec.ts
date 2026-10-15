@@ -9,6 +9,23 @@ async function important(page: Page) {
   await expect(page.getByRole('toolbar')).toBeVisible();
 }
 
+for (const width of [560, 1440]) test(`reading note modules keep borderless editor focus at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 });
+  await page.goto('/');
+  for (const label of ['旁注', '笔记', '提问', '脚注']) {
+    await important(page);
+    await page.getByRole('toolbar').getByRole('button', { name: label, exact: true }).click();
+    const surface = page.locator(width < 800 ? '.limr-annotation-overlay' : '.limr-sidebar-card');
+    const editor = surface.getByRole('textbox', { name: `${label}内容`, exact: true });
+    await expect(editor).toBeFocused();
+    await expect(editor).toHaveCSS('outline-style', 'none');
+    await expect(editor).toHaveCSS('box-shadow', 'none');
+    await expect(editor).toHaveCSS('border-width', '0px');
+    await surface.getByRole('button', { name: '取消', exact: true }).click();
+    await expect(editor).toHaveCount(0);
+  }
+});
+
 test('notes open directly in the sidebar, share highlights, and support editing and deletion', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
@@ -141,8 +158,10 @@ test('mobile annotations open an editor, preserve drafts on resize, and remain e
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/'); await important(page);
   await page.getByRole('toolbar').getByRole('button', { name: '脚注', exact: true }).click();
-  const overlay = page.locator('.limr-annotation-expanded');
+  const overlay = page.locator('.limr-annotation-preview');
   await expect(overlay).toBeVisible();
+  await expect(page.locator('.limr-annotation-expanded')).toHaveCount(0);
+  await expect(overlay.getByRole('button', { name: '展开', exact: true })).toHaveCount(0);
   const field = overlay.getByRole('textbox', { name: '脚注内容' });
   await expect(field).toBeFocused(); await field.fill('保留这条正在编辑的脚注');
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -204,7 +223,7 @@ for (const [presentation, width] of [['sidebar', 1440], ['overlay', 900]] as con
     await word('Alpha').click();
     await expect(toolbar).toHaveAttribute('data-highlight', firstId);
     await toolbar.getByRole('button', { name: '笔记', exact: true }).click();
-    const editor = presentation === 'sidebar' ? page.locator('.limr-sidebar-card[data-type="reading-note"]') : page.locator('.limr-annotation-expanded');
+    const editor = presentation === 'sidebar' ? page.locator('.limr-sidebar-card[data-type="reading-note"]') : page.locator('.limr-annotation-preview');
     const field = editor.getByRole('textbox', { name: '笔记内容' });
     await expect(field).toBeFocused();
     await field.fill('A draft to keep after dismissal');

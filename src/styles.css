@@ -13,7 +13,8 @@
     --limr-motion: 360ms;
     --limr-motion-slow: 460ms;
   }
-  .limr-underline,.limr-prose a:not(.limr-extra-link),.limr-choice-text [data-limr-text] {
+  .limr-underline,.limr-prose a:not(.limr-extra-link),.limr-choice-text [data-limr-text],
+  .limr-task-item[data-editable] > .limr-task-text,.limr-task-item[data-editable] > p > .limr-task-text {
     background-image: linear-gradient(currentColor, currentColor);
     background-position: left calc(100% - .04em);
     background-repeat: no-repeat;
@@ -134,8 +135,23 @@
   .limr-prose :where(ul,ol) :where(ul,ol) { margin-block: var(--limr-list-item-gap, .375rem) 0; }
   .limr-prose ul ul { list-style-type: circle; }
   .limr-prose ul ul ul { list-style-type: square; }
-  .limr-prose .limr-task-item { list-style-type: none; }
-  .limr-task-item > input { margin-inline: -1.25rem .5rem; accent-color: #8a7865; }
+  .limr-prose .limr-task-item { position: relative; list-style-type: none; }
+  .limr-task-text { color: var(--limr-secondary, #7b7975); cursor: text; }
+  .limr-task-item[data-checked] > .limr-task-text,.limr-task-item[data-checked] > p > .limr-task-text { color: var(--limr-text, #292621); }
+  .limr-task-item[data-editable] > .limr-task-text,.limr-task-item[data-editable] > p > .limr-task-text { cursor: pointer; }
+  .limr-task-item[data-editable]:has(> .limr-task-control:hover,> .limr-task-control > input:focus-visible,> .limr-task-text:hover,> p > .limr-task-text:hover) > .limr-task-text,
+  .limr-task-item[data-editable]:has(> .limr-task-control:hover,> .limr-task-control > input:focus-visible,> .limr-task-text:hover,> p > .limr-task-text:hover) > p > .limr-task-text { color: var(--limr-text, #292621); background-size: 100% 1px; }
+  .limr-task-item:not([data-editable]) > .limr-task-control :is(.limr-diamond-outline,.limr-diamond-fill) { transition: none; }
+  .limr-prose :where(ul,ol):has(> .limr-task-item) { padding-inline-start: max(1.5rem, 1.5em); }
+  /* Match the first text baseline and font's ink cap height, independent of
+     leading. An absolute marker also keeps loose and nested lists aligned. */
+  .limr-task-control { position: absolute; inset-inline-end: calc(100% + .5em); inset-block-start: 0; width: .75em; width: 1cap; color: var(--limr-question-accent, #997045); white-space: nowrap; cursor: text; }
+  .limr-task-control > .limr-choice-diamond { display: inline-block; position: static; top: auto; width: .75em; height: .75em; width: 1cap; height: 1cap; vertical-align: baseline; }
+  /* CJK ideographs extend below the Latin baseline and use the full glyph em. */
+  .limr-task-control[data-ideographic] { width: 1em; width: 1ic; }
+  .limr-task-control[data-ideographic] > .limr-choice-diamond { width: 1em; height: 1em; width: 1ic; height: 1ic; vertical-align: -.125em; }
+  .limr-task-control > input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; z-index: 1; cursor: pointer; }
+  .limr-task-control > input:disabled { cursor: text; }
   .limr-prose hr { border: 0; border-top: 1px solid var(--limr-border, #e5e2dc); margin: 2rem 0; }
   .limr-prose img { display: inline-block; max-width: 100%; height: auto; vertical-align: middle; border-radius: 4px; }
   .limr-prose figure { margin: 1.5rem 0; text-align: center; }
@@ -370,6 +386,17 @@
   .limr-sidebar-card[data-citations] .limr-annotation-entry:has(.limr-annotation-markdown) + .limr-annotation-entry { margin-top: calc(1rem - 2px); }
   .limr-annotation-entry + .limr-annotation-entry { border-top: 1px solid var(--limr-border, #e5e2dc); margin-top: 1rem; padding-top: 1rem; }
   .limr-annotation-markdown { font-size: inherit; line-height: 1.7; }
+  .limr-annotation-editor-input { display: block; width: 100%; min-height: 1.6em; padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; color: var(--limr-text, #3d3a36); font: inherit; line-height: 1.6; resize: none; overflow: hidden; }
+  .limr-annotation-editor-input:focus,.limr-annotation-editor-input:focus-visible { outline: none; box-shadow: none; }
+  .limr-annotation-editor-input::placeholder { color: var(--limr-muted, #9b9590); opacity: .6; }
+  .limr-annotation-actions { display: flex; justify-content: flex-end; gap: 16px; align-items: center; margin-top: 8px; padding: 0 2px 2px 0; }
+  .limr-annotation-actions button { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; border-radius: 2px; background: transparent; color: var(--limr-muted, #9b9590); font-size: 13px; line-height: 1.5; transition: color 250ms var(--limr-ease); }
+  .limr-annotation-actions button:hover { color: var(--limr-text, #3d3a36); }
+  .limr-annotation-actions button > .limr-underline { padding-bottom: 1px; }
+  .limr-annotation-actions svg { flex: none; width: 13px; height: 13px; }
+  .limr-annotation-actions .limr-annotation-submit { color: var(--limr-accent, #8a7865); font-weight: 600; }
+  .limr-source-annotation-edit { display: inline-flex; align-items: center; gap: .3em; margin-block-start: .4rem; padding: .15em 0; border: 0; background: transparent; color: var(--limr-secondary, #7b7975); font-size: .75rem; }
+  .limr-source-annotation-edit > svg { width: 1em; height: 1em; }
   .limr-annotation-entry > :first-child { margin-block-start: 0; }
   /* Custom renderers can wrap the paragraph in a source-binding block. Clear
      the actual last content node, whether wrapped or beside a paint layer. */
@@ -508,10 +535,9 @@
     [data-limr-theme='auto'] .limr-block-tools > button:enabled:hover { color: #f0ebe4; }
   }
   .limr-callout { border-color: var(--limr-callout-color); background: color-mix(in srgb, var(--limr-callout-color) 8%, transparent); }
-  .limr-callout-title { display: flex; align-items: center; gap: .5em; color: var(--limr-callout-color); text-transform: none; letter-spacing: .02em; font-size: .9em; }
-  .limr-callout-title > svg { width: 18px; height: 18px; flex: none; }
+  .limr-callout-title { display: flex; align-items: center; gap: .5em; }
   .limr-callout-title > span { flex: 1; }
-  .limr-callout-toggle { border: 0; border-radius: 5px; background: transparent; padding: 2px; display: inline-flex; }
+  .limr-callout-toggle { border: 0; border-radius: 5px; background: transparent; padding: 2px; margin-block: -2px; display: inline-flex; }
   .limr-callout-toggle:hover { background: color-mix(in srgb, var(--limr-callout-color) 12%, transparent); }
   .limr-callout-toggle > svg { width: 18px; height: 18px; transition: transform var(--limr-motion) var(--limr-ease); }
   .limr-callout-toggle[aria-expanded='false'] > svg { transform: rotate(-90deg); }

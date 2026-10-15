@@ -1,0 +1,92 @@
+import { describe, expect, it, vi } from 'vitest';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { AnnotationSidebar, DocumentProvider, Markdown, createDocument, standard, type Annotation } from '../src';
+import { ReaderRuntime } from '../src/react/runtime';
+
+describe('installed annotation capabilities', () => {
+  const custom = { name: 'custom', annotationTypes: [{ type: 'custom', label: 'Custom', Content: () => <p>Custom body</p> }] };
+  it('hides uninstalled types without losing data and restores them when registered again', () => {
+    const note: Annotation = { id: 'note', type: 'custom', range: { start: 0, end: 4 }, data: { body: 'Saved' } };
+    const runtime = new ReaderRuntime('plugin', 'Text', false, { extensions: [custom] });
+    runtime.commands.addAnnotation(note, { edit: true });
+    runtime.hover('plugin-note-0');
+    expect(runtime.interaction.get()).toMatchObject({ editing: 'note', active: 'plugin-note-0', hovered: 'plugin-note-0' });
+    runtime.configure({ extensions: [] });
+    expect(runtime.decorations.get().annotations.get('note')).toEqual(note);
+    expect(runtime.decorations.get().occurrences).toEqual([]);
+    expect(runtime.interaction.get()).toMatchObject({ editing: null, active: null, hovered: null });
+    expect(runtime.commands.canEditAnnotation('note')).toBe(false);
+    runtime.commands.editAnnotation('note'); runtime.commands.activateAnnotation('note');
+    expect(runtime.interaction.get()).toMatchObject({ editing: null, active: null });
+    runtime.commands.updateAnnotation('note', { data: { body: 'Updated externally' } });
+    runtime.commands.removeAnnotationsAt([{ start: 0, end: 4 }]);
+    expect([...runtime.decorations.get().annotations.keys()]).toEqual(['note']);
+    runtime.configure({ extensions: [custom] });
+    expect(runtime.decorations.get().occurrences).toHaveLength(1);
+    expect(runtime.decorations.get().annotations.get('note')?.data).toEqual({ body: 'Updated externally' });
+    runtime.commands.removeAnnotation('note');
+    expect(runtime.decorations.get().annotations.size).toBe(0);
+  });
+  it('keeps hidden controlled data in the host callback when a visible highlight is deleted', () => {
+    const annotations: Annotation[] = [{ id: 'hidden', type: 'custom', range: { start: 0, end: 4 } }, { id: 'paint', type: 'highlight', range: { start: 0, end: 4 } }];
+    const save = vi.fn();
+    const runtime = new ReaderRuntime('plugin', 'Text', false, { annotations, onAnnotationsChange: save });
+    runtime.commands.removeAnnotationsAt([{ start: 0, end: 4 }]);
+    expect(save).toHaveBeenCalledExactlyOnceWith([annotations[0]]);
+    expect(annotations).toHaveLength(2);
+  });
+  it('filters mixed source groups while retaining raw source definitions and occurrences', () => {
+    const source = '==word==[^%%limr:r%%]\n\n:::limr-annotation{#custom ranges="r" type="custom"}\nPrivate body\n:::\n\n:::limr-annotation{#note ranges="r" type="footnote"}\nPublic body\n:::';
+    const extensions = standard();
+    const runtime = new ReaderRuntime('mixed', source, false, { extensions: [...extensions, custom] });
+    expect(runtime.decorations.get().occurrences[0].annotationIds).toEqual(['custom', 'note']);
+    runtime.configure({ extensions });
+    expect(runtime.document.getSnapshot().source).toBe(source);
+    expect(runtime.document.getSnapshot().occurrences[0].annotationIds).toEqual(['custom', 'note']);
+    expect(runtime.decorations.get().annotations.size).toBe(2);
+    expect(runtime.decorations.get().occurrences[0].annotationIds).toEqual(['note']);
+    const html = renderToStaticMarkup(<Markdown source={source} />);
+    expect(html).toContain('word'); expect(html).not.toContain('limr-mark-count'); expect(html).not.toContain('Custom body');
+    runtime.configure({ extensions: [...extensions, custom] });
+    expect(runtime.decorations.get().occurrences[0].annotationIds).toEqual(['custom', 'note']);
+  });
+  it('does not render unsupported unanchored cards in an unsynchronized sidebar', () => {
+    const annotations = [{ id: 'hidden', type: 'custom' }];
+    const render = (installed: boolean) => renderToStaticMarkup(<DocumentProvider source="Text" annotations={annotations} plugins={installed ? [custom] : []}><AnnotationSidebar sync="none" /></DocumentProvider>);
+    expect(render(false)).not.toContain('limr-sidebar-card');
+    expect(render(true)).toContain('limr-sidebar-card');
+  });
+  it('keeps unavailable citation definitions visible when the citation module is installed', () => {
+    const runtime = new ReaderRuntime('missing', 'Text<ref id="missing" />', false, { extensions: standard() });
+    expect(runtime.decorations.get().occurrences).toHaveLength(1);
+    expect(renderToStaticMarkup(<Markdown source="Text<ref id='missing' />" />)).toContain('limr-mark');
+  });
+  it('reparses source using only the remaining syntax modules', () => {
+    const source = 'Text[^n].\n\n[^n]: Normal **footnote**.\n\n<ref id="x" />\n\n<citation id="x" title="Source" />';
+    const modules = standard(), engine = createDocument(source, { extensions: modules });
+    expect(engine.getSnapshot().annotations).toHaveLength(2);
+    const reduced = modules.filter(module => !['footnotes', 'citation'].includes(module.name));
+    engine.setExtensions(reduced);
+    expect(engine.getSnapshot().source).toBe(source);
+    expect(engine.getSnapshot().annotations).toEqual([]);
+    expect(engine.getSnapshot().footnoteOrder).toEqual(['n']);
+    const html = renderToStaticMarkup(<Markdown source={source} extensions={reduced} />);
+    expect(html).toContain('aria-label="Footnote 1"'); expect(html).toContain('&lt;ref'); expect(html).not.toContain('class="limr-mark"');
+    engine.setExtensions(modules);
+    expect(engine.getSnapshot().annotations).toHaveLength(2);
+    engine.setExtensions([]);
+    expect(engine.getSnapshot().annotations).toEqual([]);
+    const reserved = '==word==[^%%limr:r%%]\n\n:::limr-annotation{#note ranges="r" type="footnote"}\nOrdinary **body**\n:::';
+    const named = createDocument(reserved, { extensions: modules });
+    expect(named.getSnapshot().annotationRanges.size).toBe(1);
+    const withoutNamed = modules.filter(module => module.name !== 'source-annotations');
+    named.setExtensions(withoutNamed);
+    expect(named.getSnapshot().annotationRanges.size).toBe(0);
+    expect(named.getSnapshot().annotations.some(annotation => annotation.id === 'note')).toBe(false);
+    const fallback = renderToStaticMarkup(<Markdown source={reserved} extensions={withoutNamed} />);
+    expect(fallback).toContain('Ordinary '); expect(fallback).toMatch(/<strong>.*body.*<\/strong>/);
+    expect(fallback).not.toContain('class="limr-mark"');
+    named.setExtensions(modules);
+    expect(named.getSnapshot().annotations[0].id).toBe('note');
+  });
+});

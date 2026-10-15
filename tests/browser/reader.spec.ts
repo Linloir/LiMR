@@ -129,12 +129,14 @@ test('custom scroll root keeps TOC and sidebar aligned with the body', async ({ 
   await expect(link).toHaveAttribute('aria-current', 'location');
   expect(await root.evaluate(element => element.scrollTop)).toBeGreaterThan(500);
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  await expect(root.locator('.limr-sidebar-reference')).toHaveCount(0);
   const offsets = await page.evaluate(() => Array.from(document.querySelectorAll('[data-limr-anchor]')).map(marker => {
     const card = document.querySelector(`[data-occurrence="${marker.getAttribute('data-limr-anchor')}"]`);
     if (!card) return 999;
     const rail = card.closest('.limr-sidebar')!.getBoundingClientRect(), bounds = card.getBoundingClientRect();
-    const range = document.createRange(); range.selectNodeContents(marker.closest('p')!);
-    return Math.abs(Math.max(rail.top, Math.min(range.getClientRects()[0].top, rail.bottom - bounds.height)) - bounds.top);
+    // This fixture uses self-closing refs: the point marker itself is the
+    // reference location, even at the end of a many-line paragraph.
+    return Math.abs(Math.max(rail.top, Math.min(marker.getBoundingClientRect().top, rail.bottom - bounds.height)) - bounds.top);
   }));
   expect(Math.max(...offsets)).toBeLessThan(6);
 });

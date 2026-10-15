@@ -1,6 +1,6 @@
 import { createParser } from './parser';
 import { lineStarts, rangeOf, slugify, textContent, walk } from './tree';
-import type { Annotation, AnnotationOccurrence, Block, DocumentMetrics, DocumentOptions, DocumentSnapshot, Heading, MarkdownNode, SyntaxExtension } from './types';
+import type { Annotation, AnnotationOccurrence, Block, DocumentMetrics, DocumentOptions, DocumentSnapshot, Heading, MarkdownNode, SourceAnnotationRange, SyntaxExtension } from './types';
 
 let sequence = 0;
 
@@ -110,6 +110,8 @@ export class DocumentEngine {
     const footnotes = new Map<string, MarkdownNode>();
     const footnoteOrder: string[] = [];
     const annotations = new Map<string, Annotation>();
+    const annotationRanges = new Map<string, SourceAnnotationRange[]>();
+    const sourceOccurrences: { occurrence: AnnotationOccurrence; rangeId: string }[] = [];
     const occurrences: AnnotationOccurrence[] = [];
     const slugCounts = new Map<string, number>();
     for (const block of blocks) for (const node of this.relevant(block.node)) {
@@ -125,14 +127,47 @@ export class DocumentEngine {
       if (node.type === 'footnoteReference' && !footnoteOrder.includes(String(node.identifier))) footnoteOrder.push(String(node.identifier));
       if (node.annotation) {
         const annotation = node.annotation as Annotation;
+        if (annotation.source?.module === 'source-annotations') {
+          const previous = annotations.get(annotation.id);
+          const ranges = previous?.source?.module === 'source-annotations' ? [...previous.source.ranges, ...annotation.source.ranges] : annotation.source.ranges;
+          // Move replacement definitions to their final source order: highlight
+          // precedence follows declarations, including repeated annotation IDs.
+          annotations.delete(annotation.id);
+          annotations.set(annotation.id, { ...annotation, source: { ...annotation.source, ranges } });
+        }
         // GFM resolves duplicate named footnotes to their first definition.
-        if (node.type !== 'footnoteDefinition' || !annotations.has(annotation.id)) annotations.set(annotation.id, annotation);
+        else if (node.type !== 'footnoteDefinition' || !annotations.has(annotation.id)) annotations.set(annotation.id, annotation);
       }
       if (node.type === 'annotationReference') {
         const range = rangeOf(node);
-        occurrences.push({ id: `${this.id}-ref-${range.start}`, range, annotationIds: node.annotationIds as string[], embedded: true, ...(node.referenceRange ? { referenceRange: node.referenceRange as AnnotationOccurrence['referenceRange'] } : {}) });
+        const occurrence: AnnotationOccurrence = { id: `${this.id}-ref-${range.start}`, range, annotationIds: node.annotationIds as string[], embedded: true, ...(node.referenceRange ? { referenceRange: node.referenceRange as AnnotationOccurrence['referenceRange'] } : {}) };
+        if (node.sourceAnnotationRange) {
+          const reference = node.sourceAnnotationRange as SourceAnnotationRange;
+          const ranges = annotationRanges.get(reference.id) ?? [];
+          ranges.push(reference); annotationRanges.set(reference.id, ranges);
+          sourceOccurrences.push({ occurrence, rangeId: reference.id });
+        } else occurrences.push(occurrence);
       }
     }
+    const highlightOwners = new Map<string, string>(), rangeAnnotations = new Map<string, string[]>();
+    for (const annotation of annotations.values()) if (annotation.source?.module === 'source-annotations') {
+      for (const rangeId of annotation.source.rangeIds ?? []) {
+        if (annotation.type === 'highlight') highlightOwners.set(rangeId, annotation.id);
+        else { const ids = rangeAnnotations.get(rangeId) ?? []; ids.push(annotation.id); rangeAnnotations.set(rangeId, ids); }
+      }
+    }
+    for (const annotation of annotations.values()) if (annotation.source?.module === 'source-annotations') {
+      const anchors = (annotation.source.rangeIds ?? []).flatMap(rangeId => {
+        if (annotation.type === 'highlight' && highlightOwners.get(rangeId) !== annotation.id) return [];
+        return (annotationRanges.get(rangeId) ?? []).map((reference, index) => ({ id: `${annotation.id}:${rangeId}:${index}`, range: reference.range, quote: source.slice(reference.range.start, reference.range.end) }));
+      });
+      annotations.set(annotation.id, { ...annotation, anchors });
+    }
+    for (const { occurrence, rangeId } of sourceOccurrences) {
+      const ids = rangeAnnotations.get(rangeId);
+      if (ids?.length) occurrences.push({ ...occurrence, annotationIds: ids });
+    }
+    if (sourceOccurrences.length) occurrences.sort((a, b) => a.range.start - b.range.start);
     this.snapshot = {
       id: this.id, revision: (previous?.revision ?? -1) + 1, source, streaming,
       blocks,
@@ -140,7 +175,7 @@ export class DocumentEngine {
         const old = previous.headings[index];
         return heading.id === old.id && heading.text === old.text && heading.level === old.level && heading.blockId === old.blockId && heading.range.start === old.range.start && heading.range.end === old.range.end;
       }) ? previous.headings : headings,
-      definitions, footnotes, footnoteOrder, annotations: [...annotations.values()], occurrences,
+      definitions, footnotes, footnoteOrder, annotations: [...annotations.values()], annotationRanges, occurrences,
       diagnostics: parsed.diagnostics,
       metrics: { parsedCharacters, reusedBlocks: reused, parsedBlocks: parsed.nodes.length, fullParse: start === 0, reason },
     };

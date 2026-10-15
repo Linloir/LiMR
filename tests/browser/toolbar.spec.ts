@@ -29,7 +29,12 @@ test('default tools animate outward with delayed, staggered fades and normalize 
     if (i) expect(motions.items[i][0].timing.delay ?? 0).toBeGreaterThan(motions.items[i - 1][0].timing.delay ?? 0);
   }
   const icons = await toolbar.locator('.limr-tool-face[data-visible] .limr-tool-icon').evaluateAll(elements => elements.map(element => ({ slot: element.getBoundingClientRect().toJSON(), icon: element.querySelector('svg')!.getBoundingClientRect().toJSON() })));
-  for (const { slot, icon } of icons) { expect(slot.width).toBe(18); expect(slot.height).toBe(18); expect(icon.width).toBeLessThanOrEqual(18); expect(icon.height).toBeLessThanOrEqual(18); }
+  // Animated translations can round DOMRect subtraction by a few millionths
+  // of a pixel. Keep the 18px size contract without exact float equality.
+  for (const { slot, icon } of icons) {
+    expect(slot.width).toBeCloseTo(18, 3); expect(slot.height).toBeCloseTo(18, 3);
+    expect(icon.width).toBeLessThanOrEqual(18.001); expect(icon.height).toBeLessThanOrEqual(18.001);
+  }
   await page.keyboard.press('Escape');
   await page.locator('.limr-reader-content > article > p').first().evaluate(element => Object.assign(element.style, { position: 'fixed', marginTop: '0', top: '4px', left: '80px' }));
   await select(page);

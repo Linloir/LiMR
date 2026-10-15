@@ -1,98 +1,90 @@
-# Knuth–Plass performance report
+# Knuth–Plass typography performance
 
 [Documentation](README.md) · [简体中文](../zh-CN/knuth-plass-performance.md)
 
-Measured on **2026-10-14 (Asia/Shanghai)**. LiMR **1.0.1**, react-markdown **10.1.0**, Markstream React **2.0.19**, React/React DOM **19.3.0**, Node **v20.19.5**, Chromium **156.0.8078.4**. 13th Gen Intel(R) Core(TM) i7-13700; 24 logical CPUs; 31.2 GiB; linux 6.18.40.1-microsoft-standard-WSL2.
+LiMR’s `typography="knuth-plass"` provides paragraph-level optimization of line breaks, spacing and hyphenation while retaining native text selection, copying and highlights. This page covers solver throughput and full-paper reading on desktop, narrow viewports and changing widths.
 
-KP is the optional `typography="knuth-plass"` paragraph layout mode. This report separates the pure solver, browser layout and interaction correctness. Standard, CSS justify and KP are measured as three current typography modes.
+A 10,000-word synthetic paragraph takes a median **8.184ms** to prepare and solve, or **7.647ms** with preparation retained. KP’s pooled scrolling rAF P95 for the full paper is **19.40ms** on desktop and **17.20ms** in the narrow viewport. Browser acceptance passes **18/18** across all three modes.
 
-## Algorithm and execution path
+## Solver throughput and width reuse
 
-The implementation uses box/glue/penalty, four fitness classes, TeX integer badness, adjacent-line and hyphen demerits, and active nodes to find a minimum-demerit path. It tries pretolerance, tolerance and emergency passes with default thresholds 100/200 and emergencyStretch=16px. Indivisible overfull content remains visible. `prepareKnuthPlass` retains width/stretch/shrink prefix sums and breakpoint helpers; a new width still invokes solving rather than returning a cached answer.
+The solver represents content as boxes, glue and penalties. Active nodes find a minimum-demerit path across the paragraph, accounting for line fitness, adjacent-line differences and hyphens. `prepareKnuthPlass` retains width/stretch/shrink prefix sums and breakpoint helpers for solving the same paragraph at different widths.
 
-Browser work additionally includes Unicode line breaking, Knuth–Liang en-US hyphenation, font measurement, line DOM/spacing writes, selection and highlight geometry. Near-viewport paragraphs are queued with batched reads/writes; typeset nodes survive scrolling. The scheduler checks an approximately 6ms budget between jobs; it cannot interrupt one costly paragraph. Active-list size depends on input, widths, looseness and passes, so the measured scaling is not a worst-case complexity proof.
+Inputs use deterministic synthetic pixel widths, with 3 warmups and 15 samples per operation. Small inputs are batched and normalized per call. Values below are ms: median / P95 / maximum. “Prepare” means building solver prefix data; input creation, hyphenation and glyph measurement are separate integration work.
 
-[Solver source](https://github.com/Linloir/LiMR/blob/main/src/core/knuth-plass.ts) · [Browser integration](https://github.com/Linloir/LiMR/blob/main/src/react/knuth-plass-layout.ts) · [Independent exhaustive correctness tests](https://github.com/Linloir/LiMR/blob/main/tests/knuth-plass.test.ts).
-
-## Pure algorithm: scaling and re-solving
-
-Deterministic synthetic pixel-width inputs, three warmups and 15 cyclic samples per operation. Small inputs are batched and normalized per call to reduce timer noise; batch sizes and raw values are in JSON. Input creation, hyphenation and glyph measurement are excluded. “Prepare + solve” includes prefix-array preparation and solving only; “Prepared solve” retains arrays but still runs the solver. Values are ms, median / P95 / max; with 15 samples, nearest-rank P95 equals the maximum.
-
-| Scenario | Words / items / lines | Prepare + solve | Prepared solve | 12-width total | pass |
+| Scenario | Words / items / lines | Prepare + solve | Prepared solve | 12-width total | Pass |
 | --- | --- | --- | --- | --- | --- |
-| words-50 | 50 / 102 / 4 | 0.010 / 0.125 / 0.125 | 0.007 / 0.095 / 0.095 | 0.083 / 0.266 / 0.266 | pretolerance |
-| words-200 | 200 / 402 / 14 | 0.076 / 0.191 / 0.191 | 0.064 / 0.083 / 0.083 | 0.614 / 0.856 / 0.856 | pretolerance |
-| words-1000 | 1000 / 2002 / 70 | 0.676 / 0.790 / 0.790 | 0.633 / 0.947 / 0.947 | 4.842 / 6.527 / 6.527 | pretolerance |
-| words-5000 | 5000 / 10002 / 349 | 3.673 / 4.118 / 4.118 | 3.452 / 4.146 / 4.146 | 26.830 / 29.383 / 29.383 | pretolerance |
-| words-10000 | 10000 / 20002 / 698 | 7.479 / 8.371 / 8.371 | 6.721 / 10.462 / 10.462 | 54.282 / 70.513 / 70.513 | pretolerance |
-| narrow | 1000 / 2002 / 191 | 0.132 / 0.170 / 0.170 | 0.111 / 0.156 / 0.156 | 4.694 / 5.156 / 5.156 | emergency |
-| discretionary-hyphens | 1000 / 4002 / 146 | 2.177 / 2.719 / 2.719 | 2.069 / 2.690 / 2.690 | 20.573 / 23.961 / 23.961 | tolerance |
-| varying-line-width | 1000 / 2002 / 71 | 1.509 / 1.736 / 1.736 | 1.439 / 1.605 / 1.605 | 6.317 / 7.265 / 7.265 | emergency |
-| looseness | 200 / 402 / 24 | 0.138 / 0.159 / 0.159 | 0.116 / 0.135 / 0.135 | 1.412 / 1.477 / 1.477 | emergency |
-| emergency-stretch | 3 / 8 / 2 | 0.010 / 0.011 / 0.011 | 0.007 / 0.011 / 0.011 | 0.041 / 0.049 / 0.049 | emergency |
-| overfull-atomic | 1 / 4 / 1 | 0.001 / 0.002 / 0.002 | 0.001 / 0.001 / 0.001 | 0.012 / 0.026 / 0.026 | emergency |
+| words-50 | 50 / 102 / 4 | 0.011 / 0.130 / 0.130 | 0.008 / 0.124 / 0.124 | 0.102 / 0.669 / 0.669 | pretolerance |
+| words-200 | 200 / 402 / 14 | 0.064 / 0.328 / 0.328 | 0.055 / 0.071 / 0.071 | 0.518 / 0.590 / 0.590 | pretolerance |
+| words-1000 | 1000 / 2002 / 70 | 0.665 / 1.550 / 1.550 | 0.621 / 0.677 / 0.677 | 4.971 / 6.376 / 6.376 | pretolerance |
+| words-5000 | 5000 / 10002 / 349 | 4.253 / 6.874 / 6.874 | 3.854 / 12.317 / 12.317 | 32.124 / 93.977 / 93.977 | pretolerance |
+| words-10000 | 10000 / 20002 / 698 | 8.184 / 9.788 / 9.788 | 7.647 / 11.113 / 11.113 | 60.342 / 67.868 / 67.868 | pretolerance |
+| narrow | 1000 / 2002 / 191 | 0.149 / 0.254 / 0.254 | 0.102 / 0.171 / 0.171 | 4.907 / 5.394 / 5.394 | emergency |
+| discretionary-hyphens | 1000 / 4002 / 146 | 2.248 / 2.744 / 2.744 | 2.094 / 2.327 / 2.327 | 21.375 / 22.056 / 22.056 | tolerance |
+| varying-line-width | 1000 / 2002 / 71 | 1.538 / 1.689 / 1.689 | 1.511 / 1.727 / 1.727 | 6.248 / 7.128 / 7.128 | emergency |
+| looseness | 200 / 402 / 24 | 0.137 / 0.178 / 0.178 | 0.114 / 0.173 / 0.173 | 1.436 / 1.829 / 1.829 | emergency |
+| emergency-stretch | 3 / 8 / 2 | 0.008 / 0.011 / 0.011 | 0.007 / 0.023 / 0.023 | 0.033 / 0.054 / 0.054 | emergency |
+| overfull-atomic | 1 / 4 / 1 | 0.001 / 0.001 / 0.001 | 0.001 / 0.001 / 0.001 | 0.011 / 0.022 / 0.022 | emergency |
 
-The 12-width operation covers 240–680px in 40px steps and includes complete-path checks; it is not one browser resize. Cases cover narrow columns, discretionary hyphens, varying line widths, looseness, emergency stretch and overfull atomic content. Each checks increasing breaks, terminal coverage and finite demerits; direct and prepared results must agree. Separate unit tests exhaustively enumerate partitions of 64 nine-word paragraphs and check minimum cost, hyphens and forced breaks.
+The 12-width operation spans 240–680px in 40px steps and reports the total for solving and path checks. Cases include narrow columns, hyphens, varying line widths, looseness, emergency stretch and indivisible objects. Checks verify ordered breaks, complete coverage, finite demerits and agreement between direct and prepared solving.
 
-## Real browser: full paper reading
+## Desktop and narrow-viewport reading
 
-Input: scikit-learn, 23,713 UTF-16 characters; SHA-256 `f7408f07175f81df3c86b256c03fce1e4dc4b11ba8661780d3735df5a1bed197`.
+The browser scenario uses the complete scikit-learn paper (23,713 UTF-16 code units) in the production Playground, retaining the Reader TOC, sidebar and plugins. Standard, CSS justify and KP each run in 1380×1000 and 390×1000 Chromium viewports, with 3 fresh pages per group.
 
-Production Playground retains Reader TOC, sidebar and plugins. Standard, justify and KP each run three fresh pages at 1380×1000 and 390×1000 (18 total). The paper and fonts load first. KP activation includes menu/protocol and lazy module loading, whereas standard only waits for stability; activation is not a fair mount-time algorithm comparison. Each page performs three 120-step down/up sweeps; the first encounters new paragraphs and the other two revisit cached layout.
+KP schedules paragraphs as they approach the viewport, batches font measurements and layout writes, and retains typeset nodes for revisiting. Each page performs three 120-step down/up sweeps: the first reaches new paragraphs, and the next two revisit existing layout.
 
-| Viewport / mode | Passed | Activation stable ms | First sweep P95 / max | Revisit P95 / max | >50ms frames |
-| --- | --- | --- | --- | --- | --- |
-| 1380 / standard | 3/3 | 83.10 | 17.10 / 22.80 | 17.00 / 23.10 | 0 / 1080 |
-| 1380 / justify | 3/3 | 1023.30 | 19.00 / 24.10 | 18.90 / 23.10 | 0 / 1080 |
-| 1380 / knuth-plass | 3/3 | 263.50 | 20.10 / 29.00 | 19.60 / 29.90 | 0 / 1080 |
-| 390 / standard | 3/3 | 76.80 | 17.10 / 19.00 | 17.00 / 36.90 | 0 / 1080 |
-| 390 / justify | 3/3 | 1007.30 | 17.00 / 17.90 | 17.00 / 29.90 | 0 / 1080 |
-| 390 / knuth-plass | 3/3 | 228.60 | 17.10 / 17.80 | 17.00 / 17.40 | 0 / 1080 |
-
-Scroll frames are pooled by viewport/mode (1,080 per group), measured from scrollTo to the next rAF callback, not completed paint. Raw sequences retain every frame above 50ms.
-
-### Viewport changes and stable layout
-
-Each page visits widths 1380, 1200, 960, 800, 640, 480, 390, 480, 640, 800, 1200 and 1380px, recording actual paragraph widths. Each change measures next rAF and four consecutive stable visible-layout frames. Settling includes protocol and the detection delay; it is not pure solver time.
-
-| Initial viewport / mode | rAF P50 / P95 / max ms | Stable P50 / P95 / max ms | Paragraph width px |
-| --- | --- | --- | --- |
-| 1380 / standard | 29.50 / 49.60 / 50.10 | 115.00 / 118.00 / 118.80 | 350–900 |
-| 1380 / justify | 30.70 / 49.10 / 50.80 | 114.90 / 117.00 / 117.30 | 350–900 |
-| 1380 / knuth-plass | 40.60 / 64.10 / 66.50 | 114.80 / 133.10 / 133.40 | 350–900 |
-| 390 / standard | 31.50 / 66.20 / 68.80 | 115.70 / 132.70 / 133.30 | 350–900 |
-| 390 / justify | 31.10 / 70.00 / 81.80 | 115.70 / 133.80 / 149.10 | 350–900 |
-| 390 / knuth-plass | 48.50 / 87.60 / 108.30 | 116.50 / 165.80 / 198.60 | 350–900 |
-
-### Main thread, memory and correctness
-
-| Initial viewport / mode | Scroll TaskDuration ms | Final heap MiB | DOM | Text / native range / cache retained |
+| Viewport / mode | Passed | First sweep rAF P95 / max ms | Revisit rAF P95 / max ms | >50ms frames |
 | --- | --- | --- | --- | --- |
-| 1380 / standard | 1376.51 | 10.42 | 726 | 3/3 / 3/3 / N/A |
-| 1380 / justify | 2480.23 | 10.98 | 726 | 3/3 / 3/3 / N/A |
-| 1380 / knuth-plass | 2840.47 | 16.15 | 1679 | 3/3 / 3/3 / 3/3 |
-| 390 / standard | 1132.12 | 10.29 | 726 | 3/3 / 3/3 / N/A |
-| 390 / justify | 770.76 | 9.04 | 726 | 3/3 / 3/3 / N/A |
-| 390 / knuth-plass | 1103.83 | 14.33 | 2080 | 3/3 / 3/3 / 3/3 |
+| 1380 / standard | 3/3 | 17.20 / 18.10 | 17.20 / 19.00 | 0 / 1080 |
+| 1380 / justify | 3/3 | 19.20 / 23.70 | 19.10 / 32.30 | 0 / 1080 |
+| 1380 / knuth-plass | 3/3 | 19.70 / 25.90 | 19.20 / 27.00 | 0 / 1080 |
+| 390 / standard | 3/3 | 17.40 / 18.50 | 17.30 / 19.10 | 0 / 1080 |
+| 390 / justify | 3/3 | 17.10 / 18.10 | 17.10 / 17.70 | 0 / 1080 |
+| 390 / knuth-plass | 3/3 | 17.20 / 18.10 | 17.10 / 18.20 | 0 / 1080 |
 
-Heap/DOM are sampled after scrolling and resizing, at final 390px and after explicit GC. Checks cover first-paragraph text, native Range across resize, cached first-paragraph nodes after scrolling, visible stale markers and horizontal overflow; failures remain in raw data. Browser regressions additionally verify mixed Chinese/English, inline code/math, copying, highlight geometry and font-size changes.
+Scroll statistics pool 1,080 frames per viewport/mode group. rAF measures scrollTo to the next animation-frame callback. Pure solver timings appear in the preceding table.
 
-Browser acceptance: **18/18**.
+## Responsive layout across changing widths
 
-## Interpretation and limits
+Each page visits viewport widths of 1380, 1200, 960, 800, 640, 480, 390, 480, 640, 800, 1200 and 1380px, recording actual paragraph widths. rAF measures the first callback; settling requires four consecutive matching visible-layout frames and includes browser-protocol and detection waits.
 
-For the 10,000-word synthetic paragraph, median preparation + solving is **7.479ms**, and solving with preparation retained is **6.721ms**. Pooled desktop paper scrolling P95 is **17.00ms** for standard and **19.70ms** for KP. KP has higher DOM and main-thread costs; resizing adds the overhead shown above.
+| Initial viewport / mode | rAF P50 / P95 / max ms | Settled P50 / P95 / max ms | Paragraph width px |
+| --- | --- | --- | --- |
+| 1380 / standard | 30.60 / 50.00 / 60.20 | 115.00 / 117.60 / 131.70 | 350–900 |
+| 1380 / justify | 30.80 / 47.70 / 48.80 | 115.20 / 117.00 / 117.40 | 350–900 |
+| 1380 / knuth-plass | 41.00 / 60.80 / 68.60 | 115.30 / 135.20 / 149.00 | 350–900 |
+| 390 / standard | 30.90 / 57.10 / 67.00 | 115.30 / 117.40 / 135.10 | 350–900 |
+| 390 / justify | 31.40 / 61.40 / 75.60 | 115.60 / 134.00 / 149.50 | 350–900 |
+| 390 / knuth-plass | 50.70 / 93.60 / 108.70 | 116.00 / 183.20 / 216.00 | 350–900 |
 
-The microbenchmark describes cost for the measured inputs and paths; perceived delay also depends on fonts, paragraph count, DOM and scheduling. Long paragraphs and changing widths can add KP work; cached scrolling does not imply free typography. Standard is the default for minimal typesetting work; evaluate KP using real content, narrow columns and target devices when paragraph optimization is needed. Browser glyph measurements do not promise pixel-identical TeX PDFs. This run does not cover every language dictionary, pathological negative widths, arbitrary looseness or physical low-end phones, and does not compare execution speed with native TeX.
+## Interaction integrity and resource use
 
-## Reproduction and raw data
+Layout checks cover source text, native selections across width changes, retained KP nodes after revisiting, settled visible paragraphs and horizontal overflow. Browser regression tests also cover mixed Chinese/English, inline code and math, copying, highlight geometry and font-size changes.
+
+| Initial viewport / mode | Scroll main thread ms | Final JS heap MiB | DOM | Text / native range / cache retained |
+| --- | --- | --- | --- | --- |
+| 1380 / standard | 1443.87 | 10.73 | 726 | 3/3 / 3/3 / N/A |
+| 1380 / justify | 2323.62 | 11.28 | 726 | 3/3 / 3/3 / N/A |
+| 1380 / knuth-plass | 2625.42 | 16.48 | 1679 | 3/3 / 3/3 / 3/3 |
+| 390 / standard | 1084.11 | 11.05 | 726 | 3/3 / 3/3 / N/A |
+| 390 / justify | 715.83 | 10.91 | 726 | 3/3 / 3/3 / N/A |
+| 390 / knuth-plass | 1042.43 | 16.17 | 2071 | 3/3 / 3/3 / 3/3 |
+
+Main-thread values are medians across pages of cumulative TaskDuration for all three sweeps. JS heap and DOM are sampled after scrolling and resizing, at a 390px viewport and after explicit GC; resource values are medians across pages.
+
+## Environment and reproduction
+
+LiMR **1.1.0** · React **19.3.0** · Node **v20.19.5** · Chromium **156.0.8078.4**. 13th Gen Intel(R) Core(TM) i7-13700; 24 logical CPUs; 31.2 GiB; linux 6.18.40.1-microsoft-standard-WSL2.
+
+Measurements run sequentially against a local production build without CPU or network throttling. Narrow-screen results use Chromium viewport simulation. P95 uses nearest-rank calculation; with 15 algorithm samples, P95 equals the maximum.
 
 ```sh
 pnpm bench:kp
 pnpm build:playground
 pnpm preview:playground --port 4174
-# In another terminal, after the build has finished
+# Once the preview server is ready, run in another terminal
 pnpm bench:layout
 ```
 
-[kp-algorithm.json](../../benchmarks/results/kp-algorithm.json) · [kp-browser.json](../../benchmarks/results/kp-browser.json) · [All benchmark instructions](../../benchmarks/README.md) · [Renderer comparison](performance.md).
+[kp-algorithm.json](../../benchmarks/results/kp-algorithm.json) · [kp-browser.json](../../benchmarks/results/kp-browser.json) · [Benchmark methodology](../../benchmarks/README.md) · [Rendering performance](performance.md).

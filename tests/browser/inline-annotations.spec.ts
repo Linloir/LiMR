@@ -59,12 +59,40 @@ for (const width of [1460, 560]) test(`named and inline footnotes use comment ma
   await markers.first().click();
   const card = width > 1120 ? page.locator('.limr-sidebar-card[data-type="footnote"]').first() : page.locator('.limr-overlay-positioner');
   await expect(card).toContainText('脚注'); await expect(card).toContainText('Second paragraph.');
+  if (width > 1120) await expect(card.locator('.limr-footnote-title')).toHaveText('n');
+  else await expect(card.locator('.limr-overlay-header')).toContainText('脚注 · n');
   await expect(card.locator('strong').first()).toHaveText('footnote');
   if (width > 1120) await expect(card.locator('.limr-sidebar-excerpt')).toHaveText('named highlight');
   await markers.nth(1).click();
   const inline = width > 1120 ? page.locator('.limr-sidebar-card[data-type="footnote"]').nth(1) : page.locator('.limr-overlay-positioner');
   await expect(inline).toContainText('An inline footnote');
   if (width > 1120) await expect(inline.locator('.limr-sidebar-excerpt')).toHaveText('inline');
+});
+
+test('standalone footnotes and self-closing refs keep zero-length hover ranges', async ({ page }) => {
+  await page.evaluate(() => window.limrStream({ source: 'Before[^named] with a citation<ref id="c" /> after.\n\n[^named]: Named body\n\n<citation id="c" title="Source" />', streaming: false }));
+  const article = page.locator('.limr-reader-content > article');
+  const markers = article.locator('.limr-mark');
+  await expect(markers).toHaveCount(2);
+  for (const marker of await markers.all()) {
+    await marker.hover(); await marker.click();
+    await expect(article.locator('.limr-paint-rect[data-reference]')).toHaveCount(0);
+  }
+});
+
+test('reserved ranges render shared note/question markers with one winning highlight and no fallback body', async ({ page }) => {
+  await page.evaluate(() => window.limrStream({ source: 'Before ==named **range**==[^%%limr:r1%%] after.\n\n[^%%limr:r1%%]: Ordinary fallback body\n\n:::limr-annotation{#h1 ranges="r1" type="highlight" color="#E5C07B"}\n:::\n\n:::limr-annotation{#h2 ranges="r1" type="highlight" color="#81B29A"}\n:::\n\n:::limr-annotation{#n1 ranges="r1" type="footnote"}\nStored **note**.\n:::\n\n:::limr-annotation{#q1 ranges="r1" type="question"}\nWhy cache?\n:::', streaming: false, sidebar: true }));
+  const article = page.locator('.limr-reader-content > article');
+  await expect(article).not.toContainText('%%limr');
+  await expect(article).not.toContainText('Ordinary fallback body');
+  await expect(article.locator('.limr-mark')).toHaveCount(1);
+  await expect(article.locator('.limr-mark-count')).toHaveText('2');
+  await expect(article.locator('[data-paint="h1"]')).toHaveCount(0);
+  await expect(article.locator('[data-paint="h2"]').first()).toHaveCSS('--limr-highlight', '#81B29A');
+  await article.locator('.limr-mark').click();
+  const card = page.locator('.limr-sidebar-card,.limr-overlay-positioner').filter({ hasText: 'Stored note.' });
+  await expect(card).toContainText('Why cache?');
+  await expect(card.locator('strong')).toHaveText('note');
 });
 
 test('streaming highlight text selection survives closing delimiters and a following footnote', async ({ page }) => {

@@ -5,6 +5,8 @@ export * from './mermaid';
 export * from './callout';
 export * from './inline-highlights';
 export * from './footnotes';
+export * from './source-annotations';
+export { editSourceAnnotations } from './source-annotation-editing';
 export * from './code';
 export * from './blocks';
 export * from './annotations';

@@ -83,9 +83,9 @@ export function AnnotationSidebar({ sync = 'document', gap = 14, positioner = al
   const [release, setRelease] = useState<{ id: string; top?: number; progress: number } | null>(null);
   const occurrences = useMemo(() => {
     const values = [...decorations.occurrences].sort((a, b) => a.range.start - b.range.start || a.range.end - b.range.end || a.id.localeCompare(b.id));
-    if (sync === 'none') for (const annotation of decorations.annotations.values()) if (annotation.type !== 'highlight' && !values.some(item => item.annotationIds.includes(annotation.id))) values.push({ id: `unanchored-${annotation.id}`, range: { start: 0, end: 0 }, annotationIds: [annotation.id] });
+    if (sync === 'none') for (const annotation of decorations.annotations.values()) if (annotation.type !== 'highlight' && runtime.supportsAnnotation(annotation) && !values.some(item => item.annotationIds.includes(annotation.id))) values.push({ id: `unanchored-${annotation.id}`, range: { start: 0, end: 0 }, annotationIds: [annotation.id] });
     return values;
-  }, [decorations, sync]);
+  }, [runtime, decorations, sync]);
   const references = useMemo(() => new Map(occurrences.map(occurrence => [occurrence.id, annotationReferenceText(document, occurrence)])), [document, occurrences]);
   const annotationGroups = useMemo(() => new Map(occurrences.map(occurrence => [occurrence.id, occurrence.annotationIds.flatMap(id => { const annotation = decorations.annotations.get(id); return annotation ? [annotation] : []; })])), [decorations, occurrences]);
   const measure = useCallback((beforePaint = false) => {

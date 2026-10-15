@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { autoUpdate, flip, FloatingFocusManager, FloatingOverlay, FloatingPortal, offset, shift, size, useDismiss, useFloating, useInteractions, useRole } from '@floating-ui/react';
 import { useAppearance, useIsomorphicLayoutEffect, useLocale, useRuntime, useStoreSelector, useTheme } from '../react/context';
 import { AnnotationGroup } from './AnnotationContent';
@@ -38,7 +38,8 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
   const wantedId = active ?? preview;
   const wanted = occurrences.find(item => item.id === wantedId);
   const [retained, setRetained] = useState<AnnotationOccurrence | null>(null);
-  const occurrence = wanted ?? retained;
+  // Exit animations may retain a surface, but never an uninstalled capability.
+  const occurrence = wanted ?? (retained && occurrences.find(item => item.id === retained.id));
   const id = occurrence?.id;
   const annotation = useStoreSelector(runtime.decorations, state => state.annotations.get(occurrence?.annotationIds[0] ?? ''));
   const definition = useStoreSelector(runtime.configuration, () => runtime.annotationTypes.get(annotation?.type ?? 'citation'));
@@ -69,13 +70,20 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
   const shownPinned = open ? pinned : lastPinned;
   const centered = shownExpanded && expansion && expansion.placement === 'center';
   const anchoredExpansion = shownExpanded && !centered && fromPreview;
+  // Floating UI can finish an asynchronous preview calculation after React has
+  // switched the same host to another card or to its expanded dimensions.
+  const sizing = useRef({ id, expanded: shownExpanded });
+  sizing.current = { id, expanded: shownExpanded };
   const { refs, update, floatingStyles, context, isPositioned, placement, middlewareData } = useFloating({ open, elements: { reference: anchor ?? null }, onOpenChange: next => { if (!next) close(); }, strategy: 'fixed', transform: false, placement: 'bottom-start', whileElementsMounted: autoUpdate, middleware: [offset(8), flip({ padding: 12 }), shift({ padding: 12 }), size({ padding: 12, apply: ({ availableHeight, elements }) => {
+    if (sizing.current.id !== id || sizing.current.expanded !== shownExpanded) return;
     if (!shownExpanded) elements.floating.style.maxHeight = `${Math.max(0, Math.floor(Math.min(360, availableHeight)))}px`;
     else if (!centered && !fromPreview) elements.floating.style.maxHeight = `min(${length(expansion && expansion.maxHeight || maxHeight)}, ${Math.max(0, Math.floor(availableHeight))}px)`;
-  } }, [shownExpanded, !!centered, !!fromPreview, expansion && expansion.maxHeight, maxHeight]), {
+  } }, [id, shownExpanded, !!centered, !!fromPreview, expansion && expansion.maxHeight, maxHeight]), {
     name: 'limrAnchor',
-    options: shownExpanded,
-    fn: ({ elements }) => ({ data: { id: (elements.reference as HTMLElement).dataset?.limrAnchor, expanded: shownExpanded } }),
+    options: { id, expanded: shownExpanded },
+    // Capture this calculation's identity, rather than reading a reused marker's
+    // new ID after earlier asynchronous middleware has already measured it.
+    fn: ({ elements, rects }) => ({ data: { id: (elements.reference as HTMLElement).dataset?.limrAnchor === id ? id : undefined, expanded: shownExpanded, width: rects.floating.width, height: rects.floating.height } }),
   }] });
   useIsomorphicLayoutEffect(() => {
     // A retained surface never remounts when an exit is reversed. Floating UI
@@ -85,7 +93,10 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
   const dismiss = useDismiss(context, { escapeKey: true, outsidePress: true });
   const role = useRole(context, { role: 'dialog' });
   const { getFloatingProps } = useInteractions([dismiss, role]);
-  const ready = !!centered || !!anchoredExpansion || !open || isPositioned && middlewareData.limrAnchor?.id === id && middlewareData.limrAnchor?.expanded === shownExpanded;
+  const positioned = middlewareData.limrAnchor;
+  const hostRect = refs.floating.current?.getBoundingClientRect();
+  const dimensionsReady = !!hostRect && Math.abs(hostRect.width - (positioned?.width ?? -1)) < .5 && Math.abs(hostRect.height - (positioned?.height ?? -1)) < .5;
+  const ready = !!centered || !!anchoredExpansion || !open || isPositioned && positioned?.id === id && positioned?.expanded === shownExpanded && dimensionsReady;
   const [surface, setSurface] = useState<HTMLDivElement | null>(null);
   const edge = (shownExpanded ? fromPreview?.placement ?? 'bottom' : placement).startsWith('top') ? 'bottom' : 'top';
   useCardMotion(surface, refs.floating.current, anchor, open, shownExpanded, ready && !measuringPreview, id, edge, fromPreview?.rect, () => { setRetained(null); setCollapsedId(null); setPreviewGeometry(null); });

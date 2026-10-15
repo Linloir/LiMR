@@ -3,6 +3,8 @@ import type { Extension as MdastExtension } from 'mdast-util-from-markdown';
 
 /** UTF-16 offsets into the unmodified input. The end is exclusive. */
 export interface SourceRange { start: number; end: number }
+/** Replace an original UTF-16 source span. Edits in a transaction must not overlap. */
+export interface SourceEdit { range: SourceRange; text: string }
 export interface SourcePoint { offset: number; line: number; column: number }
 export interface SourcePosition { start: SourcePoint; end: SourcePoint }
 
@@ -65,6 +67,16 @@ export interface Annotation<T = unknown> {
   /** Shorthand for a single occurrence. */
   range?: SourceRange;
   anchors?: readonly AnnotationAnchor[];
+  /** Module-owned source syntax. Duplicate definitions retain every span so
+   * deleting or rewriting an ID cannot reveal an older definition. */
+  source?: { module: string; ranges: readonly SourceRange[]; rangeIds?: readonly string[] };
+}
+/** A named range authored as ==text==[^%%limr:id%%]. */
+export interface SourceAnnotationRange {
+  id: string;
+  range: SourceRange;
+  syntaxRange: SourceRange;
+  markerRange: SourceRange;
 }
 export interface AnnotationOccurrence extends AnnotationAnchor {
   id: string;
@@ -106,6 +118,7 @@ export interface DocumentSnapshot {
   footnotes: ReadonlyMap<string, MarkdownNode>;
   footnoteOrder: readonly string[];
   annotations: readonly Annotation[];
+  annotationRanges: ReadonlyMap<string, readonly SourceAnnotationRange[]>;
   occurrences: readonly AnnotationOccurrence[];
   diagnostics: readonly Diagnostic[];
   metrics: DocumentMetrics;

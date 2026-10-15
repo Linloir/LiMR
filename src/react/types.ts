@@ -1,5 +1,5 @@
 import type { ComponentType, CSSProperties, ReactNode } from 'react';
-import type { Annotation, AnnotationOccurrence, DocumentSnapshot, HighlightData, MarkdownNode, SelectionSnapshot, SourceRange, SyntaxExtension } from '../core/types';
+import type { Annotation, AnnotationOccurrence, DocumentSnapshot, HighlightData, MarkdownNode, SelectionSnapshot, SourceEdit, SourceRange, SyntaxExtension } from '../core/types';
 import type { KnuthPlassOptions } from '../core/knuth-plass';
 export type { KnuthPlassOptions } from '../core/knuth-plass';
 
@@ -111,6 +111,11 @@ export interface AnnotationType<T = unknown> {
   load?: (annotation: Annotation<T>, context: { signal: AbortSignal }) => Promise<T>;
 }
 export interface RendererExtension extends SyntaxExtension {
+  /** Optional serialization owned by the module. Last registered handler that
+   * returns edits wins; undefined delegates to the preceding handler. */
+  sourceEditing?: {
+    annotations: (change: SourceAnnotationChange, document: DocumentSnapshot) => readonly SourceEdit[] | undefined;
+  };
   streaming?: {
     /** Optional module-owned intermediate state. Omit to render progressively. */
     Loading?: NodeRenderer;
@@ -135,10 +140,26 @@ export interface StreamEffect {
 }
 /** Open to module augmentation; parameter names and semantics belong to plugins. */
 export interface RendererParameters {}
+export interface SourceAnnotationChange {
+  added: readonly Annotation[];
+  updated: readonly { previous: Annotation; annotation: Annotation }[];
+  removed: readonly Annotation[];
+}
+export interface SourceChange {
+  /** Snapshot against which all edits were calculated. Useful for undo/save conflicts. */
+  document: DocumentSnapshot;
+  edits: readonly SourceEdit[];
+}
 export interface DocumentCommands {
+  /** True only when the host accepts source changes and generation has finished. */
+  canEditSource: () => boolean;
+  /** Whether this annotation can be edited through the configured persistence. */
+  canEditAnnotation: (id: string) => boolean;
+  /** Atomic UTF-16 edits against one revision. Returns false when the host declines. */
+  editSource: (edits: readonly SourceEdit[], options?: { revision?: number }) => boolean;
   /** Content annotations get a shared highlight unless disabled or their type
    * uses hover highlighting. An explicit appearance still creates a saved highlight. */
-  addAnnotation: (annotation: Annotation, options?: { highlight?: HighlightData | false; edit?: boolean }) => void;
+  addAnnotation: (annotation: Annotation, options?: { highlight?: HighlightData | false; edit?: boolean; target?: 'annotations' | 'source' }) => void;
   updateAnnotation: (id: string, update: Partial<Annotation>) => void;
   removeAnnotation: (id: string) => void;
   /** Remove all annotations bound to these exact fragments, preserving other anchors. */
@@ -201,6 +222,9 @@ export interface LiMRLocale {
   deleteAnnotations: string; deleteAnnotationsHint: string;
 }
 export interface ViewConfiguration {
+  /** Opt into editing the original Markdown. Accept synchronously (void/true),
+   * or return false to decline. The host owns file I/O and error/undo UI. */
+  onSourceChange?: (source: string, change: SourceChange) => boolean | void;
   /** Document-wide overrides of parameters registered by extensions. */
   parameters?: Readonly<RendererParameters>;
   extensions?: readonly RendererExtension[];

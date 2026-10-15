@@ -97,3 +97,7 @@ KP loads lazily and typesets stable paragraphs near the viewport. It retains the
 Default loading rings use a fixed 32×32 view box, 22px display size, a thick track and an animated arc. Rotation and arc growth/shrink use nonlinear easing around one fixed center; color follows `--limr-secondary`. Streaming text and blocks fade from transparent to opaque, without a background tint or a second paragraph-completion entrance. Plugins can replace the shared effect through `streaming.effect`, and each Reader can override it through `streamEffect`.
 
 Source-authored highlight blue is controlled by `--limr-inline-highlight`, or replace the module using `inlineHighlights({ color })`. Localize the read-only toolbar hint with `locale.inlineHighlightHint`.
+
+Task lists use the same diamond check as question choices. The marker uses font cap height for Latin text or ideographic height for CJK and aligns with the first line, independently of line-height. A native checkbox retains keyboard and accessibility semantics. Unchecked text is lighter and checked text is darker; hovering an unchecked item darkens its text and reveals the same line-by-line, left-to-right underline as question choices. Tasks are read-only by default; supplying onSourceChange enables the default task renderer to update source without another plugin.
+
+Callouts share the small label and body typography of notes, definitions and questions, without a leading type icon. Foldable callouts retain their toggle chevron.

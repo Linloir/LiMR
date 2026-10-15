@@ -26,6 +26,7 @@ The default modules below ship with `@linloir/limr`. `Reader`, standalone `Markd
 | `callout()` | `callout` | Typed, titled and collapsible quotes | `> [!type]`, `::callout` |
 | `inlineHighlights()` | `inline-highlights` | Source-authored highlights | `==text==`, `::highlight` |
 | `footnotes()` | `footnotes` | Comment markers and footnote cards | `[^id]`, `^[body]`, `::footnote`, `::footnote-ref` |
+| `sourceAnnotations()` | `source-annotations` | Named ranges and Markdown-stored annotations | `[^%%limr:id%%]`, `::limr-annotation` |
 
 These are registered static tags in Markdown, not an arbitrary MDX/HTML execution environment. Use string attributes such as `multi="true"` and `answer="[0,2]"`. Do not use `answer={[0,2]}`, event functions, or spread attributes. Unregistered HTML is displayed as text; expressions are not executed and may produce diagnostics. Keep blank lines between block tags and their Markdown content.
 
@@ -229,7 +230,7 @@ One source<ref id="a" />, or several<ref ids='["a","b"]' />.
 
 Citation IDs use `cite-id`, then `id`. Descriptions use `desc`, then `description`. References use `cite-from-ids`, `ids`, then `id`, accepting JSON arrays or comma-separated strings. Definitions do not occupy body space, and multiple markers can reference one definition.
 
-Citations do not expand into large cards by default; clicking pins the preview. Collapsed summaries fall back through `summary → description → safe URL → title`, with Markdown stripped. Card content uses description, then summary. Hovering or activating a reference temporarily highlights its nearest text block (paragraph, heading, list item, or table cell), without saving a highlight. External range annotations use their bound range. See [annotations and selection](annotations.md).
+Citations do not expand into large cards by default; clicking pins the preview. Collapsed summaries fall back through `summary → description → safe URL → title`, with Markdown stripped. Card content uses description, then summary. `<ref id="a">text</ref>` temporarily highlights its explicit content when hovered or activated, without saving a highlight. A self-closing `<ref id="a" />` is a zero-length reference at the marker position and does not paint its paragraph. External range annotations use their bound range. See [annotations and selection](annotations.md).
 
 ## Images, figures, and captions
 
@@ -353,7 +354,7 @@ Global `parameters.translationMode` overrides individual blocks. Pass onTranslat
 
 ## Selection and replacement
 
-Toolbar-authored highlights are annotations; source-authored `==highlights==` offer copying without editing. All registered default tags also support their matching `::` directive. Register plugins for custom tags. See [extension development](extensions.md) to select or replace default modules.
+Toolbar-authored highlights are annotations; source-authored `==highlights==` default to a copy-only toolbar. Supplying `onSourceChange` makes the default toolbar’s highlight creation/edits and task toggles update Markdown; modules can also add source annotations with target: source. Ordinary addAnnotation stays external; see [application integration](integration.md). All registered default tags also support their matching `::` directive. Register plugins for custom tags. See [extension development](extensions.md) to select or replace default modules.
 
 ## Two-colon components
 
@@ -374,7 +375,7 @@ The answer.
 ::
 ```
 
-Names: `gfm`, `definition`, `title`, `content`, `question` and its existing child tags, `extras`, `extra`, `video`, `md-video`, `figures`, `figure`, `figcaption`, `caption`, `img`, `citation`, `ref`, `translations`, `origin`, `translation`, `code` (alias `code-highlight`), `math`, `mermaid`, `callout`, `highlight`, `footnote`, and `footnote-ref`. `::code{lang="typescript"}` and `::math` preserve their bodies literally. Standard Markdown fences, JSX, single-colon inline directives and existing triple-colon containers remain supported. An unpaired two-colon line in a finished document keeps its legacy leaf-directive meaning. This is component-syntax compatibility, not support for CoMark's YAML props, named slots or frontmatter.
+Names: `gfm`, `definition`, `title`, `content`, `question` and its existing child tags, `extras`, `extra`, `video`, `md-video`, `figures`, `figure`, `figcaption`, `caption`, `img`, `citation`, `ref`, `translations`, `origin`, `translation`, `code` (alias `code-highlight`), `math`, `mermaid`, `callout`, `highlight`, `footnote`, `footnote-ref`, and `limr-annotation`. `::code{lang="typescript"}` and `::math` preserve their bodies literally. Standard Markdown fences, JSX, single-colon inline directives and existing triple-colon containers remain supported. An unpaired two-colon line in a finished document keeps its legacy leaf-directive meaning. This is component-syntax compatibility, not support for CoMark's YAML props, named slots or frontmatter.
 
 During streaming, partial headers, links, inline code/emphasis/math delimiters and table headers are withheld until usable. Registered open components carry `incomplete`; the module chooses a loading view or progressive content. Code fences and display math can render before their closing delimiter. Set `streaming={false}` or call `finish()` to restore normal final Markdown interpretation. Source ranges always refer to the unmodified original input.
 
@@ -438,9 +439,9 @@ Rendered result; expand the nested reminder:
     A second paragraph.
 ```
 
-Highlights preserve rich inline formatting. Escaped punctuation, code and math do not create highlights. Override the blue through `--limr-inline-highlight` or `inlineHighlights({ color })`. Their toolbar contains only a copy button and a single-line, left-aligned read-only hint.
+Highlights preserve rich inline formatting. Escaped punctuation, code and math do not create highlights. Override the blue through `--limr-inline-highlight` or `inlineHighlights({ color })`. Without source editing, their toolbar contains only a copy button and a single-line, left-aligned read-only hint.
 
-Footnotes use rounded comment markers, sidebar items on wide readers, and floating cards on narrow readers. Adjacent footnotes reference precisely the highlighted text; standalone markers reference their paragraph. Named definitions can be reused. `::highlight`, `::footnote{id="note"}`, and `::footnote-ref{id="note"}` provide component forms. Removing the `footnotes` module restores GFM superscripts and endnotes.
+Footnotes use rounded comment markers, sidebar items on wide readers, and floating cards on narrow readers. Adjacent footnotes reference precisely the highlighted text; standalone markers have zero-length ranges at their insertion positions. Named definitions can be reused, and their original label (such as `note`) appears in the card and sidebar. `::highlight`, `::footnote{id="note"}`, and `::footnote-ref{id="note"}` provide component forms. Removing the `footnotes` module restores GFM superscripts and endnotes.
 
 Rendered result; click a highlight or comment marker:
 
@@ -453,3 +454,55 @@ Rendered result; click a highlight or comment marker:
 [^syntax-source-highlight]: Footnote content.
 
     A second paragraph.
+
+
+## Annotations stored in Markdown
+
+`sourceAnnotations()` is included in `standard()`, after `inlineHighlights()` and `footnotes()`. A reserved footnote label binds a named range to one or more annotation definitions:
+
+```markdown
+abcd==efg==[^%%limr:r1%%]
+
+[^%%limr:r1%%]: A fallback annotation for ordinary Markdown viewers.
+
+:::limr-annotation{#h1 ranges="r1" type="highlight" style="background" color="#E5C07B" hidden="false"}
+:::
+
+:::limr-annotation{#n1 ranges="r1" type="footnote"}
+A note with **Markdown**.
+:::
+
+:::limr-annotation{#q1 ranges="r1" type="question"}
+Why check the cache first?
+:::
+```
+
+`sourceAnnotations()` provides generic syntax and serialization, without registering a question card. In this example, highlight is built in, footnote comes from the default footnote module, and question requires a registered module. Playground uses the [reading notes example](../../examples/notes.tsx) for that type and card.
+
+Only the exact, case-sensitive `[^%%limr:<id>%%]` spelling activates this mode. Use stable range IDs such as `r1`, `my-range`, or a UUID; `r1` and `R1` differ. IDs cannot contain whitespace, `%`, or `]`. URL-shaped labels are unsupported because Markdown autolink parsing can consume their source positions. The fallback `[^%%limr:r1%%]:` definition is optional and hidden by LiMR. The `limr-annotation` bodies supply the annotation content. A standalone reserved marker also works, using a zero-length range.
+
+| Field | Meaning |
+| --- | --- |
+| `#n1` or `id="n1"` | Annotation ID; the last definition with the same ID replaces earlier definitions |
+| `ranges="r1 r2"` | Named ranges, separated by spaces or commas; the same range ID can appear in several places |
+| `type` | Annotation type, such as `highlight`, `footnote`, or `question`; defaults to `footnote` |
+| `style`, `color`, `hidden` | Highlight appearance; `hidden="true"` hides paint without deleting the annotation |
+| Body | Markdown content exposed as `data.body`; other scalar attributes are passed to the owning annotation module |
+
+A range can have several content annotations but only one effective highlight: the last highlight definition targeting that range wins. On reserved ranges, `==…==` names the content span and does not create an additional default blue highlight. An annotation referencing an unknown range keeps its definition and has no visible occurrence until the range exists. Unknown annotation types preserve their data and referenced text, but have no annotation UI until a module registers the type.
+
+The equivalent component forms are supported, including the two-colon fallback:
+
+```markdown
+<limr-annotation id="n1" ranges="r1" type="footnote">
+
+A note with **Markdown**.
+
+</limr-annotation>
+
+::limr-annotation{#q1 ranges="r1" type="question"}
+Why check the cache first?
+::
+```
+
+Definitions may precede or follow their ranges. Streaming keeps incomplete definition headers and bodies hidden until the block closes, then resolves annotations against already parsed ranges. See [annotations and selection](annotations.md) for the source metadata and editing contract.

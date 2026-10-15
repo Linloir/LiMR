@@ -8,7 +8,7 @@ export function annotationReferenceText(document: DocumentSnapshot, occurrence: 
   let reference = '';
   const visit = (node: MarkdownNode) => {
     const range = rangeOf(node);
-    if (!intersects(range, referenceRange) || ['annotationReference', 'footnoteReference', 'annotationDefinition', 'definition'].includes(node.type)) return;
+    if (!intersects(range, referenceRange) || ['footnoteReference', 'annotationDefinition', 'definition'].includes(node.type)) return;
     if (node.value !== undefined) {
       const mapping = mapText(document.source, node.value, range);
       reference += node.value.split('').filter((_, index) => mapping.ends[index] > referenceRange.start && mapping.starts[index] < referenceRange.end).join('');

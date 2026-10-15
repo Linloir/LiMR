@@ -1,6 +1,6 @@
 {
   "environment": {
-    "date": "2026-10-13T17:30:05.924Z",
+    "date": "2026-10-14T15:24:42.356Z",
     "timezone": "Asia/Shanghai",
     "node": "v20.19.5",
     "mode": "production",
@@ -8,15 +8,17 @@
     "cpu": "13th Gen Intel(R) Core(TM) i7-13700",
     "logicalCPUs": 24,
     "memoryBytes": 33457602560,
-    "freeMemoryBytes": 6399868928,
+    "freeMemoryBytes": 9897492480,
     "loadAverage": [
-      1.59,
-      1.79,
-      1.93
+      1.06,
+      1.36,
+      1.65
     ],
-    "revision": "1e318ea408fb743fe15ca831e59ac7ccfe85c4e0",
-    "sourceSHA256": "8a09189f783dc1888446e0f0c96b2059db30142a6a545e769777ce0325fee4a1",
-    "harnessSHA256": "cfbba7765c59555b06fa921c28cf20f9ab4320713db6a4ee3301879b69741d1f",
+    "revision": "3910dfd364ba4a8939bd91e3ff7a1f21fe7f6b8e",
+    "sourceSHA256": "7d611b8294bc48063de34423206d51e786dd50f7722387cb78f9bb623c088d37",
+    "harnessSHA256": "f4de09dc072c347a7ebcfc89e5b2c0a63a53c3eded531f95b8b6de201a268022",
+    "playgroundSHA256": "163fff00251f126131632a72db5d33682c560d14995d7c1d1f7d0a7f7734e8d7",
+    "examplesSHA256": "f430c8d15a4d1f3ae8854b3ab556f9fcc3d0b07007e6803ce38eaa1c02fbce37",
     "lockSHA256": "c3264f2e09b17af4097cd38e194844fc8e8143a84e939f0978ff415ad0562ee4",
     "versions": {
       "react": "19.3.0",
@@ -30,7 +32,7 @@
       "katex": "0.19.0",
       "shiki": "4.5.0"
     },
-    "liMR": "1.0.1",
+    "liMR": "1.1.0",
     "cpuThrottle": 1,
     "network": "Local production preview; no network or CPU throttling",
     "browser": "156.0.8078.4"
@@ -43,52 +45,54 @@
       "renderer": "limr",
       "median": {
         "nativeChanges": 91,
-        "updates": 75,
-        "dragging": 75,
-        "paints": 75,
-        "frameP95Ms": 16.800000000000182,
-        "maxFrameMs": 33.399999999999636,
-        "paintP95Ms": 28.19999998807907,
+        "updates": 76,
+        "dragging": 76,
+        "paints": 76,
+        "frameP95Ms": 33.399999999999636,
+        "maxFrameMs": 33.400000000000546,
+        "paintP95Ms": 28.700000047683716,
         "longTasks": [],
         "rectangles": 10,
-        "elapsedMs": 3619
+        "elapsedMs": 4099.5
       },
       "samples": [
         {
           "nativeChanges": 91,
-          "updates": 82,
-          "dragging": 82,
-          "paints": 82,
-          "frameP95Ms": 16.799999999999272,
-          "maxFrameMs": 33.19999999999982,
-          "paintP95Ms": 4.699999988079071,
+          "updates": 73,
+          "dragging": 73,
+          "paints": 73,
+          "frameP95Ms": 33.40000000000009,
+          "maxFrameMs": 33.400000000000546,
+          "paintP95Ms": 30.199999928474426,
           "longTasks": [],
           "rectangles": 10,
-          "elapsedMs": 3526.100000023842
+          "elapsedMs": 4113.100000023842
         },
         {
           "nativeChanges": 91,
-          "updates": 75,
-          "dragging": 75,
-          "paints": 75,
-          "frameP95Ms": 16.800000000000182,
-          "maxFrameMs": 33.399999999999636,
-          "paintP95Ms": 28.19999998807907,
+          "updates": 76,
+          "dragging": 76,
+          "paints": 76,
+          "frameP95Ms": 33.399999999999636,
+          "maxFrameMs": 33.400000000000546,
+          "paintP95Ms": 28.700000047683716,
           "longTasks": [],
           "rectangles": 10,
-          "elapsedMs": 3619
+          "elapsedMs": 4099.5
         },
         {
           "nativeChanges": 91,
-          "updates": 86,
-          "dragging": 86,
-          "paints": 86,
-          "frameP95Ms": 16.800000000000182,
-          "maxFrameMs": 33.40000000000009,
-          "paintP95Ms": 5.199999988079071,
-          "longTasks": [],
+          "updates": 76,
+          "dragging": 76,
+          "paints": 76,
+          "frameP95Ms": 33.30000000000018,
+          "maxFrameMs": 50,
+          "paintP95Ms": 28.899999976158142,
+          "longTasks": [
+            50
+          ],
           "rectangles": 10,
-          "elapsedMs": 3909.600000023842
+          "elapsedMs": 4089.899999976158
         }
       ]
     },
@@ -101,14 +105,26 @@
         "updates": 0,
         "dragging": 0,
         "paints": 0,
-        "frameP95Ms": 16.799999999999727,
-        "maxFrameMs": 16.800000000000182,
+        "frameP95Ms": 16.700000000000273,
+        "maxFrameMs": 16.799999999999727,
         "paintP95Ms": 0,
         "longTasks": [],
         "rectangles": 0,
-        "elapsedMs": 1521.199999988079
+        "elapsedMs": 1519.8999999761581
       },
       "samples": [
+        {
+          "nativeChanges": 91,
+          "updates": 0,
+          "dragging": 0,
+          "paints": 0,
+          "frameP95Ms": 16.700000000000273,
+          "maxFrameMs": 16.800000000000182,
+          "paintP95Ms": 0,
+          "longTasks": [],
+          "rectangles": 0,
+          "elapsedMs": 1521.2000000476837
+        },
         {
           "nativeChanges": 91,
           "updates": 0,
@@ -119,7 +135,7 @@
           "paintP95Ms": 0,
           "longTasks": [],
           "rectangles": 0,
-          "elapsedMs": 1521.0999999642372
+          "elapsedMs": 1519.8999999761581
         },
         {
           "nativeChanges": 91,
@@ -131,19 +147,7 @@
           "paintP95Ms": 0,
           "longTasks": [],
           "rectangles": 0,
-          "elapsedMs": 1521.199999988079
-        },
-        {
-          "nativeChanges": 91,
-          "updates": 0,
-          "dragging": 0,
-          "paints": 0,
-          "frameP95Ms": 16.799999999999727,
-          "maxFrameMs": 16.800000000000182,
-          "paintP95Ms": 0,
-          "longTasks": [],
-          "rectangles": 0,
-          "elapsedMs": 1537.699999988079
+          "elapsedMs": 1519.2999999523163
         }
       ]
     },
@@ -153,52 +157,52 @@
       "renderer": "limr",
       "median": {
         "nativeChanges": 51,
-        "updates": 47,
-        "dragging": 47,
-        "paints": 47,
-        "frameP95Ms": 16.700000000000273,
-        "maxFrameMs": 16.800000000000182,
-        "paintP95Ms": 19.600000023841858,
+        "updates": 48,
+        "dragging": 48,
+        "paints": 48,
+        "frameP95Ms": 16.800000000000182,
+        "maxFrameMs": 33.299999999999955,
+        "paintP95Ms": 19.299999952316284,
         "longTasks": [],
         "rectangles": 12,
-        "elapsedMs": 1533.3999999761581
+        "elapsedMs": 1532.5999999046326
       },
       "samples": [
         {
           "nativeChanges": 51,
-          "updates": 47,
-          "dragging": 47,
-          "paints": 47,
-          "frameP95Ms": 16.700000000000273,
-          "maxFrameMs": 16.800000000000182,
-          "paintP95Ms": 19.600000023841858,
-          "longTasks": [],
-          "rectangles": 12,
-          "elapsedMs": 1533.3999999761581
-        },
-        {
-          "nativeChanges": 51,
           "updates": 48,
           "dragging": 48,
           "paints": 48,
-          "frameP95Ms": 16.700000000000273,
+          "frameP95Ms": 16.800000000000182,
           "maxFrameMs": 33.299999999999955,
-          "paintP95Ms": 20.19999998807907,
+          "paintP95Ms": 19.299999952316284,
           "longTasks": [],
           "rectangles": 12,
-          "elapsedMs": 1532.9000000357628
+          "elapsedMs": 1532.5999999046326
         },
         {
           "nativeChanges": 51,
           "updates": 48,
           "dragging": 48,
           "paints": 48,
-          "frameP95Ms": 16.700000000000273,
-          "maxFrameMs": 33.19999999999993,
+          "frameP95Ms": 16.800000000000182,
+          "maxFrameMs": 33.299999999999955,
           "paintP95Ms": 19.399999976158142,
           "longTasks": [],
           "rectangles": 12,
-          "elapsedMs": 1533.800000011921
+          "elapsedMs": 1532.6000000238419
+        },
+        {
+          "nativeChanges": 51,
+          "updates": 48,
+          "dragging": 48,
+          "paints": 48,
+          "frameP95Ms": 16.799999999999955,
+          "maxFrameMs": 33.19999999999982,
+          "paintP95Ms": 18.399999976158142,
+          "longTasks": [],
+          "rectangles": 12,
+          "elapsedMs": 1532.5
         }
       ]
     }

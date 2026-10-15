@@ -45,12 +45,17 @@ for (const version of ['18.3.1', '19']) {
   await mkdir(directory);
   await writeFile(join(directory, 'package.json'), JSON.stringify({ name: 'limr-consumer-smoke', private: true, type: 'module', dependencies: { '@linloir/limr': `file:${join(temporary, archive)}`, react: version, 'react-dom': version, ...plugins }, devDependencies: { vite: '^7.3.7', typescript: '^5.9.3', '@types/react': version.startsWith('18') ? '^18.3.0' : '^19.0.0', '@types/react-dom': version.startsWith('18') ? '^18.3.0' : '^19.0.0' } }));
   run('pnpm', ['install', '--ignore-scripts'], directory);
+  for (const example of ['inline-notes']) {
+    await cp(join(process.cwd(), 'examples', `${example}.tsx`), join(directory, `${example}.tsx`));
+  }
   await writeFile(join(directory, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, skipLibCheck: false, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', jsx: 'react-jsx', noEmit: true }, include: ['consumer.tsx'] }));
   await writeFile(join(directory, 'consumer.tsx'), `
 import { Reader, Markdown, DocumentProvider, standard, defineAnnotation, AnnotationCard, AnnotationMarkdown, ToolIcon, InlineMarker, useLocale, useRendererParameter, type RendererExtension, type SelectionAction } from '@linloir/limr';
 import { createDocument, prepareKnuthPlass } from '@linloir/limr/core';
 import { readingTools } from '@limr-example/reading-tools';
 import { readingTools as templateTools } from '@example/limr-reading-tools';
+import { inlineNotes } from './inline-notes.js';
+const localFileApp = <Reader source="Editable" plugins={[inlineNotes()]} onSourceChange={(source, change) => { const revision: number = change.document.revision; return source.length > revision; }} />;
 const templateApp = <Reader source="Template" plugins={[templateTools()]} />;
 const localized = defineAnnotation({ type: 'localized', label: locale => locale.citation ?? 'Citation', overlay: { Card: props => <AnnotationCard {...props} title={useLocale().citation} /> } });
 const extension = defineAnnotation<{text: string}>({ type: 'custom', label: 'Custom', overlay: { Card: props => <AnnotationCard {...props} title={props.annotation.data?.text ?? 'Custom card'} />, expand: { placement: 'center', width: 640 } }, Content: ({data}) => <AnnotationMarkdown source={data?.text ?? ''} streaming /> });

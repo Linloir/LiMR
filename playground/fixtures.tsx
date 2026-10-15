@@ -49,8 +49,8 @@ const paletteTypes: AnnotationType[] = [{
     Preview: ({ data }) => data === 'hide' ? null : <p>Module preview <span style={{ color: '#b45309' }}>Inline preview</span> {'Long subtitle for configurable preview lines. '.repeat(12)}</p> },
   Content: () => <p>Module text <span style={{ color: '#0369a1' }}>Inline color</span></p>,
 }];
-const citationHoverSource = '# Citation hover\n\n' + 'Readable **rich text** and `inline code` with $x+1$, followed by more words. '.repeat(6)
-  + '<ref id="single" /><ref ids="one,two" /><ref id="single" />\n\nA saved highlight and a hidden highlight.\n\nA **selected passage** with a ranged citation.\n\nReused source in another paragraph<ref id="single" />.\n\n'
+const citationHoverSource = '# Citation hover\n\n<ref id="single">' + 'Readable **rich text** and `inline code` with $x+1$, followed by more words. '.repeat(6)
+  + '</ref> <ref ids="one,two">Another **nearby passage**.</ref> <ref id="single">A third passage.</ref>\n\nA saved highlight and a hidden highlight.\n\nA **selected passage** with a ranged citation.\n\n<ref id="single">Reused source in another paragraph</ref>.\n\n'
   + '<citation id="single" title="Single citation" description="A compact description." />\n\n<citation id="one" title="First citation" />\n\n<citation id="two" title="Second citation" />';
 const citationHoverAnnotations: Annotation[] = [
   { id: 'saved', type: 'highlight', range: { start: citationHoverSource.indexOf('saved highlight'), end: citationHoverSource.indexOf('saved highlight') + 15 }, data: { color: '#F2C744' } },
@@ -58,7 +58,7 @@ const citationHoverAnnotations: Annotation[] = [
   { id: 'ranged', type: 'citation', range: { start: citationHoverSource.indexOf('selected passage'), end: citationHoverSource.indexOf('selected passage') + 16 }, data: { title: 'Ranged citation' } },
 ];
 const citationViewportSource = '# Offscreen references\n\n'
-  + Array.from({ length: 16 }, (_, index) => `Referenced passage ${index + 1}<ref id="single" />.`).join('\n\n')
+  + Array.from({ length: 16 }, (_, index) => `<ref id="single">Referenced passage ${index + 1}</ref>.`).join('\n\n')
   + '\n\n' + 'More reading content after the references. '.repeat(160)
   + '\n\n<citation id="single" title="Repeated citation" description="A short citation description." />';
 export function SidebarFixture() {

@@ -10,6 +10,7 @@ import { literalValue, mapLiteral } from './literal';
 import { StreamText } from './stream-text';
 import { StreamEntrance } from './stream-effect';
 import { KnuthPlassBoundary } from './knuth-plass-boundary';
+import { SourceTaskItem, TaskText } from '../components/TaskCheckbox';
 
 interface RenderContext {
   runtime: ReaderRuntime;
@@ -28,16 +29,18 @@ interface RenderContext {
 interface BlockElement { id: string; range: Block['range']; pending: boolean; ref: (element: HTMLElement | null) => void }
 const blockAttributes = (block?: BlockElement) => block ? { 'data-limr-block': block.id, 'data-source-start': block.range.start, 'data-source-end': block.range.end, 'data-pending': block.pending || undefined } : {};
 
-export function AnnotationMarker({ occurrence }: { occurrence: AnnotationOccurrence }) {
+export function AnnotationMarker({ occurrence: supplied }: { occurrence: AnnotationOccurrence }) {
   const runtime = useRuntime();
-  const annotation = useStoreSelector(runtime.decorations, state => state.annotations.get(occurrence.annotationIds[0]));
-  const active = useStoreSelector(runtime.interaction, state => state.active === occurrence.id);
-  const hovered = useStoreSelector(runtime.interaction, state => state.hovered === occurrence.id);
+  const occurrence = useStoreSelector(runtime.decorations, state => state.occurrences.find(item => item.id === supplied.id));
+  const annotation = useStoreSelector(runtime.decorations, state => state.annotations.get(occurrence?.annotationIds[0] ?? ''));
+  const active = useStoreSelector(runtime.interaction, state => state.active === supplied.id);
+  const hovered = useStoreSelector(runtime.interaction, state => state.hovered === supplied.id);
   const definition = useStoreSelector(runtime.configuration, () => runtime.annotationTypes.get(annotation?.type ?? 'citation'));
   const Icon = definition?.icon;
   const Custom = definition?.Marker;
   const icon = typeof Icon === 'function' || Icon && typeof Icon === 'object' && !isValidElement(Icon) && '$$typeof' in Icon
     ? createElement(Icon as ComponentType) : Icon;
+  if (!occurrence?.annotationIds.length || !definition) return null;
   return <span className="limr-mark-wrap" data-limr-ignore="true" data-limr-marker={occurrence.id} data-source-start={occurrence.range.start} data-source-end={occurrence.range.end}><button type="button"
     ref={element => runtime.registerAnchor(occurrence.id, element)}
     className="limr-mark" data-limr-anchor={occurrence.id} data-active={active || hovered || undefined}
@@ -210,14 +213,22 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trail
     if (last < 0 && options?.trailing) return [<Fragment key="trailing">{options.trailing}</Fragment>];
     return nodes.map((child, i) => renderNode(child, childContext, i, i === last ? options?.trailing : undefined));
   };
-  const children = node.type === 'table' ? [] : node.type === 'listItem' && context.tightList
-    ? (node.children ?? []).flatMap((child, index) => child.type === 'paragraph' ? renderChildren(child.children ?? []) : renderNode(child, context, index))
-    : renderChildren(node.children ?? []);
   const componentName = node.type === 'component' ? node.name ?? '' : node.type;
   const rules = runtime.rendererOverrides.get(componentName);
   const override = rules?.slice().reverse().find(rule => !rule.when || rule.when(node, { pending: context.block.pending, incomplete: !!node.incomplete, ancestors: context.ancestors ?? [] }));
   const owner = node.incomplete && !override ? runtime.configuration.get().extensions?.slice().reverse().find(extension => extension.components?.[componentName]) : undefined;
   const Renderer = override?.component ?? (node.incomplete && owner?.streaming?.Loading || runtime.components[componentName]);
+  const children = node.type === 'table' ? [] : node.type === 'listItem'
+    ? (node.children ?? []).flatMap((child, index) => {
+      const rendered = child.type === 'paragraph' && context.tightList ? renderChildren(child.children ?? []) : renderNode(child, childContext, index);
+      // Keep paragraph/list structure and text bindings intact. The inline
+      // wrapper shares the question option's per-line underline animation.
+      if (!Renderer && typeof node.checked === 'boolean' && child.type === 'paragraph' && !containsBlock(child)) {
+        if (context.tightList) return <TaskText key={`task-text-${index}`}>{rendered}</TaskText>;
+        if (isValidElement<{ children?: ReactNode }>(rendered) && rendered.type === 'p') return cloneElement(rendered, {}, <TaskText>{rendered.props.children}</TaskText>);
+      }
+      return rendered;
+    }) : renderChildren(node.children ?? []);
   let element: ReactNode;
   if (Renderer) {
     const range = rangeOf(node);
@@ -236,12 +247,14 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trail
       case 'strong': element = <strong>{children}</strong>; break;
       case 'emphasis': element = <em>{children}</em>; break;
       case 'delete': element = <del>{children}</del>; break;
-      case 'inlineCode': element = <code className="limr-inline-code" data-limr-inline-syntax="" data-source-start={rangeOf(node).start} data-source-end={rangeOf(node).end}><LiteralValue node={node} context={context} /></code>; break;
+      case 'inlineCode': element = <code className="limr-inline-code" data-limr-inline-syntax="" data-source-start={rangeOf(node).start} data-source-end={rangeOf(node).end}>{context.compact
+        ? context.live ? <StreamText value={literalValue(node)} animateInitial={rangeOf(node).end > context.revealFrom} /> : literalValue(node)
+        : <LiteralValue node={node} context={context} />}</code>; break;
       case 'code': element = <pre><code><LiteralValue node={node} context={context} /></code></pre>; break;
       case 'math': case 'inlineMath': element = <code>{node.value}</code>; break;
       case 'blockquote': element = <blockquote className="limr-note"><div className="limr-card-label" data-limr-ignore="true">{runtime.locale.note}</div><div className="limr-block-content">{children}</div></blockquote>; break;
       case 'list': element = node.ordered ? <ol start={Number(node.start ?? 1)}>{children}</ol> : <ul>{children}</ul>; break;
-      case 'listItem': element = <li className={typeof node.checked === 'boolean' ? 'limr-task-item' : undefined}>{typeof node.checked === 'boolean' && <input type="checkbox" checked={node.checked} disabled aria-label="Task" />}{children}</li>; break;
+      case 'listItem': element = typeof node.checked === 'boolean' ? <SourceTaskItem node={node} source={runtime.document.getSnapshot().source.slice(rangeOf(node).start, rangeOf(node).end)}>{children}</SourceTaskItem> : <li>{children}</li>; break;
       case 'link': element = <a href={safeUrl(node.url)} title={node.title ? String(node.title) : undefined}>{children}</a>; break;
       case 'image': element = <img src={safeUrl(node.url, true)} alt={String(node.alt ?? '')} title={node.title ? String(node.title) : undefined} loading="lazy" decoding="async" />; break;
       case 'linkReference': element = <Reference node={node} image={false}>{children}</Reference>; break;

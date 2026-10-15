@@ -1,23 +1,14 @@
-import type { Annotation, AnnotationAnchor, AnnotationOccurrence, DocumentSnapshot, HighlightData, MarkdownNode, SourceRange } from './types';
-import { intersects, rangeOf } from './tree';
+import type { Annotation, AnnotationAnchor, AnnotationOccurrence, DocumentSnapshot, HighlightData, SourceRange } from './types';
 
 export const defaultHighlight: Readonly<HighlightData> = { color: '#F2C744', style: 'background' };
 export const sameRange = (a: SourceRange, b: SourceRange) => a.start === b.start && a.end === b.end;
 
-/** Embedded references quote their nearest text block; keep the marker's own
- * range intact for source mapping, insertion and selection. */
-export function annotationReferenceRange(document: DocumentSnapshot, occurrence: AnnotationOccurrence): SourceRange {
+/** A point marker references only its insertion position. Explicit scoped
+ * references retain their text range without changing the marker source map. */
+export function annotationReferenceRange(_document: DocumentSnapshot, occurrence: AnnotationOccurrence): SourceRange {
   if (occurrence.referenceRange) return occurrence.referenceRange;
   if (!occurrence.embedded) return occurrence.range;
-  let reference = occurrence.range;
-  const visit = (node: MarkdownNode) => {
-    const range = rangeOf(node);
-    if (!intersects(range, occurrence.range)) return;
-    if (['paragraph', 'heading', 'listItem', 'tableCell'].includes(node.type)) reference = range;
-    node.children?.forEach(visit);
-  };
-  for (const block of document.blocks) if (intersects(block.range, occurrence.range)) visit(block.node);
-  return reference;
+  return { start: occurrence.range.start, end: occurrence.range.start };
 }
 
 /** Resolve persisted anchors once against the current source. */
