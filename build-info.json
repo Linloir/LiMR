@@ -1,15 +1,7 @@
 {
-  "sourceCommit": "a4bab55a8297b0c18909a42c95df7d387ad44d90",
-  "builtAt": "2026-10-13T17:46:58.347306+00:00",
-  "measuredSourceSHA256": "8a09189f783dc1888446e0f0c96b2059db30142a6a545e769777ce0325fee4a1",
-  "performanceDate": "2026-10-13T17:11:27.310Z",
-  "reports": {
-    "benchmarks/results/core.json": "c8988e6e9462c3475e2374f5c3d25e2f7e645d1a8a28c4b317127a22be450f60",
-    "benchmarks/results/kp-algorithm.json": "316436bdcf749c5a07913323fc97797227888eb7f68fa708a6c0af80a89c44b5",
-    "benchmarks/results/kp-browser.json": "b2f8d1ef53967d0f95a9f4b724d9281be18b85fee39e0126527a7290dd035270",
-    "benchmarks/results/mount-repeat.json": "f513ca23ef93bdd724aa4c0ead032b32c79935f39a22c65efa4992629b80b99a",
-    "benchmarks/results/renderers.json": "fd8121ea8d9a40ffced0b40068304f6809ad9ead4ae8c716b862f669602caaec",
-    "benchmarks/results/selection.json": "5c25a5c6d401d6e7dd86d780431db291d489438657959e30b92ab08dd533d1de",
-    "benchmarks/results/streaming.json": "9205c5989b0d7b8e6c424c2e9616d1f083d4df640a44b9d2b337368761f24a8d"
-  }
+  "version": "1.1.0",
+  "sourceCommit": "fa417c237af987308a59c0254731ac9460966887",
+  "builtAt": "2026-10-15T02:44:20.129417+00:00",
+  "packageSHA256": "3cde2e51c2402d9ef70bf934a97e6b222100f30e3592139b3e4d75207c2826fb",
+  "lockfileSHA256": "c3264f2e09b17af4097cd38e194844fc8e8143a84e939f0978ff415ad0562ee4"
 }
