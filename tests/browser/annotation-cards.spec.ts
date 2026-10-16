@@ -178,7 +178,7 @@ test('mobile contents has one hoverable heading and reverses motion during rapid
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
   await expect(toc.getByRole('link', { name: '另一个章节' })).toBeVisible();
   await expect.poll(() => panel.evaluate(element => element.getAnimations({ subtree: true }).filter(a => a.playState === 'running').length)).toBe(0);
-  expect(await toggle.locator('svg').evaluate(element => new DOMMatrixReadOnly(getComputedStyle(element).transform).a)).toBeCloseTo(-1, 4);
+  await expect(toggle.locator('svg')).toHaveCount(0);
   await toggle.focus(); await page.keyboard.press('Enter');
   await expect.poll(() => panel.evaluate(element => element.getBoundingClientRect().height)).toBe(0);
   await expect(panel).toHaveAttribute('inert', '');

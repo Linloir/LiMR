@@ -318,10 +318,8 @@
   .limr-reader[data-toc] .limr-reader-toc { display: block; }
   .limr-reader-toc[inert] { visibility: hidden; }
   .limr-reader-mobile-toc { --limr-motion: 520ms; --limr-motion-fast: 360ms; grid-column: 1 / -1; font-size: .875rem; border-bottom: 1px solid var(--limr-border, #e5e2dc); margin-bottom: 1rem; }
-  .limr-mobile-toc-toggle { display: flex; align-items: center; justify-content: flex-start; gap: .5rem; width: 100%; padding: .65rem 0; margin: 0 0 .35rem; border: 0; border-radius: 0; background: transparent; color: var(--limr-muted, #9b9590); text-align: start; letter-spacing: .1em; transition: color var(--limr-motion-fast) var(--limr-ease); }
+  .limr-mobile-toc-toggle { display: flex; align-items: center; justify-content: flex-start; width: 100%; padding: .65rem 0; margin: 0 0 .35rem; border: 0; border-radius: 0; background: transparent; color: var(--limr-muted, #9b9590); text-align: start; letter-spacing: .1em; transition: color var(--limr-motion-fast) var(--limr-ease); }
   .limr-mobile-toc-toggle:hover,.limr-mobile-toc-toggle:focus-visible { color: var(--limr-heading, #3d3a36); }
-  .limr-mobile-toc-toggle svg { flex: none; width: 20px; height: 20px; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: transform var(--limr-motion) var(--limr-ease); }
-  .limr-mobile-toc-toggle[aria-expanded='true'] svg { transform: rotate(180deg); }
   .limr-reader-mobile-toc .limr-collapse-inner > * { transition-delay: 0ms; }
   .limr-reader-mobile-toc .limr-toc-title { display: none; }
   .limr-reader[data-toc] .limr-reader-mobile-toc { display: none; }

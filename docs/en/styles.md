@@ -76,7 +76,7 @@ Dense footer references borrow spare space above them at rest. Hovered or active
 
 Selection retains native browser ranges and keyboard behavior. Paint layers calculate visible fragments only. Code allows partial highlights, math is atomic, and image highlights use borders. A single atomic block anchors its toolbar below the block. Printing hides paint layers while keeping document content. Mobile automation does not certify native iOS/Android handles or physical-device behavior.
 
-The narrow-screen contents toggle aligns its text with the left edge of the divider and places the arrow beside the label with a `.5rem` gap. Hover and keyboard focus animate an underline beneath the text; the button background stays transparent.
+The narrow-screen contents toggle aligns its text with the left edge of the divider. Hover and keyboard focus animate an underline beneath the text; the button background stays transparent.
 
 Selection-toolbar copy feedback crossfades with a small scale change. Its label width grows and shrinks to the active face with nonlinear easing through `--limr-ease`; reduced-motion preferences remove these transitions.
 

@@ -5,7 +5,7 @@ description: Integrate @linloir/limr into React applications, author its support
 
 # Use LiMR
 
-Deliver a working integration using LiMR 1.2.1. Inspect the host's package.json and public declarations to confirm the required APIs are installed.
+Deliver a working integration using LiMR 1.2.2. Inspect the host's package.json and public declarations to confirm the required APIs are installed.
 
 - Read [integration.md](references/integration.md) for components, styles, state, streaming, and installed plugin imports.
 - Read [syntax.md](references/syntax.md) when authoring or converting content. Preserve original source and do not invent tag/attribute support.
