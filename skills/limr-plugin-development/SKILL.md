@@ -5,7 +5,7 @@ description: Develop, package, and integrate new @linloir/limr extension modules
 
 # Develop a LiMR plugin
 
-Deliver the requested extension as a package plus a working host import. Inspect the installed LiMR version and public declarations before choosing APIs. This bundle describes 1.0.0, including its locale APIs.
+Deliver the requested extension as a package plus a working host import using LiMR 1.2.1. Inspect the installed version and public declarations before choosing APIs.
 
 Read [the contract](references/contract.md) for source mapping, annotation presentation, actions, resources, and localization. Start from [plugin-template](assets/plugin-template/README.md) when a standalone TypeScript/ESM package is useful. Copy the complete template to the requested project destination, rename its example package and IDs, and remove capabilities not needed by the task. Do not edit the installed skill as the project implementation.
 
@@ -15,7 +15,9 @@ Preserve original source positions. Reuse children/renderChildren, renderValue, 
 
 Let the module own card meaning and controls through Content, overlay.Card, and sidebar.Preview. Reuse AnnotationCard and AnnotationMarkdown where suitable. LiMR owns shared positioning, portals, focus, and motion. Preview must not fetch; long tasks honor context.signal. The application owns services and credentials.
 
-Support host localization when requested: on 1.0.0 use useLocale() in components, locale.language for plugin dictionaries, label(locale) for annotation names, and context.locale in actions. Preserve stored user text across language changes. Older hosts require explicit plugin options instead; reflect the actual minimum in peerDependencies.
+Start an editable creation with addAnnotation(annotation, { edit: true }); save with an accepted updateAnnotation followed by commitAnnotationEdit(id). Explicit cancel and an empty draft leaving the editor use cancelAnnotationEdit(id), preserving draft/editor on rejection. The runtime tracks creation ownership and preserves existing or independently used highlights. Expose single-annotation deletion through canEditAnnotation(id), removeAnnotation(id), and the shared operation-row classes.
+
+Support host localization when requested: use useLocale() in components, locale.language for plugin dictionaries, label(locale) for annotation names, and context.locale in actions. Preserve stored user text across language changes. Declare the required LiMR APIs in peerDependencies.
 
 Integrate with a stable plugins array and explicit CSS imports. Use extensions + replaceExtension for default replacements; duplicate names/tags/directives are errors. Do not silently discard persisted unknown annotations.
 

@@ -90,6 +90,8 @@ Reader、Markdown 与 DocumentProvider 接受：
 | useRendererParameter(name) | 宿主参数覆盖或最后注册的默认值 |
 | useLiMR() | 文档引擎、命令、signal、clearSelection、scrollToHeading、scrollToAnnotation、invalidateAnnotation |
 
+`useLiMR()` 与动作上下文提供 `updateAnnotation(id, partial): boolean`、`commitAnnotationEdit(id?): void` 和 `cancelAnnotationEdit(id?): boolean`。仅在 update 被接受后调用 commit，它结束编辑而不重复写入数据。cancel 删除尚未确认的新建标注及没有其他引用的临时高亮，保留已有标注和共享高亮。插件取消前将草稿还原到已保存的内容；宿主拒绝取消时恢复未完成草稿并保持编辑。配套笔记编辑器也会在点击外部时取消空白新草稿；当前编辑器激活时隐藏选区工具栏。
+
 不要将 useRuntime、useTheme 当作公开 API。useLocale、locale.language 和可本地化的标注 label 从 1.0.0 起提供。命令语义见[标注与选区](annotations.md)，渲染和动作契约见[扩展开发](extensions.md)。
 
 ## 核心引擎
@@ -112,7 +114,7 @@ DocumentSnapshot 包含 id、revision、source、streaming、blocks、headings�
 
 其他核心导出包括 walk、textContent、rangeOf、intersects、safeUrl、mapText、selectionFromRange、replaceExtension、resolveAnnotationAnchors、annotationReferenceRange、sameRange、defaultHighlight、LruCache、ResourceCache。ResourceCache.acquire 返回 promise/release；invalidate 可按 key 或全部失效。
 
-`inlineHighlights({ color?, component? })`、`footnotes(annotationTypeOptions?)`、`sourceAnnotations()` 都在 `standard()` 中。`HighlightData.readOnly` 默认限制源内高亮工具栏为复制与提示；启用原文编辑且模块支持写回时可编辑。`AnnotationOccurrence.referenceRange` 将角标源位置与引用范围分开；独立引用的 referenceRange 为角标起点的零长度范围。
+`inlineHighlights({ color?, component? })`、`footnotes(annotationTypeOptions?)`、`sourceAnnotations()` 都在 `standard()` 中。命名源内标注使用成对的 `::%%limr%%{<#id}` / `::%%limr%%{>#id}` 边界与完整的 `:::limr-annotation` 定义块，详见[语法文档](syntax.md#保存在-markdown-中的标注)。`HighlightData.readOnly` 默认限制源内高亮工具栏为复制与提示；启用原文编辑且模块支持写回时可编辑。`AnnotationOccurrence.referenceRange` 将角标源位置与引用范围分开；独立引用的 referenceRange 为角标起点的零长度范围。
 
 `useLiMR()` 与动作 context 提供 `canEditSource()`、`canEditAnnotation(id)`、`editSource(edits, { revision? })`。`SourceEdit` 为 `{ range: { start, end }, text }`，同一批次全部相对修改前原文；越界、重叠和过期 revision 会抛错。`editSource` 原子接受后立即更新文档，宿主回传新的 source；返回 false 表示宿主拒绝。`applySourceEdits(source, edits)` 是对应的纯核心函数。流式生成期间拒绝编辑。
 

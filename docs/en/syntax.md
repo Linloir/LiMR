@@ -354,11 +354,11 @@ Global `parameters.translationMode` overrides individual blocks. Pass onTranslat
 
 ## Selection and replacement
 
-Toolbar-authored highlights are annotations; source-authored `==highlights==` default to a copy-only toolbar. Supplying `onSourceChange` makes the default toolbar’s highlight creation/edits and task toggles update Markdown; modules can also add source annotations with target: source. Ordinary addAnnotation stays external; see [application integration](integration.md). All registered default tags also support their matching `::` directive. Register plugins for custom tags. See [extension development](extensions.md) to select or replace default modules.
+Toolbar-authored highlights are annotations; source-authored `==highlights==` default to a copy-only toolbar. Supplying `onSourceChange` makes the default toolbar’s highlight creation/edits and task toggles update Markdown; modules can also add source annotations with target: source. Ordinary addAnnotation stays external; see [application integration](integration.md). Registered default body-component tags also support their matching `::` directive. Named annotation definitions use `:::limr-annotation` blocks. Register plugins for custom tags. See [extension development](extensions.md) to select or replace default modules.
 
 ## Two-colon components
 
-All default modules accept the [CoMark component form](https://comark.dev/syntax/components), including nesting, scalar attributes, and Markdown children:
+The default body components listed below accept the [CoMark component form](https://comark.dev/syntax/components), including nesting, scalar attributes, and Markdown children:
 
 ```md
 ::definition{title="A definition"}
@@ -375,7 +375,7 @@ The answer.
 ::
 ```
 
-Names: `gfm`, `definition`, `title`, `content`, `question` and its existing child tags, `extras`, `extra`, `video`, `md-video`, `figures`, `figure`, `figcaption`, `caption`, `img`, `citation`, `ref`, `translations`, `origin`, `translation`, `code` (alias `code-highlight`), `math`, `mermaid`, `callout`, `highlight`, `footnote`, `footnote-ref`, and `limr-annotation`. `::code{lang="typescript"}` and `::math` preserve their bodies literally. Standard Markdown fences, JSX, single-colon inline directives and existing triple-colon containers remain supported. An unpaired two-colon line in a finished document keeps its legacy leaf-directive meaning. This is component-syntax compatibility, not support for CoMark's YAML props, named slots or frontmatter.
+Names: `gfm`, `definition`, `title`, `content`, `question` and its existing child tags, `extras`, `extra`, `video`, `md-video`, `figures`, `figure`, `figcaption`, `caption`, `img`, `citation`, `ref`, `translations`, `origin`, `translation`, `code` (alias `code-highlight`), `math`, `mermaid`, `callout`, `highlight`, `footnote`, and `footnote-ref`. Named annotation definitions use `:::limr-annotation` blocks, described below. `::code{lang="typescript"}` and `::math` preserve their bodies literally. Standard Markdown fences, JSX, single-colon inline directives and existing triple-colon containers remain supported. An unpaired two-colon line in a finished document keeps its legacy leaf-directive meaning. This is component-syntax compatibility, not support for CoMark's YAML props, named slots or frontmatter.
 
 During streaming, partial headers, links, inline code/emphasis/math delimiters and table headers are withheld until usable. Registered open components carry `incomplete`; the module chooses a loading view or progressive content. Code fences and display math can render before their closing delimiter. Set `streaming={false}` or call `finish()` to restore normal final Markdown interpretation. Source ranges always refer to the unmodified original input.
 
@@ -477,15 +477,15 @@ Why check the cache first?
 
 `sourceAnnotations()` provides generic syntax and serialization, without registering a question card. In this example, highlight is built in, footnote comes from the default footnote module, and question requires a registered module. Playground uses the [reading notes example](../../examples/notes.tsx) for that type and card.
 
-The exact, case-sensitive pair `::%%limr%%{<#r1}` and `::%%limr%%{>#r1}` activates only when a complete `:::limr-annotation` block references `r1` in `ranges`. IDs start with an ASCII letter or digit and then contain letters, digits, `_`, `.`, `:`, or `-`. Missing definitions, unmatched boundaries and ambiguous duplicate openings remain literal. Adjacent start/end boundaries define a zero-length position. The same ID may be reused in separate, sequential pairs; nested or crossing ranges use distinct IDs.
+The exact, case-sensitive pair `::%%limr%%{<#r1}` and `::%%limr%%{>#r1}` activates only when a complete `:::limr-annotation` block references `r1`. The block lists range IDs in `ranges`; when omitted, its annotation ID is the range ID. Range IDs start with an ASCII letter or digit and then contain letters, digits, `_`, `.`, `:`, or `-`. Missing definitions, unmatched boundaries and ambiguous duplicate openings remain literal. Adjacent start/end boundaries define a zero-length position. The same range ID may be reused in separate, sequential pairs; nested or crossing ranges use distinct IDs.
 
 Markers work inside inline and fenced code when a real definition references their ID. Definitions shown inside code do not count. To show a marker literally even when a matching definition exists elsewhere, escape its first colon as `\::%%limr%%{<#r1}` (escape both boundaries in examples).
 
-Version 1.2.0 removes the former `==text==[^%%limr:r1%%]` annotation binding and its reserved fallback-footnote behavior. Replace it with the pair above and keep the triple-colon definition. Standalone `==highlight==`, ordinary Markdown footnotes, and citations remain separate features. Named annotation definitions use triple-colon blocks; HTML and paired two-colon alternatives are no longer supported.
+The opening boundary, closing boundary and `:::limr-annotation` definition together describe a named annotation. Standalone `==highlight==`, ordinary Markdown footnotes and citations have their own syntax and modules.
 
 | Field | Meaning |
 | --- | --- |
-| `#n1` or `id="n1"` | Annotation ID; the last definition with the same ID replaces earlier definitions |
+| `#n1` or `id="n1"` | Nonempty annotation ID; it can differ from the range ID, such as `id="note/demo" ranges="r1"`. The last definition with the same annotation ID replaces earlier definitions |
 | `ranges="r1 r2"` | Named ranges, separated by spaces or commas; defaults to the annotation ID when omitted; the same range ID can appear in several places |
 | `type` | Annotation type, such as `highlight`, `footnote`, or `question`; defaults to `footnote` |
 | `style`, `color`, `hidden` | Highlight appearance; `hidden="true"` hides paint without deleting the annotation |

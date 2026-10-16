@@ -57,6 +57,16 @@ export function Answer({ text, generating }: { text: string; generating: boolean
 默认模块包括引用、Markdown 脚注，以及 `::%%limr%%{<#id}文字::%%limr%%{>#id}` 与 `:::limr-annotation` 组成的内嵌标注。一个范围可绑定多条已注册类型的标注和一个高亮；独立引用只关联角标所在位置。`standard()` 提供通用解析与写回能力；显式传入 `onSourceChange` 后，默认工具栏高亮和任务勾选即可修改 Markdown，文件保存由宿主或接入模块负责。普通 `addAnnotation` 仍保存外部数据，模块通过 `target: 'source'` 选择原文存储。标注类型、卡片和专用动作由模块提供；Playground 的内联笔记与提问是示例插件，`question()` 则是练习题正文模块。见[语法手册](docs/zh-CN/syntax.md)和[本地文件集成](docs/zh-CN/integration.md#原文编辑与本地文件)。
 
 ```markdown
+这里有::%%limr%%{<#passage}一段 **需要解释的文字**::%%limr%%{>#passage}。
+
+:::limr-annotation{#note ranges="passage" type="footnote"}
+这条标注的正文也支持 **Markdown**。
+:::
+```
+
+开始和结束边界使用相同的范围 ID；只有完整的标注定义引用该 ID 时，边界才生效。范围可以跨格式、跨段落，也可以位于代码中；嵌套或交错的范围使用不同 ID。代码示例中的定义块不会激活边界。
+
+```markdown
 <definition title="定义">
 
 在特殊区块中继续使用 **Markdown**。
@@ -68,7 +78,7 @@ export function Answer({ text, generating }: { text: string; generating: boolean
 <citation id="paper" title="参考资料" url="https://example.com/paper" summary="简短摘要" />
 ```
 
-默认模块也支持 `::` 指令：例如 `::definition{title="定义"}` 与独立一行的 `::` 包围正文；原有标签与 `:::` 写法继续可用。Mermaid 使用 `mermaid` 代码围栏或 `::mermaid`，图像模式支持缩放、拖拽平移和键盘/滚轮移动。
+默认正文组件支持对应的标签、`:::` 容器和成对 `::` 指令：例如 `::definition{title="定义"}` 与独立一行的 `::` 包围正文。Mermaid 使用 `mermaid` 代码围栏或 `::mermaid`，图像模式支持缩放、拖拽平移和键盘/滚轮移动。
 
 ## 排版与流式行为
 

@@ -60,7 +60,7 @@ export function Article() {
 | `callout()` | `callout` | Obsidian callout 类型、别名和嵌套注释 / `::callout` |
 | `inlineHighlights()` | `inline-highlights` | `==文字==` 和 `::highlight`，默认蓝色高亮；启用原文编辑前只读 |
 | `footnotes()` | `footnotes` | `[^id]`、`^[正文]`，评论角标与脚注卡片；`::footnote` / `::footnote-ref` |
-| `sourceAnnotations()` | `source-annotations` | `::%%limr%%{<#id}` / `::%%limr%%{>#id}` 命名范围、`limr-annotation` 定义与通用序列化；类型和卡片由模块注册 |
+| `sourceAnnotations()` | `source-annotations` | `::%%limr%%{<#id}` / `::%%limr%%{>#id}` 命名范围、`:::limr-annotation` 定义块与通用序列化；类型和卡片由模块注册 |
 
 所有函数都可以从 `@linloir/limr` 或 `@linloir/limr/extensions` 导入。`standard()` 是便捷组合函数，自身不是额外的模块；它的返回值是数组。
 

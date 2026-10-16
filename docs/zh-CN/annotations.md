@@ -65,7 +65,9 @@ export const annotations: readonly Annotation[] = [{
 
 `addAnnotation` 的 `{ highlight: false }` 关闭自动持久高亮，显式 HighlightData 指定样式；`{ edit: true }` 进入编辑。类型配置 `highlight: 'hover'` 时默认不创建持久高亮，但显式传入高亮样式仍可创建。默认选区工具栏为调色板、添加/隐藏高亮、复制、删除；actions 覆盖内置列表，插件动作仍会合并进去。
 
-保存成功后使用 `commitAnnotationEdit`，取消时使用 `cancelAnnotationEdit`。取消已有标注的编辑会保留已保存内容和高亮；插件自行还原草稿。Playground 编辑器在新建笔记仍为空时，失焦也按取消处理。共享高亮和原有高亮保留。当前标注处于编辑状态时隐藏选区工具栏。
+保存成功后使用 `commitAnnotationEdit`，取消时使用 `cancelAnnotationEdit`。取消已有标注的编辑会保留已保存内容和高亮；插件自行还原草稿。配套源内正文编辑器和 Playground 阅读笔记编辑器在新建笔记仍为空时，失焦也按取消处理，包括尚未输入就点击编辑器外部。取消会删除这条新建标注，以及本次同时创建且没有其他引用的高亮；共享高亮和原有高亮保留。当前标注处于编辑状态时隐藏选区工具栏，包括刚创建并进入编辑时。
+
+保存在 `:::limr-annotation` 块中且可写回的笔记与脚注、Playground 阅读笔记与助手标注，以及可编辑的外部引用，都在卡片靠右的操作区提供单条删除。操作是否可用遵循 `canEditAnnotation(id)`；没有源码序列化器的原文格式仍为只读。删除已保存的内容标注会保留其他标注和共享高亮。
 
 ## Citation 的临时高亮
 
@@ -92,7 +94,7 @@ Citation 默认 `highlight: 'hover'`。角标或侧栏条目悬浮、或引用�
 
 ## 源码中的命名范围
 
-默认 `sourceAnnotations()` 模块将 `::%%limr%%{<#r1}文本::%%limr%%{>#r1}` 与 `:::limr-annotation` 定义关联。[语法文档](syntax.md#保存在-markdown-中的标注)列出了完整写法和覆盖规则。定义会生成普通 `Annotation` 及解析好的 `anchors`，同一命名范围的每条内容标注生成独立角标。解析快照仍记录源码中的引用组，运行时 occurrence 以 markerId 关联该源码位置。
+默认 `sourceAnnotations()` 模块将 `::%%limr%%{<#r1}文本::%%limr%%{>#r1}` 与 `:::limr-annotation` 定义关联。完整定义须通过 `ranges` 引用范围；省略 `ranges` 时使用标注自身的 ID。代码示例内的定义不会使边界生效。[语法文档](syntax.md#保存在-markdown-中的标注)列出了完整写法和覆盖规则。定义会生成普通 `Annotation` 及解析好的 `anchors`，同一命名范围的每条内容标注生成独立角标。解析快照仍记录源码中的引用组，运行时 occurrence 以 markerId 关联该源码位置。
 
 `DocumentSnapshot.annotationRanges` 将区分大小写的范围 ID 映射到各个出现位置。每个 `SourceAnnotationRange` 包含 `range`（两端之间的内容）、`openingRange`（开始标记）、`markerRange`（结束标记）和 `syntaxRange`（包含正文的完整标记对）。它们都是未改写源码的 UTF-16 坐标。两端紧邻时 `range` 长度为零。删除某个范围时只移除它自己的两个标记，保留嵌套或交错的其他范围。
 

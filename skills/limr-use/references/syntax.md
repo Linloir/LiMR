@@ -1,6 +1,6 @@
 # Built-in syntax
 
-React defaults install gfm, math, code-highlight, mermaid, callout, definition, question, extras, video, figures, citation, translations, inline-highlights, footnotes, and source-annotations. Core createDocument defaults to basic CommonMark. Check the installed package's exports and version before using new APIs; these references describe the repository implementation.
+React defaults install gfm, math, code-highlight, mermaid, callout, definition, question, extras, video, figures, citation, translations, inline-highlights, footnotes, and source-annotations. Core createDocument defaults to basic CommonMark. These references describe LiMR 1.2.1; verify the host installs the required modules.
 
 - Standard Markdown: headings, emphasis, lists, links, images, fenced/inline code, blockquotes. GFM adds tables, tasks, strikethrough, autolinks, and named footnote parsing; the default footnotes module presents notes as comment markers and sidebar/floating cards instead of superscripts/endnotes.
 - Math uses $…$ and $$ fences; import math.css.
@@ -10,14 +10,45 @@ React defaults install gfm, math, code-highlight, mermaid, callout, definition, 
 - <definition title="Term"> supports Markdown body. <title> and <content> child tags support richer content.
 - <question> supports question-content, question-hint, question-answer, question-sel-grp and question-sel. Use string attributes multi="true" and answer="[0,2]"; indices start at zero. This is an exercise, not an AI annotation.
 - <extras> contains <extra title="Title" url="https://example.com" desc="Description" />.
-- <citation id="a" title="Source" url="https://example.com" description="Markdown body" summary="Short preview" /> defines data; <ref id="a" /> or <ref ids='["a","b"]' /> inserts a marker. Legacy cite-id, cite-from-ids, and desc work. Standard [^footnote] syntax is a separate feature.
+- <citation id="a" title="Source" url="https://example.com" description="Markdown body" summary="Short preview" /> defines data; <ref id="a" /> or <ref ids='["a","b"]' /> inserts a marker. The cite-id, cite-from-ids, and desc attribute aliases are supported. Standard [^footnote] syntax is a separate feature.
 - <figure src="/a.png" alt="A" caption="Caption" /> works alone or inside <figures columns="2">. Use figcaption children for Markdown. Limits: min-width/min-height 220/120, max-width/max-height 560/480; none/false removes maxima. Columns/rows, responsive, and gap control grouping. Media-local copy buttons copy image URLs or group Markdown; selection copying follows the selected atomic source range, including Markdown image syntax when present.
 - <video src="/clip.mp4" provider="native" /> and <md-video url="…" /> support native, YouTube, and Bilibili. loading defaults to visible (200px proximity), not click. Use loading="click" to defer until interaction. Remote playback is not guaranteed by local iframe tests.
 - <translations default="both"> contains <origin> and <translation>. Modes: origin/translation/both; both shows translation first. It displays supplied content, not an automatic translation service. Global parameters.translationMode overrides local mode; onTranslationModeChange accepts switch requests.
 
 Use static string/boolean attributes, never JavaScript expressions or spread props. Separate block tags and Markdown with blank lines. Only registered tags execute React renderers. Unknown tags show the full original text; unknown directives under standard() render children without their outer marker. Streaming defers partial headers and inline delimiters; recognized unclosed components carry incomplete and use module-owned loading/progressive rendering. Finish with streaming=false to apply final Markdown interpretation.
 
-Every registered tag also supports its matching directive, including child tags and citation/ref. Paired ::name{key="value"} and a closing :: support nested Markdown components; ::: containers and single-colon inline directives remain supported. Code/math/Mermaid directive bodies are literal. An unpaired two-colon line in a finalized document keeps its legacy leaf-directive meaning. This compatibility covers scalar attributes and nesting, not CoMark YAML properties, named slots, or frontmatter.
+Every registered tag also supports its matching directive, including child tags and citation/ref. Paired ::name{key="value"} and a closing :: support nested Markdown components; ::: containers and single-colon inline directives are supported. Code/math/Mermaid directive bodies are literal. An unpaired two-colon line in a finalized document is a leaf directive. Component directives support scalar attributes and nesting; CoMark YAML properties, named slots, and frontmatter are not part of this syntax.
 
-- `::%%limr%%{<#r1}text::%%limr%%{>#r1}` defines a named range only when a real `:::limr-annotation{#n1 ranges="r1" type="footnote"}` block references it. Ranges may cross formatting, paragraphs and code; distinct IDs allow nesting/crossing. Missing definitions/unpaired markers stay literal; definitions inside code are inert. Escape the first colon to show a marker literally. IDs match `[A-Za-z0-9][A-Za-z0-9_.:-]*`. Sequential pairs may reuse an ID; ambiguous duplicate openings are inert. Multiple annotations share ranges; last same annotation ID and last highlight per range win. Old reserved footnote binding and HTML/two-colon annotation definitions are removed in 1.2.0. Ordinary `==highlight==`, footnotes and citations are independent.
-- Tasks use diamond checks sized from the font, and callouts use small labels without leading icons. `standard()` includes generic source parsing/serialization. `onSourceChange` enables default task toggles and source highlight edits; type modules own annotation cards/actions, and the host or integration module owns file I/O.
+Tasks use diamond checks sized from the font, and callouts use small labels without leading icons. `standard()` includes generic source parsing/serialization. `onSourceChange` enables default task toggles and source highlight edits; type modules own annotation cards/actions, and the host or integration module owns file I/O.
+
+## Named annotation ranges
+
+Use an opening `::%%limr%%{<#id}` and closing `::%%limr%%{>#id}` boundary, plus a complete definition block:
+
+```md
+Read ::%%limr%%{<#passage}this **important** passage::%%limr%%{>#passage}.
+
+:::limr-annotation{#note ranges="passage" type="footnote"}
+The note body supports Markdown.
+:::
+```
+
+The definition's ID identifies the annotation; ranges names one or more selection IDs separated by spaces or commas. Omitted ranges defaults to the annotation ID, and omitted type defaults to footnote. Extra scalar attributes become annotation data. type="highlight" accepts color, style="background|underline|dotted|wavy", and hidden="true". Multiple definitions with different IDs can share a range; one definition can reference several ranges. The last definition of the same annotation ID is effective, and the last highlight definition for an identical range determines its appearance.
+
+Boundary IDs match `[A-Za-z0-9][A-Za-z0-9_.:-]*`. Distinct IDs support nested and crossing selections. Sequential pairs may reuse an ID; unmatched boundaries, an orphan close, or a second opening before the first closes leave every boundary of that ID literal. Adjacent opening and closing boundaries create a point annotation without a text highlight.
+
+Only a real, fully closed `:::limr-annotation` container authorizes its referenced boundaries. The closing fence must have at least as many colons as the opening fence. Definitions may appear before or after the range, including in list or blockquote containers. Examples inside fenced/inline code, literal component bodies, footnote definitions, or unregistered HTML/JSX do not authorize boundaries. Boundaries inside an annotation definition's own body are not interpreted as range syntax.
+
+The range can cross emphasis, links, paragraphs and other ranges, surround a code block, or select text inside inline/fenced code. For example, this code boundary pair is authorized by a definition outside the fence:
+
+````md
+```ts
+const value = ::%%limr%%{<#call}readCache()::%%limr%%{>#call};
+```
+
+:::limr-annotation{#call-note ranges="call" type="footnote"}
+Read the cached value.
+:::
+````
+
+Code fences do not shield matching boundary tokens from a real definition elsewhere. To display a token literally, escape its first colon: `\::%%limr%%{<#example}`. An odd number of immediately preceding backslashes prevents activation, including in code. A fenced example containing both boundaries and their definition remains literal unless a real definition outside the example also references those IDs. Ordinary `==highlight==`, standard footnotes, and citations are independent features.

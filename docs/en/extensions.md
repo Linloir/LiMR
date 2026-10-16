@@ -69,16 +69,28 @@ Do not stringify/reparse children or render only node.value when source mapping 
 ## Plugins own card presentation
 
 ```tsx
-import { AnnotationCard, AnnotationMarkdown, defineAnnotation, ToolIcon } from '@linloir/limr';
+import { AnnotationCard, AnnotationMarkdown, defineAnnotation, ToolIcon, useLiMR, useLocale,
+  type AnnotationContentProps } from '@linloir/limr';
+
+function NoteContent({ annotation, data, loading, error, retry }: AnnotationContentProps<{ text: string }>) {
+  const commands = useLiMR(), locale = useLocale();
+  return <>
+    {loading ? <p>Loading…</p> : error ? <button onClick={retry}>Retry</button>
+      : <AnnotationMarkdown source={data?.text ?? ''} />}
+    {commands.canEditAnnotation(annotation.id) && <div className="limr-annotation-actions">
+      <button type="button" className="limr-annotation-delete" onClick={() => commands.removeAnnotation(annotation.id)}>
+        <ToolIcon name="trash" /><span className="limr-underline">{locale.deleteAnnotations}</span>
+      </button>
+    </div>}
+  </>;
+}
 
 export const note = defineAnnotation<{ text: string }>({
   type: 'example:note',
   label: 'Note',
   icon: <ToolIcon name="note" />,
   color: '#6B9BD2',
-  Content: ({ data, loading, error, retry }) => loading ? <p>Loading…</p>
-    : error ? <button onClick={retry}>Retry</button>
-    : <AnnotationMarkdown source={data?.text ?? ''} />,
+  Content: NoteContent,
   sidebar: {
     Preview: ({ data }) => data?.text ? <span>{data.text}</span> : null,
     previewLines: 2,
@@ -131,9 +143,9 @@ Modules do not need another editor component or filesystem API. Both `useLiMR()`
 
 Annotation UI continues to use addAnnotation / updateAnnotation / removeAnnotation / removeAnnotationsAt. Ordinary addAnnotation stores external data; `{ target: 'source' }` selects source, which the default highlight action chooses when editing is enabled. The sourceAnnotations module in standard supplies a generic serializer. Modules override serialization for custom formats with `RendererExtension.sourceEditing.annotations(change, document)`. change is `{ added, updated: [{ previous, annotation }], removed }`. Return SourceEdit[] for the entire atomic command, or undefined to delegate to an earlier handler. Later plugins can override earlier serializers. Handlers must be pure: do not write files or invoke callbacks themselves. previous.source locates every original definition, including duplicate IDs, so deletion cannot resurrect an older definition.
 
-The default public editSourceAnnotations serializer supports `{ body: string, ...scalarAttributes }`; highlights use color/style/hidden. Type plugins using this data do not need to reinstall a serializer. sourceAnnotations does not register a particular content type or question card. Complex custom data requires a module serializer, and unsupported data is rejected rather than silently lost. The annotation type's Content still owns its editor UI. Use canEditAnnotation(id) and editAnnotation(id) for capability and shared edit state. After updateAnnotation accepts the saved data, call commitAnnotationEdit(id). Use cancelAnnotationEdit(id) for explicit cancellation: a newly created annotation and the highlight created with it are removed; existing or shared highlights remain. Existing annotations retain their saved content when their editor cancels; the plugin restores or discards its own draft first. A false return from updateAnnotation or cancelAnnotationEdit means the host rejected the change, so retain the draft and keep editing. Enabling source editing does not migrate existing external annotations.
+The default public editSourceAnnotations serializer writes paired `::%%limr%%{<#id}` / `::%%limr%%{>#id}` boundaries and `:::limr-annotation` definitions. It supports `{ body: string, ...scalarAttributes }`; highlights use color/style/hidden. Type plugins using this data do not need to reinstall a serializer. sourceAnnotations does not register a particular content type or question card. Complex custom data requires a module serializer, and unsupported data is rejected rather than silently lost. The annotation type's Content still owns its editor UI. Use canEditAnnotation(id) and editAnnotation(id) for capability and shared edit state. After updateAnnotation accepts the saved data, call commitAnnotationEdit(id). Use cancelAnnotationEdit(id) for explicit cancellation: a newly created annotation and the highlight created with it are removed; existing or shared highlights remain. Existing annotations retain their saved content when their editor cancels; the plugin restores or discards its own draft first. A false return from updateAnnotation or cancelAnnotationEdit means the host rejected the change, so retain the draft and keep editing. Enabling source editing does not migrate existing external annotations.
 
-The public `AnnotationEditor` component supplies a controlled borderless input that grows with its content and available width, plus cancel/submit buttons. Its caller owns value, drafts, persistence and undo through onChange/onSubmit/onCancel. Optional onBlur fires only when focus leaves the entire editor container; moving focus to its buttons does not trigger it. The supplied note editors cancel an empty new draft when it loses focus, removing its temporary annotation and highlight; nonempty drafts retain each module’s existing save policy. Escape cancels and Ctrl/Cmd+Enter submits, except during IME composition. The ordinary reading-note example and source-body editor share this UI while retaining their own state and persistence policies; the component itself neither saves annotations nor accesses files. Plugin-owned actions use the right-aligned limr-annotation-actions container; expose a single-annotation Delete action when canEditAnnotation(id) permits mutation. The source editor, reading notes, assistant and citation modules preserve this capability boundary; authored formats without a source serializer remain read-only.
+The public `AnnotationEditor` component supplies a controlled borderless input that grows with its content and available width, plus cancel/submit buttons. Its caller owns value, drafts, persistence and undo through onChange/onSubmit/onCancel. Optional onBlur fires only when focus leaves the entire editor container; moving focus to its buttons does not trigger it. The supplied note editors cancel an empty new draft when it loses focus, including an outside click before typing. Cancellation removes the new annotation and only otherwise unused highlights created with it; existing or shared highlights remain. Source-body editors save other draft changes on blur; ordinary reading notes retain them until submission. The selection toolbar stays hidden while the active annotation is being edited. Escape cancels and Ctrl/Cmd+Enter submits, except during IME composition. The ordinary reading-note example and source-body editor share this UI while retaining their own state and persistence policies; the component itself neither saves annotations nor accesses files. Plugin-owned actions use the right-aligned limr-annotation-actions container; expose a single-annotation Delete action when canEditAnnotation(id) permits mutation. The source editor, reading notes, assistant and citation modules preserve this capability boundary; authored formats without a source serializer remain read-only.
 
 Accepting a source edit and successfully saving a file are separate events. The host synchronously accepts edits and owns its save queue, undo, errors and conflict UI. See [local file integration](integration.md#source-editing-and-local-files).
 

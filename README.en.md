@@ -57,6 +57,16 @@ export function Answer({ text, generating }: { text: string; generating: boolean
 Defaults include citations, Markdown footnotes, and embedded annotations using `::%%limr%%{<#id}text::%%limr%%{>#id}` with `:::limr-annotation`. A range can share multiple registered annotation types and one highlight; standalone references bind only to their marker position. `standard()` includes generic parsing and serialization. Supplying `onSourceChange` enables default toolbar highlights and task toggles to update Markdown; the host or integration module saves the file. Ordinary `addAnnotation` stays external, while modules choose source storage with `target: 'source'`. Modules own types, cards and dedicated actions. Playground inline notes and question annotations are example plugins; `question()` is the separate exercise module. See [syntax](docs/en/syntax.md) and [local file integration](docs/en/integration.md#source-editing-and-local-files).
 
 ```markdown
+Here is ::%%limr%%{<#passage}some **text worth explaining**::%%limr%%{>#passage}.
+
+:::limr-annotation{#note ranges="passage" type="footnote"}
+The annotation body also supports **Markdown**.
+:::
+```
+
+Opening and closing boundaries use the same range ID and activate only when a complete annotation definition references that ID. Ranges can cross formatting and paragraphs or occur inside code; nested or crossing ranges use distinct IDs. Definition blocks shown inside code examples do not activate boundaries.
+
+```markdown
 <definition title="Definition">
 
 Use **Markdown** inside custom blocks.
@@ -68,7 +78,7 @@ This passage has a source<ref id="paper" />.
 <citation id="paper" title="Reference" url="https://example.com/paper" summary="Short summary" />
 ```
 
-Default modules also support `::` directives: for example, `::definition{title="Definition"}` followed by its body and a standalone closing `::`. Tags and `:::` containers remain supported. Mermaid accepts `mermaid` code fences or `::mermaid`; diagram mode supports zoom, drag panning, and keyboard/wheel navigation.
+Default body components support matching tags, `:::` containers and paired `::` directives: for example, `::definition{title="Definition"}` followed by its body and a standalone closing `::`. Mermaid accepts `mermaid` code fences or `::mermaid`; diagram mode supports zoom, drag panning, and keyboard/wheel navigation.
 
 ## Typography and streaming
 

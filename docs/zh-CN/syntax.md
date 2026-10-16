@@ -354,11 +354,11 @@ Original **Markdown**.
 
 ## 选择与替换
 
-工具栏创建的高亮存为 annotation；`==高亮==` 由源码定义，默认只提供复制工具栏。传入 `onSourceChange` 后，默认工具栏创建或修改的高亮、任务勾选会保存到 Markdown；模块也可用 target: source 添加源内标注。常规 addAnnotation 仍保存外部数据，详见[项目集成](integration.md)。默认模块的全部已注册标签都支持同名 `::` 指令。自定义标签需注册插件。使用完整清单配置或替换默认模块，见[扩展开发](extensions.md)。
+工具栏创建的高亮存为 annotation；`==高亮==` 由源码定义，默认只提供复制工具栏。传入 `onSourceChange` 后，默认工具栏创建或修改的高亮、任务勾选会保存到 Markdown；模块也可用 target: source 添加源内标注。常规 addAnnotation 仍保存外部数据，详见[项目集成](integration.md)。默认正文组件的已注册标签支持同名 `::` 指令；命名标注定义使用 `:::limr-annotation` 块。自定义标签需注册插件。使用完整清单配置或替换默认模块，见[扩展开发](extensions.md)。
 
 ## 双冒号组件写法
 
-所有默认模块都支持 [CoMark 的组件写法](https://comark.dev/syntax/components)，包括嵌套、标量属性和 Markdown 正文：
+下列默认正文组件支持 [CoMark 的组件写法](https://comark.dev/syntax/components)，包括嵌套、标量属性和 Markdown 正文：
 
 ```md
 ::definition{title="定义"}
@@ -375,7 +375,7 @@ Original **Markdown**.
 ::
 ```
 
-可用名称包括 `gfm`、`definition`、`title`、`content`、`question` 及其已有子标签、`extras`、`extra`、`video`、`md-video`、`figures`、`figure`、`figcaption`、`caption`、`img`、`citation`、`ref`、`translations`、`origin`、`translation`、`code`（别名 `code-highlight`）、`math`、`mermaid`、`callout`、`highlight`、`footnote`、`footnote-ref`、`limr-annotation`。`::code{lang="typescript"}` 与 `::math` 的正文保持字面量。
+可用名称包括 `gfm`、`definition`、`title`、`content`、`question` 及其已有子标签、`extras`、`extra`、`video`、`md-video`、`figures`、`figure`、`figcaption`、`caption`、`img`、`citation`、`ref`、`translations`、`origin`、`translation`、`code`（别名 `code-highlight`）、`math`、`mermaid`、`callout`、`highlight`、`footnote`、`footnote-ref`。命名标注定义使用下文介绍的 `:::limr-annotation` 块。`::code{lang="typescript"}` 与 `::math` 的正文保持字面量。
 
 标准 Markdown 围栏、JSX、单冒号行内指令和原有三冒号容器继续可用。最终文档中没有配对闭合的双冒号行，保留原有 leaf directive 语义。这里兼容的是组件语法，不包含 CoMark 的 YAML 属性、命名插槽和 frontmatter。
 
@@ -479,15 +479,15 @@ abcd::%%limr%%{<#r1}efg::%%limr%%{>#r1}
 
 `sourceAnnotations()` 只负责通用语法与序列化，不注册提问卡片。上例的 highlight 是内置类型，footnote 由默认脚注模块提供，question 需由模块注册；Playground 使用[阅读笔记示例](../../examples/notes.tsx)提供该类型及卡片。
 
-严格匹配、区分大小写的 `::%%limr%%{<#r1}` 与 `::%%limr%%{>#r1}` 只有被完整的 `:::limr-annotation` 块通过 `ranges` 引用时才生效。ID 以 ASCII 字母或数字开头，后续允许字母、数字、`_`、`.`、`:` 和 `-`。缺少定义、边界不配对或重复开头产生歧义时保留原文。紧邻的开始与结束标记表示零长度位置。同一个 ID 可以在独立、顺序出现的选区中复用；嵌套或交错选区使用不同 ID。
+严格匹配、区分大小写的 `::%%limr%%{<#r1}` 与 `::%%limr%%{>#r1}` 只有被完整的 `:::limr-annotation` 块引用时才生效。定义用 `ranges` 指定范围 ID；省略时使用标注自身的 ID。范围 ID 以 ASCII 字母或数字开头，后续允许字母、数字、`_`、`.`、`:` 和 `-`。缺少定义、边界不配对或重复开头产生歧义时保留原文。紧邻的开始与结束标记表示零长度位置。同一个范围 ID 可以在独立、顺序出现的选区中复用；嵌套或交错选区使用不同 ID。
 
 代码行和代码块中的标记也可以关联真实定义；代码示例内部的定义不算有效定义。即使别处存在同 ID 的定义，也可以通过转义第一个冒号保留字面量：`\::%%limr%%{<#r1}`，演示一对边界时分别转义两端。
 
-1.2.0 删除旧的 `==文本==[^%%limr:r1%%]` 标注绑定及保留脚注兜底行为。迁移时换成上述成对边界，保留三冒号定义。独立的 `==高亮==`、普通 Markdown 脚注与引用仍是各自独立的功能。命名标注定义统一使用三冒号块，不再支持 HTML 和成对双冒号形式。
+开始边界、结束边界与 `:::limr-annotation` 定义共同描述一条命名标注。独立的 `==高亮==`、普通 Markdown 脚注与引用使用各自的语法和模块。
 
 | 字段 | 含义 |
 | --- | --- |
-| `#n1` 或 `id="n1"` | 标注 ID；同 ID 的最后一条定义覆盖前面的定义 |
+| `#n1` 或 `id="n1"` | 非空的标注 ID，可与范围 ID 不同，例如 `id="note/demo" ranges="r1"`；同一标注 ID 的最后一条定义覆盖前面的定义 |
 | `ranges="r1 r2"` | 用空白或逗号分隔的命名范围；省略时默认使用标注 ID；同一个范围 ID 可在多处出现 |
 | `type` | 标注类型，如 `highlight`、`footnote`、`question`；默认 `footnote` |
 | `style`、`color`、`hidden` | 高亮外观；`hidden="true"` 只隐藏绘制，不删除标注 |

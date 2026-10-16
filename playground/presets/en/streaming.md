@@ -79,9 +79,9 @@ You first read that ::%%limr%%{<#stable-prefix}stable content need not be genera
 A stream can reuse its stable prefix while preserving the current selection. A new reference definition still needs to be checked for its effect on earlier content.
 :::
 
-::limr-annotation{#stable-question ranges="stable-prefix" type="question"}
+:::limr-annotation{#stable-question ranges="stable-prefix" type="question"}
 In a table that keeps growing, which rows are settled and which still need to be parsed again?
-::
+:::
 
 ## Grow a table one row at a time
 

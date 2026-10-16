@@ -90,6 +90,8 @@ Shared document views/hooks require a provider; standalone Markdown and Reader c
 | useRendererParameter(name) | Host override or last registered default |
 | useLiMR() | Engine, commands, signal, clearSelection, scrollToHeading, scrollToAnnotation, invalidateAnnotation |
 
+`useLiMR()` and action contexts expose `updateAnnotation(id, partial): boolean`, `commitAnnotationEdit(id?): void` and `cancelAnnotationEdit(id?): boolean`. Call commit only after the update is accepted; it finishes editing without writing data again. Cancel removes an uncommitted creation and its otherwise unused temporary highlights, while preserving existing annotations and shared highlights. Plugins reset their draft to saved content before canceling, restoring the unfinished draft and editor if the host declines cancellation. The supplied note editors also cancel empty new drafts on outside clicks; the active editor hides its selection toolbar.
+
 useRuntime and useTheme are not public APIs. useLocale, locale.language, and localized annotation labels are available from 1.0.0. See [annotations](annotations.md) for commands and [extensions](extensions.md) for renderer/action contracts.
 
 ## Core engine
@@ -112,7 +114,7 @@ DocumentSnapshot contains id, revision, source, streaming, blocks, headings, def
 
 Other core exports include walk, textContent, rangeOf, intersects, safeUrl, mapText, selectionFromRange, replaceExtension, resolveAnnotationAnchors, annotationReferenceRange, sameRange, defaultHighlight, LruCache, and ResourceCache. ResourceCache.acquire returns promise/release; invalidate clears a key or everything.
 
-`inlineHighlights({ color?, component? })`, `footnotes(annotationTypeOptions?)` and `sourceAnnotations()` are included in `standard()`. `HighlightData.readOnly` defaults to a copy-only toolbar; source editing makes supported authored highlights editable. `AnnotationOccurrence.referenceRange` separates the marker location from its referenced text. Standalone references have a zero-length referenceRange at their marker start.
+`inlineHighlights({ color?, component? })`, `footnotes(annotationTypeOptions?)` and `sourceAnnotations()` are included in `standard()`. Named source annotations use paired `::%%limr%%{<#id}` / `::%%limr%%{>#id}` boundaries and complete `:::limr-annotation` definition blocks; see [syntax](syntax.md#annotations-stored-in-markdown). `HighlightData.readOnly` defaults to a copy-only toolbar; source editing makes supported authored highlights editable. `AnnotationOccurrence.referenceRange` separates the marker location from its referenced text. Standalone references have a zero-length referenceRange at their marker start.
 
 `useLiMR()` and action contexts expose `canEditSource()`, `canEditAnnotation(id)` and `editSource(edits, { revision? })`. A `SourceEdit` is `{ range: { start, end }, text }`; all edits address the same original source. Invalid, overlapping or stale-revision edits throw. Accepted edits update the document atomically and immediately; the host echoes the new source. A false result means the host declined. `applySourceEdits(source, edits)` is the equivalent pure core utility. Editing is unavailable during streaming.
 

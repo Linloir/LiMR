@@ -126,13 +126,13 @@ export function LocalMarkdown({ initialSource, queueSave }: {
 
 宿主的 queueSave 负责按顺序保存、合并频繁写入、处理磁盘冲突和失败提示。回调同步返回 void/true 表示接受内存修改，返回 false 或抛错则不更新文档；不要返回文件写入的 Promise。保存失败不等于已经回滚内存，宿主应保留未保存状态并重试。事务第二参数的 document 是修改前快照，可用于撤销栈和文件版本检查。组件不访问文件系统。
 
-新增时，普通 `addAnnotation(annotation)` 仍写入 annotations；模块调用 `addAnnotation(annotation, { target: 'source' })` 选择原文存储。默认 highlightSelection 动作在原文可编辑时主动选择 source，否则创建外部高亮。修改/删除已有 annotation 根据其来源选择通路；侧栏、浮层和工具栏共用这些命令。类型模块管理编辑 UI 与草稿，提交时调用 updateAnnotation；源内数据经过默认或自定义的 sourceEditing.annotations 序列化，再触发 onSourceChange，外部数据则触发 onAnnotationsChange。原文事务被同步接受后，LiMR 立即更新内部文档；受控外部标注则等待宿主回传新的 annotations 数组后更新展示。
+新增时，普通 `addAnnotation(annotation)` 仍写入 annotations；模块调用 `addAnnotation(annotation, { target: 'source' })` 选择原文存储。默认 highlightSelection 动作在原文可编辑时主动选择 source，否则创建外部高亮。修改/删除已有 annotation 根据其来源选择通路；侧栏、浮层和工具栏共用这些命令。类型模块管理编辑 UI 与草稿，提交时调用 updateAnnotation，接受保存后再调用 commitAnnotationEdit；源内数据经过默认或自定义的 sourceEditing.annotations 序列化，再触发 onSourceChange，外部数据则触发 onAnnotationsChange。原文事务被同步接受后，LiMR 立即更新内部文档；受控外部标注则等待宿主回传新的 annotations 数组后更新展示。
 
-[内联笔记插件](../../examples/inline-notes.tsx)是 Playground 示例，**不在 standard() 中**。它仅提供标注类型、卡片和添加/修改动作，复用默认序列化器；[阅读笔记示例](../../examples/notes.tsx)提供 type="question" 的提问卡片。Playground 的「允许修改 Markdown」开关控制 onSourceChange；开启后，高亮、任务以及已安装模块的源内编辑同步到编辑框。类型模块的安装与编辑权限彼此独立，常规笔记仍保存为外部 annotations。
+[内联笔记插件](../../examples/inline-notes.tsx)是 Playground 示例，**不在 standard() 中**。它提供标注类型、卡片和添加、修改、删除控件，复用默认序列化器；[阅读笔记示例](../../examples/notes.tsx)提供 type="question" 的提问卡片。Playground 的「允许修改 Markdown」开关控制 onSourceChange；开启后，高亮、任务以及已安装模块的源内编辑同步到编辑框。类型模块的安装与编辑权限彼此独立，常规笔记仍保存为外部 annotations。
 
-默认序列化器在首次修改样式时，将普通 `==高亮==` 转换为命名范围；删除最后一条注释会移除该范围的标记，保留正文。checkbox 只替换方括号内的字符，保留列表、缩进和换行。源内正文编辑器在离开编辑状态时提交，调整窗口造成侧栏/浮层切换会保留草稿。
+默认序列化器在首次修改样式时，将普通 `==高亮==` 转换为命名范围；删除最后一条注释会移除该范围的标记，保留正文。checkbox 只替换方括号内的字符，保留列表、缩进和换行。源内正文编辑器在离开编辑状态时保存已修改的内容，调整窗口造成侧栏/浮层切换会保留草稿。空白新草稿失焦时改为调用 cancelAnnotationEdit，删除新建标注及本次同时创建、没有其他引用的临时高亮。普通阅读笔记示例也会在点击外部时取消空白新草稿，非空草稿则保留到提交。已有标注、原有或共享高亮保留。当前编辑器激活时隐藏选区工具栏；可编辑卡片在靠右操作区提供单条删除。
 
-公开的 editSourceAnnotations 序列化工具用成对 ID 边界保存文本、跨段、代码和零长度选区，支持嵌套、交错以及多条注释复用同一范围。格式标记可以在选区内开始或结束；切开实体、转义序列或 Unicode 代理对的边界仍会拒绝，不会改坏原文。添加定义前须闭合文末的代码/HTML 块；需要其他存储格式时由模块提供序列化处理器。已有普通 Markdown 脚注/引用继续按各自模块的编辑能力处理，不会被隐式转成另一种语法。源内定义与外部受控 annotations 可以并存，但应使用不同 ID；已存在的外部数据仍通过 onAnnotationsChange 更新。
+公开的 editSourceAnnotations 序列化工具用 `::%%limr%%{<#id}` / `::%%limr%%{>#id}` 边界与 `:::limr-annotation` 定义保存文本、跨段、代码和零长度选区，支持嵌套、交错以及多条注释复用同一范围。格式标记可以在选区内开始或结束；切开实体、转义序列或 Unicode 代理对的边界仍会拒绝，不会改坏原文。添加定义前须闭合文末的代码/HTML 块；需要其他存储格式时由模块提供序列化处理器。已有普通 Markdown 脚注/引用继续按各自模块的编辑能力处理，不会被隐式转成另一种语法。源内定义与外部受控 annotations 可以并存，但应使用不同 ID；已存在的外部数据仍通过 onAnnotationsChange 更新。
 
 流式输出期间禁用原文编辑。异步模块应记录 document.revision，在提交 editSource 时传入该 revision，避免把旧偏移写入新文本。更新完毕后从新的快照读取位置，不缓存 Annotation.source 中的旧坐标。完整接口见[API](api.md)和[扩展开发](extensions.md#模块写回原文)。
 

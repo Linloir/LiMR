@@ -79,9 +79,9 @@ flowchart LR
 流式输出可以复用稳定前缀，同时保留当前选区。新的引用定义出现时，仍然需要检查它是否改变了之前的解释。
 :::
 
-::limr-annotation{#stable-question ranges="stable-prefix" type="question"}
+:::limr-annotation{#stable-question ranges="stable-prefix" type="question"}
 对于持续增长的表格，哪些行已经确定，哪些行还需要重新解析？
-::
+:::
 
 ## 从一行长成一张表
 

@@ -5,7 +5,7 @@ description: Integrate @linloir/limr into React applications, author its support
 
 # Use LiMR
 
-Deliver a working integration using the host application's installed LiMR API. These references cover the 1.0.0 contract; inspect package.json and exported declarations before assuming a newer or older version behaves identically.
+Deliver a working integration using LiMR 1.2.1. Inspect the host's package.json and public declarations to confirm the required APIs are installed.
 
 - Read [integration.md](references/integration.md) for components, styles, state, streaming, and installed plugin imports.
 - Read [syntax.md](references/syntax.md) when authoring or converting content. Preserve original source and do not invent tag/attribute support.
@@ -14,9 +14,11 @@ Choose Reader for the complete UI, Markdown for body-only rendering, or one Docu
 
 Append third-party factories through a stable plugins array. extensions replaces the entire list; use standard() and replaceExtension() to change defaults. Verify package existence and public exports before suggesting an npm install. Repository @limr-example packages are unpublished examples.
 
-Persist controlled annotations immutably and return every onAnnotationsChange value. Unknown annotation types remain in storage without markers, cards or type-specific interactions; registering their module restores the UI. Preserve the complete annotations array when saving. Use original UTF-16 ranges, stable document IDs, and quotes; avoid DOM-derived offsets.
+Persist controlled annotations immutably and pass each accepted onAnnotationsChange array back through the annotations prop. Only a synchronous false return rejects a change; other return values, including Promises, are ignored. Unknown annotation types remain in storage without markers, cards or type-specific interactions; registering their module restores the UI. Preserve the complete annotations array when saving. Use original UTF-16 ranges, stable document IDs, and quotes; avoid DOM-derived offsets.
 
-Use locale={chinese} or english for built-in labels. locale does not translate source. In 1.0.0, plugins can use the public useLocale() hook and locale.language, and AnnotationType.label may resolve from the locale. Confirm these exports before using them against 0.1.0.
+Create editable drafts with addAnnotation(annotation, { edit: true }). After an accepted updateAnnotation, call commitAnnotationEdit(id). For explicit cancel or an untouched empty draft leaving the editor, call cancelAnnotationEdit(id) and retain the draft/editor if it returns false. The runtime tracks which annotation and highlights were created by that operation; existing records and independently used highlights survive cancellation.
+
+Use locale={chinese} or english for built-in labels. locale does not translate source. Plugins use the public useLocale() hook and locale.language, and AnnotationType.label may resolve from the locale.
 
 For streaming, pass the accumulated source and finalize with streaming=false. Transport, authentication, storage, and stopping generation belong to the app. No AI provider is installed by this skill.
 
