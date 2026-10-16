@@ -70,7 +70,7 @@ Click this ==pale blue highlight== to copy it. A ==highlight with a footnote==[^
 
 ## A definition can arrive later
 
-You first read that ==stable content need not be generated again==[^%%limr:stable-prefix%%]. Its note and question arrive later. Watch the markers connect to that passage after their definitions are complete; unfinished annotation headers and bodies do not leak into the article.
+You first read that ::%%limr%%{<#stable-prefix}stable content need not be generated again::%%limr%%{>#stable-prefix}. Its note and question arrive later. Watch the markers connect to that passage after their definitions are complete; unfinished annotation headers and bodies do not leak into the article.
 
 :::limr-annotation{#stable-highlight ranges="stable-prefix" type="highlight" style="underline" color="#81B29A"}
 :::

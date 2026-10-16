@@ -131,7 +131,7 @@ describe('citation hover highlights', () => {
 
 describe('annotations on a shared text fragment', () => {
   for (const mode of ['absent', 'hidden', 'visible']) it(`inline annotations use ${mode} explicit highlight without duplicate paint`, () => {
-    const source = '==Words==[^%%limr:r%%]\n\n:::limr-annotation{#note ranges="r" type="footnote"}\nA note\n:::\n\n:::limr-annotation{#other ranges="r" type="footnote"}\nAnother note\n:::'
+    const source = '::%%limr%%{<#r}Words::%%limr%%{>#r}\n\n:::limr-annotation{#note ranges="r" type="footnote"}\nA note\n:::\n\n:::limr-annotation{#other ranges="r" type="footnote"}\nAnother note\n:::'
       + (mode === 'absent' ? '' : `\n\n:::limr-annotation{#color ranges="r" type="highlight" color="#C08FA3" hidden="${mode === 'hidden'}"}\n:::`);
     const runtime = new ReaderRuntime('inline', source, false, { extensions: standard() });
     const { occurrences, highlights } = runtime.decorations.get();

@@ -31,7 +31,7 @@ test('zero-length excerpts resize to the available width without changing marker
 
 for (const width of [1500, 560]) for (const mode of ['absent', 'hidden', 'visible']) test(`independent markers and toolbar with ${mode} highlight at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 1000 });
-  await load(page, `# Markers\n\nBefore ==shared **words**==[^%%limr:r%%] after.\n\n${definition('note')}\n\n${definition('question', 'question')}`
+  await load(page, `# Markers\n\nBefore ::%%limr%%{<#r}shared **words**::%%limr%%{>#r} after.\n\n${definition('note')}\n\n${definition('question', 'question')}`
     + (mode === 'absent' ? '' : `\n\n${definition('paint', 'highlight', `color="#C08FA3" hidden="${mode === 'hidden'}"`, '')}`), false);
   const markers = article(page).locator('.limr-mark[data-limr-anchor]');
   await expect(markers).toHaveCount(2); await expect(article(page).locator('.limr-mark-count')).toHaveCount(0);

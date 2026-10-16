@@ -60,7 +60,7 @@ These modules ship in `@linloir/limr`; no separate npm installations are require
 | `callout()` | `callout` | Obsidian callout types, aliases and nested quotes / `::callout` |
 | `inlineHighlights()` | `inline-highlights` | `==text==` and `::highlight`, blue highlights; read-only until source editing is enabled |
 | `footnotes()` | `footnotes` | `[^id]` / `^[body]`, comment markers and cards; `::footnote` / `::footnote-ref` |
-| `sourceAnnotations()` | `source-annotations` | `[^%%limr:id%%]` named ranges, `limr-annotation` definitions and generic serialization; modules register types and cards |
+| `sourceAnnotations()` | `source-annotations` | `::%%limr%%{<#id}` / `::%%limr%%{>#id}` named ranges, `limr-annotation` definitions and generic serialization; modules register types and cards |
 
 Import these functions from `@linloir/limr` or `@linloir/limr/extensions`. `standard()` is a convenience function returning an array, not an additional module.
 

@@ -9,7 +9,7 @@ describe('growing tables', () => {
     '| Name | Value |\n| --- | ---: |\n| [a][ref] | [^note] |\n| b | c |\n\n[ref]: /resolved\n\n[^note]: Resolved note\n',
     'Before\n\n| Name | Value |\n| --- | ---: |\n| a | b |\n| c | d |\n\nAfter\n',
     '| Name | Value |\n| --- | ---: |\n| a | <ref id="c" /> |\n| b | ==marked== |\n\n:::callout\nAfter\n:::\n',
-    '| Name | Value |\n| --- | ---: |\n| a | ==marked==[^%%limr:r%%] |\n| b | keep |\n\n:::limr-annotation{#n ranges="r" type="footnote"}\nNote\n:::\n',
+    '| Name | Value |\n| --- | ---: |\n| a | ::%%limr%%{<#r}marked::%%limr%%{>#r} |\n| b | keep |\n\n:::limr-annotation{#n ranges="r" type="footnote"}\nNote\n:::\n',
   ];
 
   it.each([1, 7, 31])('matches a fresh full parse at every %i-character boundary', chunk => {

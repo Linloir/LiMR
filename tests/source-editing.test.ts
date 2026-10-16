@@ -3,7 +3,7 @@ import { applySourceEdits } from '../src/core';
 import { standard } from '../src/extensions';
 import { ReaderRuntime } from '../src/react/runtime';
 
-const fixture = 'Before ==words==[^%%limr:r1%%] after.\n\n:::limr-annotation{#n1 ranges="r1" type="footnote"}\nA note.\n:::\n';
+const fixture = 'Before ::%%limr%%{<#r1}words::%%limr%%{>#r1} after.\n\n:::limr-annotation{#n1 ranges="r1" type="footnote"}\nA note.\n:::\n';
 const setup = (source = fixture) => {
   const accept = vi.fn();
   const runtime = new ReaderRuntime('source', source, false, { extensions: standard(), annotationTypes: [{ type: 'question', label: 'Question' }], onSourceChange: accept });
@@ -104,7 +104,8 @@ describe('source annotation serialization', () => {
     expect(snapshot.annotations).toHaveLength(2);
     expect(snapshot.annotations.map(item => item.type).sort()).toEqual(['footnote', 'highlight']);
     expect(snapshot.annotations.every(item => item.source?.module === 'source-annotations')).toBe(true);
-    expect(snapshot.annotations[0].anchors?.[0].range).toEqual({ start: 7, end: 16 });
+    const range = snapshot.annotations[0].anchors![0].range;
+    expect(snapshot.source.slice(range.start, range.end)).toBe('**words**');
     expect(runtime.decorations.get().occurrences).toHaveLength(1);
     expect(runtime.interaction.get().editing).toBe('new');
     expect(runtime.interaction.get().active).toBe(runtime.decorations.get().occurrences[0].id);
@@ -124,17 +125,17 @@ describe('source annotation serialization', () => {
   it('preserves a range while another annotation uses it and clears all selected annotations', () => {
     const { runtime } = setup(fixture + '\n:::limr-annotation{#q1 ranges="r1" type="question"}\nWhy?\n:::\n');
     runtime.commands.removeAnnotation('n1');
-    expect(runtime.document.getSnapshot().source).toContain('==words==[^%%limr:r1%%]');
+    expect(runtime.document.getSnapshot().source).toContain('::%%limr%%{<#r1}words::%%limr%%{>#r1}');
     expect(runtime.document.getSnapshot().annotations.map(item => item.id)).toEqual(['q1']);
-    runtime.commands.removeAnnotationsAt([{ start: 9, end: 14 }]);
+    runtime.commands.removeAnnotationsAt([runtime.document.getSnapshot().annotations[0].anchors![0].range]);
     expect(runtime.document.getSnapshot().source.trim()).toBe('Before words after.');
   });
   it('retains other ranges when removing one anchor of a shared annotation', () => {
-    const source = '==one==[^%%limr:a%%] and ==two==[^%%limr:b%%]\n\n:::limr-annotation{#n ranges="a b" type="footnote"}\nBoth\n:::';
+    const source = '::%%limr%%{<#a}one::%%limr%%{>#a} and ::%%limr%%{<#b}two::%%limr%%{>#b}\n\n:::limr-annotation{#n ranges="a b" type="footnote"}\nBoth\n:::';
     const { runtime } = setup(source);
-    runtime.commands.removeAnnotationsAt([{ start: 2, end: 5 }]);
+    runtime.commands.removeAnnotationsAt([runtime.document.getSnapshot().annotations[0].anchors![0].range]);
     const snapshot = runtime.document.getSnapshot();
-    expect(snapshot.source).toMatch(/^one and ==two==\[\^%%limr:b%%\]/);
+    expect(snapshot.source).toMatch(/^one and ::%%limr%%\{<#b\}two::%%limr%%\{>#b\}/);
     expect(snapshot.annotations[0].anchors).toHaveLength(1);
     expect(snapshot.annotations[0].source?.rangeIds).toEqual(['b']);
   });
@@ -157,14 +158,19 @@ describe('source annotation serialization', () => {
     expect(snapshot.annotations[0].data).toMatchObject({ title: 'A "quote" & B', body: ':::note\nNested **body**\n:::' });
     expect(snapshot.source).toContain('\r\n\r\n::::limr-annotation');
   });
-  it('supports point annotations and refuses unsupported source ranges without changing text', () => {
+  it('supports point annotations and complete fenced code selections', () => {
     const { runtime } = setup('Text.');
     runtime.commands.addAnnotation({ id: 'point', type: 'footnote', range: { start: 4, end: 4 }, data: { body: 'At this point' } }, { target: 'source' });
-    expect(runtime.document.getSnapshot().annotations[0].anchors?.[0].range).toEqual({ start: 4, end: 4 });
+    const point = [...runtime.document.getSnapshot().annotationRanges.values()][0][0];
+    expect(point.openingRange.start).toBe(4);
+    expect(point.range.start).toBe(point.range.end);
     const code = setup('```js\nconst a = 1;\n```');
     const original = code.runtime.document.getSnapshot().source;
-    expect(() => code.runtime.commands.addAnnotation({ id: 'code', type: 'highlight', range: { start: 0, end: original.length } }, { target: 'source' })).toThrow('inline text range');
-    expect(code.runtime.document.getSnapshot().source).toBe(original);
+    code.runtime.commands.addAnnotation({ id: 'code', type: 'highlight', range: { start: 0, end: original.length } }, { target: 'source' });
+    expect(code.runtime.document.getSnapshot().annotations[0].type).toBe('highlight');
+    expect(code.runtime.document.getSnapshot().blocks[0].node.type).toBe('code');
+    code.runtime.commands.removeAnnotation('code');
+    expect(code.runtime.document.getSnapshot().source.trim()).toBe(original);
   });
   it('lets a later module own serialization through the same source capability', () => {
     const { runtime } = setup('word');

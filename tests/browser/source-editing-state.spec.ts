@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const original = 'Before ==words==[^%%limr:r1%%] after.\n\n:::limr-annotation{#n1 ranges="r1" type="footnote"}\nOriginal body.\n:::\n';
+const original = 'Before ::%%limr%%{<#r1}words::%%limr%%{>#r1} after.\n\n:::limr-annotation{#n1 ranges="r1" type="footnote"}\nOriginal body.\n:::\n';
 async function startEditor(page: Page, width = 1460, source = original) {
   await page.setViewportSize({ width, height: 950 });
   await page.goto('/?fixture=streaming');

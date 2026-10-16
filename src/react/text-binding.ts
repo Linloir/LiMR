@@ -35,10 +35,12 @@ function bindingFor(node: MarkdownNode, source: string): SourceBinding {
   const direct = raw === value;
   let mapping: ReturnType<typeof mapText> | undefined;
   const payload = node.valueRange as { start: number; end: number } | undefined;
+  const omissions = node.sourceOmissions?.map(span => ({ start: span.start - range.start, end: span.end - range.start }));
   const mapped = () => mapping ??= literal ? mapLiteral(raw, {
     ...node, position: { start: { offset: 0, line: 0, column: 0 }, end: { offset: raw.length, line: 0, column: 0 } },
+    sourceOmissions: omissions,
     ...(payload ? { valueRange: { start: payload.start - range.start, end: payload.end - range.start } } : {}),
-  }) : mapText(raw, value, { start: 0, end: raw.length });
+  }) : mapText(raw, value, { start: 0, end: raw.length }, { omissions });
   return {
     range, atomic: false,
     get exact() { return direct || mapped().exact; },

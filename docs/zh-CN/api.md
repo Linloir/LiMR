@@ -108,7 +108,7 @@ createDocument(source?, { id?, extensions?, streaming? }) 返回 DocumentEngine�
 
 核心默认 extensions=[]。纯核心使用带 micromark/mdast 的 SyntaxExtension；从 React 扩展入口导入 standard 不再是严格的无 React 依赖路径。
 
-DocumentSnapshot 包含 id、revision、source、streaming、blocks、headings、definitions、footnotes、footnoteOrder、annotations、annotationRanges、occurrences、diagnostics、metrics。这里 annotations 是**源内解析得到的数据**；外部受控数据使用 useAnnotations，不要混淆两个集合。annotationRanges 将命名范围 ID 映射到 SourceAnnotationRange 数组（range、syntaxRange、markerRange 均为原文 UTF-16 坐标）。
+DocumentSnapshot 包含 id、revision、source、streaming、blocks、headings、definitions、footnotes、footnoteOrder、annotations、annotationRanges、occurrences、diagnostics、metrics。这里 annotations 是**源内解析得到的数据**；外部受控数据使用 useAnnotations，不要混淆两个集合。annotationRanges 将命名范围 ID 映射到 SourceAnnotationRange 数组（range、openingRange、syntaxRange、markerRange 均为原文 UTF-16 坐标）。
 
 其他核心导出包括 walk、textContent、rangeOf、intersects、safeUrl、mapText、selectionFromRange、replaceExtension、resolveAnnotationAnchors、annotationReferenceRange、sameRange、defaultHighlight、LruCache、ResourceCache。ResourceCache.acquire 返回 promise/release；invalidate 可按 key 或全部失效。
 

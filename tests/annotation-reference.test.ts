@@ -44,3 +44,11 @@ test('point excerpts stay inside prose and fit the suffix without splitting grap
   expect(fitPointReference('…前文👩‍💻尾部…', 50, measure)).toBe('…👩‍💻尾部…');
   expect(fitPointReference(reference, 50, measure)).toBe('…在这里…');
 });
+
+test('paired annotation excerpts use exact prose and literal code mappings', () => {
+  const pair = (id: string, text: string) => `::%%limr%%{<#${id}}${text}::%%limr%%{>#${id}}`;
+  const source = `Before ${pair('prose', 'marked &amp; **words**')} after.\n\n\`pre ${pair('inline', '&amp; literal')} post\`\n\n\`\`\`ts\nconst value = ${pair('code', 'readCache()')};\n\`\`\`\n\n`
+    + ['prose', 'inline', 'code'].map(id => `:::limr-annotation{#${id} type="footnote"}\nNote\n:::`).join('\n\n');
+  const document = createDocument(source, { extensions: standard() }).getSnapshot();
+  expect(document.occurrences.map(occurrence => annotationReferenceText(document, occurrence))).toEqual(['marked & words', '&amp; literal', 'readCache()']);
+});

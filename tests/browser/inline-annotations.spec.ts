@@ -84,7 +84,7 @@ test('standalone footnotes and self-closing refs keep zero-length hover ranges',
 
 test('opening a footnote overlay dismisses the previous highlight toolbar and native selection', async ({ page }) => {
   await page.setViewportSize({ width: 560, height: 950 });
-  await page.evaluate(() => window.limrStream({ source: 'Before ==highlighted **words**==[^%%limr:r%%] after.\n\n:::limr-annotation{#paint ranges="r" type="highlight" color="#E5C07B"}\n:::\n\n:::limr-annotation{#note ranges="r" type="footnote"}\nA useful footnote.\n:::', streaming: false }));
+  await page.evaluate(() => window.limrStream({ source: 'Before ::%%limr%%{<#r}highlighted **words**::%%limr%%{>#r} after.\n\n:::limr-annotation{#paint ranges="r" type="highlight" color="#E5C07B"}\n:::\n\n:::limr-annotation{#note ranges="r" type="footnote"}\nA useful footnote.\n:::', streaming: false }));
   const text = page.locator('.limr-reader-content strong');
   const marker = page.locator('.limr-reader-content .limr-mark');
   const toolbar = page.getByRole('toolbar');
@@ -111,11 +111,10 @@ test('opening a footnote overlay dismisses the previous highlight toolbar and na
   await expect(page.locator('#stream-selection')).toHaveText('null');
 });
 
-test('reserved ranges render independent note/question markers with one winning highlight and no fallback body', async ({ page }) => {
-  await page.evaluate(() => window.limrStream({ source: 'Before ==named **range**==[^%%limr:r1%%] after.\n\n[^%%limr:r1%%]: Ordinary fallback body\n\n:::limr-annotation{#h1 ranges="r1" type="highlight" color="#E5C07B"}\n:::\n\n:::limr-annotation{#h2 ranges="r1" type="highlight" color="#81B29A"}\n:::\n\n:::limr-annotation{#n1 ranges="r1" type="footnote"}\nStored **note**.\n:::\n\n:::limr-annotation{#q1 ranges="r1" type="question"}\nWhy cache?\n:::', streaming: false, sidebar: true }));
+test('paired ranges render independent note/question markers with one winning highlight', async ({ page }) => {
+  await page.evaluate(() => window.limrStream({ source: 'Before ::%%limr%%{<#r1}named **range**::%%limr%%{>#r1} after.\n\n:::limr-annotation{#h1 ranges="r1" type="highlight" color="#E5C07B"}\n:::\n\n:::limr-annotation{#h2 ranges="r1" type="highlight" color="#81B29A"}\n:::\n\n:::limr-annotation{#n1 ranges="r1" type="footnote"}\nStored **note**.\n:::\n\n:::limr-annotation{#q1 ranges="r1" type="question"}\nWhy cache?\n:::', streaming: false, sidebar: true }));
   const article = page.locator('.limr-reader-content > article');
   await expect(article).not.toContainText('%%limr');
-  await expect(article).not.toContainText('Ordinary fallback body');
   await expect(article.locator('.limr-mark')).toHaveCount(2);
   await expect(article.locator('.limr-mark-count')).toHaveCount(0);
   await expect(article.locator('[data-paint="h1"]')).toHaveCount(0);

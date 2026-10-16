@@ -161,7 +161,9 @@ export const glossary = defineExtension({
 
 ## 解析与流式约束
 
-SyntaxExtension 支持 micromark、mdast、tags、directives、display、selection、literal、transform 和 scope。transform 默认全文作用域；仅依赖当前局部子树、不会回写前文或读取全局文档语义时才声明 scope: local。context.source 仍是原始全文，position 必须保持原始 UTF-16 坐标。插件不要先用正则替换 source 再解析。
+SyntaxExtension 支持 micromark、mdast、tags、directives、display、selection、literal、preprocess、transform 和 scope。transform 默认全文作用域；仅依赖当前局部子树、不会回写前文或读取全局文档语义时才声明 scope: local。context.source 仍是原始全文，position 必须保持原始 UTF-16 坐标。插件不要先用正则替换 source 再解析。
+
+`preprocess(context, extensions)` 在 Markdown 分词前返回需要省略的源码区间；每个区间使用原始全文的 UTF-16 坐标，必须位于文档内且互不重叠。引擎负责省略与坐标还原，并通过 `context.sourceOmissions`、`node.sourceOmissions` 保留映射信息。`sourceAnnotations()` 用它解析跨段和代码中的成对边界。省略区间发生变化会触发全文重解析；只有在确实需要跨越 Markdown 语法边界时才使用此接口。
 
 未知特殊标签安全显示整段原文，内部 Markdown 也作为原文显示。默认配置的未知指令则渲染内部 Markdown，丢弃指令外层标记；未安装任何指令扩展时按基础 Markdown 解析。移除模块后，使用剩余语法能力重新解析未改写的原文。未注册标注类型保留数据，但不显示角标、卡片或编辑界面；重新安装模块后恢复。选区操作和持久化行为见[标注与选区](annotations.md#缺少插件时)。已注册的未闭合标签和容器携带 node.incomplete，之后追加继续恢复；半截头部暂缓显示或交由模块展示 loading；无效 JSX 仍可能回退并记录 diagnostics；结束必须 finish 或 streaming=false。扩展 transform 的异常记录为 diagnostic；客户端渲染边界可回退源码，但 React 错误边界不负责捕获服务端渲染异常。
 

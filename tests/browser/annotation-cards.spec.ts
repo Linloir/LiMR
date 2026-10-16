@@ -36,10 +36,10 @@ test('a module owns the whole card, preserves content state and controls viewpor
   await expect(card).toHaveCount(0);
 });
 
-test('touch expands from the measured preview and closes back to it with fade and equal timing', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+test('touch expands from the measured preview and closes back to it with fade and equal timing', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
-  await page.goto('http://127.0.0.1:4173/?fixture=overlay');
+  await page.goto('/?fixture=overlay');
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(() => {
     const animate = Element.prototype.animate;

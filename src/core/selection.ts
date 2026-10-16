@@ -1,11 +1,17 @@
 import { decodeString } from 'micromark-util-decode-string';
 import { intersects, rangeOf } from './tree';
+import { omitSource } from './source-omissions';
 import type { DocumentSnapshot, MarkdownNode, SelectionResult, SelectionSnapshot, SourceRange } from './types';
 
 export interface TextMapping { starts: readonly number[]; ends: readonly number[]; exact: boolean }
 
 /** Align decoded text to original source, retaining escape/entity/CRLF boundaries. */
-export function mapText(source: string, value: string, range: SourceRange, options: { escapes?: boolean } = {}): TextMapping {
+export function mapText(source: string, value: string, range: SourceRange, options: { escapes?: boolean; omissions?: readonly SourceRange[] } = {}): TextMapping {
+  if (options.omissions?.some(span => span.start >= range.start && span.end <= range.end)) {
+    const omitted = omitSource(source.slice(range.start, range.end), options.omissions, range.start);
+    const mapping = mapText(omitted.value, value, { start: 0, end: omitted.value.length }, { escapes: options.escapes });
+    return { starts: mapping.starts.map(at => range.start + omitted.original(at, 'start')), ends: mapping.ends.map(at => range.start + omitted.original(at, 'end')), exact: mapping.exact };
+  }
   const raw = source.slice(range.start, range.end);
   const starts: number[] = [], ends: number[] = [];
   let rendered = 0, exact = true;
@@ -29,6 +35,16 @@ export function mapText(source: string, value: string, range: SourceRange, optio
 
 export function selectionFromRange(document: DocumentSnapshot, raw: SourceRange, options: { text?: string; quality?: SelectionSnapshot['quality']; settled?: boolean } = {}): SelectionSnapshot {
   const initial = { start: Math.max(0, raw.start), end: Math.min(document.source.length, raw.end) };
+  // The end of one DOM text node and the start of its next sibling denote the
+  // same visual caret. Known removed syntax between them must not enter a
+  // selection merely because the browser chose the preceding text endpoint.
+  const omissions = [...document.annotationRanges.values()].flatMap(ranges => ranges.flatMap(range => [range.openingRange, range.markerRange])).sort((a, b) => a.start - b.start);
+  for (const range of omissions) if (initial.start >= range.start && initial.start < range.end) initial.start = range.end;
+  for (let index = omissions.length - 1; index >= 0; index--) {
+    const range = omissions[index];
+    if (initial.end > range.start && initial.end <= range.end) initial.end = range.start;
+  }
+  initial.end = Math.max(initial.start, initial.end);
   const syntax = { ...initial };
   const containers = new Set(['strong', 'emphasis', 'delete', 'link', 'linkReference', 'heading', 'listItem', 'blockquote']);
   const source = document.source;

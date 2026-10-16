@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('video mounts the real provider near the viewport, supports click loading and shares math copying', async ({ page, context }) => {
+test('video mounts the real provider near the viewport, supports click loading and shares math copying', async ({ page, context, baseURL }) => {
   const requests: { url: string; referer?: string }[] = [];
   for (const pattern of ['https://www.youtube.com/embed/**', 'https://player.bilibili.com/**']) await page.route(pattern, async route => {
     requests.push({ url: route.request().url(), referer: route.request().headers().referer });
@@ -13,7 +13,7 @@ test('video mounts the real provider near the viewport, supports click loading a
   await expect(first.locator('iframe')).toHaveAttribute('src', 'https://www.youtube.com/embed/M7lc1UVf-VE');
   await expect(first.locator('iframe')).toHaveAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
   await expect.poll(() => requests.length).toBe(1);
-  expect(requests[0].referer).toBe('http://127.0.0.1:4173/');
+  expect(requests[0].referer).toBe(`${new URL(baseURL!).origin}/`);
   const dimensions = await first.locator('.limr-video-frame').boundingBox();
   expect(dimensions!.width).toBeLessThanOrEqual(560);
   expect(dimensions!.width / dimensions!.height).toBeCloseTo(16 / 9, 2);

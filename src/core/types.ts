@@ -18,6 +18,8 @@ export interface MarkdownNode {
   attributes?: Record<string, string | boolean | number>;
   /** Source-mapped attribute values, available to custom text renderers. */
   attributeNodes?: Record<string, MarkdownNode>;
+  /** Exact source spans removed by an extension before Markdown tokenization. */
+  sourceOmissions?: readonly SourceRange[];
   inline?: boolean;
   selection?: 'content' | 'atomic';
   /** The opening syntax is known but its closing delimiter has not arrived. */
@@ -29,6 +31,7 @@ export interface ParseContext {
   source: string;
   streaming: boolean;
   documentId: string;
+  sourceOmissions?: readonly SourceRange[];
 }
 export interface SyntaxExtension {
   /** Unique name. Duplicate names are an error unless explicitly replaced. */
@@ -40,6 +43,9 @@ export interface SyntaxExtension {
   /** Directive bodies are literal source (for example code or LaTeX). */
   literal?: boolean;
   selection?: 'content' | 'atomic';
+  /** Remove explicitly recognized syntax before Markdown parsing. Returned
+   * spans address the unmodified document; changing them invalidates old trees. */
+  preprocess?: (context: ParseContext, extensions: readonly SyntaxExtension[]) => readonly SourceRange[];
   transform?: (root: MarkdownNode, context: ParseContext) => void;
   display?: 'block' | 'inline' | 'auto';
   /** Transforms default to document scope. Opt into local only when safe. */
@@ -71,11 +77,12 @@ export interface Annotation<T = unknown> {
    * deleting or rewriting an ID cannot reveal an older definition. */
   source?: { module: string; ranges: readonly SourceRange[]; rangeIds?: readonly string[] };
 }
-/** A named range authored as ==text==[^%%limr:id%%]. */
+/** A named range enclosed by ::%%limr%%{<#id} and ::%%limr%%{>#id}. */
 export interface SourceAnnotationRange {
   id: string;
   range: SourceRange;
   syntaxRange: SourceRange;
+  openingRange: SourceRange;
   markerRange: SourceRange;
 }
 export interface AnnotationOccurrence extends AnnotationAnchor {

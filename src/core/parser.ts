@@ -8,6 +8,7 @@ import { concealIncomplete, prepareSource } from './streaming';
 import { hasTableLocalSyntax, incrementalTable } from './incremental-table';
 import { syntaxForSource } from './source-syntax';
 import { parseInBatches } from './batched-parse';
+import { omitSource } from './source-omissions';
 import type { Diagnostic, MarkdownNode, ParseContext, SourcePosition, SyntaxExtension } from './types';
 
 export function validateExtensions(extensions: readonly SyntaxExtension[]): void {
@@ -54,6 +55,9 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
   const parseTable = incrementalTable();
 
   return (fragment: string, offset: number, context: ParseContext, lines: readonly number[], environment = '') => {
+    const originalFragment = fragment;
+    const omitted = omitSource(fragment, context.sourceOmissions ?? [], offset);
+    fragment = omitted.value;
     // Config objects can be changed in place after the session was created.
     // Once foreign behavior appears, discard all builtin-only fast paths.
     tableLocal &&= hasTableLocalSyntax(registeredSyntax);
@@ -63,7 +67,7 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
     // suffix can be consumed as part of a synthetic footnote definition.
     const prefix = environment ? `${environment}\n\nlimr-definition-boundary\n\n` : '';
     const cached = literalCache;
-    const canAppendLiteral = tableLocal && context.streaming && cached && !prefix && cached.offset === offset && fragment.startsWith(cached.fragment)
+    const canAppendLiteral = originalFragment === fragment && tableLocal && context.streaming && cached && !prefix && cached.offset === offset && fragment.startsWith(cached.fragment)
       && !new RegExp(`(?:^|[\\r\\n]) {0,3}${cached.fence[0]}{${cached.fence.length},}[ \\t]*(?=[\\r\\n]|$)`).test(fragment.slice(Math.max(cached.content, cached.fragment.lastIndexOf('\n') + 1, cached.fragment.lastIndexOf('\r') + 1)));
     const prepared = canAppendLiteral
       ? { value: fragment, original: (at: number) => at, incomplete: new Set([0]), recoveryOffset: 0, hidden: undefined }
@@ -78,12 +82,12 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
     // AST is identical. Prune impossible built-in attempts only with the known
     // shipped tokenizer/compiler combination.
     const forSource = (extensions: typeof syntax, value: string) => tableLocal ? extensions.map(extension => syntaxForSource(extension, value)) : extensions;
-    const mappedOffset = (at: number) => offset + prepared.original(Math.max(0, at - prefix.length));
+    const mappedOffset = (at: number, edge: 'start' | 'end' = 'start') => offset + omitted.original(prepared.original(Math.max(0, at - prefix.length)), edge);
     const mappedLines = lines.length ? lines : lineStarts(context.source);
     const diagnostics: Diagnostic[] = [];
     let attributeLines: readonly number[] | undefined;
     const attributePoint = (at: number) => sourcePoint(at, lines.length ? lines : attributeLines ??= lineStarts(context.source));
-    let recoveryOffset = prepared.recoveryOffset === undefined ? undefined : offset + prepared.recoveryOffset;
+    let recoveryOffset = prepared.recoveryOffset === undefined ? undefined : offset + omitted.original(prepared.recoveryOffset, 'end');
     const canBatch = tableLocal && !prefix && prepared.value === fragment && !hasJsx && !hasDirectives;
     const parse = (value: string) => fromMarkdown(value, {
       extensions: forSource(hasJsx ? hasDirectives ? jsxSyntax : plainJsxSyntax : activeSyntax, value),
@@ -105,14 +109,20 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
     root.children = root.children?.filter(node => (node.position?.start.offset ?? 0) >= prefix.length);
     const only = root.children?.length === 1 ? root.children[0] : undefined;
     const fence = !prefix && only?.type === 'code' && prepared.incomplete.has(0) && /^(`{3,}|~{3,})[^\r\n]*(?:\r\n|\r|\n)/.exec(fragment);
-    literalCache = tableLocal && fence ? { fragment, offset, node: { ...only! }, fence: fence[1], content: fence[0].length } : undefined;
-    if (offset || prefix.length || tagDefinitions.size || directiveDefinitions.size || context.streaming) walk(root, node => {
-      if (node.position && (offset || prefix.length || prepared.value !== fragment || canAppendLiteral)) {
+    literalCache = originalFragment === fragment && tableLocal && fence ? { fragment, offset, node: { ...only! }, fence: fence[1], content: fence[0].length } : undefined;
+    if (offset || prefix.length || tagDefinitions.size || directiveDefinitions.size || context.streaming || originalFragment !== fragment) walk(root, node => {
+      const incomplete = node.position && prepared.incomplete.has(prepared.original(Math.max(0, node.position.start.offset - prefix.length)));
+      if (node.position && (offset || prefix.length || prepared.value !== fragment || originalFragment !== fragment || canAppendLiteral)) {
         const start = mappedOffset(node.position.start.offset);
-        const end = Math.max(start, mappedOffset(node.position.end.offset));
+        const end = Math.max(start, mappedOffset(node.position.end.offset, 'end'));
         node.position = { start: sourcePoint(start, mappedLines), end: sourcePoint(end, mappedLines) };
       }
-      if (node.position && prepared.incomplete.has(node.position.start.offset - offset)) node.incomplete = true;
+      if (incomplete) node.incomplete = true;
+      if (node.position && originalFragment !== fragment) {
+        const range = { start: node.position.start.offset, end: node.position.end.offset };
+        const inside = context.sourceOmissions?.filter(span => span.start >= range.start && span.end <= range.end);
+        if (inside?.length) node.sourceOmissions = inside;
+      }
       if (node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement') {
         const definition = tagDefinitions.get(node.name ?? '');
         const rawAttributes = node.attributes as unknown as { type: string; name: string; value: unknown; position?: SourcePosition }[];
@@ -123,9 +133,14 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
             attributes[attr.name] = attr.value ?? true;
             if (definition && typeof attr.value === 'string' && attr.position) {
               const start = mappedOffset(attr.position.start.offset);
-              const end = mappedOffset(attr.position.end.offset);
+              const end = mappedOffset(attr.position.end.offset, 'end');
               const raw = context.source.slice(start, end), opening = raw.search(/["']/);
-              if (opening >= 0) attributeNodes[attr.name] = { type: 'text', value: attr.value, verbatimEscapes: true, position: { start: attributePoint(start + opening + 1), end: attributePoint(end - 1) } };
+              if (opening >= 0) {
+                const valueStart = start + opening + 1, valueEnd = end - 1;
+                const omissions = context.sourceOmissions?.filter(span => span.start >= valueStart && span.end <= valueEnd);
+                attributeNodes[attr.name] = { type: 'text', value: attr.value, verbatimEscapes: true,
+                  ...(omissions?.length ? { sourceOmissions: omissions } : {}), position: { start: attributePoint(valueStart), end: attributePoint(valueEnd) } };
+              }
             }
           }
           else diagnostics.push({ message: 'JSX expressions are not executed. Use string attributes or pass data from React.', offset: node.position?.start.offset });
@@ -158,7 +173,10 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
               const quoted = match[2] !== undefined || match[3] !== undefined;
               const valueLength = (match[2] ?? match[3] ?? match[4]).length;
               const valueEnd = start + brace + 1 + match.index! + match[0].length - (quoted ? 1 : 0);
-              attributeNodes[name] = { type: 'text', value, position: { start: attributePoint(valueEnd - valueLength), end: attributePoint(valueEnd) } };
+              const valueStart = valueEnd - valueLength;
+              const omissions = context.sourceOmissions?.filter(span => span.start >= valueStart && span.end <= valueEnd);
+              attributeNodes[name] = { type: 'text', value, ...(omissions?.length ? { sourceOmissions: omissions } : {}),
+                position: { start: attributePoint(valueStart), end: attributePoint(valueEnd) } };
             }
             if (Object.keys(attributeNodes).length) node.attributeNodes = attributeNodes;
           }
@@ -169,15 +187,15 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
       }
     });
     if (prepared.hidden) {
-      const start = offset + prepared.hidden.start;
+      const start = offset + omitted.original(prepared.hidden.start, 'end');
       // A withheld inline header can still belong to the preceding paragraph.
       // Retry that host too instead of retaining a prematurely split block.
       recoveryOffset = Math.min(recoveryOffset ?? start, root.children?.at(-1)?.position?.start.offset ?? start);
       root.children?.push({ type: prepared.hidden.name ? 'component' : 'streamPending', name: prepared.hidden.name, incomplete: true,
-        position: { start: sourcePoint(start, mappedLines), end: sourcePoint(offset + fragment.length, mappedLines) }, children: [], attributes: {} });
+        position: { start: sourcePoint(start, mappedLines), end: sourcePoint(offset + originalFragment.length, mappedLines) }, children: [], attributes: {} });
     }
     if (context.streaming) concealIncomplete(root, context.source, mappedLines);
-    if (offset || prefix.length) root.position = { start: sourcePoint(offset, mappedLines), end: sourcePoint(offset + fragment.length, mappedLines) };
+    if (offset || prefix.length || originalFragment !== fragment) root.position = { start: sourcePoint(offset, mappedLines), end: sourcePoint(offset + originalFragment.length, mappedLines) };
     for (const extension of extensions) {
       try { extension.transform?.(root, context); }
       catch (error) { diagnostics.push({ message: error instanceof Error ? error.message : String(error), extension: extension.name }); }

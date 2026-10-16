@@ -82,7 +82,8 @@ function Text({ node, context, mapping: literalMapping, marks: literalMarks, sty
     return () => {
       if (literalMapping) return typeof literalMapping === 'function' ? literalMapping() : literalMapping;
       if (!mapping) {
-        const relative = mapText(raw, value, { start: 0, end: raw.length }, { escapes: node.verbatimEscapes !== true });
+        const omissions = node.sourceOmissions?.map(span => ({ start: span.start - range.start, end: span.end - range.start }));
+        const relative = mapText(raw, value, { start: 0, end: raw.length }, { escapes: node.verbatimEscapes !== true, omissions });
         mapping = { starts: relative.starts.map(offset => offset + range.start), ends: relative.ends.map(offset => offset + range.start), exact: relative.exact };
       }
       return mapping;
@@ -106,8 +107,8 @@ function Text({ node, context, mapping: literalMapping, marks: literalMarks, sty
   const markerAt = new Map<number, AnnotationOccurrence[]>();
   const boundaries = new Set([0, value.length]);
   for (const mark of marks) {
-    let index = mapping.ends.findIndex(end => end >= mark.range.end);
-    index = index < 0 ? value.length : index + 1;
+    let index = mapping.starts.findIndex(start => start >= mark.range.end);
+    index = index < 0 ? value.length : index;
     boundaries.add(index); markerAt.set(index, [...markerAt.get(index) ?? [], mark]);
   }
   for (const highlight of highlights) {
@@ -116,7 +117,7 @@ function Text({ node, context, mapping: literalMapping, marks: literalMarks, sty
     boundaries.add(Math.max(0, start)); boundaries.add(end < 0 ? value.length : end);
   }
   const points = [...boundaries].sort((a, b) => a - b);
-  return <>{points.slice(1).map((end, index) => {
+  return <>{markerAt.get(0)?.map(occurrence => <AnnotationMarker key={occurrence.id} occurrence={occurrence} />)}{points.slice(1).map((end, index) => {
     const start = points[index];
     const segmentRange = { start: mapping.starts[start] ?? range.start, end: mapping.ends[end - 1] ?? range.end };
     const styles = highlights.filter(highlight => intersects(highlight.range, segmentRange));
@@ -141,12 +142,16 @@ function LiteralValue({ node, context, tokens }: { node: MarkdownNode; context: 
   if (!tokens?.length) return <Text key={0} node={{ ...node, type: 'text', value }} context={context} mapping={mapped} marks={marks} />;
   const mapping = mapped();
   const segments = tokens?.length ? tokens : [{ content: value, offset: 0 }];
+  const markerOffsets = marks.map(mark => {
+    const offset = mapping.starts.findIndex(start => start >= mark.range.end);
+    return { mark, offset: offset < 0 ? value.length : offset };
+  });
   return <>{segments.map((token, index) => {
     const start = token.offset, end = start + token.content.length;
     const mapped = { starts: mapping.starts.slice(start, end), ends: mapping.ends.slice(start, end), exact: mapping.exact };
     const range = { start: mapped.starts[0] ?? rangeOf(node).start, end: mapped.ends.at(-1) ?? rangeOf(node).end };
     const leaf: MarkdownNode = { type: 'text', value: token.content, position: { start: { offset: range.start, line: 0, column: 0 }, end: { offset: range.end, line: 0, column: 0 } } };
-    return <Text key={index} className={token.style ? 'limr-code-token' : undefined} style={token.style} node={leaf} context={context} mapping={mapped} marks={marks.filter(mark => mark.range.end > range.start && mark.range.end <= range.end)} />;
+    return <Text key={index} className={token.style ? 'limr-code-token' : undefined} style={token.style} node={leaf} context={context} mapping={mapped} marks={markerOffsets.filter(item => (item.offset > start || start === 0 && item.offset === 0) && item.offset <= end).map(item => item.mark)} />;
   })}</>;
 }
 

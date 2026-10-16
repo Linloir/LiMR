@@ -187,10 +187,10 @@ test('editing has two columns and matches source blocks in both scroll direction
   await expect.poll(() => editor.evaluate(element => element.scrollTop)).toBeCloseTo(expected, 0);
 });
 
-test('touch viewport uses the shared selection geometry and a pinned citation card', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+test('touch viewport uses the shared selection geometry and a pinned citation card', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
-  await page.goto('http://127.0.0.1:4173/?fixture=visual');
+  await page.goto('/?fixture=visual');
   await expect(page.locator('.limr-reader-content .katex')).toHaveCount(3);
   await page.evaluate(() => document.fonts.ready);
   await page.locator('.limr-reader-content > article > p').evaluate(element => {

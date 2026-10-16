@@ -18,9 +18,7 @@ A standalone source marker<ref id="commonmark" /> also marks only its position. 
 
 ## One passage, several thoughts
 
-You can first ==keep stable content and update only what is changing==[^%%limr:main%%], then leave a note and a question on that same sentence. Its range, yellow highlight, note, and question are all stored in this Markdown document.
-
-[^%%limr:main%%]: A fallback explanation that ordinary Markdown viewers can read. LiMR uses the annotation definitions below; this fallback footnote is optional.
+You can first ::%%limr%%{<#main}keep stable content and update only what is changing::%%limr%%{>#main}, then leave a note and a question on that same sentence. Its range, yellow highlight, note, and question are all stored in this Markdown document.
 
 :::limr-annotation{#main-highlight ranges="main" type="highlight" style="background" color="#E5C07B" hidden="false"}
 :::
@@ -38,7 +36,7 @@ Why check the cache first? Could a reference definition at the end of the articl
 
 ## Connect two clues
 
-One passage says ==keep one authoritative source for each fact==[^%%limr:one%%]. Another says ==derive the interface state from the same facts==[^%%limr:two%%]. One note can connect both ranges.
+One passage says ::%%limr%%{<#one}keep one authoritative source for each fact::%%limr%%{>#one}. Another says ::%%limr%%{<#two}derive the interface state from the same facts::%%limr%%{>#two}. One note can connect both ranges.
 
 :::limr-annotation{#shared-note ranges="one two" type="footnote" title="One note, two entrances"}
 Both sentences discuss reducing duplicate state. Edit this note and the same content appears at both markers.
@@ -47,11 +45,11 @@ Both sentences discuss reducing duplicate state. Edit this note and the same con
 :::limr-annotation{#shared-highlight ranges="one,two" type="highlight" style="underline" color="#81B29A"}
 :::
 
-When you later encounter ==keep stable content and update only what is changing==[^%%limr:main%%] again, you can return to the same note. A range ID can appear more than once in a document.
+When you later encounter ::%%limr%%{<#main}keep stable content and update only what is changing::%%limr%%{>#main} again, you can return to the same note. A range ID can appear more than once in a document.
 
 ## Hide the color, or revise the interpretation
 
-==The color can disappear while the thought remains==[^%%limr:hidden%%]. Its note is still available through the marker.
+::%%limr%%{<#hidden}The color can disappear while the thought remains::%%limr%%{>#hidden}. Its note is still available through the marker.
 
 :::limr-annotation{#hidden-highlight ranges="hidden" type="highlight" color="#C08FA3" style="wavy" hidden="true"}
 :::
@@ -60,7 +58,7 @@ When you later encounter ==keep stable content and update only what is changing=
 Hiding a highlight does not delete the note or its range in the source.
 :::
 
-This ==final interpretation==[^%%limr:revision%%] demonstrates replacement rules: the later definition wins when annotation IDs match. When a range has multiple highlights, the last highlight also wins.
+This ::%%limr%%{<#revision}final interpretation::%%limr%%{>#revision} demonstrates replacement rules: the later definition wins when annotation IDs match. When a range has multiple highlights, the last highlight also wins.
 
 :::limr-annotation{#old-color ranges="revision" type="highlight" color="#E5C07B"}
 :::
@@ -76,21 +74,28 @@ The first version recorded only the conclusion.
 The revision adds the conditions under which the conclusion holds. Only this updated version appears in the reader.
 :::
 
-## Several ways to write the same annotation
+## Ranges across paragraphs, formatting and code
 
-The ==HTML component form==[^%%limr:html%%] and the ==double-colon compatibility form==[^%%limr:fallback%%] can share a document with the triple-colon definitions above. None requires a traditional footnote definition.
+::%%limr%%{<#cross-a}Begin with **bold ::%%limr%%{<#cross-b}overlapping content**.
 
-<limr-annotation id="html-note" ranges="html" type="footnote" title="HTML form">
+The next paragraph still belongs to the first range::%%limr%%{>#cross-a}; the second ends here::%%limr%%{>#cross-b}.
 
-Attributes remain strings, and the body can contain **Markdown**.
+:::limr-annotation{#cross-note ranges="cross-a" type="footnote"}
+Ranges can cross paragraphs and Markdown formatting boundaries.
+:::
 
-</limr-annotation>
+:::limr-annotation{#cross-highlight ranges="cross-b" type="highlight" color="#81B29A"}
+:::
 
-::limr-annotation{#fallback-note ranges="fallback" type="question"}
-This definition begins and ends with two colons. Can it be read in the same way as a triple-colon definition?
-::
+```ts
+const value = ::%%limr%%{<#code-example}readCache()::%%limr%%{>#code-example};
+```
 
-If you only want to leave a question between sentences, put it here[^%%limr:point%%] without selecting an entire paragraph.
+:::limr-annotation{#code-note ranges="code-example" type="footnote"}
+Ranges inside code retain exact original source positions.
+:::
+
+If you only want to leave a question between sentences, put it here::%%limr%%{<#point}::%%limr%%{>#point} without selecting an entire paragraph.
 
 :::limr-annotation{#point-question ranges="point" type="question"}
 This is a zero-length position annotation. It keeps its marker without expanding to a paragraph range.
@@ -100,7 +105,7 @@ This is a zero-length position annotation. It keeps its marker without expanding
 
 Enable **Allow Markdown editing** in the top menu. Select a passage and choose **Add inline note**, edit an existing source annotation, or toggle a task below. Open the editor to see the corresponding Markdown change, then use the **Load** menu to download the document.
 
-==Keep this note in the source==[^%%limr:plugin-note%%] uses the Playground's inline-note module. It coexists with external notes and remains readable when Allow Markdown editing is off.
+::%%limr%%{<#plugin-note}Keep this note in the source::%%limr%%{>#plugin-note} uses the Playground's inline-note module. It coexists with external notes and remains readable when Allow Markdown editing is off.
 
 :::limr-annotation{#plugin-note ranges="plugin-note" type="inline-note"}
 This content belongs to the inline-note module. Open it from its marker, or select the related text and choose **Edit inline note**.

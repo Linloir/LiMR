@@ -36,7 +36,7 @@ describe('installed annotation capabilities', () => {
     expect(annotations).toHaveLength(2);
   });
   it('filters mixed source groups while retaining raw source definitions and occurrences', () => {
-    const source = '==word==[^%%limr:r%%]\n\n:::limr-annotation{#custom ranges="r" type="custom"}\nPrivate body\n:::\n\n:::limr-annotation{#note ranges="r" type="footnote"}\nPublic body\n:::';
+    const source = '::%%limr%%{<#r}word::%%limr%%{>#r}\n\n:::limr-annotation{#custom ranges="r" type="custom"}\nPrivate body\n:::\n\n:::limr-annotation{#note ranges="r" type="footnote"}\nPublic body\n:::';
     const extensions = standard();
     const runtime = new ReaderRuntime('mixed', source, false, { extensions: [...extensions, custom] });
     expect(runtime.decorations.get().occurrences.map(item => item.annotationIds)).toEqual([['custom'], ['note']]);
@@ -76,7 +76,7 @@ describe('installed annotation capabilities', () => {
     expect(engine.getSnapshot().annotations).toHaveLength(2);
     engine.setExtensions([]);
     expect(engine.getSnapshot().annotations).toEqual([]);
-    const reserved = '==word==[^%%limr:r%%]\n\n:::limr-annotation{#note ranges="r" type="footnote"}\nOrdinary **body**\n:::';
+    const reserved = '::%%limr%%{<#r}word::%%limr%%{>#r}\n\n:::limr-annotation{#note ranges="r" type="footnote"}\nOrdinary **body**\n:::';
     const named = createDocument(reserved, { extensions: modules });
     expect(named.getSnapshot().annotationRanges.size).toBe(1);
     const withoutNamed = modules.filter(module => module.name !== 'source-annotations');

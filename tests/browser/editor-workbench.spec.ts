@@ -149,7 +149,7 @@ test('the Markdown switch enables inline notes while ordinary notes stay externa
   const inline = page.getByRole('textbox', { name: '注释 Markdown', exact: true });
   await inline.fill('Saved inside Markdown'); await inline.press('ControlOrMeta+Enter');
   const next = await page.locator('.demo-editor').inputValue();
-  expect(next).toContain('[^%%limr:'); expect(next).toContain('type="inline-note"'); expect(next).toContain('Saved inside Markdown');
+  expect(next).toContain('::%%limr%%{<#'); expect(next).toContain('type="inline-note"'); expect(next).toContain('Saved inside Markdown');
   expect(next).not.toContain('Externally saved note');
 });
 

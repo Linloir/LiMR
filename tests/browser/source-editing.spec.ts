@@ -34,7 +34,7 @@ for (const width of [560, 1460]) test(`optional inline notes reuse their range a
   await editor.press('ControlOrMeta+Enter');
   await expect(editor).toHaveCount(0);
   const source = await page.locator('#stream-source').textContent() ?? '';
-  expect(source.match(/\[\^%%limr:/g)).toHaveLength(1);
+  expect(source.match(/::%%limr%%\{<#/g)).toHaveLength(1);
   expect(source.match(/type="inline-note"/g)).toHaveLength(1);
   expect(source.match(/type="highlight"/g)).toHaveLength(1);
   expect(source).toContain('Why **this range**?');

@@ -1,10 +1,21 @@
-import { rangeOf, type MarkdownNode, type TextMapping } from '../core';
+import { omitSource, rangeOf, type MarkdownNode, type TextMapping } from '../core';
 
 export function literalValue(node: MarkdownNode): string { return (node.value ?? '').replace(/\r\n?|\n/g, node.type === 'inlineCode' ? ' ' : '\n'); }
 
 /** Literal code does not decode Markdown entities/escapes. Map only its visible
  * payload, including CommonMark code-span whitespace and fence indentation. */
 export function mapLiteral(source: string, node: MarkdownNode): TextMapping {
+  if (node.sourceOmissions?.length) {
+    const range = rangeOf(node), omitted = omitSource(source.slice(range.start, range.end), node.sourceOmissions, range.start);
+    const boundary = (offset: number) => offset - range.start - node.sourceOmissions!.reduce((removed, span) =>
+      removed + Math.max(0, Math.min(offset, span.end) - Math.max(range.start, span.start)), 0);
+    const payload = node.valueRange as { start: number; end: number } | undefined;
+    const mapped = mapLiteral(omitted.value, { ...node, sourceOmissions: undefined,
+      position: { start: { offset: 0, line: 1, column: 1 }, end: { offset: omitted.value.length, line: 1, column: 1 } },
+      ...(payload ? { valueRange: { start: boundary(payload.start), end: boundary(payload.end) } } : {}),
+    });
+    return { starts: mapped.starts.map(at => range.start + omitted.original(at, 'start')), ends: mapped.ends.map(at => range.start + omitted.original(at, 'end')), exact: mapped.exact };
+  }
   const range = rangeOf(node), raw = source.slice(range.start, range.end), value = literalValue(node);
   const starts: number[] = [], ends: number[] = [];
   if (node.valueRange) {

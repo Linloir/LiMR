@@ -26,7 +26,7 @@ The default modules below ship with `@linloir/limr`. `Reader`, standalone `Markd
 | `callout()` | `callout` | Typed, titled and collapsible quotes | `> [!type]`, `::callout` |
 | `inlineHighlights()` | `inline-highlights` | Source-authored highlights | `==text==`, `::highlight` |
 | `footnotes()` | `footnotes` | Comment markers and footnote cards | `[^id]`, `^[body]`, `::footnote`, `::footnote-ref` |
-| `sourceAnnotations()` | `source-annotations` | Named ranges and Markdown-stored annotations | `[^%%limr:id%%]`, `::limr-annotation` |
+| `sourceAnnotations()` | `source-annotations` | Named ranges and Markdown-stored annotations | `::%%limr%%{<#id}` / `::%%limr%%{>#id}`, `:::limr-annotation` |
 
 These are registered static tags in Markdown, not an arbitrary MDX/HTML execution environment. Use string attributes such as `multi="true"` and `answer="[0,2]"`. Do not use `answer={[0,2]}`, event functions, or spread attributes. Unregistered HTML is displayed as text; expressions are not executed and may produce diagnostics. Keep blank lines between block tags and their Markdown content.
 
@@ -458,12 +458,10 @@ Rendered result; click a highlight or comment marker:
 
 ## Annotations stored in Markdown
 
-`sourceAnnotations()` is included in `standard()`, after `inlineHighlights()` and `footnotes()`. A reserved footnote label binds a named range to one or more annotation definitions:
+`sourceAnnotations()` is included in `standard()`, after `inlineHighlights()` and `footnotes()`. Paired boundaries bind a named range to one or more annotation definitions. The boundaries are removed before Markdown parsing, so ranges can cross formatting and paragraphs or occur inside code:
 
 ```markdown
-abcd==efg==[^%%limr:r1%%]
-
-[^%%limr:r1%%]: A fallback annotation for ordinary Markdown viewers.
+abcd::%%limr%%{<#r1}efg::%%limr%%{>#r1}
 
 :::limr-annotation{#h1 ranges="r1" type="highlight" style="background" color="#E5C07B" hidden="false"}
 :::
@@ -479,30 +477,35 @@ Why check the cache first?
 
 `sourceAnnotations()` provides generic syntax and serialization, without registering a question card. In this example, highlight is built in, footnote comes from the default footnote module, and question requires a registered module. Playground uses the [reading notes example](../../examples/notes.tsx) for that type and card.
 
-Only the exact, case-sensitive `[^%%limr:<id>%%]` spelling activates this mode. Use stable range IDs such as `r1`, `my-range`, or a UUID; `r1` and `R1` differ. IDs cannot contain whitespace, `%`, or `]`. URL-shaped labels are unsupported because Markdown autolink parsing can consume their source positions. The fallback `[^%%limr:r1%%]:` definition is optional and hidden by LiMR. The `limr-annotation` bodies supply the annotation content. A standalone reserved marker also works, using a zero-length range.
+The exact, case-sensitive pair `::%%limr%%{<#r1}` and `::%%limr%%{>#r1}` activates only when a complete `:::limr-annotation` block references `r1` in `ranges`. IDs start with an ASCII letter or digit and then contain letters, digits, `_`, `.`, `:`, or `-`. Missing definitions, unmatched boundaries and ambiguous duplicate openings remain literal. Adjacent start/end boundaries define a zero-length position. The same ID may be reused in separate, sequential pairs; nested or crossing ranges use distinct IDs.
+
+Markers work inside inline and fenced code when a real definition references their ID. Definitions shown inside code do not count. To show a marker literally even when a matching definition exists elsewhere, escape its first colon as `\::%%limr%%{<#r1}` (escape both boundaries in examples).
+
+Version 1.2.0 removes the former `==text==[^%%limr:r1%%]` annotation binding and its reserved fallback-footnote behavior. Replace it with the pair above and keep the triple-colon definition. Standalone `==highlight==`, ordinary Markdown footnotes, and citations remain separate features. Named annotation definitions use triple-colon blocks; HTML and paired two-colon alternatives are no longer supported.
 
 | Field | Meaning |
 | --- | --- |
 | `#n1` or `id="n1"` | Annotation ID; the last definition with the same ID replaces earlier definitions |
-| `ranges="r1 r2"` | Named ranges, separated by spaces or commas; the same range ID can appear in several places |
+| `ranges="r1 r2"` | Named ranges, separated by spaces or commas; defaults to the annotation ID when omitted; the same range ID can appear in several places |
 | `type` | Annotation type, such as `highlight`, `footnote`, or `question`; defaults to `footnote` |
 | `style`, `color`, `hidden` | Highlight appearance; `hidden="true"` hides paint without deleting the annotation |
 | Body | Markdown content exposed as `data.body`; other scalar attributes are passed to the owning annotation module |
 
-A range can have several content annotations but only one effective highlight: the last highlight definition targeting that range wins. On reserved ranges, `==…==` names the content span. Without an explicit highlight, or with hidden=true, feedback appears only on hover, using highlight.color when supplied and otherwise the default inline highlight color. Visible explicit paint is drawn once, and every content annotation has its own marker. An annotation referencing an unknown range keeps its definition and has no visible occurrence until the range exists. Unknown annotation types preserve their data and referenced text, but have no annotation UI until a module registers the type.
+A range can have several content annotations but only one effective highlight: the last highlight definition targeting that range wins. The paired boundaries identify the content span without applying paint themselves. Without an explicit highlight, or with hidden=true, feedback appears only on hover, using highlight.color when supplied and otherwise the default inline highlight color. Visible explicit paint is drawn once, and every content annotation has its own marker. An annotation referencing an unknown range keeps its definition and has no visible occurrence until the range exists. Unknown annotation types preserve their data and referenced text, but have no annotation UI until a module registers the type.
 
-The equivalent component forms are supported, including the two-colon fallback:
+Distinct IDs distinguish nesting from crossing without relying on Markdown nesting:
 
 ```markdown
-<limr-annotation id="n1" ranges="r1" type="footnote">
+::%%limr%%{<#a}First **bold ::%%limr%%{<#b}overlap**.
 
-A note with **Markdown**.
+Next paragraph::%%limr%%{>#a} ends here::%%limr%%{>#b}.
 
-</limr-annotation>
+:::limr-annotation{#first ranges="a" type="footnote"}
+The first range crosses paragraphs.
+:::
 
-::limr-annotation{#q1 ranges="r1" type="question"}
-Why check the cache first?
-::
+:::limr-annotation{#second ranges="b" type="highlight" color="#81B29A"}
+:::
 ```
 
-Definitions may precede or follow their ranges. Streaming keeps incomplete definition headers and bodies hidden until the block closes, then resolves annotations against already parsed ranges. See [annotations and selection](annotations.md) for the source metadata and editing contract.
+Definitions may precede or follow their ranges. Streaming keeps incomplete definition headers and bodies hidden. Markers remain literal until their complete pair and definition are available, then the affected content is parsed with those boundaries removed. See [annotations and selection](annotations.md) for source metadata and editing.

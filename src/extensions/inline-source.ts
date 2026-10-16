@@ -15,7 +15,7 @@ export function sliceInline(node: MarkdownNode, from: number, until: number, sou
   let start = Math.max(range.start, from), end = Math.min(range.end, until);
   const result = { ...node };
   if (node.type === 'text') {
-    const value = (node.value ?? '').replace(/\r\n?/g, '\n'), mapped = mapText(source, value, range);
+    const value = (node.value ?? '').replace(/\r\n?/g, '\n'), mapped = mapText(source, value, range, { omissions: node.sourceOmissions });
     const first = mapped.ends.findIndex(offset => offset > start);
     let last = mapped.starts.findIndex(offset => offset >= end);
     if (first < 0) return;
@@ -38,7 +38,7 @@ export function textTokens(children: readonly MarkdownNode[], expression: RegExp
     if (node.type !== 'text' || !node.value || !node.position) return [];
     const matches = [...node.value.matchAll(expression)];
     if (!matches.length) return [];
-    const map = mapText(source, node.value, rangeOf(node));
+    const map = mapText(source, node.value, rangeOf(node), { omissions: node.sourceOmissions });
     return matches.flatMap(match => {
       const start = map.starts[match.index!], end = map.ends[match.index! + match[0].length - 1];
       return source.slice(start, end) === match[0] ? [{ start, end }] : [];

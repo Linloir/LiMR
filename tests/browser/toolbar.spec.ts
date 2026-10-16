@@ -115,10 +115,10 @@ test('new highlights apply palette choices and remain editable after selecting o
 
 });
 
-test('touch users can open options explicitly and edit a highlight in a narrow viewport', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+test('touch users can open options explicitly and edit a highlight in a narrow viewport', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
-  await page.goto('http://127.0.0.1:4173/?fixture=toolbar'); await select(page);
+  await page.goto('/?fixture=toolbar'); await select(page);
   const toolbar = page.getByRole('toolbar');
   await toolbar.getByRole('button', { name: '调整高亮', exact: true }).tap();
   await toolbar.getByRole('button', { name: '点线', exact: true }).tap();

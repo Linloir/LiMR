@@ -2,11 +2,16 @@ import { expect, test, type Page } from '@playwright/test';
 import { sample } from '../../playground/sample';
 
 async function important(page: Page) {
-  await page.locator('.limr-reader-content strong').first().evaluate(element => {
+  const target = page.locator('.limr-reader-content strong').first();
+  // Focusing and saving a sidebar editor can scroll the first paragraph away.
+  // A DOM Range alone does not bring its text back into the reading viewport.
+  await target.scrollIntoViewIfNeeded();
+  await target.evaluate(element => {
     const range = document.createRange(); range.selectNodeContents(element);
     getSelection()!.removeAllRanges(); getSelection()!.addRange(range);
   });
   await expect(page.getByRole('toolbar')).toBeVisible();
+  await expect(page.getByRole('toolbar')).toBeInViewport();
 }
 
 for (const width of [560, 1440]) test(`reading note modules keep borderless editor focus at ${width}px`, async ({ page }) => {

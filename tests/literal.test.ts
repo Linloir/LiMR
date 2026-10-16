@@ -20,3 +20,18 @@ describe('literal source mapping', () => {
     expect(mapping.starts.map((start, index) => source.slice(start, mapping.ends[index]).replace(/\r\n?/g, '\n')).join('')).toBe(literalValue(node));
   });
 });
+
+describe('literal mapping with removed annotation boundaries', () => {
+  for (const [source, value, type] of [
+    ['`a::%%limr%%{<#r}b::%%limr%%{>#r}c`', 'abc', 'inlineCode'],
+    ['```ts\r\na::%%limr%%{<#r}b\r\nc::%%limr%%{>#r}d\r\n```', 'ab\ncd', 'code'],
+    ['> ```ts\n> ::%%limr%%{<#r}code::%%limr%%{>#r}\n> ```', 'code', 'code'],
+  ]) it(`maps ${type} payload through exact source omissions`, () => {
+    const omissions = [...source.matchAll(/::%%limr%%\{[<>]#r\}/g)].map(match => ({ start: match.index!, end: match.index! + match[0].length }));
+    const node = { type, value, sourceOmissions: omissions, position: { start: { offset: source.startsWith('>') ? 2 : 0, line: 1, column: 1 }, end: { offset: source.length, line: 1, column: 1 } } };
+    const mapping = mapLiteral(source, node);
+    expect(mapping.exact).toBe(true);
+    expect(mapping.starts.map((start, index) => source.slice(start, mapping.ends[index]).replace(/\r\n?/g, '\n')).join('')).toBe(value);
+    expect(mapping.starts.every(start => omissions.every(span => start < span.start || start >= span.end))).toBe(true);
+  });
+});

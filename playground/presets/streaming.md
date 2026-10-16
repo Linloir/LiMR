@@ -70,7 +70,7 @@ flowchart LR
 
 ## 定义可以晚一点抵达
 
-先读到==已经稳定的内容不必重新生成==[^%%limr:stable-prefix%%]，后面才出现它的笔记和问题。观察角标如何在完整定义抵达后与这段文字关联；不完整的标注头部和正文不会混入文章。
+先读到::%%limr%%{<#stable-prefix}已经稳定的内容不必重新生成::%%limr%%{>#stable-prefix}，后面才出现它的笔记和问题。观察角标如何在完整定义抵达后与这段文字关联；不完整的标注头部和正文不会混入文章。
 
 :::limr-annotation{#stable-highlight ranges="stable-prefix" type="highlight" style="underline" color="#81B29A"}
 :::

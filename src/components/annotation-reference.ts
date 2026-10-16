@@ -1,5 +1,6 @@
 import { annotationReferenceRange, mapText, type AnnotationOccurrence, type DocumentSnapshot, type MarkdownNode } from '../core';
 import { intersects, rangeOf } from '../core/tree';
+import { literalValue, mapLiteral } from '../react/literal';
 
 /** Render the anchored text, without exposing Markdown syntax or <ref> tags. */
 export function annotationReferenceText(document: DocumentSnapshot, occurrence: AnnotationOccurrence): string {
@@ -27,8 +28,11 @@ export function annotationReferenceText(document: DocumentSnapshot, occurrence: 
     const range = rangeOf(node);
     if (!intersects(range, referenceRange) || ['footnoteReference', 'annotationDefinition', 'footnoteDefinition', 'definition'].includes(node.type)) return;
     if (node.value !== undefined) {
-      const mapping = mapText(document.source, node.value, range);
-      reference += node.value.split('').filter((_, index) => mapping.ends[index] > referenceRange.start && mapping.starts[index] < referenceRange.end).join('');
+      const literal = node.type === 'code' || node.type === 'inlineCode' || !!node.valueRange;
+      const value = literal ? literalValue(node) : node.value;
+      const mapping = literal ? mapLiteral(document.source, node)
+        : mapText(document.source, value, range, { escapes: node.verbatimEscapes !== true, omissions: node.sourceOmissions });
+      reference += value.split('').filter((_, index) => mapping.ends[index] > referenceRange.start && mapping.starts[index] < referenceRange.end).join('');
     } else if (node.type === 'image') reference += String(node.alt ?? '');
     else node.children?.forEach(visit);
   };

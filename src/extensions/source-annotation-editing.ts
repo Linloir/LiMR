@@ -1,10 +1,12 @@
-import { mapText, rangeOf, resolveAnnotationAnchors, sameRange, walk, type Annotation, type DocumentSnapshot, type MarkdownNode, type SourceEdit, type SourceRange } from '../core';
+import { mapText, omitSource, rangeOf, resolveAnnotationAnchors, sameRange, type Annotation, type DocumentSnapshot, type MarkdownNode, type SourceEdit, type SourceRange } from '../core';
 import type { SourceAnnotationChange } from '../react/types';
+import { mapLiteral } from '../react/literal';
+import { annotationContinuationPrefix } from './source-annotation-format';
 
 const key = (range: SourceRange) => `${range.start}:${range.end}`;
 const attribute = (value: string) => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/\r/g, '&#13;').replace(/\n/g, '&#10;');
-const overlaps = (a: SourceRange, b: SourceRange) => a.start === a.end ? a.start > b.start && a.start < b.end : b.start === b.end ? b.start > a.start && b.start < a.end : a.start < b.end && b.start < a.end;
-const inlineContainers = new Set(['paragraph', 'heading', 'tableCell', 'strong', 'emphasis', 'delete', 'link', 'linkReference']);
+const openingMarker = (id: string) => `::%%limr%%{<#${id}}`;
+const closingMarker = (id: string) => `::%%limr%%{>#${id}}`;
 
 function serialize(annotation: Annotation, rangeIds: readonly string[], newline: string) {
   const data = annotation.data ?? {};
@@ -22,65 +24,42 @@ function serialize(annotation: Annotation, rangeIds: readonly string[], newline:
   return `${fence}limr-annotation{${encoded}}${newline}${body ? body + newline : ''}${fence}`;
 }
 
-/** Each delimiter pair must stay in one inline parent. A visual selection can
- * cross partially selected formatting nodes; split those edges into named
- * ranges instead of moving Markdown delimiters or including unselected text. */
-function inlineRangeParts(document: DocumentSnapshot, range: SourceRange): SourceRange[] {
+/** Boundaries are independent: a range may cross Markdown nodes, blocks and
+ * other annotations, but must not split an encoded character or hidden token. */
+function validateRange(document: DocumentSnapshot, range: SourceRange) {
   const { source } = document;
-  const boundary = (children: readonly MarkdownNode[], offset: number) => children.some(child => {
-    const span = rangeOf(child);
-    if (offset === span.start || offset === span.end) return true;
-    if (child.type !== 'text' || offset < span.start || offset > span.end) return false;
-    const mapped = mapText(source, child.value ?? '', span);
-    return mapped.starts.includes(offset) || mapped.ends.includes(offset);
-  });
-  const descendantBoundary = (node: MarkdownNode, offset: number): boolean => !!node.children && (boundary(node.children, offset)
-    || node.children.some(child => inlineContainers.has(child.type) && rangeOf(child).start < offset && rangeOf(child).end > offset && descendantBoundary(child, offset)));
-  let valid = false, container: MarkdownNode | undefined;
-  for (const block of document.blocks) {
-    if (block.range.end < range.start || block.range.start > range.end) continue;
-    walk(block.node, node => {
-      if (!inlineContainers.has(node.type) || !node.children?.length) return;
-      const span = rangeOf(node);
-      if (span.start <= range.start && span.end >= range.end && boundary(node.children, range.start) && boundary(node.children, range.end)) valid = true;
-      if (['paragraph', 'heading', 'tableCell'].includes(node.type) && span.start <= range.start && span.end >= range.end
-        && descendantBoundary(node, range.start) && descendantBoundary(node, range.end)) container = node;
-    });
-  }
-  const brokenBoundary = [range.start, range.end].some(offset => {
+  const tokens = [...document.annotationRanges.values()].flat().flatMap(item => [item.openingRange, item.markerRange]);
+  const boundary = (offset: number) => {
+    if (!Number.isInteger(offset) || offset < 0 || offset > source.length) return false;
     const previous = source.charCodeAt(offset - 1), next = source.charCodeAt(offset);
     const slashes = /\\+$/.exec(source.slice(0, offset))?.[0].length ?? 0;
-    return previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff || slashes % 2 === 1 || source[offset - 1] === '=' || source[offset] === '=';
-  });
-  const invalid = () => { throw new Error('Source annotations need an inline text range with complete Markdown boundaries inside one paragraph, heading or table cell.'); };
-  if (!valid && !container || brokenBoundary || /\r?\n\s*\r?\n|(?<!\\)==/.test(source.slice(range.start, range.end))) invalid();
-  if (valid) return [range];
-  const split = (node: MarkdownNode): SourceRange[] => {
-    const parts: SourceRange[] = [];
-    let pending: SourceRange | undefined;
-    const flush = () => { if (pending) parts.push(pending); pending = undefined; };
-    for (const child of node.children ?? []) {
-      const span = rangeOf(child);
-      if (span.end <= range.start || span.start >= range.end) continue;
-      if (child.type === 'text' || span.start >= range.start && span.end <= range.end) {
-        const selected = { start: Math.max(span.start, range.start), end: Math.min(span.end, range.end) };
-        if (pending) pending.end = selected.end; else pending = selected;
-      } else {
-        if (!inlineContainers.has(child.type)) invalid();
-        flush(); parts.push(...split(child));
+    if (previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff || previous === 13 && next === 10 || slashes % 2 === 1) return false;
+    if (tokens.some(token => offset > token.start && offset < token.end)) return false;
+    const visit = (node: MarkdownNode): boolean => {
+      if (['annotationDefinition', 'definition', 'footnoteDefinition'].includes(node.type)) return false;
+      const span = rangeOf(node);
+      if (offset < span.start || offset > span.end) return false;
+      if (offset === span.start || offset === span.end) return true;
+      if (node.type === 'text' || ['inlineCode', 'code'].includes(node.type)) {
+        const mapped = node.type === 'text'
+          ? mapText(source, node.value ?? '', span, { escapes: node.verbatimEscapes !== true, omissions: node.sourceOmissions as readonly SourceRange[] | undefined })
+          : mapLiteral(source, node);
+        return mapped.exact && (mapped.starts.includes(offset) || mapped.ends.includes(offset));
       }
-    }
-    flush(); return parts;
+      return node.children?.some(visit) ?? false;
+    };
+    return !source.length || document.blocks.some(block => visit(block.node));
   };
-  const parts = split(container!);
-  if (!parts.length) invalid();
-  return parts;
+  if (!boundary(range.start) || !boundary(range.end)) throw new Error('Source annotations require complete text boundaries; do not split an escape, entity, Unicode character or source token.');
 }
 
 function validateAppend(document: DocumentSnapshot) {
   const last = document.blocks.at(-1);
   if (!last) return;
-  const raw = document.source.slice(last.range.start, last.range.end);
+  // Closing annotation markers can extend a literal block's source span beyond
+  // its fence. Validate the same Markdown text that the parser actually saw.
+  const omissions = [...document.annotationRanges.values()].flatMap(ranges => ranges.flatMap(range => [range.openingRange, range.markerRange])).sort((a, b) => a.start - b.start);
+  const raw = omitSource(document.source.slice(last.range.start, last.range.end), omissions, last.range.start).value;
   const opening = ['code', 'mermaid', 'math'].includes(last.node.type) && /^[ \t]*(`{3,}|~{3,}|\${2,})/.exec(raw);
   const closing = /(?:\r\n|\r|\n)[ \t]*(`+|~+|\$+)[ \t]*$/.exec(raw);
   const openFence = opening && (!closing || opening[1][0] !== closing[1][0] || closing[1].length < opening[1].length);
@@ -122,44 +101,42 @@ export function editSourceAnnotations(change: SourceAnnotationChange, document: 
     });
     if (partial) splits.set(id, ids);
   }
-  const newRanges: SourceRange[] = [];
   const preservedInline = new Set<string>();
-  const existingSyntax = [...document.annotationRanges.values()].flat().map(range => ({ start: range.syntaxRange.start, end: range.markerRange.end }));
   const inlineHighlights = document.annotations.filter(item => item.source?.module === 'inline-highlights');
+  const unwrappedInline = new Set<string>();
+  const unwrapInline = (annotation: Annotation) => {
+    if (unwrappedInline.has(annotation.id)) return;
+    const range = resolveAnnotationAnchors(annotation, document)[0]?.range, syntax = annotation.source?.ranges[0];
+    if (!range || !syntax) return;
+    // Remove the highlight's own delimiters, preserving any named boundaries
+    // and other syntax already inside its selected text.
+    if (syntax.start < range.start) edits.push({ range: { start: syntax.start, end: range.start }, text: '' });
+    if (range.end < syntax.end) edits.push({ range: { start: range.end, end: syntax.end }, text: '' });
+    unwrappedInline.add(annotation.id);
+  };
   const createRange = (range: SourceRange): string => {
     const found = bindings.get(key(range));
     if (found) return found;
     const inline = inlineHighlights.find(item => resolveAnnotationAnchors(item, document).some(anchor => sameRange(anchor.range, range)));
-    if (existingSyntax.some(span => overlaps(range, span)) || newRanges.some(span => overlaps(range, span)) || inlineHighlights.some(item => item !== inline && item.source!.ranges.some(span => overlaps(range, span) || range.start === range.end && range.start === span.end))) throw new Error('Source annotation ranges cannot overlap or nest; reuse the existing exact range or select a separate range.');
-    // The body of an existing highlight is already inside its own == delimiters.
-    if (!inline) inlineRangeParts(document, range);
-    const id = `r-${crypto.randomUUID()}`, marker = `[^%%limr:${id}%%]`;
+    validateRange(document, range);
+    const id = `r-${crypto.randomUUID()}`;
     if (inline) {
-      edits.push({ range: inline.source!.ranges[0], text: `==${source.slice(range.start, range.end)}==${marker}` });
+      unwrapInline(inline);
       if (!removedIds.has(inline.id) && !replacements.has(inline.id) && !preservedInline.has(inline.id)) {
         additions.push(serialize(inline, [id], newline)); preservedInline.add(inline.id);
       }
-    } else if (range.start === range.end) insert(range.start, marker, 1);
-    else {
-      insert(range.start, '==', 2);
-      insert(range.end, `==${marker}`, 0);
     }
-    newRanges.push(range); bindings.set(key(range), id); return id;
-  };
-  // The automatic highlight and its note receive the same segment IDs even
-  // though both commands still describe the original, continuous selection.
-  const groupedBindings = new Map<string, string[]>();
-  const createRanges = (range: SourceRange): string[] => {
-    const cached = groupedBindings.get(key(range));
-    if (cached) return cached;
-    const reusable = bindings.has(key(range)) || inlineHighlights.some(item => resolveAnnotationAnchors(item, document).some(anchor => sameRange(anchor.range, range)));
-    const ids = (reusable ? [range] : inlineRangeParts(document, range)).map(createRange);
-    groupedBindings.set(key(range), ids); return ids;
+    if (range.start === range.end) insert(range.start, openingMarker(id) + closingMarker(id), 1);
+    else {
+      insert(range.start, openingMarker(id), 2);
+      insert(range.end, closingMarker(id), 0);
+    }
+    bindings.set(key(range), id); return id;
   };
   for (const annotation of changed) {
     const anchors = resolveAnnotationAnchors(annotation, document);
     if (!anchors.length) throw new Error('A source annotation requires an anchor in the current document.');
-    const ids = [...new Set(anchors.flatMap(anchor => createRanges(anchor.range)))];
+    const ids = [...new Set(anchors.map(anchor => createRange(anchor.range)))];
     definitionIds.set(annotation.id, ids); ids.forEach(id => activeRangeIds.add(id));
   }
   const rewritten = finalAnnotations.filter(annotation => !definitionIds.has(annotation.id) && annotation.source?.module === 'source-annotations' && annotation.source.rangeIds?.some(id => splits.has(id)));
@@ -170,25 +147,27 @@ export function editSourceAnnotations(change: SourceAnnotationChange, document: 
     if (rewritten.includes(annotation)) definitionIds.set(annotation.id, ids);
   }
   for (const { previous, annotation } of [...change.updated, ...rewritten.map(annotation => ({ previous: annotation, annotation }))]) {
-    if (previous.source?.module === 'inline-highlights') { additions.push(serialize(annotation, definitionIds.get(annotation.id)!, newline)); continue; }
+    if (previous.source?.module === 'inline-highlights') { unwrapInline(previous); additions.push(serialize(annotation, definitionIds.get(annotation.id)!, newline)); continue; }
     const spans = previous.source!.ranges;
-    spans.forEach((range, index) => edits.push({ range, text: index === spans.length - 1 ? serialize(annotation, definitionIds.get(annotation.id)!, newline) : '' }));
+    spans.forEach((range, index) => {
+      const prefix = annotationContinuationPrefix(source, range.start);
+      const text = index === spans.length - 1 ? serialize(annotation, definitionIds.get(annotation.id)!, newline).replace(/\r\n|\r|\n/g, line => line + prefix) : '';
+      edits.push({ range, text });
+    });
   }
   for (const annotation of change.added) additions.push(serialize(annotation, definitionIds.get(annotation.id)!, newline));
   for (const annotation of change.removed) {
-    if (annotation.source?.module === 'inline-highlights') {
-      const range = resolveAnnotationAnchors(annotation, document)[0]?.range;
-      if (range) edits.push({ range: annotation.source.ranges[0], text: source.slice(range.start, range.end) });
-    } else annotation.source!.ranges.forEach(range => edits.push({ range, text: '' }));
+    if (annotation.source?.module === 'inline-highlights') unwrapInline(annotation);
+    else annotation.source!.ranges.forEach(range => edits.push({ range, text: '' }));
   }
   const unwrapped = new Set<string>();
   const touchedIds = new Set([...change.removed, ...change.updated.map(item => item.previous)].flatMap(item => [...item.source?.rangeIds ?? []]));
   for (const id of touchedIds) for (const range of document.annotationRanges.get(id) ?? []) if (!activeRangeIds.has(bindings.get(key(range.range)) ?? id)) {
-    edits.push({ range: { start: range.syntaxRange.start, end: range.markerRange.end }, text: source.slice(range.range.start, range.range.end) });
+    edits.push({ range: range.openingRange, text: '' }, { range: range.markerRange, text: '' });
     unwrapped.add(key(range.markerRange));
   }
   for (const [id, ids] of splits) (document.annotationRanges.get(id) ?? []).forEach((range, index) => {
-    if (ids[index] !== id && !unwrapped.has(key(range.markerRange))) edits.push({ range: range.markerRange, text: `[^%%limr:${ids[index]}%%]` });
+    if (ids[index] !== id && !unwrapped.has(key(range.markerRange))) edits.push({ range: range.openingRange, text: openingMarker(ids[index]) }, { range: range.markerRange, text: closingMarker(ids[index]) });
   });
   if (additions.length) {
     validateAppend(document);

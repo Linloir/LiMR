@@ -151,10 +151,10 @@ test('multiple readers scope heading IDs and radio groups', async ({ page }) => 
   await expect(page.locator('input:checked')).toHaveCount(2);
 });
 
-test('touch marker pins a citation without an expansion control', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+test('touch marker pins a citation without an expansion control', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
-  await page.goto('http://127.0.0.1:4173/#/playground');
+  await page.goto('/#/playground');
   await page.locator('.limr-mark').first().tap();
   await expect(page.locator('.limr-annotation-preview')).toHaveAttribute('data-pinned', 'true');
   await expect(page.locator('.limr-annotation-expanded')).toHaveCount(0);
@@ -189,11 +189,11 @@ test('server HTML hydrates with stable IDs and object selectors update without l
   expect(errors).toEqual([]);
 });
 
-test('annotation requests survive preview expansion, cache hits and payload invalidation', async ({ page }) => {
+test('annotation requests survive preview expansion, cache hits and payload invalidation', async ({ page, baseURL }) => {
   await page.setViewportSize({ width: 700, height: 900 });
   let requests = 0;
   const outside: string[] = [];
-  page.on('request', request => { if (!request.url().startsWith('http://127.0.0.1:4173')) outside.push(request.url()); });
+  page.on('request', request => { if (new URL(request.url()).origin !== new URL(baseURL!).origin) outside.push(request.url()); });
   await page.route('**/mock/annotation?*', async route => {
     requests++;
     const version = Number(new URL(route.request().url()).searchParams.get('version'));

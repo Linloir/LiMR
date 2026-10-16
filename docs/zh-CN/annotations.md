@@ -88,9 +88,9 @@ Citation 默认 `highlight: 'hover'`。角标或侧栏条目悬浮、或引用�
 
 ## 源码中的命名范围
 
-默认 `sourceAnnotations()` 模块将 `==文本==[^%%limr:r1%%]` 与 `:::limr-annotation` 定义关联。[语法文档](syntax.md#保存在-markdown-中的标注)列出了完整写法和覆盖规则。定义会生成普通 `Annotation` 及解析好的 `anchors`，同一命名范围的每条内容标注生成独立角标。解析快照仍记录源码中的引用组，运行时 occurrence 以 markerId 关联该源码位置。
+默认 `sourceAnnotations()` 模块将 `::%%limr%%{<#r1}文本::%%limr%%{>#r1}` 与 `:::limr-annotation` 定义关联。[语法文档](syntax.md#保存在-markdown-中的标注)列出了完整写法和覆盖规则。定义会生成普通 `Annotation` 及解析好的 `anchors`，同一命名范围的每条内容标注生成独立角标。解析快照仍记录源码中的引用组，运行时 occurrence 以 markerId 关联该源码位置。
 
-`DocumentSnapshot.annotationRanges` 将区分大小写的范围 ID 映射到各个出现位置。每个 `SourceAnnotationRange` 包含 `range`（引用文本）、`syntaxRange`（原始 `==…==` 跨度）和 `markerRange`（保留脚注角标）。三者都是未改写源码的 UTF-16 坐标。没有范围的保留角标，其 `range` 和 `syntaxRange` 长度为零。
+`DocumentSnapshot.annotationRanges` 将区分大小写的范围 ID 映射到各个出现位置。每个 `SourceAnnotationRange` 包含 `range`（两端之间的内容）、`openingRange`（开始标记）、`markerRange`（结束标记）和 `syntaxRange`（包含正文的完整标记对）。它们都是未改写源码的 UTF-16 坐标。两端紧邻时 `range` 长度为零。删除某个范围时只移除它自己的两个标记，保留嵌套或交错的其他范围。
 
 `Annotation.source` 记录负责该语法的模块、定义源码 `ranges` 和可选的命名 `rangeIds`。重复 ID 只暴露最后一份数据，但保留所有定义跨度，供源码编辑器更新或删除时一并处理，避免旧定义重新生效。普通 `==文本==` 高亮的所属模块为 `inline-highlights`，命名定义为 `source-annotations`。这些元数据属于当前解析结果，原文变化后应重新生成。
 
@@ -106,4 +106,4 @@ Citation 默认 `highlight: 'hover'`。角标或侧栏条目悬浮、或引用�
 
 零长度标注的灰色引用栏显示角标前的可读上下文，按栏宽截取并在两端加省略号；这不会扩大高亮或工具栏的实际范围。点击高亮会打开选区工具栏；侧栏模式下，点击角标也会提供对应范围的工具栏。悬浮卡片打开或固定时会关闭原有工具栏并清除正文选区，避免工具栏遮住卡片。动作仍遵循插件能力与源码编辑权限。
 
-对于 `==文本==` 后接脚注或命名标注的内联范围，仅显式且未隐藏的 highlight 定义提供常驻高亮。没有定义或 hidden=true 时只在悬浮时显色，优先采用 highlight 的 color，再使用默认内联高亮色。已有可见高亮的范围不会再叠加悬浮底色。单独的 `==文本==` 仍是常驻内联高亮。
+对于普通脚注关联的 `==文本==` 或成对 ID 边界声明的命名范围，仅显式且未隐藏的 highlight 定义提供常驻高亮。没有定义或 hidden=true 时只在悬浮时显色，优先采用 highlight 的 color，再使用默认内联高亮色。已有可见高亮的范围不会再叠加悬浮底色。单独的 `==文本==` 仍是常驻内联高亮。

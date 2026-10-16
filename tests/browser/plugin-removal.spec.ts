@@ -62,7 +62,7 @@ for (const width of [560, 1460]) test(`uninstall hides note UI and preserves sav
 
 test('uninstalling inline notes preserves source, registered questions and default task editing', async ({ page }) => {
   await page.setViewportSize({ width: 1460, height: 1000 });
-  const source = '==**passage**==[^%%limr:r1%%]\n\n- [ ] Task\n\n:::limr-annotation{#n1 ranges="r1" type="inline-note"}\nSaved inline note\n:::\n\n:::limr-annotation{#q1 ranges="r1" type="question"}\nA registered question\n:::';
+  const source = '::%%limr%%{<#r1}**passage**::%%limr%%{>#r1}\n\n- [ ] Task\n\n:::limr-annotation{#n1 ranges="r1" type="inline-note"}\nSaved inline note\n:::\n\n:::limr-annotation{#q1 ranges="r1" type="question"}\nA registered question\n:::';
   await load(page, source);
   await expect(page.locator('.limr-sidebar-card[data-type="inline-note"]')).toHaveCount(1);
   let menu = await plugins(page);

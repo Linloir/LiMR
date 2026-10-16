@@ -108,7 +108,7 @@ createDocument(source?, { id?, extensions?, streaming? }) returns DocumentEngine
 
 Core defaults to extensions=[]. Use SyntaxExtension with micromark/mdast for a strictly React-free parser; importing standard from the React extension entry introduces React dependencies.
 
-DocumentSnapshot contains id, revision, source, streaming, blocks, headings, definitions, footnotes, footnoteOrder, annotations, annotationRanges, occurrences, diagnostics, and metrics. Its annotations are **parsed from source**. Use useAnnotations for merged external data. annotationRanges maps named IDs to SourceAnnotationRange arrays (range, syntaxRange and markerRange use original UTF-16 source coordinates).
+DocumentSnapshot contains id, revision, source, streaming, blocks, headings, definitions, footnotes, footnoteOrder, annotations, annotationRanges, occurrences, diagnostics, and metrics. Its annotations are **parsed from source**. Use useAnnotations for merged external data. annotationRanges maps named IDs to SourceAnnotationRange arrays (range, openingRange, syntaxRange and markerRange use original UTF-16 source coordinates).
 
 Other core exports include walk, textContent, rangeOf, intersects, safeUrl, mapText, selectionFromRange, replaceExtension, resolveAnnotationAnchors, annotationReferenceRange, sameRange, defaultHighlight, LruCache, and ResourceCache. ResourceCache.acquire returns promise/release; invalidate clears a key or everything.
 

@@ -26,7 +26,7 @@
 | `callout()` | `callout` | 有类型、标题、折叠状态的注释块 | `> [!type]`、`::callout` |
 | `inlineHighlights()` | `inline-highlights` | 源码内嵌高亮 | `==文字==`、`::highlight` |
 | `footnotes()` | `footnotes` | 评论角标和脚注卡片 | `[^id]`、`^[正文]`、`::footnote`、`::footnote-ref` |
-| `sourceAnnotations()` | `source-annotations` | 命名范围与保存在 Markdown 中的标注 | `[^%%limr:id%%]`、`::limr-annotation` |
+| `sourceAnnotations()` | `source-annotations` | 命名范围与保存在 Markdown 中的标注 | `::%%limr%%{<#id}` / `::%%limr%%{>#id}`、`:::limr-annotation` |
 
 这些是 Markdown 中允许的静态标签，不是任意 MDX/HTML 执行环境。使用字符串属性，如 `multi="true"`、`answer="[0,2]"`；不要使用 `answer={[0,2]}`、事件函数或展开属性。未注册 HTML 按文本显示；表达式不执行并可能产生诊断。嵌套块的标签和正文之间保留空行。
 
@@ -460,12 +460,10 @@ flowchart LR
 
 ## 保存在 Markdown 中的标注
 
-`standard()` 默认在 `inlineHighlights()` 和 `footnotes()` 后启用 `sourceAnnotations()`。使用保留的脚注标签，把命名范围关联到一条或多条标注定义：
+`standard()` 默认在 `inlineHighlights()` 和 `footnotes()` 后启用 `sourceAnnotations()`。使用成对边界，把命名范围关联到一条或多条标注定义。边界在 Markdown 解析前移除，因此范围可以跨格式、跨段落，也可以位于代码中：
 
 ```markdown
-abcd==efg==[^%%limr:r1%%]
-
-[^%%limr:r1%%]: 普通 Markdown 阅读器使用的兜底说明。
+abcd::%%limr%%{<#r1}efg::%%limr%%{>#r1}
 
 :::limr-annotation{#h1 ranges="r1" type="highlight" style="background" color="#E5C07B" hidden="false"}
 :::
@@ -481,30 +479,35 @@ abcd==efg==[^%%limr:r1%%]
 
 `sourceAnnotations()` 只负责通用语法与序列化，不注册提问卡片。上例的 highlight 是内置类型，footnote 由默认脚注模块提供，question 需由模块注册；Playground 使用[阅读笔记示例](../../examples/notes.tsx)提供该类型及卡片。
 
-只有严格匹配、区分大小写的 `[^%%limr:<id>%%]` 才激活此模式。建议使用 `r1`、`my-range` 或 UUID 这样的稳定范围 ID；`r1` 与 `R1` 不同。ID 不含空白、`%` 或 `]`。不支持 URL 形式的标签，Markdown 自动链接解析可能消耗其源码位置。`[^%%limr:r1%%]:` 兜底定义可省略，LiMR 隐藏该定义，以 `limr-annotation` 的正文作为标注内容。也支持没有紧邻高亮的保留角标，此时范围长度为零。
+严格匹配、区分大小写的 `::%%limr%%{<#r1}` 与 `::%%limr%%{>#r1}` 只有被完整的 `:::limr-annotation` 块通过 `ranges` 引用时才生效。ID 以 ASCII 字母或数字开头，后续允许字母、数字、`_`、`.`、`:` 和 `-`。缺少定义、边界不配对或重复开头产生歧义时保留原文。紧邻的开始与结束标记表示零长度位置。同一个 ID 可以在独立、顺序出现的选区中复用；嵌套或交错选区使用不同 ID。
+
+代码行和代码块中的标记也可以关联真实定义；代码示例内部的定义不算有效定义。即使别处存在同 ID 的定义，也可以通过转义第一个冒号保留字面量：`\::%%limr%%{<#r1}`，演示一对边界时分别转义两端。
+
+1.2.0 删除旧的 `==文本==[^%%limr:r1%%]` 标注绑定及保留脚注兜底行为。迁移时换成上述成对边界，保留三冒号定义。独立的 `==高亮==`、普通 Markdown 脚注与引用仍是各自独立的功能。命名标注定义统一使用三冒号块，不再支持 HTML 和成对双冒号形式。
 
 | 字段 | 含义 |
 | --- | --- |
 | `#n1` 或 `id="n1"` | 标注 ID；同 ID 的最后一条定义覆盖前面的定义 |
-| `ranges="r1 r2"` | 用空白或逗号分隔的命名范围；同一个范围 ID 可在多处出现 |
+| `ranges="r1 r2"` | 用空白或逗号分隔的命名范围；省略时默认使用标注 ID；同一个范围 ID 可在多处出现 |
 | `type` | 标注类型，如 `highlight`、`footnote`、`question`；默认 `footnote` |
 | `style`、`color`、`hidden` | 高亮外观；`hidden="true"` 只隐藏绘制，不删除标注 |
 | 正文 | Markdown 内容，通过 `data.body` 交给标注模块；其他标量属性也交给对应模块 |
 
-一个范围可以关联多条内容标注，但最多生效一个高亮：最后一个指向该范围的高亮定义覆盖之前的高亮。保留范围中的 `==…==` 只声明文本跨度；没有显式 highlight 或 hidden=true 时仅悬浮显色，优先使用 highlight.color，再回退到默认内联高亮色。可见的显式高亮只绘制一次；每条内容标注各有独立角标。引用尚不存在范围的标注会保留定义，直到范围出现才显示角标；未知标注类型保留数据和所引用的正文，直到模块注册该类型才显示标注界面。
+一个范围可以关联多条内容标注，但最多生效一个高亮：最后一个指向该范围的高亮定义覆盖之前的高亮。成对边界只声明文本跨度，不自动绘制高亮；没有显式 highlight 或 hidden=true 时仅悬浮显色，优先使用 highlight.color，再回退到默认内联高亮色。可见的显式高亮只绘制一次；每条内容标注各有独立角标。引用尚不存在范围的标注会保留定义，直到范围出现才显示角标；未知标注类型保留数据和所引用的正文，直到模块注册该类型才显示标注界面。
 
-同样支持 HTML 组件形式和双冒号兜底形式：
+不同 ID 直接区分嵌套与交错关系，不依赖 Markdown 的嵌套结构：
 
 ```markdown
-<limr-annotation id="n1" ranges="r1" type="footnote">
+::%%limr%%{<#a}第一段的 **加粗 ::%%limr%%{<#b}交错内容**。
 
-这是一条支持 **Markdown** 的笔记。
+下一段::%%limr%%{>#a}在这里结束::%%limr%%{>#b}。
 
-</limr-annotation>
+:::limr-annotation{#first ranges="a" type="footnote"}
+第一个范围跨越两个段落。
+:::
 
-::limr-annotation{#q1 ranges="r1" type="question"}
-为什么这里需要先检查缓存？
-::
+:::limr-annotation{#second ranges="b" type="highlight" color="#81B29A"}
+:::
 ```
 
-定义可在命名范围之前或之后。流式期间，不完整的定义头部和正文保持隐藏，块闭合后再与已经解析的范围关联。源码元数据和编辑约定详见[标注与选区](annotations.md)。
+定义可在命名范围之前或之后。流式期间，不完整的定义头部和正文保持隐藏；边界在配对和定义完整之前保留为原文，条件满足后重新解析受影响内容并移除边界。源码元数据和编辑约定详见[标注与选区](annotations.md)。
