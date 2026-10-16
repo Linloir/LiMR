@@ -3,14 +3,15 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 async function separate(page: Page, card: Locator) {
   const toolbar = page.getByRole('toolbar');
   await expect(toolbar).toBeVisible(); await expect(card).toBeVisible();
-  await expect.poll(async () => {
-    const a = (await toolbar.boundingBox())!, b = (await card.boundingBox())!;
-    return a.x + a.width <= b.x + 1 || b.x + b.width <= a.x + 1 || a.y + a.height <= b.y + 1 || b.y + b.height <= a.y + 1;
-  }).toBe(true);
-  const box = (await toolbar.boundingBox())!, view = page.viewportSize()!;
-  expect(box.x).toBeGreaterThanOrEqual(0); expect(box.y).toBeGreaterThanOrEqual(0);
-  expect(box.x + box.width).toBeLessThanOrEqual(view.width + 1);
-  expect(box.y + box.height).toBeLessThanOrEqual(view.height + 1);
+  // Resize positioning completes asynchronously. A previous layout may still
+  // be separated while lying outside the new viewport, so await both together.
+  await expect.poll(() => card.evaluate((element, view) => {
+    const a = element.ownerDocument.querySelector('[role="toolbar"]')!.getBoundingClientRect(), b = element.getBoundingClientRect();
+    return {
+      separate: a.right <= b.left + 1 || b.right <= a.left + 1 || a.bottom <= b.top + 1 || b.bottom <= a.top + 1,
+      inViewport: a.left >= 0 && a.top >= 0 && a.right <= view.width + 1 && a.bottom <= view.height + 1,
+    };
+  }, page.viewportSize()!)).toEqual({ separate: true, inViewport: true });
 }
 
 async function stream(page: Page, source: string) {
