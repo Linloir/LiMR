@@ -6,6 +6,7 @@ import type { AnnotationContentProps, AnnotationOverlayCardProps, AnnotationSide
 import { Markdown, type MarkdownProps } from '../react/Markdown';
 import { useLocale, useRuntime, useStoreSelector } from '../react/context';
 import { AnnotationCard } from '../components/AnnotationCard';
+import { ToolIcon } from '../components/ToolIcon';
 
 export interface CitationData { title?: string; url?: string; description?: string; summary?: string }
 const CitationParagraph: NodeRenderer = ({ children }) => <p><span className="limr-underline">{children}</span></p>;
@@ -34,8 +35,9 @@ export function citation(options: Partial<AnnotationType<CitationData>> = {}): R
     const locale = useLocale();
     return <AnnotationCard {...props} title={locale.citation ?? locale.annotations} />;
   }
-  function Content({ data }: AnnotationContentProps<CitationData>) {
-    const runtime = useRuntime();
+  function Content({ annotation, data }: AnnotationContentProps<CitationData>) {
+    const runtime = useRuntime(), locale = useLocale();
+    const canDelete = useStoreSelector(runtime.configuration, () => runtime.commands.canEditAnnotation(annotation.id));
     const configured = useStoreSelector(runtime.configuration, () => runtime.components);
     const components = useMemo(() => ({ ...configured, paragraph: configured.paragraph ?? CitationParagraph }), [configured]);
     const link = useRef<HTMLAnchorElement>(null);
@@ -45,6 +47,7 @@ export function citation(options: Partial<AnnotationType<CitationData>> = {}): R
     }}>
       <a ref={link} className="limr-citation-title" href={url} target="_blank" rel="noopener noreferrer"><span className="limr-underline">{data?.title ?? data?.url ?? 'Citation'}</span></a>
       {(data?.description || data?.summary) && <AnnotationMarkdown source={data.description || data.summary!} components={components} />}
+      {canDelete && <div className="limr-annotation-actions"><button type="button" className="limr-annotation-delete" onClick={() => runtime.commands.removeAnnotation(annotation.id)}><ToolIcon name="trash" /><span className="limr-underline">{locale.deleteAnnotations}</span></button></div>}
     </div>;
   }
   return {

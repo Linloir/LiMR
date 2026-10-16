@@ -1,0 +1,60 @@
+name: Deploy Playground
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playground-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pages: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check source and documentation
+        run: |
+          pnpm typecheck
+          pnpm exec vitest run --maxWorkers=2
+          pnpm test:docs
+      - name: Build Playground
+        run: pnpm build:playground
+      - name: Update pages branch
+        id: publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          pages_dir="$RUNNER_TEMP/limr-pages"
+          git fetch origin pages:refs/remotes/origin/pages
+          git worktree add --detach "$pages_dir" origin/pages
+          rsync -a --delete --exclude=.git --exclude=CNAME demo-dist/ "$pages_dir/"
+          git -C "$pages_dir" add --all
+          if ! git -C "$pages_dir" diff --cached --quiet; then
+            git -C "$pages_dir" -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Deploy Playground from $GITHUB_SHA"
+          fi
+          git -C "$pages_dir" push origin HEAD:refs/heads/pages
+          echo "commit=$(git -C "$pages_dir" rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      # GITHUB_TOKEN pushes do not start the branch-based Pages build.
+      # Request it explicitly with the Pages API, keeping pages as the source.
+      - name: Request Pages build and verify deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LIMR_PAGES_COMMIT: ${{ steps.publish.outputs.commit }}
+        run: node scripts/request-pages-build.mjs

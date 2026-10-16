@@ -32,7 +32,7 @@ Reader, Markdown, and DocumentProvider accept:
 | components | NodeRenderer overrides by AST type/custom tag |
 | annotationTypes | Add/override presentation by type |
 | annotations | Internal state if omitted; controlled if supplied |
-| onAnnotationsChange | Next external annotation array, including highlights; required to accept controlled edits |
+| onAnnotationsChange | Next external annotation array, including highlights; controlled edits must return the accepted array through props. Only a synchronous `false` declines a change; other return values are ignored |
 | onSourceChange | Optional `(source, { document, edits }) => boolean \| void`; explicitly enables source editing; return false to decline a transaction |
 | theme | light, dark, or auto |
 | appearance | classic; CSS scope propagated to portals |

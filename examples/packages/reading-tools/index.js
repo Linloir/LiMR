@@ -1,16 +1,21 @@
 import { createElement as h } from 'react';
-import { AnnotationCard, AnnotationMarkdown, defineBlock, defineExtension } from '@linloir/limr';
+import { AnnotationCard, AnnotationMarkdown, ToolIcon, defineBlock, defineExtension, useLiMR, useLocale } from '@linloir/limr';
 
 // No renderer internals or application services are needed by an npm plugin.
 export function readingTools() {
   const tip = defineBlock({ name: 'reading-tip', component: ({ children }) => h('aside', { className: 'reading-tip' }, children) });
+  function Content({ annotation, data }) {
+    const commands = useLiMR(), locale = useLocale();
+    return h('div', null, h(AnnotationMarkdown, { source: data?.text ?? '' }),
+      commands.canEditAnnotation(annotation.id) && h('div', { className: 'limr-annotation-actions' }, h('button', { type: 'button', className: 'limr-annotation-delete', onClick: () => commands.removeAnnotation(annotation.id) }, h(ToolIcon, { name: 'trash' }), h('span', { className: 'limr-underline' }, locale.deleteAnnotations))));
+  }
   return defineExtension({
     ...tip,
     name: 'reading-tools',
     annotationTypes: [{
       type: 'reading-note', label: 'Reading note', icon: '◇', color: '#548b74',
       overlay: { Card: props => h(AnnotationCard, { ...props, title: 'Reading note' }), expand: { placement: 'anchor' } },
-      Content: ({ data }) => h(AnnotationMarkdown, { source: data?.text ?? '' }),
+      Content,
     }],
     actions: [{
       id: 'reading-note:add', label: 'Save passage', icon: h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('rect', { x: 5, y: 3, width: 14, height: 18, rx: 3 }), h('path', { d: 'M9 8h6M9 12h6M9 16h4' })),

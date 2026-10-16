@@ -194,6 +194,7 @@ test('activating an annotation temporarily masks other fragments and restores th
   }
   await important(page);
   await page.getByRole('toolbar').getByRole('button', { name: '笔记', exact: true }).click();
+  await page.getByRole('textbox', { name: '笔记内容' }).fill('Keep this draft while checking focus.');
   await expect(page.locator('.limr-highlight-layer [data-muted]')).toHaveCount(1);
   await expect(page.locator('.limr-highlight-layer [data-paint]:not([data-muted])')).toHaveCount(1);
   await page.mouse.click(10, 600);

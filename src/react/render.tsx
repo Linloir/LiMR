@@ -63,6 +63,7 @@ export function AnnotationMarker({ occurrence: supplied }: { occurrence: Annotat
     }}
     onClick={() => {
       const hovering = runtime.interaction.get().hovered === occurrence.id;
+      runtime.clearSelection();
       runtime.activate(active ? null : occurrence.id);
       // A click does not move the pointer. Preserve hover across both toggles.
       if (hovering) runtime.hover(occurrence.id);

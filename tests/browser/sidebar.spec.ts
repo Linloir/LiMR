@@ -85,7 +85,7 @@ test('dense notes stay inside a short document through hover, toggles, additions
   await expect(body).toHaveCSS('scrollbar-width', 'none');
   // The rail itself cannot scroll, including via DOM focus/scroll requests.
   expect(await reader(page).locator('.limr-sidebar').evaluate(element => { element.scrollTop = 200; return element.scrollTop; })).toBe(0);
-  await card.getByRole('button').hover();
+  await card.locator('.limr-sidebar-card-heading').hover();
   await page.mouse.wheel(0, 180);
   await expect.poll(() => reader(page).locator('.limr-sidebar').evaluate(element => element.scrollTop)).toBe(0);
   expect(errors).toEqual([]);
@@ -189,12 +189,12 @@ test('short readers fill available height and sidebar hover preserves both prose
   expect(new Set(frames.map(frame => frame.scroll))).toEqual(new Set([initial.top]));
   expect((await marker.boundingBox())!.y).toBeCloseTo(markerTop, 0);
   await expect(canvas.locator('.limr-reader-content > article')).toHaveCSS('translate', 'none');
-  await card.getByRole('button').click();
+  await card.locator('.limr-sidebar-card-heading').click();
   await expect(card).toHaveAttribute('data-expanded', 'true');
   expect((await marker.boundingBox())!.y).toBeCloseTo(markerTop, 0);
   await expect(canvas.locator('.limr-reader-content > article')).toHaveCSS('translate', 'none');
   expect((await card.boundingBox())!.y).toBeCloseTo(cardTop, 0);
-  await card.getByRole('button').click();
+  await card.locator('.limr-sidebar-card-heading').click();
   await expect(card).toHaveAttribute('data-active', 'true');
   await page.mouse.click(12, 700);
   await expect.poll(async () => (await marker.boundingBox())!.y).toBeCloseTo(markerTop, 0);
@@ -208,7 +208,7 @@ test('reference strips show rendered anchored text above the title in collapsed 
   await expect(reference).toHaveAttribute('title', '重要内容');
   await expect(card.locator('.limr-sidebar-card-body')).toHaveCSS('border-inline-start-color', 'rgb(139, 92, 246)');
   expect((await reference.boundingBox())!.y).toBeLessThan((await card.locator('.limr-sidebar-card-heading').boundingBox())!.y);
-  await card.getByRole('button').click();
+  await card.locator('.limr-sidebar-card-heading').click();
   await expect(reference).toHaveText('重要内容');
   const citation = reader(page).locator('.limr-reader-content .limr-mark[aria-label="引用"]').first();
   await citation.click();
@@ -231,11 +231,11 @@ test('reference, title, preview and expanded content share an inset across theme
     });
     expect(geometry.gap).toBeCloseTo(1, 1);
     expect(Math.max(...geometry.starts) - Math.min(...geometry.starts)).toBeLessThan(.1);
-    await card.getByRole('button').click();
+    await card.locator('.limr-sidebar-card-heading').click();
     await expect(card.locator('.limr-sidebar-preview-panel')).toHaveAttribute('aria-hidden', 'true');
     const contentStart = await card.locator('.limr-annotation-entry p').first().evaluate(element => getComputedStyle(element).direction === 'rtl' ? element.getBoundingClientRect().right : element.getBoundingClientRect().left);
     expect(contentStart).toBeCloseTo(geometry.starts[0], 1);
-    await card.getByRole('button').click();
+    await card.locator('.limr-sidebar-card-heading').click();
     await expect(card.locator('.limr-sidebar-preview')).toBeVisible();
     await page.getByRole('button', { name: 'Theme', exact: true }).click();
   }

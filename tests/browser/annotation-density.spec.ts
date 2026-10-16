@@ -52,7 +52,7 @@ for (const width of [1500, 560]) for (const mode of ['absent', 'hidden', 'visibl
     await markers.nth(index).click();
     if (width < 1120) {
       await expect(page.locator('.limr-annotation-overlay')).toHaveAttribute('data-pinned', 'true');
-      await expect(page.getByRole('toolbar')).toHaveCount(0);
+      await expect(page.getByRole('toolbar')).toBeVisible();
     } else {
       await expect(page.getByRole('toolbar')).toBeVisible();
       if (mode === 'absent') await expect(page.getByRole('toolbar')).not.toHaveAttribute('data-highlight');

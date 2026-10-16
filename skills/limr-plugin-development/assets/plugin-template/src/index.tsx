@@ -1,4 +1,4 @@
-import { AnnotationCard, AnnotationMarkdown, defineBlock, defineExtension, ToolIcon, useLocale,
+import { AnnotationCard, AnnotationMarkdown, defineBlock, defineExtension, ToolIcon, useLiMR, useLocale,
   type AnnotationContentProps, type AnnotationOverlayCardProps, type AnnotationSidebarPreviewProps,
   type AnnotationType, type LiMRLocale, type RendererExtension } from '@linloir/limr';
 
@@ -8,8 +8,11 @@ const isChinese = (locale: LiMRLocale) => locale.language?.startsWith('zh') ?? f
 
 export function readingTools(options: ReadingToolsOptions = {}): RendererExtension {
   const label = (locale: LiMRLocale) => options.label ?? (isChinese(locale) ? '阅读笔记' : 'Reading note');
-  function Content({ data }: AnnotationContentProps<ReadingNoteData>) {
-    return <AnnotationMarkdown source={data?.text ?? ''} />;
+  function Content({ annotation, data }: AnnotationContentProps<ReadingNoteData>) {
+    const commands = useLiMR(), locale = useLocale();
+    return <><AnnotationMarkdown source={data?.text ?? ''} />
+      {commands.canEditAnnotation(annotation.id) && <div className="limr-annotation-actions"><button type="button" className="limr-annotation-delete" onClick={() => commands.removeAnnotation(annotation.id)}><ToolIcon name="trash" /><span className="limr-underline">{locale.deleteAnnotations}</span></button></div>}
+    </>;
   }
   function Card(props: AnnotationOverlayCardProps<ReadingNoteData>) {
     return <AnnotationCard {...props} title={label(useLocale())} />;

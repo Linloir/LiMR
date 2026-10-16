@@ -1,14 +1,15 @@
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { autoUpdate, FloatingPortal, offset, shift, useFloating } from '@floating-ui/react';
 import { defaultHighlight, resolveAnnotationAnchors, sameRange, selectionFromRange, type Annotation, type HighlightData } from '../core';
 import { copyText, deleteAnnotations, highlightPalette, highlightSelection } from '../extensions/actions';
-import { useAppearance, useRuntime, useSelection, useStoreSelector, useTheme } from '../react/context';
+import { useAppearance, useIsomorphicLayoutEffect, useRuntime, useSelection, useStoreSelector, useTheme } from '../react/context';
 import type { ActionContext, SelectionAction, StyledProps, ToolbarActionContext } from '../react/types';
 import { annotationReferenceText } from './annotation-reference';
 import { OverlayScrollArea } from './OverlayScrollArea';
 import { Collapse } from './Collapse';
 import { atomicSelectionText } from '../react/source-geometry';
 import { ToolFaces } from './ToolFaces';
+import { floatingSurfaces } from './floating-surfaces';
 
 export interface SelectionToolbarProps extends StyledProps {
   /** Replaces the built-in actions. Extension actions are added. */
@@ -30,6 +31,8 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
   const paint = interaction.activeHighlight ? decorations.highlights.get(interaction.activeHighlight) : null;
   const active = decorations.occurrences.find(item => item.id === interaction.active);
   const markerActive = active && interaction.toolbarOccurrence === active.id;
+  const surfaces = floatingSurfaces(runtime);
+  const overlayRect = useSyncExternalStore(surfaces.overlayRect.subscribe, surfaces.overlayRect.get, surfaces.overlayRect.get);
   const combined = useMemo(() => {
     const map = new Map((actions ?? defaults).map(action => [action.id, action]));
     config.extensions?.forEach(extension => extension.actions?.forEach(action => map.set(action.id, action)));
@@ -64,7 +67,18 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
     const { start, end } = ranges[0];
     // Atomic source selection can start in one tiny SVG label or math glyph.
     // Anchor to the whole block, including when reopening its saved highlight.
-    return runtime.content?.querySelector<HTMLElement>(`[data-limr-atomic="block"][data-source-start="${start}"][data-source-end="${end}"]`) ?? null;
+    const trim = (start: number, end: number) => {
+      while (start < end && /\s/.test(documentSnapshot.source[start])) start++;
+      while (end > start && /\s/.test(documentSnapshot.source[end - 1])) end--;
+      return { start, end };
+    };
+    const selected = trim(start, end);
+    return [...runtime.content?.querySelectorAll<HTMLElement>('[data-limr-atomic="block"]') ?? []].find(element => {
+      const raw = { start: Number(element.dataset.sourceStart), end: Number(element.dataset.sourceEnd) };
+      if (raw.start > selected.start || raw.end < selected.end) return false;
+      const normalized = selectionFromRange(documentSnapshot, raw).raw.ranges[0];
+      return sameRange(trim(normalized.start, normalized.end), selected);
+    }) ?? null;
   }, [runtime, effectiveSelection]);
   const annotations = useMemo(() => effectiveSelection ? [...decorations.annotations.values()].filter(annotation =>
     runtime.supportsAnnotation(annotation) && (markerActive && active.annotationIds.includes(annotation.id) || resolveAnnotationAnchors(annotation, documentSnapshot).some(anchor => [...effectiveSelection.raw.ranges, ...effectiveSelection.syntax.ranges].some(range => sameRange(anchor.range, range))))) : [], [runtime, decorations, effectiveSelection, documentSnapshot, markerActive, active]);
@@ -80,9 +94,12 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
   const expandedAction = available.find(action => action.id === expanded && action.renderExpanded);
   const hasPanels = available.some(action => action.renderExpanded);
   const open = !!context && effectiveSelection!.settled && available.length > 0;
-  const { refs, floatingStyles, placement, isPositioned } = useFloating({
+  const viewHeight = typeof window === 'undefined' ? 0 : window.visualViewport?.height ?? window.innerHeight;
+  const compact = !!overlayRect && viewHeight < 320;
+  const compactHeight = Math.max(44, (viewHeight - 24) * .35);
+  const { refs, elements: floatingElements, update, floatingStyles, placement, isPositioned } = useFloating({
     open, strategy: 'fixed', placement: 'bottom',
-    middleware: [offset(10), { name: 'toolbarSpace', options: { hasPanels, maxPanelHeight, blockReference }, fn({ rects, placement, elements }) {
+    middleware: [offset(10), { name: 'toolbarSpace', options: { hasPanels, maxPanelHeight, blockReference, overlay: !!overlayRect, markerActive: !!markerActive }, fn({ rects, placement, elements }) {
       const viewport = window.visualViewport;
       const root = runtime.configuration.get().scrollRoot?.getBoundingClientRect();
       const top = Math.max(viewport?.offsetTop ?? 0, root?.top ?? 0);
@@ -94,11 +111,61 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
       // Reserve the same budget while closed or expanded, so hover never moves the action row.
       const next = markerActive && above >= row + 24 ? 'top' : blockReference || below >= needed || below >= above ? 'bottom' : 'top';
       const room = next === 'bottom' ? below : above;
-      elements.floating.style.setProperty('--limr-toolbar-panel-height', `${Math.max(0, Math.min(limit, room - row - 24))}px`);
+      if (!overlayRect) elements.floating.style.setProperty('--limr-toolbar-panel-height', `${Math.max(0, Math.min(limit, room - row - 24))}px`);
       elements.floating.style.setProperty('--limr-toolbar-available-height', `${room}px`);
       return placement !== next ? { reset: { placement: next } } : {};
-    } }, shift({ padding: 10 })], whileElementsMounted: autoUpdate,
+    } }, shift({ padding: 10 }), { name: 'annotationSpace', options: { x: overlayRect?.x, y: overlayRect?.y, width: overlayRect?.width, height: overlayRect?.height, hasPanels, maxPanelHeight, markerActive: !!markerActive, compact }, fn({ x, y, rects, elements }) {
+      if (!overlayRect) {
+        // Marker tools stay over the reading column, clear of its sidebar.
+        const column = markerActive && runtime.content?.getBoundingClientRect();
+        return column && column.width >= rects.floating.width ? { x: Math.max(column.left, Math.min(x, column.right - rects.floating.width)) } : {};
+      }
+      const viewport = window.visualViewport, gap = 10;
+      const left = (viewport?.offsetLeft ?? 0) + gap, top = (viewport?.offsetTop ?? 0) + gap;
+      const right = left + (viewport?.width ?? window.innerWidth) - 2 * gap, bottom = top + (viewport?.height ?? window.innerHeight) - 2 * gap;
+      const { width, height } = rects.floating;
+      const row = elements.floating.querySelector('.limr-toolbar-actions')?.getBoundingClientRect().height ?? 34;
+      const limit = Math.max(0, parseFloat(getComputedStyle(elements.floating).getPropertyValue('--limr-toolbar-panel-max-height')) || maxPanelHeight);
+      const budget = row + (hasPanels ? limit : 0) + 24;
+      const clampX = (value: number) => Math.max(left, Math.min(value, right - width));
+      const clampY = (value: number) => Math.max(top, Math.min(value, bottom - height));
+      const overlaps = (x: number, y: number) => x < overlayRect.right + gap && x + width > overlayRect.left - gap && y < overlayRect.bottom + gap && y + height > overlayRect.top - gap;
+      const candidates = [
+        { x: clampX(x), y, room: x + width <= overlayRect.left - gap || x >= overlayRect.right + gap ? bottom - top : y >= overlayRect.bottom ? bottom - y : overlayRect.top - gap - top },
+        { x: clampX(x), y: overlayRect.top - gap - height, room: overlayRect.top - gap - top },
+        { x: clampX(x), y: overlayRect.bottom + gap, room: bottom - overlayRect.bottom - gap },
+        { x: overlayRect.left - gap - width, y: clampY(y), room: bottom - top },
+        { x: overlayRect.right + gap, y: clampY(y), room: bottom - top },
+      ];
+      const fits = candidates.filter(item => item.room >= budget && item.x >= left && item.x + width <= right && item.y >= top && item.y + height <= bottom && !overlaps(item.x, item.y));
+      const closest = (items: typeof candidates) => items.sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+      // When a panel is taller than the free area, keep its action row outside
+      // the card and give the panel an independently scrollable height budget.
+      const chosen = fits.length ? closest(fits) : candidates.slice(1, 3).sort((a, b) => b.room - a.room)[0];
+      const panel = `${compact ? Math.min(limit, Math.max(80, (bottom - top) / 3)) : Math.max(0, Math.min(limit, chosen.room - row - 24))}px`;
+      const changed = elements.floating.style.getPropertyValue('--limr-toolbar-panel-height') !== panel;
+      elements.floating.style.setProperty('--limr-toolbar-panel-height', panel);
+      elements.floating.style.setProperty('--limr-toolbar-available-height', `${Math.max(0, chosen.room)}px`);
+      return { x: chosen.x, y: Math.max(top, chosen.y), ...(changed ? { reset: { rects: true } } : {}) };
+    } }], whileElementsMounted: autoUpdate,
   });
+  useIsomorphicLayoutEffect(() => {
+    surfaces.toolbar = open ? floatingElements.floating : null;
+    if (open) update();
+    return () => { surfaces.toolbar = null; };
+  }, [open, floatingElements.floating, surfaces, update, overlayRect]);
+  useIsomorphicLayoutEffect(() => {
+    const row = open && floatingElements.floating?.querySelector<HTMLElement>('.limr-toolbar-actions');
+    if (!row) return;
+    const measure = () => {
+      const height = window.visualViewport?.height ?? window.innerHeight;
+      const rowHeight = row.getBoundingClientRect().height + 12;
+      surfaces.toolbarSpace.set(Math.ceil(height < 320 ? Math.min(rowHeight, Math.max(44, (height - 24) * .35)) : rowHeight + (expandedAction ? Math.min(120, height / 4) : 0)));
+    };
+    const observer = new ResizeObserver(measure); observer.observe(row); measure();
+    window.addEventListener('resize', measure); window.visualViewport?.addEventListener('resize', measure);
+    return () => { observer.disconnect(); window.removeEventListener('resize', measure); window.visualViewport?.removeEventListener('resize', measure); surfaces.toolbarSpace.set(0); };
+  }, [open, floatingElements.floating, surfaces, expandedAction?.id]);
   useEffect(() => {
     const reference = blockReference ?? (selection ? runtime.selectionRange : paint ? runtime.highlightReference : active ? runtime.anchors.get(active.id) : null);
     if (reference) refs.setPositionReference({ getBoundingClientRect: () => reference.getBoundingClientRect(), getClientRects: () => reference.getClientRects(), contextElement: blockReference ?? runtime.content ?? undefined });
@@ -152,7 +219,7 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
   };
   const annotationCount = annotations.filter(annotation => annotation.type !== 'highlight').length;
   const hint = available.some(action => action.id === 'delete-annotations') && annotationCount > 1 ? context.locale.deleteAnnotationsHint.replace('{count}', String(annotationCount)) : null;
-  return <FloatingPortal root={portalRoot}><div ref={refs.setFloating} className={`limr-selection-toolbar ${className}`} style={{ ...style, ...floatingStyles, visibility: isPositioned ? undefined : 'hidden' }} role="toolbar" aria-label="Text actions" data-limr-selection-ui="true" data-limr-theme={theme} data-limr-appearance={appearance} data-placement={placement} data-highlight={highlight?.id} data-readonly={readOnly || undefined} data-expanded={expandedAction?.id}
+  return <FloatingPortal root={portalRoot}><div ref={refs.setFloating} className={`limr-selection-toolbar ${className}`} style={{ ...style, ...floatingStyles, ...(compact ? { maxHeight: compactHeight, overflowY: 'auto', overscrollBehavior: 'contain', scrollbarWidth: 'none' } as CSSProperties : {}), visibility: isPositioned ? undefined : 'hidden' }} role="toolbar" aria-label="Text actions" data-limr-selection-ui="true" data-limr-theme={theme} data-limr-appearance={appearance} data-placement={placement} data-highlight={highlight?.id} data-readonly={readOnly || undefined} data-expanded={expandedAction?.id}
     onMouseDown={event => { if (!(event.target instanceof Element) || !event.target.closest('input,textarea,select,[contenteditable]')) event.preventDefault(); }}
     onPointerEnter={() => clearTimeout(closeTimer.current)}
     onPointerLeave={event => {

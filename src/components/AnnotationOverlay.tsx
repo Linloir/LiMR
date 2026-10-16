@@ -6,12 +6,15 @@ import { useCardMotion } from './card-motion';
 import { AnnotationCard } from './AnnotationCard';
 import type { AnnotationOccurrence } from '../core';
 import type { AnnotationOverlayCardProps } from '../react/types';
+import { floatingSurfaces, useOverlayGeometry } from './floating-surfaces';
 
 export interface AnnotationOverlayProps { disabled?: boolean; portalRoot?: HTMLElement | null; previewWidth?: number; maxHeight?: string }
 const length = (value: number | string) => typeof value === 'number' ? `${value}px` : value;
 const idleSubscribe = () => () => {};
 export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth = 340, maxHeight = '80dvh' }: AnnotationOverlayProps) {
   const runtime = useRuntime();
+  const surfaces = floatingSurfaces(runtime);
+  const toolbarSpace = useSyncExternalStore(surfaces.toolbarSpace.subscribe, surfaces.toolbarSpace.get, surfaces.toolbarSpace.get);
   const appearance = useAppearance();
   const theme = useTheme(), locale = useLocale();
   const editing = useStoreSelector(runtime.interaction, state => state.editing);
@@ -51,13 +54,18 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
   const [lastExpanded, setLastExpanded] = useState(false);
   const [lastPinned, setLastPinned] = useState(false);
   const open = !!wanted && !disabled;
+  const retainedSpace = useRef<{ id?: string; height: number } | null>(null);
+  const retainedGeometry = useRef<{ id?: string; rect: DOMRect } | null>(null);
+  if (open && toolbarSpace) retainedSpace.current = { id, height: toolbarSpace };
+  const awaitingToolbar = pinned && toolbarOccurrence === id && !(editing && occurrence?.annotationIds.includes(editing));
+  // Unmounting the toolbar must not resize a card halfway through its exit or
+  // the first frame of reversing that exit. Editing releases the reservation.
+  const reservedSpace = toolbarSpace || ((!open || awaitingToolbar) && retainedSpace.current && retainedSpace.current.id === id ? retainedSpace.current.height : 0);
   useIsomorphicLayoutEffect(() => {
-    // A floating card owns this interaction. Clear both native text selection
-    // and the marker/highlight toolbar, including when a preview is pinned.
-    // Sidebar cards leave their marker toolbar available because this overlay
-    // is disabled there.
-    if (open) runtime.clearSelection();
-  }, [runtime, open, id, pinned, toolbarOccurrence]);
+    // Hover previews replace an old text selection. A clicked marker owns its
+    // own action range, which remains available alongside the pinned card.
+    if (open && !pinned) runtime.clearSelection();
+  }, [runtime, open, id, pinned]);
   useSyncExternalStore(open ? runtime.viewport.subscribe : idleSubscribe, runtime.viewport.get, runtime.viewport.get);
   useEffect(() => {
     if (open) { setRetained(wanted!); setLastExpanded(expanded); setLastPinned(pinned); }
@@ -80,13 +88,17 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
   const anchoredExpansion = shownExpanded && !centered && fromPreview;
   // Floating UI can finish an asynchronous preview calculation after React has
   // switched the same host to another card or to its expanded dimensions.
-  const sizing = useRef({ id, expanded: shownExpanded });
-  sizing.current = { id, expanded: shownExpanded };
+  const sizing = useRef({ id, expanded: shownExpanded, open });
+  sizing.current = { id, expanded: shownExpanded, open };
   const { refs, update, floatingStyles, context, isPositioned, placement, middlewareData } = useFloating({ open, elements: { reference: anchor ?? null }, onOpenChange: next => { if (!next) close(); }, strategy: 'fixed', transform: false, placement: 'bottom-start', whileElementsMounted: autoUpdate, middleware: [offset(8), flip({ padding: 12 }), shift({ padding: 12 }), size({ padding: 12, apply: ({ availableHeight, elements }) => {
-    if (sizing.current.id !== id || sizing.current.expanded !== shownExpanded) return;
-    if (!shownExpanded) elements.floating.style.maxHeight = `${Math.max(0, Math.floor(Math.min(360, availableHeight)))}px`;
+    if (!sizing.current.open || sizing.current.id !== id || sizing.current.expanded !== shownExpanded) return;
+    if (!shownExpanded) {
+      const viewHeight = window.visualViewport?.height ?? window.innerHeight;
+      const room = reservedSpace && viewHeight < 320 ? viewHeight - 24 - reservedSpace - 10 : availableHeight - (reservedSpace ? reservedSpace + 10 : 0);
+      elements.floating.style.maxHeight = `${Math.max(0, Math.floor(Math.min(360, room)))}px`;
+    }
     else if (!centered && !fromPreview) elements.floating.style.maxHeight = `min(${length(expansion && expansion.maxHeight || maxHeight)}, ${Math.max(0, Math.floor(availableHeight))}px)`;
-  } }, [id, shownExpanded, !!centered, !!fromPreview, expansion && expansion.maxHeight, maxHeight]), {
+  } }, [id, shownExpanded, !!centered, !!fromPreview, expansion && expansion.maxHeight, maxHeight, reservedSpace]), {
     name: 'limrAnchor',
     options: { id, expanded: shownExpanded },
     // Capture this calculation's identity, rather than reading a reused marker's
@@ -98,7 +110,8 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
     // resets isPositioned on close, so explicitly remeasure that same surface.
     if (open && anchor) update();
   }, [anchor, update, open, shownExpanded]);
-  const dismiss = useDismiss(context, { escapeKey: true, outsidePress: true });
+  useOverlayGeometry(runtime, refs.floating.current, open);
+  const dismiss = useDismiss(context, { escapeKey: true, outsidePress: event => !(event.target instanceof Node && surfaces.toolbar?.contains(event.target)) });
   const role = useRole(context, { role: 'dialog' });
   const { getFloatingProps } = useInteractions([dismiss, role]);
   const positioned = middlewareData.limrAnchor;
@@ -107,7 +120,10 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
   const ready = !!centered || !!anchoredExpansion || !open || isPositioned && positioned?.id === id && positioned?.expanded === shownExpanded && dimensionsReady;
   const [surface, setSurface] = useState<HTMLDivElement | null>(null);
   const edge = (shownExpanded ? fromPreview?.placement ?? 'bottom' : placement).startsWith('top') ? 'bottom' : 'top';
-  useCardMotion(surface, refs.floating.current, anchor, open, shownExpanded, ready && !measuringPreview, id, edge, fromPreview?.rect, () => { setRetained(null); setCollapsedId(null); setPreviewGeometry(null); });
+  useCardMotion(surface, refs.floating.current, anchor, open, shownExpanded, ready && !measuringPreview, id, edge, fromPreview?.rect, () => { setRetained(null); setCollapsedId(null); setPreviewGeometry(null); retainedSpace.current = null; retainedGeometry.current = null; });
+  useIsomorphicLayoutEffect(() => {
+    if (open && ready && !measuringPreview && refs.floating.current) retainedGeometry.current = { id, rect: refs.floating.current.getBoundingClientRect() };
+  });
   useIsomorphicLayoutEffect(() => {
     if (!shownExpanded && open && ready && refs.floating.current) {
       const rect = refs.floating.current.getBoundingClientRect();
@@ -122,18 +138,27 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
   // reader lives in an offset column or a nested scroll container.
   const top = viewTop + 12;
   const bottom = viewTop + availableHeight - 12;
-  const heightLimit = Math.max(0, bottom - top);
+  const compact = !!reservedSpace && availableHeight < 320;
+  const heightLimit = Math.max(0, centered && !compact && reservedSpace ? availableHeight - 2 * (reservedSpace + 20) : bottom - top - (reservedSpace ? reservedSpace + 10 : 0));
   const settings = shownExpanded && expansion ? expansion : undefined;
   const width = `min(${length(settings?.width ?? (centered ? 640 : definition?.overlay?.previewWidth ?? previewWidth))}, ${Math.max(0, availableWidth - 24)}px)`;
-  let style: CSSProperties = { ...floatingStyles, width, maxHeight: Math.min(360, availableHeight - 24) };
+  let style: CSSProperties = { ...floatingStyles, width, maxHeight: Math.min(360, heightLimit) };
   if (settings) {
     style = { ...style, height: settings.height === undefined ? undefined : `min(${length(settings.height)}, ${heightLimit}px)`, maxHeight: `min(${length(settings.maxHeight ?? maxHeight)}, ${heightLimit}px)` };
     if (centered) style = { ...style, left: viewLeft + availableWidth / 2, top: viewTop + availableHeight / 2, transform: 'translate(-50%, -50%)' };
     else if (fromPreview) {
       const upward = fromPreview.placement.startsWith('top');
-      const room = Math.max(0, upward ? fromPreview.rect.bottom - top : bottom - fromPreview.rect.top);
+      const room = Math.max(0, (upward ? fromPreview.rect.bottom - top : bottom - fromPreview.rect.top) - (reservedSpace ? reservedSpace + 10 : 0));
       style = { ...style, left: fromPreview.rect.left, top: upward ? fromPreview.rect.bottom : fromPreview.rect.top, transform: upward ? 'translateY(-100%)' : 'none', maxWidth: viewLeft + availableWidth - 12 - fromPreview.rect.left, maxHeight: `min(${length(settings.maxHeight ?? maxHeight)}, ${room}px)` };
     }
+  }
+  // In a short visual viewport (for example above a software keyboard), an
+  // anchored popup cannot leave usable space on either side of the marker.
+  // Share the viewport vertically with the independently scrolling toolbar.
+  if (compact) style = { ...style, top, transform: centered ? 'translateX(-50%)' : 'none', maxHeight: heightLimit, height: settings?.height ? heightLimit : undefined };
+  if (!open && retainedGeometry.current && retainedGeometry.current.id === id) {
+    const rect = retainedGeometry.current.rect;
+    style = { ...style, left: rect.left, top: rect.top, width: rect.width, height: rect.height, maxHeight: rect.height, transform: 'none' };
   }
   const Card = definition?.overlay?.Card;
   const cardProps: AnnotationOverlayCardProps = {
@@ -146,7 +171,7 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
     children: <AnnotationGroup occurrence={occurrence} presentation={shownExpanded ? 'expanded' : 'preview'} expanded={shownExpanded} />,
   };
   const modal = open && !!centered;
-  const card = <FloatingFocusManager context={context} modal={modal} disabled={!open || !pinned || measuringPreview} initialFocus={editing ? -1 : refs.floating} returnFocus={false}>
+  const card = <FloatingFocusManager context={context} modal={modal} disabled={!open || !pinned || measuringPreview} initialFocus={editing ? -1 : refs.floating} returnFocus={false} getInsideElements={() => surfaces.toolbar ? [surfaces.toolbar] : []}>
     <div ref={refs.setFloating} {...getFloatingProps()} tabIndex={-1} aria-label={definition?.label ?? locale.annotations} className="limr-overlay-positioner" style={{ ...style, pointerEvents: open ? 'auto' : 'none', visibility: ready && !measuringPreview ? 'visible' : 'hidden' }}>
       <div ref={setSurface} className={`limr-annotation-overlay ${shownExpanded ? 'limr-annotation-expanded' : 'limr-annotation-preview'}`} style={{ '--limr-annotation-color': definition?.color } as CSSProperties} data-type={annotation?.type} data-state={open ? 'open' : 'closing'} data-pinned={shownPinned || undefined} data-placement={centered ? 'center' : anchoredExpansion ? fromPreview.placement : placement} data-limr-theme={theme} data-limr-appearance={appearance}
         onPointerEnter={event => { if (!pinned && event.pointerType !== 'touch') runtime.hover(occurrence.id); }} onPointerLeave={() => { if (!pinned) runtime.hover(null); }}>

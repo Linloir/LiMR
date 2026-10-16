@@ -160,11 +160,16 @@ export interface DocumentCommands {
   /** Content annotations get a shared highlight unless disabled or their type
    * uses hover highlighting. An explicit appearance still creates a saved highlight. */
   addAnnotation: (annotation: Annotation, options?: { highlight?: HighlightData | false; edit?: boolean; target?: 'annotations' | 'source' }) => void;
-  updateAnnotation: (id: string, update: Partial<Annotation>) => void;
+  updateAnnotation: (id: string, update: Partial<Annotation>) => boolean;
   removeAnnotation: (id: string) => void;
   /** Remove all annotations bound to these exact fragments, preserving other anchors. */
   removeAnnotationsAt: (ranges: readonly SourceRange[]) => void;
   editAnnotation: (id: string | null) => void;
+  /** Mark a successfully saved edit as committed and close its editor. */
+  commitAnnotationEdit: (id?: string) => void;
+  /** Discard an edit. An unsaved creation and its otherwise unused automatic
+   * highlights are removed; false means persistence declined that removal. */
+  cancelAnnotationEdit: (id?: string) => boolean;
   /** Open the first occurrence of an annotation, or an explicit occurrence ID. */
   activateAnnotation: (id: string | null) => void;
 }
@@ -252,6 +257,8 @@ export interface ViewConfiguration {
   onAnnotationClick?: (occurrence: AnnotationOccurrence) => void;
   onAnnotationHover?: (occurrence: AnnotationOccurrence | null) => void;
   onDocumentChange?: (document: DocumentSnapshot) => void;
+  /** Only a synchronous false return declines a change; other results, including
+   * promises, are ignored. The void signature preserves existing notification callbacks. */
   onAnnotationsChange?: (annotations: readonly Annotation[]) => void;
   onHighlightHover?: (highlight: Annotation<HighlightData> | null) => void;
   onHighlightClick?: (highlight: Annotation<HighlightData>) => void;

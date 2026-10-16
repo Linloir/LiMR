@@ -401,8 +401,7 @@
   .limr-annotation-actions button > .limr-underline { padding-bottom: 1px; }
   .limr-annotation-actions svg { flex: none; width: 13px; height: 13px; }
   .limr-annotation-actions .limr-annotation-submit { color: var(--limr-accent, #8a7865); font-weight: 600; }
-  .limr-source-annotation-edit { display: inline-flex; align-items: center; gap: .3em; margin-block-start: .4rem; padding: .15em 0; border: 0; background: transparent; color: var(--limr-secondary, #7b7975); font-size: .75rem; }
-  .limr-source-annotation-edit > svg { width: 1em; height: 1em; }
+  .limr-annotation-actions .limr-annotation-delete:hover { color: var(--limr-error, #b45858); }
   .limr-annotation-entry > :first-child { margin-block-start: 0; }
   /* Custom renderers can wrap the paragraph in a source-binding block. Clear
      the actual last content node, whether wrapped or beside a paint layer. */

@@ -1,5 +1,7 @@
 import { AnnotationCard, AnnotationEditor, AnnotationMarkdown, ToolIcon, defineExtension, footnotes, useAnnotationState, useAnnotations, useLiMR, useLocale, type AnnotationContentProps, type AnnotationOverlayCardProps, type LiMRLocale, type RendererExtension } from '@linloir/limr';
 
+import { useEffect, useRef } from 'react';
+
 interface NoteData { text: string; draft?: string }
 const kinds = [
   { type: 'margin-note', label: '旁注', icon: 'comment', color: '#81B29A', hint: '在段落旁留下一个想法', labelEn: 'Margin note', hintEn: 'Leave a thought beside this passage' },
@@ -23,16 +25,23 @@ function NoteContent({ annotation, data, editing, presentation }: AnnotationCont
   const kind = kinds.find(kind => kind.type === annotation.type)!;
   const save = () => {
     if (!text.trim()) return;
-    commands.updateAnnotation(annotation.id, { data: { text } }); commands.editAnnotation(null);
+    if (commands.updateAnnotation(annotation.id, { data: { text } })) commands.commitAnnotationEdit(annotation.id);
   };
   const cancel = () => {
-    if (!data?.text.trim()) commands.removeAnnotation(annotation.id);
-    else { commands.updateAnnotation(annotation.id, { data: { text: data.text } }); commands.editAnnotation(null); }
+    if (!commands.updateAnnotation(annotation.id, { data: { text: data?.text ?? '' } })) return;
+    if (!commands.cancelAnnotationEdit(annotation.id)) commands.updateAnnotation(annotation.id, { data });
   };
+  const blur = () => { if (!text.trim() && !(data?.text ?? '').trim()) cancel(); };
+  const previous = useRef({ editing, activeHere });
+  useEffect(() => {
+    const leaving = previous.current.editing && (!editing || previous.current.activeHere && !activeHere);
+    previous.current = { editing, activeHere };
+    if (leaving) blur();
+  });
   return <div className="demo-note-content" data-limr-card-interactive="true">
     {isEditing ? <AnnotationEditor value={text} label={zh ? `${kind.label}内容` : `${kind.labelEn} content`} placeholder={zh ? kind.hint : kind.hintEn} autoFocus={presentation !== 'preview' || activeHere}
-      onChange={draft => commands.updateAnnotation(annotation.id, { data: { text: data?.text ?? '', draft } })} onSubmit={save} onCancel={cancel} submitDisabled={!text.trim()} cancelLabel={zh ? '取消' : 'Cancel'} submitLabel={locale.submit} />
-      : <><AnnotationMarkdown source={data?.text || (zh ? '还没有内容。' : 'No content yet.')} /><div className="limr-annotation-actions"><button type="button" onClick={() => { commands.updateAnnotation(annotation.id, { data: { text: data?.text ?? '', draft: data?.text ?? '' } }); commands.editAnnotation(annotation.id); }}><ToolIcon name="edit" /><span className="limr-underline">{zh ? '修改' : 'Edit'}</span></button><button type="button" className="demo-note-delete" onClick={() => commands.removeAnnotation(annotation.id)}><ToolIcon name="trash" /><span className="limr-underline">{locale.deleteAnnotations}</span></button></div></>}
+      onChange={draft => commands.updateAnnotation(annotation.id, { data: { text: data?.text ?? '', draft } })} onSubmit={save} onCancel={cancel} onBlur={blur} submitDisabled={!text.trim()} cancelLabel={zh ? '取消' : 'Cancel'} submitLabel={locale.submit} />
+      : <><AnnotationMarkdown source={data?.text || (zh ? '还没有内容。' : 'No content yet.')} />{commands.canEditAnnotation(annotation.id) && <div className="limr-annotation-actions"><button type="button" onClick={() => { commands.updateAnnotation(annotation.id, { data: { text: data?.text ?? '', draft: data?.text ?? '' } }); commands.editAnnotation(annotation.id); }}><ToolIcon name="edit" /><span className="limr-underline">{zh ? '修改' : 'Edit'}</span></button><button type="button" className="limr-annotation-delete" onClick={() => commands.removeAnnotation(annotation.id)}><ToolIcon name="trash" /><span className="limr-underline">{locale.deleteAnnotations}</span></button></div>}</>}
   </div>;
 }
 

@@ -36,7 +36,7 @@ function HighlightSettings({ context, options }: { context: ToolbarActionContext
   const change = (nextColor: string, nextStyle: HighlightData['style']) => {
     const appearance = { ...highlightAppearance, color: nextColor, style: nextStyle };
     context.setHighlightAppearance(appearance);
-    if (highlight) void context.run(current => current.updateAnnotation(highlight.id, { data: appearance }));
+    if (highlight) void context.run(current => { current.updateAnnotation(highlight.id, { data: appearance }); });
   };
   return <div className="limr-highlight-settings">
     <fieldset disabled={context.busy}><legend>{locale.highlightStyle}</legend>

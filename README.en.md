@@ -1,6 +1,6 @@
 # LiMR
 
-[![package version](https://img.shields.io/badge/version-1.2.0-blue.svg)](package.json)
+[![package version](https://img.shields.io/badge/version-1.2.1-blue.svg)](package.json)
 
 [简体中文](README.md) · **English**
 
@@ -139,7 +139,7 @@ The local Playground runs at `http://127.0.0.1:4173`. Use `@linloir/limr/core` f
 
 ## Build and publish Pages
 
-`main` contains source; `pages` contains only generated files. GitHub Pages uses **Deploy from a branch → pages → /(root)**. Pushing `main` does not automatically build the site.
+`main` contains source; `pages` contains only generated files. Keep GitHub Pages set to **Deploy from a branch → pages → /(root)**. Pushing `main` runs [Deploy Playground](https://github.com/Linloir/LiMR/blob/main/.github/workflows/playground.yml): it checks source and documentation, builds the site, updates `pages`, explicitly requests a Pages build, and verifies the live source revision. It also supports manual runs from Actions and uses the repository's `GITHUB_TOKEN`, with no extra deployment key.
 
 ```sh
 pnpm test:docs
@@ -148,6 +148,6 @@ pnpm preview:playground --port 4174
 # http://127.0.0.1:4174/LiMR/
 ```
 
-The output is `demo-dist/`, including `.nojekyll`, bilingual Docs, examples, and updated Skill ZIPs. After verification, sync that directory into a separate `pages` worktree, commit, and push both source and artifact branches. Change the build/preview `--base` when deploying under another repository name. README and docs describe repository source; check your installed npm version's exports/types, or use `pnpm pack` to consume the current source.
+The output is `demo-dist/`, including `.nojekyll`, bilingual Docs, examples, current-version Skill ZIPs, `build-info.json`, and `SHA256SUMS`. For local deployment, verify the output, sync it into a separate `pages` worktree, and push that branch. Change the build/preview `--base` when deploying under another repository name. README and docs describe repository source; check your installed npm version's exports/types, or use `pnpm pack` to consume the current source.
 
 [MIT License](LICENSE). Developed with Codex.

@@ -66,9 +66,18 @@ for (const width of [390, 560]) test(`mobile note cards stay anchored and assist
     } else {
       const start = measured.firstShell;
       expect(Math.min(Math.abs(start.top - (anchor.y + anchor.height)), Math.abs(start.bottom - anchor.y))).toBeCloseTo(8, 0);
-      expect(measured.firstHost.height).toBeCloseTo(844 * .8, 0);
+      // The centered card shares the viewport with its marker's tools. Its
+      // preferred 80dvh height can shrink when those actions wrap to two rows.
+      expect(measured.firstHost.height).toBeLessThanOrEqual(844 * .8 + .5);
+      expect(await card.locator('.limr-overlay-content').first().evaluate(element => element.clientHeight)).toBeGreaterThan(120);
       expect(measured.firstHost.x + measured.firstHost.width / 2).toBeCloseTo(width / 2, 0);
       expect(measured.firstHost.y + measured.firstHost.height / 2).toBeCloseTo(422, 0);
+      const toolbar = page.getByRole('toolbar');
+      await expect(toolbar).toBeVisible();
+      const tools = (await toolbar.boundingBox())!, dialog = measured.firstHost;
+      expect(tools.x).toBeGreaterThanOrEqual(0); expect(tools.y).toBeGreaterThanOrEqual(0);
+      expect(tools.x + tools.width).toBeLessThanOrEqual(width); expect(tools.y + tools.height).toBeLessThanOrEqual(844);
+      expect(tools.x + tools.width <= dialog.left || tools.x >= dialog.right || tools.y + tools.height <= dialog.top || tools.y >= dialog.bottom).toBe(true);
       const samples = await card.evaluate(element => [0, .25, .75, 1].map(progress => {
         for (const animation of element.getAnimations({ subtree: true })) {
           const timing = animation.effect!.getTiming(); animation.currentTime = (Number(timing.duration) + Number(timing.delay)) * progress;

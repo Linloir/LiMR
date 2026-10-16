@@ -55,13 +55,17 @@ highlight needs no extra AnnotationType. Its data supports color, style (backgro
 | Command | Behavior |
 | --- | --- |
 | addAnnotation(annotation, options?) | Adds/replaces an ID; ordinary content annotations also get a shared persistent highlight by default |
-| updateAnnotation(id, partial) | Shallowly merges fields while preserving the original id and source metadata; data is replaced as a whole, so retain needed fields |
+| updateAnnotation(id, partial) | Shallowly merges fields while preserving the original id and source metadata; data is replaced as a whole, so retain needed fields. Returns whether persistence accepted the change |
 | removeAnnotation(id) | Removes that annotation, preserving other annotations and shared highlights |
 | removeAnnotationsAt(ranges) | Removes supported annotations/highlights at exact matching fragments, retaining other anchors and unregistered types |
-| editAnnotation(id / null) | Changes shared editing state; setting an ID also activates its card |
+| editAnnotation(id / null) | Changes shared editing state; setting an ID also activates its card; `null` commits the current creation and closes editing |
+| commitAnnotationEdit(id?) | Commits a successfully saved edit and closes its editor; defaults to the current editing ID |
+| cancelAnnotationEdit(id?) | Cancels editing; removes an unsaved creation and its otherwise unused automatic highlights. Returns `false` if persistence declines removal |
 | activateAnnotation(id / null) | Opens the annotation's first occurrence, or accepts an explicit occurrence ID |
 
 addAnnotation accepts highlight: false to suppress automatic persistent highlighting, explicit HighlightData to choose its style, and edit: true to enter editing. Types configured with highlight: 'hover' do not add persistent highlights by default, but an explicit appearance still creates one. Default toolbar actions are palette, add/hide highlight, copy, and delete. actions replaces built-in actions; plugin actions are still merged in.
+
+Use `commitAnnotationEdit` after a successful save and `cancelAnnotationEdit` for cancellation. Canceling an existing annotation leaves its saved content and highlights intact; plugins reset their own draft content. Playground editors also cancel a newly created empty note when focus leaves the editor. Shared or previously saved highlights remain. Editing an active annotation hides its selection toolbar.
 
 ## Citation hover highlights
 
@@ -104,6 +108,6 @@ The layout compares displacement and folding penalties, preserving complete item
 
 Clicking or hovering a marker aligns its card by moving the group and translating its contents on one animation clock, keeping each card in its original list. Entering a hovered card preserves its position; leaving returns to the original top position. Clicking pins the active card until it is closed or dismissed, including after temporarily hovering another marker. Sidebar hover never moves the body text. Cached geometry and transforms support interrupted reversals and reduced-motion preferences without increasing page height or adding empty trailing space. Fades stay on the clipping window and shrink with the actual overflow, so fully revealed cards are no longer dimmed.
 
-Point annotations show readable context before their marker in the gray reference strip, fitted to its width with ellipses on both ends. The actual highlight and toolbar ranges remain zero-length. Clicking a highlight opens the selection toolbar; in sidebar mode, clicking a marker also provides the toolbar for its range. Opening or pinning a floating card dismisses the previous toolbar and clears the body-text selection so the toolbar cannot cover the card. Actions remain subject to plugin capabilities and source-editing permissions.
+Point annotations show readable context before their marker in the gray reference strip, fitted to its width with ellipses on both ends. The actual highlight and toolbar ranges remain zero-length. Clicking a highlight opens the selection toolbar. Clicking a marker opens its sidebar item or floating card together with the toolbar for its range, including math, code, Mermaid, and custom atomic blocks. The toolbar stays clear of the card; on short screens, card content and expanded toolbar panels scroll within their available space. Hover previews clear the previous body-text selection. The toolbar stays hidden while the active annotation is being edited. Actions remain subject to plugin capabilities and source-editing permissions.
 
 For inline ranges written as `==text==` followed by a footnote or named annotation, only an explicit, visible highlight definition supplies persistent paint. Missing or hidden definitions produce hover-only feedback, using the highlight color when supplied and otherwise the default inline highlight color. A visible highlight never receives a second hover background. Standalone `==text==` remains a persistent inline highlight.

@@ -86,7 +86,6 @@ button:disabled { cursor: default; opacity: .45; }
 .demo-note-content .limr-annotation-markdown > :first-child,
 .demo-note-content .limr-annotation-markdown > [data-limr-block]:first-child > :first-child { margin-block-start: 0; }
 .limr-annotation-overlay:has(.demo-note-content) .limr-overlay-content { padding: 0 .9rem .75rem; }
-.limr-annotation-actions .demo-note-delete:hover { color: var(--limr-error, #b45858); }
 .demo-plugin-intro { max-width: 1800px; margin: 0 auto 28px; padding-bottom: 24px; border-bottom: 1px solid var(--demo-line); }
 .demo-plugin-intro p { font: 14px/1.7 var(--limr-font-text,Georgia,serif); margin: 0 0 8px; }
 .demo-plugin-intro p + p { color: var(--demo-muted); font-size: 12px; }

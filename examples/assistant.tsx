@@ -1,4 +1,4 @@
-import { AnnotationCard, AnnotationMarkdown, defineExtension, type AnnotationContentProps, type AnnotationOverlayCardProps, type AnnotationSidebarPreviewProps, type RendererExtension, type SelectionSnapshot } from '@linloir/limr';
+import { AnnotationCard, AnnotationMarkdown, ToolIcon, defineExtension, useLiMR, useLocale, type AnnotationContentProps, type AnnotationOverlayCardProps, type AnnotationSidebarPreviewProps, type RendererExtension, type SelectionSnapshot } from '@linloir/limr';
 import type { ReactNode } from 'react';
 
 /** Your application owns transport, authentication and conversation storage. */
@@ -15,10 +15,12 @@ export function assistant({ adapter, type = 'assistant', label = 'Ask assistant'
   function Card(props: AnnotationOverlayCardProps<AnswerData>) {
     return <AnnotationCard {...props} title={label} />;
   }
-  function Answer({ data }: AnnotationContentProps<AnswerData>) {
+  function Answer({ annotation, data }: AnnotationContentProps<AnswerData>) {
+    const commands = useLiMR(), locale = useLocale();
     return <div aria-busy={data?.status === 'streaming'}>
       <AnnotationMarkdown source={data?.text || '…'} streaming={data?.status === 'streaming'} />
       {data?.status === 'error' && <p role="alert">{data.error}</p>}
+      {commands.canEditAnnotation(annotation.id) && <div className="limr-annotation-actions"><button type="button" className="limr-annotation-delete" onClick={() => commands.removeAnnotation(annotation.id)}><ToolIcon name="trash" /><span className="limr-underline">{locale.deleteAnnotations}</span></button></div>}
     </div>;
   }
   function Preview({ data, referenceText }: AnnotationSidebarPreviewProps<AnswerData>) {

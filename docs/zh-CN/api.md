@@ -32,7 +32,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 | components | 按 AST 类型/特殊标签覆盖 NodeRenderer |
 | annotationTypes | 按 type 追加/覆盖标注呈现 |
 | annotations | 不传则内部管理；传入则受控 |
-| onAnnotationsChange | 下一份外部标注数组，包含 highlight；受控编辑必须回传 |
+| onAnnotationsChange | 下一份外部标注数组，包含 highlight；受控编辑必须通过 props 回传已接受的数组。仅同步返回 `false` 拒绝修改；其他返回值忽略 |
 | onSourceChange | 可选 `(source, { document, edits }) => boolean \| void`；显式启用原文编辑，返回 false 拒绝事务 |
 | theme | light，可选 dark / auto |
 | appearance | classic，传播到 portal 的样式作用域 |

@@ -131,9 +131,9 @@ export const savePassage = defineExtension({
 
 标注继续使用 addAnnotation / updateAnnotation / removeAnnotation / removeAnnotationsAt。普通 addAnnotation 保存外部数据；`{ target: 'source' }` 选择原文，默认高亮动作会在可编辑时选择该目标。standard 中的 sourceAnnotations 已提供通用序列化器；需要自定义格式时，模块可通过 `RendererExtension.sourceEditing.annotations(change, document)` 覆盖这些命令的序列化。change 为 `{ added, updated: [{ previous, annotation }], removed }`；返回一组 SourceEdit 原子处理整次命令，undefined 表示交给较早注册的处理器。后注册插件可覆盖较早注册的序列化器；处理器应为纯函数，不自行写文件或调用回调。读取 previous.source 可以定位原有定义，包括重复 ID 的全部定义，避免删除后旧定义重新出现。
 
-默认公开序列化器 editSourceAnnotations 支持 `{ body: string, ...标量属性 }`，内嵌 highlight 使用 color/style/hidden；仅提供这种数据的类型插件无需重复安装序列化器。sourceAnnotations 不注册特定内容类型或提问卡片。自定义复杂数据应提供自己的处理器；内置处理器会拒绝无法无损表达的数据。编辑 UI 仍由类型的 Content 负责，可用 canEditAnnotation(id) 判断可编辑性、editAnnotation(id/null) 共享编辑状态，再用 updateAnnotation 提交。已有外部 annotations 不会因开启 source 编辑而被迁移。
+默认公开序列化器 editSourceAnnotations 支持 `{ body: string, ...标量属性 }`，内嵌 highlight 使用 color/style/hidden；仅提供这种数据的类型插件无需重复安装序列化器。sourceAnnotations 不注册特定内容类型或提问卡片。自定义复杂数据应提供自己的处理器；内置处理器会拒绝无法无损表达的数据。编辑 UI 仍由类型的 Content 负责，可用 canEditAnnotation(id) 判断可编辑性、editAnnotation(id) 共享编辑状态；updateAnnotation 接受保存的数据后调用 commitAnnotationEdit(id)。显式取消调用 cancelAnnotationEdit(id)：新建注释及本次同时创建的高亮会被移除，已有或被其他注释共用的高亮保留。取消修改已有注释时保留已保存内容，插件先恢复或丢弃自己的草稿。updateAnnotation 或 cancelAnnotationEdit 返回 false 表示宿主拒绝修改，应保留草稿和编辑状态。已有外部 annotations 不会因开启 source 编辑而被迁移。
 
-公开组件 `AnnotationEditor` 提供无边框、随内容和宽度自动增高的受控输入，以及取消/提交按钮。调用者管理 value、草稿、保存和撤销，通过 onChange/onSubmit/onCancel 接收操作；可选 onBlur 只在焦点离开整个编辑器容器时触发，切到内部按钮不会触发。Escape 取消，Ctrl/Cmd+Enter 提交，输入法组字期间不拦截这些按键。普通阅读笔记示例与源内正文编辑器共同复用此 UI，各自保留状态和持久化策略；组件本身不保存标注或访问文件。
+公开组件 `AnnotationEditor` 提供无边框、随内容和宽度自动增高的受控输入，以及取消/提交按钮。调用者管理 value、草稿、保存和撤销，通过 onChange/onSubmit/onCancel 接收操作；可选 onBlur 只在焦点离开整个编辑器容器时触发，切到内部按钮不会触发。配套笔记编辑器会在空白新草稿失焦时取消创建，删除临时注释及高亮；非空草稿沿用各模块原有的保存策略。Escape 取消，Ctrl/Cmd+Enter 提交，输入法组字期间不拦截这些按键。普通阅读笔记示例与源内正文编辑器共同复用此 UI，各自保留状态和持久化策略；组件本身不保存标注或访问文件。插件操作区统一使用靠右的 limr-annotation-actions 容器，在 canEditAnnotation(id) 允许修改时提供单条删除。源内编辑器、阅读笔记、助手和引用模块均保留这一能力边界；没有源码序列化器的原文格式仍为只读。
 
 原文编辑可否进行与文件是否保存成功是两件事；宿主同步接受修改并负责保存队列、撤销、错误与冲突 UI。详见[本地文件集成](integration.md#原文编辑与本地文件)。
 

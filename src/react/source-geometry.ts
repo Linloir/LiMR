@@ -113,12 +113,22 @@ export function atomicSelectionText(runtime: ReaderRuntime, ranges: readonly Sou
   const hasAtomic = blocks.some(block => [block, ...block.querySelectorAll<HTMLElement>('[data-limr-atomic]')].some(element =>
     element.hasAttribute('data-limr-atomic') && selected({ start: Number(element.dataset.sourceStart), end: Number(element.dataset.sourceEnd) })));
   if (!hasAtomic) return;
+  const omissions = [...document.annotationRanges.values()].flatMap(references => references.flatMap(reference => [reference.openingRange, reference.markerRange])).sort((a, b) => a.start - b.start);
+  const atomicText = (range: SourceRange) => {
+    let text = '', start = range.start;
+    for (const omission of omissions) {
+      if (omission.end <= start || omission.start >= range.end) continue;
+      text += document.source.slice(start, Math.max(start, omission.start));
+      start = Math.min(range.end, omission.end);
+    }
+    return text + document.source.slice(start, range.end);
+  };
   const paragraphs: string[] = [];
   for (const block of blocks) {
     const parts: string[] = []; let previousFlow: HTMLElement | undefined;
     visitLeaves(block, runtime, leaf => {
       if (leaf.kind === 'marker' || !selected(leaf.range)) return false;
-      const text = leaf.kind !== 'text' ? document.source.slice(leaf.range.start, leaf.range.end) : ranges.filter(range => intersects(range, leaf.range)).map(range => textRange(leaf, range)?.toString() ?? '').join('');
+      const text = leaf.kind !== 'text' ? atomicText(leaf.range) : ranges.filter(range => intersects(range, leaf.range)).map(range => textRange(leaf, range)?.toString() ?? '').join('');
       if (!text) return false;
       if (previousFlow && previousFlow !== leaf.flow) parts.push(previousFlow.matches('th,td') && leaf.flow.matches('th,td') && previousFlow.parentElement === leaf.flow.parentElement ? '\t' : '\n');
       parts.push(text); previousFlow = leaf.flow;

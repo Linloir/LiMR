@@ -106,6 +106,7 @@ export class ReaderRuntime {
   private localAnnotations: readonly Annotation[] = [];
   private pendingOpen: string | null = null;
   private pendingAnnotations?: { input: readonly Annotation[]; value: readonly Annotation[] };
+  private annotationCreations = new Map<string, { source: boolean; highlights: Set<string> }>();
   private taskController = new AbortController();
   get signal() { return this.taskController.signal; }
   readonly commands: DocumentCommands = {
@@ -132,19 +133,33 @@ export class ReaderRuntime {
       return true;
     },
     addAnnotation: (annotation, options = {}) => {
+      let creation: { source: boolean; highlights: Set<string> } | undefined;
       const accepted = this.changeAnnotations(items => {
         const previous = items.find(item => item.id === annotation.id);
+        if (options.edit && !previous) creation = { source: options.target === 'source', highlights: new Set() };
         const next = [...items.filter(item => item.id !== annotation.id), previous?.source ? { ...annotation, source: previous.source } : annotation];
         if (annotation.type !== 'highlight' && options.highlight !== false && (options.highlight !== undefined || this.annotationTypes.get(annotation.type)?.highlight !== 'hover')) {
           const doc = this.document.getSnapshot();
           for (const anchor of resolveAnnotationAnchors(annotation, doc)) {
-            if (anchor.range.start === anchor.range.end || next.some(item => item.type === 'highlight' && resolveAnnotationAnchors(item, doc).some(other => sameRange(other.range, anchor.range)))) continue;
-            next.push({ id: `highlight-${crypto.randomUUID()}`, type: 'highlight', anchors: [{ ...anchor, id: undefined }], data: { ...defaultHighlight, ...options.highlight } });
+            if (anchor.range.start === anchor.range.end) continue;
+            const existing = next.find(item => item.type === 'highlight' && resolveAnnotationAnchors(item, doc).some(other => sameRange(other.range, anchor.range)));
+            if (existing) {
+              // Multiple unsaved creations may share their temporary paint.
+              // Across persistence stores, reused paint remains independently
+              // owned; canceling one store must not mutate the other.
+              if (creation && [...this.annotationCreations.values()].some(owner => owner.source === creation!.source && owner.highlights.has(existing.id))) creation.highlights.add(existing.id);
+              continue;
+            }
+            const highlight = { id: `highlight-${crypto.randomUUID()}`, type: 'highlight', anchors: [{ ...anchor, id: undefined }], data: { ...defaultHighlight, ...options.highlight } };
+            next.push(highlight); creation?.highlights.add(highlight.id);
           }
         }
         return next;
       }, options.target);
-      if (accepted && options.edit) this.commands.editAnnotation(annotation.id);
+      if (accepted && options.edit) {
+        if (creation && (this.decorations.get().annotations.has(annotation.id) || this.pendingAnnotations?.value.some(item => item.id === annotation.id))) this.annotationCreations.set(annotation.id, creation);
+        this.commands.editAnnotation(annotation.id);
+      }
     },
     updateAnnotation: (id, update) => this.changeAnnotations(items => items.map(item => item.id === id ? { ...item, ...update, id, source: item.source } : item)),
     removeAnnotation: id => this.changeAnnotations(items => items.filter(item => item.id !== id)),
@@ -158,8 +173,39 @@ export class ReaderRuntime {
     editAnnotation: id => {
       const annotation = id && (this.decorations.get().annotations.get(id) ?? this.pendingAnnotations?.value.find(item => item.id === id));
       if (id && (!annotation || !this.supportsAnnotation(annotation))) return;
+      if (!id) this.commitCreation(this.interaction.get().editing);
       this.updateInteraction({ editing: id });
       if (id) this.commands.activateAnnotation(id);
+    },
+    commitAnnotationEdit: supplied => {
+      const id = supplied ?? this.interaction.get().editing;
+      this.commitCreation(id);
+      if (id && this.interaction.get().editing === id) this.updateInteraction({ editing: null });
+    },
+    cancelAnnotationEdit: supplied => {
+      const id = supplied ?? this.interaction.get().editing;
+      if (!id) return true;
+      const creation = this.annotationCreations.get(id);
+      if (creation) {
+        const accepted = this.changeAnnotations(items => {
+          const remaining = items.filter(item => item.id !== id);
+          const doc = this.document.getSnapshot();
+          const references = [...doc.annotations.filter(item => !item.source && item.id !== id && !remaining.some(other => other.id === item.id)), ...remaining]
+            .filter(item => item.type !== 'highlight');
+          const referenceIds = new Set(references.map(item => item.id));
+          const referencedRanges = [...references.flatMap(item => resolveAnnotationAnchors(item, doc).map(anchor => anchor.range)),
+            ...doc.occurrences.filter(occurrence => occurrence.annotationIds.some(id => referenceIds.has(id))).map(occurrence => annotationReferenceRange(doc, occurrence))];
+          return remaining.filter(item => {
+            if (!creation.highlights.has(item.id) || item.type !== 'highlight' || !!item.source !== creation.source) return true;
+            const ranges = resolveAnnotationAnchors(item, doc).map(anchor => anchor.range);
+            return referencedRanges.some(reference => ranges.some(range => intersects(range, reference)));
+          });
+        });
+        if (!accepted) return false;
+        this.annotationCreations.delete(id);
+      }
+      if (this.interaction.get().editing === id) this.updateInteraction({ editing: null });
+      return true;
     },
     activateAnnotation: id => {
       const occurrence = this.decorations.get().occurrences.find(item => item.id === id || item.annotationIds.includes(id ?? ''));
@@ -168,6 +214,14 @@ export class ReaderRuntime {
       this.activate(occurrence?.id ?? null);
     },
   };
+  private commitCreation(id: string | null) {
+    const creation = id && this.annotationCreations.get(id);
+    if (!creation || !id) return;
+    this.annotationCreations.delete(id);
+    // Saving any owner makes shared paint durable, including for other open
+    // drafts that happened to reuse that newly created highlight.
+    for (const pending of this.annotationCreations.values()) for (const highlight of creation.highlights) pending.highlights.delete(highlight);
+  }
   private changeAnnotations(update: (items: readonly Annotation[]) => readonly Annotation[], target: 'annotations' | 'source' = 'annotations') {
     const config = this.configuration.get();
     const external = this.pendingAnnotations && this.pendingAnnotations.input === config.annotations ? this.pendingAnnotations.value : config.annotations ?? this.localAnnotations;
@@ -194,14 +248,25 @@ export class ReaderRuntime {
     if (externalChanged && config.annotations !== undefined && !config.onAnnotationsChange) throw new Error('Controlled annotations require onAnnotationsChange to accept edits.');
     if (edits && !this.commands.editSource(edits, { revision: document.revision })) return false;
     if (externalChanged) {
+      const previousPending = this.pendingAnnotations;
+      const pending = config.annotations === undefined ? undefined : { input: config.annotations, value: nextExternal };
+      if (pending) this.pendingAnnotations = pending;
+      try {
+        const acceptance: unknown = config.onAnnotationsChange?.(nextExternal);
+        if (acceptance === false) {
+          if (this.pendingAnnotations === pending) this.pendingAnnotations = previousPending;
+          return false;
+        }
+      } catch (error) {
+        if (this.pendingAnnotations === pending) this.pendingAnnotations = previousPending;
+        throw error;
+      }
       if (config.annotations === undefined) { this.localAnnotations = nextExternal; this.rebuildDecorations(); }
-      else this.pendingAnnotations = { input: config.annotations, value: nextExternal };
-      config.onAnnotationsChange?.(nextExternal);
     }
     return true;
   }
   start() { if (this.taskController.signal.aborted) this.taskController = new AbortController(); }
-  dispose() { this.taskController.abort(); this.resources.invalidate(); this.resourceKeys.clear(); }
+  dispose() { this.taskController.abort(); this.resources.invalidate(); this.resourceKeys.clear(); this.annotationCreations.clear(); }
   getResourceKey(annotation: Annotation) {
     const old = this.resourceKeys.get(annotation.id);
     if (old?.annotation === annotation) return old.key;
@@ -308,6 +373,7 @@ export class ReaderRuntime {
     const previous = this.decorations.get();
     const annotations = new Map(doc.annotations.map(annotation => [annotation.id, annotation]));
     for (const annotation of config.annotations ?? this.localAnnotations) annotations.set(annotation.id, annotation);
+    for (const id of this.annotationCreations.keys()) if (!annotations.has(id) && !this.pendingAnnotations?.value.some(annotation => annotation.id === id)) this.annotationCreations.delete(id);
     for (const [id, resource] of this.resourceKeys) if (!annotations.has(id)) {
       this.resources.invalidate(resource.key); this.resourceKeys.delete(id);
     }

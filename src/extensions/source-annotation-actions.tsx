@@ -20,8 +20,8 @@ function draftFor(runtime: ReaderRuntime, id: string, body: string): Store<Draft
  * edit state and persistence commands. The host still owns saving the file. */
 export function SourceAnnotationBody({ annotation, data, editing, presentation }: AnnotationContentProps<{ body?: string }>) {
   const runtime = useRuntime(), locale = useLocale();
-  useStoreSelector(runtime.configuration, () => runtime.commands.canEditAnnotation(annotation.id));
-  const canEdit = !!annotation.source && runtime.commands.canEditAnnotation(annotation.id);
+  const canDelete = useStoreSelector(runtime.configuration, () => runtime.commands.canEditAnnotation(annotation.id));
+  const canEdit = !!annotation.source && canDelete;
   const active = useStoreSelector(runtime.interaction, state => state.active);
   const activeHere = runtime.decorations.get().occurrences.some(occurrence => occurrence.id === active && occurrence.annotationIds.includes(annotation.id));
   const body = data?.body ?? '';
@@ -42,6 +42,9 @@ export function SourceAnnotationBody({ annotation, data, editing, presentation }
       const latest = runtime.decorations.get().annotations.get(annotation.id);
       if (!latest) return;
       const latestData = latest.data as { body?: string } | undefined, latestBody = latestData?.body ?? '';
+      // Leaving an untouched empty draft is cancellation. The runtime knows
+      // whether it was just created or is an existing empty annotation.
+      if (!current.base.trim() && !current.draft.trim() && !latestBody.trim()) { cancel(); return; }
       if (current.draft !== current.base) {
         if (latestBody !== current.base && latestBody !== current.draft) throw new Error(conflictMessage);
         if (!runtime.commands.canEditAnnotation(annotation.id)) throw new Error(zh ? '源码编辑已关闭，草稿已保留。' : 'Source editing is disabled; your draft is retained.');
@@ -57,17 +60,26 @@ export function SourceAnnotationBody({ annotation, data, editing, presentation }
       const savedBody = saved?.body ?? latestBody;
       store.set({ base: savedBody, draft: savedBody, error: null });
       // A blur from the previous card must not close another card's editor.
-      if (runtime.interaction.get().editing === annotation.id) runtime.commands.editAnnotation(null);
+      runtime.commands.commitAnnotationEdit(annotation.id);
     } catch (cause) { store.set({ ...store.get(), error: cause instanceof Error ? cause.message : String(cause) }); }
   };
   const finishRef = useRef(finish); finishRef.current = finish;
   const cancel = () => {
+    const discarded = store.get();
     const saved = runtime.decorations.get().annotations.get(annotation.id)?.data as { body?: string } | undefined;
     const savedBody = saved?.body ?? body;
     // Reset before leaving edit mode: its exit listener must not save a
     // discarded draft, including when the source changed during editing.
     store.set({ base: savedBody, draft: savedBody, error: null });
-    if (runtime.interaction.get().editing === annotation.id) runtime.commands.editAnnotation(null);
+    try {
+      if (!runtime.commands.cancelAnnotationEdit(annotation.id)) throw new Error(zh ? '取消未被接受，草稿已保留。' : 'Cancellation was not accepted; your draft is retained.');
+    } catch (cause) { store.set({ ...discarded, error: cause instanceof Error ? cause.message : String(cause) }); }
+  };
+  const remove = () => {
+    try {
+      runtime.commands.removeAnnotation(annotation.id);
+      if (runtime.decorations.get().annotations.has(annotation.id)) throw new Error(zh ? '删除未被接受，请重试。' : 'Deletion was not accepted; please try again.');
+    } catch (cause) { store.set({ ...store.get(), error: cause instanceof Error ? cause.message : String(cause) }); }
   };
   useEffect(() => {
     const ownsActive = () => runtime.decorations.get().occurrences.find(item => item.id === runtime.interaction.get().active)?.annotationIds.includes(annotation.id) ?? false;
@@ -84,10 +96,13 @@ export function SourceAnnotationBody({ annotation, data, editing, presentation }
     {canEdit && editing ? <AnnotationEditor label={zh ? '注释 Markdown' : 'Annotation Markdown'} placeholder={zh ? '记录你的想法，可以使用 Markdown。' : 'Write a note using Markdown.'} value={draft.draft} autoFocus={presentation !== 'preview' || activeHere}
       onChange={value => store.set({ ...store.get(), draft: value, error: null })} onSubmit={finish} onCancel={cancel} onBlur={finish} cancelLabel={zh ? '取消' : 'Cancel'} submitLabel={locale.submit} /> : <>
       <AnnotationMarkdown source={body} />
-      {canEdit && <button type="button" className="limr-source-annotation-edit" onClick={() => runtime.commands.editAnnotation(annotation.id)}><ToolIcon name="edit" /><span className="limr-underline">{zh ? '编辑' : 'Edit'}</span></button>}
+      {canDelete && <div className="limr-annotation-actions">
+        {canEdit && <button type="button" onClick={() => runtime.commands.editAnnotation(annotation.id)}><ToolIcon name="edit" /><span className="limr-underline">{zh ? '编辑' : 'Edit'}</span></button>}
+        <button type="button" className="limr-annotation-delete" onClick={remove}><ToolIcon name="trash" /><span className="limr-underline">{locale.deleteAnnotations}</span></button>
+      </div>}
     </>}
     {(conflict || draft.error) && <span role="alert" className="limr-action-error">{conflict ? conflictMessage : draft.error}</span>}
-    {conflict && <button type="button" className="limr-source-annotation-edit" onClick={() => store.set({ base: body, draft: body, error: null })}><span className="limr-underline">{zh ? '载入当前内容' : 'Load current content'}</span></button>}
+    {conflict && <div className="limr-annotation-actions"><button type="button" onClick={() => store.set({ base: body, draft: body, error: null })}><span className="limr-underline">{zh ? '载入当前内容' : 'Load current content'}</span></button></div>}
   </div>;
 }
 

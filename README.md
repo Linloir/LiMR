@@ -1,6 +1,6 @@
 # LiMR
 
-[![package version](https://img.shields.io/badge/version-1.2.0-blue.svg)](package.json)
+[![package version](https://img.shields.io/badge/version-1.2.1-blue.svg)](package.json)
 
 **简体中文** · [English](README.en.md)
 
@@ -139,7 +139,7 @@ Playground 刷新后回到默认文档与标准排版，不自动恢复上次打
 
 ## 构建与发布 Pages
 
-`main` 保存源码；`pages` 只保存构建产物。GitHub Pages 设置为 **Deploy from a branch → pages → /(root)**；推送 `main` 不会自动构建站点。
+`main` 保存源码；`pages` 只保存构建产物。GitHub Pages 保持 **Deploy from a branch → pages → /(root)**。推送 `main` 会运行 [Deploy Playground](https://github.com/Linloir/LiMR/blob/main/.github/workflows/playground.yml)：检查源码与文档、构建站点、更新 `pages`，并显式请求 Pages 构建及核验线上源码版本；也可在 Actions 中手动运行。使用仓库自带的 `GITHUB_TOKEN`，无需额外部署密钥。
 
 ```sh
 pnpm test:docs
@@ -148,6 +148,6 @@ pnpm preview:playground --port 4174
 # http://127.0.0.1:4174/LiMR/
 ```
 
-构建输出 `demo-dist/`，包含 `.nojekyll`、双语 Docs、示例和更新后的 Skill ZIP。验证后，将该目录内容同步到独立的 `pages` 工作树，提交并推送源码与产物分支。部署其他仓库名时需修改构建/预览的 `--base`。README 和文档以仓库实现为准；核对 npm 安装版本的导出和类型，必要时用 `pnpm pack` 消费当前源码。
+构建输出 `demo-dist/`，包含 `.nojekyll`、双语 Docs、示例、当前版本的 Skill ZIP、`build-info.json` 和 `SHA256SUMS`。需要本地部署时，验证后将该目录内容同步到独立的 `pages` 工作树并推送。部署其他仓库名时需修改构建/预览的 `--base`。README 和文档以仓库实现为准；核对 npm 安装版本的导出和类型，必要时用 `pnpm pack` 消费当前源码。
 
 [MIT License](LICENSE). Developed with Codex.

@@ -35,6 +35,11 @@ def archive(name, skills):
 
 OUTPUT.mkdir(parents=True, exist_ok=True)
 PUBLIC.mkdir(parents=True, exist_ok=True)
+# Keep the downloadable site identical to a clean CI build. Historical release
+# archives stay in artifacts/skills; the site serves the current release only.
+for stale in PUBLIC.glob('limr-skills-*.zip'):
+    if stale.name != f'limr-skills-{VERSION}.zip':
+        stale.unlink()
 checksums = [archive(f'{name}.zip', [name]) for name in NAMES]
 checksums.append(archive(f'limr-skills-{VERSION}.zip', NAMES))
 for destination in (OUTPUT, PUBLIC):

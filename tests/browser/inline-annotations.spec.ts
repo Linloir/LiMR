@@ -82,7 +82,7 @@ test('standalone footnotes and self-closing refs keep zero-length hover ranges',
   }
 });
 
-test('opening a footnote overlay dismisses the previous highlight toolbar and native selection', async ({ page }) => {
+test('a clicked footnote keeps marker tools while replacing previous native selection', async ({ page }) => {
   await page.setViewportSize({ width: 560, height: 950 });
   await page.evaluate(() => window.limrStream({ source: 'Before ::%%limr%%{<#r}highlighted **words**::%%limr%%{>#r} after.\n\n:::limr-annotation{#paint ranges="r" type="highlight" color="#E5C07B"}\n:::\n\n:::limr-annotation{#note ranges="r" type="footnote"}\nA useful footnote.\n:::', streaming: false }));
   const text = page.locator('.limr-reader-content strong');
@@ -95,7 +95,7 @@ test('opening a footnote overlay dismisses the previous highlight toolbar and na
   await expect(toolbar).toHaveCount(0);
   await marker.click();
   await expect(overlay).toHaveAttribute('data-pinned', 'true');
-  await expect(toolbar).toHaveCount(0);
+  await expect(toolbar).toBeVisible();
   await overlay.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(overlay).toHaveCount(0);
   await text.evaluate(element => {
@@ -106,7 +106,7 @@ test('opening a footnote overlay dismisses the previous highlight toolbar and na
   await expect(toolbar).toBeVisible();
   await marker.click();
   await expect(overlay).toHaveAttribute('data-pinned', 'true');
-  await expect(toolbar).toHaveCount(0);
+  await expect(toolbar).toBeVisible();
   expect(await page.evaluate(() => getSelection()?.isCollapsed)).toBe(true);
   await expect(page.locator('#stream-selection')).toHaveText('null');
 });

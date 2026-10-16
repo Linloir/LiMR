@@ -32,6 +32,34 @@ describe('application plugin commands and resource identity', () => {
     const runtime = new ReaderRuntime('controlled', 'Text', false, { annotations: [] });
     expect(() => runtime.commands.addAnnotation({ id: 'a', type: 'custom' })).toThrow('onAnnotationsChange');
   });
+  it('accepts incidental return values from existing expression callbacks', () => {
+    const updates: (readonly import('../src/core').Annotation[])[] = [];
+    const runtime = new ReaderRuntime('notifications', 'Text', false, {
+      annotationTypes: [{ type: 'custom', label: 'Custom' }],
+      onAnnotationsChange: items => updates.push(items),
+    });
+    runtime.commands.addAnnotation({ id: 'note', type: 'custom' });
+    expect(runtime.commands.updateAnnotation('note', { data: 'Accepted' })).toBe(true);
+    expect(updates).toHaveLength(2);
+    expect(runtime.decorations.get().annotations.get('note')?.data).toBe('Accepted');
+  });
+  it('accepts asynchronous notification callbacks without interpreting resolved false as rejection', async () => {
+    const updates: (readonly import('../src/core').Annotation[])[] = [];
+    const runtime = new ReaderRuntime('notifications', 'Text', false, {
+      annotationTypes: [{ type: 'custom', label: 'Custom' }],
+      onAnnotationsChange: async items => {
+        updates.push(items);
+        await Promise.resolve();
+        return false;
+      },
+    });
+    runtime.commands.addAnnotation({ id: 'note', type: 'custom' });
+    expect(runtime.commands.updateAnnotation('note', { data: 'Accepted immediately' })).toBe(true);
+    expect(runtime.decorations.get().annotations.get('note')?.data).toBe('Accepted immediately');
+    await Promise.resolve();
+    expect(updates).toHaveLength(2);
+    expect(runtime.decorations.get().annotations.get('note')?.data).toBe('Accepted immediately');
+  });
   it('preserves batched controlled edits and activates after the host accepts them', () => {
     let accepted: readonly import('../src/core').Annotation[] = [];
     const configuration = { annotationTypes: [{ type: 'custom', label: 'Custom' }], annotations: accepted, onAnnotationsChange: (value: typeof accepted) => { accepted = value; } };
@@ -181,5 +209,192 @@ describe('annotations on a shared text fragment', () => {
     runtime.commands.removeAnnotationsAt([first]);
     expect(runtime.decorations.get().annotations.get('note')?.anchors).toEqual([{ range: second }]);
     expect([...runtime.decorations.get().highlights.values()].map(item => item.range)).toEqual([second]);
+  });
+});
+
+describe('annotation edit cancellation', () => {
+  const source = 'One fragment and another';
+  const range = { start: 0, end: 12 };
+  const annotationTypes = [{ type: 'note', label: 'Note' }];
+  const entries = (runtime: ReaderRuntime) => [...runtime.decorations.get().annotations.values()];
+  const note = (id = 'new') => ({ id, type: 'note', range, data: { body: '' } });
+  const setupSource = (accept: () => boolean | void = () => {}, initial = source) => new ReaderRuntime('source-cancel', initial, false, {
+    extensions: standard(), annotationTypes, onSourceChange: accept,
+  });
+
+  it('removes a new source annotation and only its automatically created highlight', () => {
+    const runtime = setupSource();
+    runtime.commands.addAnnotation(note(), { target: 'source', edit: true });
+    expect(entries(runtime).map(item => item.type).sort()).toEqual(['highlight', 'note']);
+    expect(runtime.commands.cancelAnnotationEdit()).toBe(true);
+    expect(entries(runtime)).toEqual([]);
+    expect(runtime.document.getSnapshot().source.trim()).toBe(source);
+    expect(runtime.interaction.get().editing).toBeNull();
+  });
+
+  it('removes a new uncontrolled annotation and its highlight without inspecting content', () => {
+    const runtime = new ReaderRuntime('cancel', source, false, { annotationTypes });
+    runtime.commands.addAnnotation({ ...note(), data: { body: 'This is a nonempty unsaved creation' } }, { edit: true });
+    expect(runtime.commands.cancelAnnotationEdit()).toBe(true);
+    expect(entries(runtime)).toEqual([]);
+    runtime.commands.addAnnotation(note('existing'));
+    runtime.commands.editAnnotation('existing');
+    expect(runtime.commands.cancelAnnotationEdit()).toBe(true);
+    expect(entries(runtime).some(item => item.id === 'existing')).toBe(true);
+  });
+
+  for (const target of ['source', 'annotations'] as const) it(`preserves a pre-existing or overlapping highlight when canceling ${target} creation`, () => {
+    for (const highlightRange of [range, { start: 2, end: 8 }]) {
+      const runtime = setupSource();
+      runtime.commands.addAnnotation({ id: 'saved', type: 'highlight', range: highlightRange }, { target });
+      const current = target === 'source' ? runtime.document.getSnapshot().annotations[0].anchors![0].range : range;
+      runtime.commands.addAnnotation({ ...note(), range: highlightRange === range ? current : target === 'source' ? { start: 0, end: runtime.document.getSnapshot().source.indexOf('\n\n') } : range }, { target, edit: true });
+      expect(runtime.commands.cancelAnnotationEdit('new')).toBe(true);
+      expect(entries(runtime).map(item => item.id)).toEqual(['saved']);
+    }
+  });
+
+  for (const target of ['source', 'annotations'] as const) it(`preserves shared ${target} paint, and reclaims it after both unsaved owners cancel`, () => {
+    const runtime = setupSource();
+    runtime.commands.addAnnotation(note('first'), { target, edit: true });
+    const sharedRange = entries(runtime).find(item => item.id === 'first')!.anchors?.[0].range ?? range;
+    runtime.commands.addAnnotation({ ...note('second'), range: sharedRange }, { target, edit: true });
+    expect(entries(runtime).filter(item => item.type === 'highlight')).toHaveLength(1);
+    expect(runtime.commands.cancelAnnotationEdit('first')).toBe(true);
+    expect(entries(runtime).map(item => item.type).sort()).toEqual(['highlight', 'note']);
+    expect(runtime.interaction.get().editing).toBe('second');
+    expect(runtime.commands.cancelAnnotationEdit('second')).toBe(true);
+    expect(entries(runtime)).toEqual([]);
+  });
+
+  it('keeps generated paint when another saved annotation overlaps the range', () => {
+    const runtime = new ReaderRuntime('cancel', source, false, { annotationTypes });
+    runtime.commands.addAnnotation(note(), { edit: true });
+    runtime.commands.addAnnotation({ ...note('saved'), range: { start: 4, end: 15 } }, { highlight: false });
+    runtime.commands.cancelAnnotationEdit('new');
+    expect(entries(runtime).map(item => item.type).sort()).toEqual(['highlight', 'note']);
+    expect(entries(runtime).some(item => item.id === 'saved')).toBe(true);
+  });
+
+  it('preserves paint referenced by native source citations whose ranges live on occurrences', () => {
+    const authored = '<ref id="citation">One fragment</ref>\n\n<citation id="citation" title="Reference" />';
+    const runtime = setupSource(() => {}, authored);
+    const sharedRange = runtime.document.getSnapshot().occurrences[0].referenceRange!;
+    runtime.commands.addAnnotation({ ...note(), range: sharedRange }, { edit: true });
+    runtime.commands.cancelAnnotationEdit();
+    expect(entries(runtime).map(item => item.type).sort()).toEqual(['citation', 'highlight']);
+  });
+
+  it('keeps shared paint durable after another unsaved owner commits', () => {
+    const runtime = new ReaderRuntime('cancel', source, false, { annotationTypes });
+    runtime.commands.addAnnotation(note('first'), { edit: true });
+    runtime.commands.addAnnotation(note('second'), { edit: true });
+    runtime.commands.commitAnnotationEdit('first');
+    expect(runtime.interaction.get().editing).toBe('second');
+    runtime.commands.removeAnnotation('first');
+    runtime.commands.cancelAnnotationEdit('second');
+    expect(entries(runtime).map(item => item.type)).toEqual(['highlight']);
+  });
+
+  it('marks explicit saves and legacy edit exits as existing annotations', () => {
+    for (const legacy of [false, true]) {
+      const runtime = setupSource();
+      runtime.commands.addAnnotation(note(), { target: 'source', edit: true });
+      expect(runtime.commands.updateAnnotation('new', { data: { body: 'Saved body' } })).toBe(true);
+      if (legacy) runtime.commands.editAnnotation(null); else runtime.commands.commitAnnotationEdit();
+      runtime.commands.editAnnotation('new');
+      runtime.commands.cancelAnnotationEdit();
+      expect(entries(runtime).find(item => item.id === 'new')?.data).toEqual({ body: 'Saved body' });
+      expect(entries(runtime).filter(item => item.type === 'highlight')).toHaveLength(1);
+    }
+  });
+
+  it('does not identify an upsert of an existing id as a new annotation', () => {
+    const runtime = new ReaderRuntime('cancel', source, false, { annotationTypes });
+    runtime.commands.addAnnotation(note());
+    runtime.commands.addAnnotation({ ...note(), data: { body: 'Replacement' } }, { edit: true });
+    runtime.commands.cancelAnnotationEdit();
+    expect(entries(runtime).find(item => item.id === 'new')?.data).toEqual({ body: 'Replacement' });
+  });
+
+  it('retains source edit state and provenance when creation, update or cancellation is declined', () => {
+    let accept = false;
+    const runtime = setupSource(() => accept);
+    runtime.commands.addAnnotation(note(), { target: 'source', edit: true });
+    expect(entries(runtime)).toEqual([]);
+    expect(runtime.interaction.get().editing).toBeNull();
+    accept = true;
+    runtime.commands.addAnnotation(note(), { target: 'source', edit: true });
+    const authored = runtime.document.getSnapshot().source;
+    accept = false;
+    expect(runtime.commands.updateAnnotation('new', { data: { body: 'Declined' } })).toBe(false);
+    expect(runtime.commands.cancelAnnotationEdit()).toBe(false);
+    expect(runtime.document.getSnapshot().source).toBe(authored);
+    expect(runtime.interaction.get().editing).toBe('new');
+    accept = true;
+    expect(runtime.commands.cancelAnnotationEdit()).toBe(true);
+    expect(entries(runtime)).toEqual([]);
+  });
+
+  it('supports controlled creation cancellation before and after the host echo', () => {
+    for (const echo of [false, true]) {
+      let accepted: readonly import('../src/core').Annotation[] = [];
+      const config = { annotations: accepted, annotationTypes, onAnnotationsChange: (next: typeof accepted) => { accepted = next; } };
+      const runtime = new ReaderRuntime('controlled-cancel', source, false, config);
+      runtime.commands.addAnnotation(note(), { edit: true });
+      expect(accepted).toHaveLength(2);
+      if (echo) runtime.configure({ ...config, annotations: accepted });
+      expect(runtime.commands.cancelAnnotationEdit()).toBe(true);
+      expect(accepted).toEqual([]);
+      runtime.configure({ ...config, annotations: accepted });
+      expect(entries(runtime)).toEqual([]);
+    }
+  });
+
+  it('keeps controlled pending changes and editor state when the host refuses an update or cancellation', () => {
+    let accepted: readonly import('../src/core').Annotation[] = [], allow = false;
+    const config = { annotations: accepted, annotationTypes, onAnnotationsChange: (next: typeof accepted) => {
+      if (!allow) return false;
+      accepted = next;
+    } };
+    const runtime = new ReaderRuntime('controlled-cancel', source, false, config);
+    runtime.commands.addAnnotation(note(), { edit: true });
+    expect(accepted).toEqual([]);
+    expect(runtime.interaction.get().editing).toBeNull();
+    allow = true;
+    runtime.commands.addAnnotation(note(), { edit: true });
+    runtime.configure({ ...config, annotations: accepted });
+    const saved = accepted;
+    allow = false;
+    expect(runtime.commands.updateAnnotation('new', { data: { body: 'Declined' } })).toBe(false);
+    expect(runtime.commands.cancelAnnotationEdit()).toBe(false);
+    expect(accepted).toBe(saved);
+    expect(runtime.interaction.get().editing).toBe('new');
+    allow = true;
+    expect(runtime.commands.cancelAnnotationEdit()).toBe(true);
+    expect(accepted).toEqual([]);
+  });
+
+  it('forgets removed controlled creation ids before the host later reuses them', () => {
+    let accepted: readonly import('../src/core').Annotation[] = [];
+    const config = { annotations: accepted, annotationTypes, onAnnotationsChange: (next: typeof accepted) => { accepted = next; } };
+    const runtime = new ReaderRuntime('controlled-cancel', source, false, config);
+    runtime.commands.addAnnotation(note(), { edit: true });
+    runtime.configure({ ...config, annotations: [] });
+    runtime.configure({ ...config, annotations: [{ ...note(), data: { body: 'Independent existing annotation' } }] });
+    runtime.commands.editAnnotation('new');
+    runtime.commands.cancelAnnotationEdit();
+    expect(entries(runtime).find(item => item.id === 'new')?.data).toEqual({ body: 'Independent existing annotation' });
+  });
+
+  it('preserves source/external shared paint without canceling another persistence store', () => {
+    const runtime = setupSource();
+    runtime.commands.addAnnotation(note('source'), { target: 'source', edit: true });
+    const sharedRange = entries(runtime).find(item => item.id === 'source')!.anchors![0].range;
+    runtime.commands.addAnnotation({ ...note('external'), range: sharedRange }, { edit: true });
+    runtime.commands.cancelAnnotationEdit('source');
+    expect(entries(runtime).map(item => item.type).sort()).toEqual(['highlight', 'note']);
+    runtime.commands.cancelAnnotationEdit('external');
+    expect(entries(runtime).map(item => item.type)).toEqual(['highlight']);
   });
 });

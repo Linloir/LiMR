@@ -1,6 +1,6 @@
 {
   "name": "@linloir/limr",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Linloir's limr Is a Markdown Renderer — extensible reading and streaming components for React",
   "type": "module",
   "license": "MIT",
@@ -59,7 +59,7 @@
   "scripts": {
     "dev": "pnpm pack:skills && vite --host 127.0.0.1",
     "build": "tsup && node scripts/build-assets.mjs",
-    "build:playground": "pnpm pack:skills && vite build --base=/LiMR/",
+    "build:playground": "pnpm pack:skills && vite build --base=/LiMR/ && node scripts/playground-build-info.mjs",
     "preview:playground": "vite preview --host 127.0.0.1 --base=/LiMR/",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
