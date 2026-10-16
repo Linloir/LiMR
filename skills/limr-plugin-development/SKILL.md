@@ -5,9 +5,9 @@ description: Develop, package, and integrate new @linloir/limr extension modules
 
 # Develop a LiMR plugin
 
-Deliver the requested extension as a package plus a working host import using LiMR 1.2.2. Inspect the installed version and public declarations before choosing APIs.
+Deliver the requested extension as a package plus a working host import using LiMR 1.2.3. Inspect the installed version and public declarations before choosing APIs.
 
-Read [the contract](references/contract.md) for source mapping, annotation presentation, actions, resources, and localization. Start from [plugin-template](assets/plugin-template/README.md) when a standalone TypeScript/ESM package is useful. Copy the complete template to the requested project destination, rename its example package and IDs, and remove capabilities not needed by the task. Do not edit the installed skill as the project implementation.
+Read [the contract](references/contract.md) for source mapping, native selection boundaries, annotation presentation, actions, resources, and localization. Start from [plugin-template](assets/plugin-template/README.md) when a standalone TypeScript/ESM package is useful. Copy the complete template to the requested project destination, rename its example package and IDs, and remove capabilities not needed by the task. Do not edit the installed skill as the project implementation.
 
 Choose the smallest public contract: defineBlock for a block; defineAnnotation for a type; defineExtension to combine capabilities. Keep React/LiMR as peers and build externals, export declarations, and expose CSS separately with sideEffects. Import no renderer internals and bundle no second React or LiMR runtime.
 

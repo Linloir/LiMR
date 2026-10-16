@@ -4,7 +4,7 @@ import { createRoot, hydrateRoot } from 'react-dom/client';
 import { Reader, ToolIcon, chinese, english, type Annotation, type SelectionSnapshot, type TypographyMode, type TranslationMode } from '../src';
 import { Dropdown } from './Dropdown';
 import { Documentation, docsHref, readDocsRoute } from './Documentation';
-import { MediaAnnotationFixture, MediaFixture, TranslationDetailsFixture } from './media-fixture';
+import { MediaAnnotationFixture, MediaFixture, TranslationDetailsFixture, TranslationSelectionFixture } from './media-fixture';
 import { assistant } from '../examples/assistant';
 import { readingNotes } from '../examples/notes';
 import { inlineNotes } from '../examples/inline-notes';
@@ -243,4 +243,4 @@ function App() {
 }
 const fixture = new URLSearchParams(location.search).get('fixture');
 if (fixture === 'hydrate') hydrateRoot(document.getElementById('root')!, <HydrationFixture />, { onRecoverableError: error => { document.documentElement.dataset.hydrationError = String(error); } });
-else createRoot(document.getElementById('root')!).render(fixture === 'streaming' ? <StreamingFixture /> : fixture === 'media-annotations' ? <MediaAnnotationFixture /> : fixture === 'translation-details' ? <TranslationDetailsFixture /> : fixture === 'media' ? <MediaFixture /> : fixture === 'toolbar' ? <ToolbarFixture /> : fixture === 'assistant-test' ? <PluginFixture /> : fixture === 'sidebar' ? <SidebarFixture /> : fixture === 'selection-bench' ? <SelectionBenchmarkFixture /> : fixture === 'video' ? <VideoFixture /> : fixture === 'overlay' ? <OverlayFixture /> : fixture === 'markers' ? <MarkerFixture /> : fixture === 'visual' ? <VisualFixture /> : fixture === 'scroll' ? <ScrollFixture /> : fixture === 'multiple' ? <MultipleFixture /> : fixture === 'resource' ? <ResourceFixture /> : <App />);
+else createRoot(document.getElementById('root')!).render(fixture === 'streaming' ? <StreamingFixture /> : fixture === 'translation-selection' ? <TranslationSelectionFixture /> : fixture === 'media-annotations' ? <MediaAnnotationFixture /> : fixture === 'translation-details' ? <TranslationDetailsFixture /> : fixture === 'media' ? <MediaFixture /> : fixture === 'toolbar' ? <ToolbarFixture /> : fixture === 'assistant-test' ? <PluginFixture /> : fixture === 'sidebar' ? <SidebarFixture /> : fixture === 'selection-bench' ? <SelectionBenchmarkFixture /> : fixture === 'video' ? <VideoFixture /> : fixture === 'overlay' ? <OverlayFixture /> : fixture === 'markers' ? <MarkerFixture /> : fixture === 'visual' ? <VisualFixture /> : fixture === 'scroll' ? <ScrollFixture /> : fixture === 'multiple' ? <MultipleFixture /> : fixture === 'resource' ? <ResourceFixture /> : <App />);

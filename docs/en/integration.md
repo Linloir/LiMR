@@ -151,6 +151,14 @@ export function BilingualArticle({ source }: { source: string }) {
 
 Parameters update views without reparsing. Other plugins can register parameters as described in [extension development](extensions.md).
 
+`parameters.translationSelectionBoundary` defaults to `true`. It constrains native selections at original/translated region boundaries and shows a toolbar hint according to where the drag ends. It is independent of display mode and does not restrict existing annotations or ranges passed to `addAnnotation` or `updateAnnotation`. Multiple ordinary paragraphs within one language region remain selectable together. Explicitly disable it to restore the previous selection behavior:
+
+```tsx
+<Reader source={source} parameters={{ translationSelectionBoundary: false }} />
+```
+
+Customize the hint with `locale.translationSelectionHint`; both built-in locales provide default text.
+
 ## SSR and client boundaries
 
 Place interactive components inside your framework's client component boundary (for example, 'use client' where required) and let the framework arrange SSR/hydration. Avoid window/document at module initialization. Keep initial source, documentId, and configuration consistent between server and client.

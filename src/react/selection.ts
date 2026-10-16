@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { selectionFromRange, type SelectionSnapshot, type SourceRange } from '../core';
 import type { ReaderRuntime } from './runtime';
 import { atomicSelectionText, leavesIn, measurementRange } from './source-geometry';
+import { selectionBoundaryGuard } from './selection-boundary';
 
 /** Attribute captions can occur before an image in source, while being rendered
  * after it. Project these selections in reading order without covering captions
@@ -47,6 +48,8 @@ export function useSelectionTracking(runtime: ReaderRuntime, enabled: boolean) {
     const container = runtime.content;
     if (!container || !enabled) return;
     let frame = 0, dragging = false;
+    const boundary = selectionBoundaryGuard(runtime, container);
+    let pointer: { x: number; y: number } | undefined;
     let previous: { startNode: Node; start: number; endNode: Node; end: number; revision: number; settled: boolean } | undefined;
     type Endpoint = { offset: number; atomic: boolean; exact: boolean } | null;
     function resolve(node: Node, offset: number, edge: 'start' | 'end'): Endpoint {
@@ -98,7 +101,10 @@ export function useSelectionTracking(runtime: ReaderRuntime, enabled: boolean) {
       // captured document selection with the form's own native selection.
       if (!dragging && document.activeElement instanceof Element && document.activeElement.closest('[data-limr-selection-ui]')) return;
       const selection = window.getSelection();
+      const selectionHint = selection?.rangeCount && !selection.isCollapsed ? boundary.constrain(selection, pointer) : null;
+      if (!dragging) pointer = undefined;
       if (!selection || selection.isCollapsed || !selection.rangeCount) {
+        boundary.reset();
         // A toolbar/dialog owns the captured snapshot while it has focus.
         if (!(document.activeElement instanceof Element) || !document.activeElement.closest('[data-limr-selection-ui]')) {
           previous = undefined; runtime.selectionRange = null; runtime.updateInteraction({ selection: null });
@@ -107,7 +113,9 @@ export function useSelectionTracking(runtime: ReaderRuntime, enabled: boolean) {
       }
       const range = selection.getRangeAt(0);
       const revision = runtime.document.getSnapshot().revision;
-      if (runtime.interaction.get().selection && previous?.startNode === range.startContainer && previous.start === range.startOffset && previous.endNode === range.endContainer && previous.end === range.endOffset && previous.revision === revision && previous.settled === !dragging) return;
+      if (runtime.interaction.get().selection && previous?.startNode === range.startContainer && previous.start === range.startOffset && previous.endNode === range.endContainer && previous.end === range.endOffset && previous.revision === revision && previous.settled === !dragging) {
+        runtime.updateInteraction({ selectionHint }); return;
+      }
       const start = resolve(range.startContainer, range.startOffset, 'start');
       const end = resolve(range.endContainer, range.endOffset, 'end');
       if (!start || !end) { previous = undefined; runtime.selectionRange = null; runtime.updateInteraction({ selection: null }); return; }
@@ -126,13 +134,15 @@ export function useSelectionTracking(runtime: ReaderRuntime, enabled: boolean) {
         const atomicText = atomicSelectionText(runtime, captured.raw.ranges);
         if (atomicText !== undefined) captured = { ...captured, text: atomicText, quality: 'atomic' };
       }
-      runtime.updateInteraction({ activeHighlight: null, selection: captured });
+      runtime.updateInteraction({ activeHighlight: null, selection: captured, selectionHint });
     }
     // Coalesce within a frame, never debounce a continuous drag. A resetting
     // timeout can starve updates for the entire gesture on a 60/120 Hz pointer.
     const schedule = () => { if (!frame) frame = requestAnimationFrame(process); };
-    const down = () => { dragging = true; };
-    const up = () => { dragging = false; schedule(); };
+    const position = (event: Event) => event instanceof PointerEvent ? { x: event.clientX, y: event.clientY } : undefined;
+    const down = (event: PointerEvent) => { dragging = true; pointer = position(event); boundary.reset(); };
+    const move = (event: PointerEvent) => { if (dragging) { pointer = position(event); schedule(); } };
+    const up = (event: Event) => { if (dragging) pointer = position(event); dragging = false; schedule(); };
     const atomicCopyText = (event: Event) => {
       const native = window.getSelection(), captured = runtime.interaction.get().selection;
       if (event.defaultPrevented || !native?.anchorNode || native.isCollapsed || !container.contains(native.anchorNode) || captured?.quality !== 'atomic') return null;
@@ -154,12 +164,14 @@ export function useSelectionTracking(runtime: ReaderRuntime, enabled: boolean) {
     };
     document.addEventListener('selectionchange', schedule);
     container.addEventListener('pointerdown', down);
+    document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
     document.addEventListener('pointercancel', up);
     document.addEventListener('keyup', schedule);
     document.addEventListener('copy', copy);
     document.addEventListener('keydown', copyKey);
+    const unsubscribe = runtime.configuration.subscribe(schedule);
     if (window.getSelection()?.isCollapsed === false) schedule();
-    return () => { cancelAnimationFrame(frame); document.removeEventListener('selectionchange', schedule); container.removeEventListener('pointerdown', down); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up); document.removeEventListener('keyup', schedule); document.removeEventListener('copy', copy); document.removeEventListener('keydown', copyKey); };
+    return () => { unsubscribe(); cancelAnimationFrame(frame); document.removeEventListener('selectionchange', schedule); container.removeEventListener('pointerdown', down); document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up); document.removeEventListener('keyup', schedule); document.removeEventListener('copy', copy); document.removeEventListener('keydown', copyKey); };
   }, [runtime, enabled]);
 }

@@ -151,6 +151,14 @@ export function BilingualArticle({ source }: { source: string }) {
 
 参数仅影响视图，不触发重解析。其他插件也可以注册自己的参数，见[扩展开发](extensions.md)。
 
+`parameters.translationSelectionBoundary` 默认 `true`，限制浏览器选区跨过原文、译文区域边界，并按拖选结束的位置显示工具栏提示。它独立于展示模式，不限制已有标注、`addAnnotation` 或 `updateAnnotation` 的范围。同一语言区域内部仍可跨普通段落选择。需要恢复原有选区行为时显式关闭：
+
+```tsx
+<Reader source={source} parameters={{ translationSelectionBoundary: false }} />
+```
+
+提示可通过 `locale.translationSelectionHint` 自定义；内置中英文 locale 均提供默认文案。
+
 ## SSR 与客户端边界
 
 交互组件放在宿主框架的客户端组件边界内（例如需要时在文件顶部使用 `'use client'`），由框架安排 SSR 和 hydration。不要在模块初始化时访问 window/document；保持服务端与客户端的 source、documentId 和初始配置一致。

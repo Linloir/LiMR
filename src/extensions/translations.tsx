@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import type { MarkdownNode } from '../core';
 import { InlineMarker } from '../components/InlineMarker';
 import { Collapse } from '../components/Collapse';
-import { useIsomorphicLayoutEffect, useRendererParameter } from '../react/context';
+import { useIsomorphicLayoutEffect, useLocale, useRendererParameter } from '../react/context';
 import type { NodeRendererProps, RendererExtension } from '../react/types';
 
 export type TranslationMode = 'origin' | 'translation' | 'both';
@@ -12,6 +12,8 @@ declare module '@linloir/limr' {
   interface RendererParameters {
     /** Overrides every translations block. Undefined restores each block's local mode. */
     translationMode?: TranslationMode;
+    /** Keep native selections inside each original/translated region. Defaults to true. */
+    translationSelectionBoundary?: boolean;
     /** With a global mode, markers request an update through this callback. */
     onTranslationModeChange?: (mode: TranslationMode) => void;
   }
@@ -38,6 +40,9 @@ function section(node: MarkdownNode, name: string): MarkdownNode | undefined {
 
 export function translations(options: TranslationsOptions = {}): RendererExtension {
   function Translations({ node, children, renderChildren }: NodeRendererProps) {
+    const locale = useLocale();
+    const selectionBoundary = useRendererParameter('translationSelectionBoundary') !== false;
+    const selectionHint = selectionBoundary ? locale.translationSelectionHint ?? 'Selections cannot cross translation paragraph boundaries.' : undefined;
     const origin = section(node, 'origin'), translation = section(node, 'translation');
     const [localMode, setLocalMode] = useState<TranslationMode | undefined>();
     const globalMode = useRendererParameter('translationMode');
@@ -61,18 +66,18 @@ export function translations(options: TranslationsOptions = {}): RendererExtensi
         if (globalMode !== undefined) onGlobalChange?.(next);
         else setLocalMode(next);
       }}><TranslationIcon mode={mode} /></InlineMarker> : undefined;
-    return <div className="limr-translations" data-mode={mode}>
-      {translation && <Collapse open={mode !== 'origin'} keepMounted className="limr-translation-panel" ><div className="limr-translation-text" data-language="translation">
+    return <div className="limr-translations" data-mode={mode} data-limr-selection-boundary={selectionHint}>
+      {translation && <Collapse open={mode !== 'origin'} keepMounted className="limr-translation-panel" ><div className="limr-translation-text" data-language="translation" data-limr-selection-boundary={selectionHint}>
         {renderChildren(translation.children ?? [], { trailing: mode === 'translation' ? toggle : undefined })}
       </div></Collapse>}
-      {origin && <Collapse open={mode !== 'translation'} keepMounted className="limr-translation-panel"><div className="limr-translation-text" data-language="origin">
+      {origin && <Collapse open={mode !== 'translation'} keepMounted className="limr-translation-panel"><div className="limr-translation-text" data-language="origin" data-limr-selection-boundary={selectionHint}>
         {renderChildren(origin.children ?? [], { trailing: mode !== 'translation' ? toggle : undefined })}
       </div></Collapse>}
     </div>;
   }
   return {
     name: 'translations', tags: ['translations', 'origin', 'translation'], directives: ['translations', 'origin', 'translation'], display: 'block', scope: 'local',
-    parameters: { translationMode: undefined, onTranslationModeChange: undefined },
+    parameters: { translationMode: undefined, onTranslationModeChange: undefined, translationSelectionBoundary: true },
     components: { translations: Translations, origin: ({ children }) => <>{children}</>, translation: ({ children }) => <>{children}</> },
   };
 }

@@ -352,6 +352,8 @@ Original **Markdown**.
 
 Global `parameters.translationMode` overrides individual blocks. Pass onTranslationModeChange to accept marker requests; without a callback, a global mode is locked. Setting it to undefined restores local choices. See [application integration](integration.md).
 
+By default, native selections stay inside the starting `<origin>` or `<translation>` region; multiple paragraphs within that region remain selectable together. Drags starting outside stop before entering the translation block, even when dragged past it. Crossing from inside shows a toolbar hint; an outside drag shows the hint only when released inside a translation block. Existing annotations and annotations added through the API may still cross these boundaries. Set `parameters.translationSelectionBoundary` to `false` to restore the previous native selection behavior; see [application integration](integration.md#global-translation-mode).
+
 ## Selection and replacement
 
 Toolbar-authored highlights are annotations; source-authored `==highlights==` default to a copy-only toolbar. Supplying `onSourceChange` makes the default toolbar’s highlight creation/edits and task toggles update Markdown; modules can also add source annotations with target: source. Ordinary addAnnotation stays external; see [application integration](integration.md). Registered default body-component tags also support their matching `::` directive. Named annotation definitions use `:::limr-annotation` blocks. Register plugins for custom tags. See [extension development](extensions.md) to select or replace default modules.

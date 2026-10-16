@@ -34,6 +34,10 @@ An empty new draft that loses focus or leaves the active card should use the sam
 
 Each editable card owns its single-annotation delete action, gated by canEditAnnotation(id). removeAnnotation(id) removes that record; the selection toolbar's removeAnnotationsAt(ranges) removes supported annotations bound to the exact selected fragments while retaining their other anchors. Clicking a marker provides its referenced range to the toolbar alongside the card; editing the active annotation suppresses those marker actions.
 
+## Translation selection
+
+`parameters.translationSelectionBoundary` is a boolean, defaulting to true. Set `<Reader source={source} parameters={{ translationSelectionBoundary: false }} />` to restore the previous native selection behavior and suppress boundary hints. It applies independently of translationMode and updates without reparsing. Omit it or use true to enable the boundary. Customize feedback through `locale.translationSelectionHint`; built-in English and Chinese locales supply the text. This is a browser-selection constraint only: preserve existing cross-boundary annotations and allow explicit addAnnotation/updateAnnotation ranges. It is not an annotation validation rule.
+
 ## Streaming and resources
 
 Pass the complete accumulated text to source and set streaming=false at completion. followOutput is opt-in and pauses after upward scrolling. Keep extensions/plugins stable. Appends and eligible finalization reuse stable prefixes; full-document transforms, changed definitions, and middle edits may require complete parsing. Growing code fences have a literal fast path.

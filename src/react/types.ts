@@ -224,6 +224,7 @@ export interface LiMRLocale {
   highlightBackground: string; highlightUnderline: string; highlightDotted: string; highlightWavy: string;
   hideHighlight: string; showHighlight: string;
   inlineHighlightHint?: string;
+  translationSelectionHint?: string;
   deleteAnnotations: string; deleteAnnotationsHint: string;
 }
 export interface ViewConfiguration {

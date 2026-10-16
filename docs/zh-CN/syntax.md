@@ -352,6 +352,8 @@ Original **Markdown**.
 
 全局 `parameters.translationMode` 覆盖各块；传 `onTranslationModeChange` 接受角标发出的更改请求，否则全局模式锁定。设回 `undefined` 恢复各块的本地选择。见[项目集成](integration.md)。
 
+默认情况下，浏览器选区不能跨出起始的 `<origin>` 或 `<translation>` 区域；同一区域内的多个段落仍可连续选择。从外部拖入或拖过翻译块，选区停在靠近起点的块边界外。从内部跨界会在工具栏提示原因；从外部开始时，仅在松手位置仍在翻译块内时提示。已有或通过 API 添加的跨界 annotation 不受限制。将 `parameters.translationSelectionBoundary` 设为 `false` 可关闭此行为，恢复原有浏览器选区；配置示例见[项目集成](integration.md#全局译文模式)。
+
 ## 选择与替换
 
 工具栏创建的高亮存为 annotation；`==高亮==` 由源码定义，默认只提供复制工具栏。传入 `onSourceChange` 后，默认工具栏创建或修改的高亮、任务勾选会保存到 Markdown；模块也可用 target: source 添加源内标注。常规 addAnnotation 仍保存外部数据，详见[项目集成](integration.md)。默认正文组件的已注册标签支持同名 `::` 指令；命名标注定义使用 `:::limr-annotation` 块。自定义标签需注册插件。使用完整清单配置或替换默认模块，见[扩展开发](extensions.md)。

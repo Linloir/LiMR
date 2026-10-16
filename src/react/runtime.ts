@@ -15,6 +15,7 @@ export const english: LiMRLocale = {
   highlightBackground: 'Background', highlightUnderline: 'Underline', highlightDotted: 'Dotted', highlightWavy: 'Wavy',
   hideHighlight: 'Hide highlight', showHighlight: 'Show highlight',
   inlineHighlightHint: 'Markdown inline highlight, editing unavailable',
+  translationSelectionHint: 'Selections cannot cross translation paragraph boundaries.',
   deleteAnnotations: 'Delete', deleteAnnotationsHint: 'Deletes {count} annotations on this text and any highlight.',
 };
 export const chinese: LiMRLocale = {
@@ -28,6 +29,7 @@ export const chinese: LiMRLocale = {
   highlightBackground: '底色', highlightUnderline: '下划线', highlightDotted: '点线', highlightWavy: '波浪线',
   hideHighlight: '隐藏高亮', showHighlight: '显示高亮',
   inlineHighlightHint: 'Markdown 内嵌高亮，不支持编辑',
+  translationSelectionHint: '翻译块不支持选区跨过原文或译文的段落边界。',
   deleteAnnotations: '删除', deleteAnnotationsHint: '将删除这段文字关联的 {count} 个注释及高亮。',
 };
 
@@ -40,6 +42,8 @@ export class Store<T> {
 }
 export interface InteractionState {
   selection: SelectionSnapshot | null;
+  /** Transient feedback from a module's native selection boundary. */
+  selectionHint?: string | null;
   activeHeading: string | null;
   hovered: string | null;
   active: string | null;
@@ -328,6 +332,7 @@ export class ReaderRuntime {
     if (old.annotationTypes !== config.annotationTypes || old.extensions !== config.extensions) this.resources.invalidate();
   }
   updateInteraction(patch: Partial<InteractionState>) {
+    if (patch.selection === null) patch = { ...patch, selectionHint: null };
     const old = this.interaction.get();
     if (Object.keys(patch).every(key => Object.is(old[key as keyof InteractionState], patch[key as keyof InteractionState]))) return;
     this.interaction.set({ ...old, ...patch });

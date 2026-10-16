@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Markdown, Reader, chinese, standard, type Annotation, type SelectionSnapshot, type TranslationMode } from '../src';
+import { Markdown, Reader, chinese, english, standard, type Annotation, type SelectionSnapshot, type TranslationMode } from '../src';
 import { readingNotes } from '../examples/notes';
 
 const photo = `${import.meta.env.BASE_URL}papers/feature-channel.png`;
@@ -79,6 +79,68 @@ export function TranslationDetailsFixture() {
   const [selection, setSelection] = useState<SelectionSnapshot | null>(null);
   const source = '<translations>\n\n<origin>\n\n## Original heading\n\n<ref id="paired">Original **selectable** words.</ref>\n\n</origin>\n\n<translation>\n\n## 译文标题\n\n<ref id="paired">中文 **可选择** 内容。</ref>\n\n</translation>\n\n</translations>\n\n<citation id="paired" title="Paired reference" description="Only visible occurrences belong in the sidebar." />';
   return <><Reader source={source} onSelectionChange={setSelection} /><output data-testid="translation-selection" hidden>{JSON.stringify(selection)}</output></>;
+}
+
+const translationSelectionSource = `Before the translation, ordinary text remains selectable.
+
+Another ordinary paragraph before the boundary.
+
+<translations default="both">
+
+<origin>
+
+First original paragraph has **mapped English words**.
+
+</origin>
+
+<translation>
+
+第一段中文译文包含**可选择的文字**。
+
+同一区域内的第二段译文也可以选择。
+
+</translation>
+
+</translations>
+
+<translations default="both">
+
+<translation>
+
+第二段中文译文使用不同的源码顺序。
+
+</translation>
+
+<origin>
+
+Second original paragraph uses the other source order.
+
+</origin>
+
+</translations>
+
+After the translation, ordinary text remains selectable.
+
+Another ordinary paragraph after the boundary.`;
+const crossTranslationHighlight: Annotation = {
+  id: 'cross-translation', type: 'highlight',
+  range: { start: translationSelectionSource.indexOf('First original'), end: translationSelectionSource.indexOf('同一区域') + '同一区域'.length },
+  data: { color: '#F2C744', style: 'background' },
+};
+export function TranslationSelectionFixture() {
+  const params = new URLSearchParams(location.search);
+  const [selection, setSelection] = useState<SelectionSnapshot | null>(null);
+  const [annotations, setAnnotations] = useState<readonly Annotation[]>(params.has('annotated') ? [crossTranslationHighlight] : []);
+  const [mode, setMode] = useState<TranslationMode>('both');
+  const [boundary, setBoundary] = useState<boolean | undefined>();
+  return <div style={{ maxWidth: 800, margin: '24px auto' }}>
+    <button onClick={() => setAnnotations([crossTranslationHighlight])}>Add crossing annotation</button>
+    <label><input type="checkbox" aria-label="Translation selection boundary" checked={boundary !== false} onChange={event => setBoundary(event.target.checked)} />Translation selection boundary</label>
+    <select aria-label="Translation mode" value={mode} onChange={event => setMode(event.target.value as TranslationMode)}><option value="both">Both</option><option value="origin">Origin</option><option value="translation">Translation</option></select>
+    <Reader source={translationSelectionSource} locale={params.has('english') ? english : chinese} toc={false} sidebar={false} typography={params.has('kp') ? 'knuth-plass' : 'normal'} parameters={{ translationMode: mode, translationSelectionBoundary: boundary }} annotations={annotations} onAnnotationsChange={setAnnotations} onSelectionChange={setSelection} />
+    <output data-testid="translation-selection" hidden>{JSON.stringify(selection)}</output>
+    <output data-testid="translation-annotations" hidden>{JSON.stringify(annotations)}</output>
+  </div>;
 }
 
 const mediaNotes = [readingNotes()];

@@ -1,6 +1,6 @@
 # Built-in syntax
 
-React defaults install gfm, math, code-highlight, mermaid, callout, definition, question, extras, video, figures, citation, translations, inline-highlights, footnotes, and source-annotations. Core createDocument defaults to basic CommonMark. These references describe LiMR 1.2.2; verify the host installs the required modules.
+React defaults install gfm, math, code-highlight, mermaid, callout, definition, question, extras, video, figures, citation, translations, inline-highlights, footnotes, and source-annotations. Core createDocument defaults to basic CommonMark. These references describe LiMR 1.2.3; verify the host installs the required modules.
 
 - Standard Markdown: headings, emphasis, lists, links, images, fenced/inline code, blockquotes. GFM adds tables, tasks, strikethrough, autolinks, and named footnote parsing; the default footnotes module presents notes as comment markers and sidebar/floating cards instead of superscripts/endnotes.
 - Math uses $…$ and $$ fences; import math.css.
@@ -14,6 +14,8 @@ React defaults install gfm, math, code-highlight, mermaid, callout, definition, 
 - <figure src="/a.png" alt="A" caption="Caption" /> works alone or inside <figures columns="2">. Use figcaption children for Markdown. Limits: min-width/min-height 220/120, max-width/max-height 560/480; none/false removes maxima. Columns/rows, responsive, and gap control grouping. Media-local copy buttons copy image URLs or group Markdown; selection copying follows the selected atomic source range, including Markdown image syntax when present.
 - <video src="/clip.mp4" provider="native" /> and <md-video url="…" /> support native, YouTube, and Bilibili. loading defaults to visible (200px proximity), not click. Use loading="click" to defer until interaction. Remote playback is not guaranteed by local iframe tests.
 - <translations default="both"> contains <origin> and <translation>. Modes: origin/translation/both; both shows translation first. It displays supplied content, not an automatic translation service. Global parameters.translationMode overrides local mode; onTranslationModeChange accepts switch requests.
+
+  Native selections default to staying within the starting origin/translation region; multiple paragraphs inside that region still select together. An outside drag stops before entering the translation block, even when it passes the entire block. Crossing from inside shows a toolbar hint; an outside drag shows it only when released inside a translation block. Existing and explicitly added annotations can still span boundaries. See [integration.md](integration.md#translation-selection) for the opt-out parameter.
 
 Use static string/boolean attributes, never JavaScript expressions or spread props. Separate block tags and Markdown with blank lines. Only registered tags execute React renderers. Unknown tags show the full original text; unknown directives under standard() render children without their outer marker. Streaming defers partial headers and inline delimiters; recognized unclosed components carry incomplete and use module-owned loading/progressive rendering. Finish with streaming=false to apply final Markdown interpretation.
 
