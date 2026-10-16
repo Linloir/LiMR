@@ -101,7 +101,7 @@ function MobileContents() {
   const id = useId();
   return <div className="limr-reader-mobile-toc">
     <button type="button" className="limr-mobile-toc-toggle" aria-expanded={open} aria-controls={id} onClick={() => setOpen(value => !value)}>
-      <span>{locale.contents}</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m6 8 4 4 4-4" /></svg>
+      <span className="limr-underline">{locale.contents}</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m6 8 4 4 4-4" /></svg>
     </button>
     <div id={id}><Collapse open={open} keepMounted><TableOfContents /></Collapse></div>
   </div>;

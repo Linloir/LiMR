@@ -163,7 +163,8 @@ test('mobile contents has one hoverable heading and reverses motion during rapid
   await expect(panel).toHaveAttribute('inert', '');
   await expect(toc.locator('.limr-toc-title')).toBeHidden();
   await toggle.hover();
-  await expect(toggle).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(toggle).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(toggle.locator('.limr-underline')).toHaveCSS('background-size', '100% 1px');
   await toggle.click();
   await page.waitForTimeout(100);
   const first = (await panel.boundingBox())!.height;
