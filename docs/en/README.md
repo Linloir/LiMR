@@ -21,6 +21,7 @@ These pages describe the current repository implementation, including the new st
 | Look up component props, hooks, and core APIs | [API reference](api.md) |
 | Understand parsing, state, and resource boundaries | [Architecture and behavior](architecture.md) |
 | Compare renderer, streaming, memory and reading behavior | [Renderer performance report](performance.md) |
+| Inspect full loading, 50/75 MiB memory and real-paper reading | [Loading and memory performance](loading-performance.md) |
 | Inspect KP solving, scrolling, resizing and correctness | [Knuth–Plass performance report](knuth-plass-performance.md) |
 | Have an AI use LiMR or develop plugins | [AI Skills](ai-skills.md) |
 

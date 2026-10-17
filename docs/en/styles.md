@@ -103,3 +103,11 @@ Source-authored highlight blue is controlled by `--limr-inline-highlight`, or re
 Task lists use the same diamond check as question choices. The marker uses font cap height for Latin text or ideographic height for CJK and aligns with the first line, independently of line-height. A native checkbox retains keyboard and accessibility semantics. Unchecked text is lighter and checked text is darker; hovering an unchecked item darkens its text and reveals the same line-by-line, left-to-right underline as question choices. Tasks are read-only by default; supplying onSourceChange enables the default task renderer to update source without another plugin.
 
 Callouts share the small label and body typography of notes, definitions and questions, without a leading type icon. Foldable callouts retain their toggle chevron.
+
+## Image previews and ordered lists
+
+`Image` / `ImagePreview` uses nonlinear hero motion from the original image to a centered fitting view while the backdrop dims. The bottom toolbar combines a 90%-opaque theme background with backdrop blur, respecting light/dark appearance. Buttons share 42×42px square slots, 24×24px SVG boxes and equal gaps. Fit/actual/fill cycle in one button, sharing the same state transition as copy-to-check feedback; zoom in, zoom out, copy and close use identical dimensions. Hover and press feedback honor reduced motion.
+
+When overriding styles, keep button slots and icon boxes uniform; avoid extra padding or separators around the final buttons. Closing restores trigger focus; Escape and keyboard behavior remain available. Copying uses image pixels and requires clipboard capability and a readable image origin. See [API](api.md).
+
+Ordered lists reserve marker space from their start, item count and explicit ordinals, including multiple digits and nested lists. Host CSS should preserve that inset rather than imposing a narrow gutter or an ancestor clip that hides the numbers again.

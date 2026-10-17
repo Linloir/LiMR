@@ -104,6 +104,8 @@ describe('bounded parsing at ordinary ASCII boundaries', () => {
     expect(actual.parseProgress.length).toBeGreaterThan(2);
     expect(actual.parseProgress[0].loaded).toBe(0);
     expect(actual.parseProgress.at(-1)?.loaded).toBe(source.length);
+    expect(actual.parseProgress.every(value => value.total === source.length)).toBe(true);
+    expect(actual.parseProgress.every((value, index, values) => !index || value.loaded >= values[index - 1].loaded)).toBe(true);
     expect(expected.parseProgress.map(value => value.loaded)).toEqual([0]);
   });
 });

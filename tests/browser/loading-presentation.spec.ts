@@ -14,7 +14,7 @@ for (const mode of ['blocking', 'progressive'] as const) test(`Playground owns o
           if (type !== 'message') { nativeListen(type, listener, options); return; }
           nativeListen('message', event => {
             const message = event as MessageEvent;
-            if (message.data.type === 'snapshot' && message.data.complete) {
+            if (message.data.type === 'snapshot-packed' || message.data.type === 'snapshot' && message.data.complete) {
               gate.complete = true;
               gate.finish = () => listener.call(this, event);
             } else queue.push(() => listener.call(this, event));

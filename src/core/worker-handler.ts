@@ -4,8 +4,14 @@ import { decodeDocumentInput, yieldTask } from './source-input';
 import { resolveWorkerExtensions, type WorkerExtensionRegistry } from './worker-registry';
 import type { DocumentWorkerRequest, DocumentWorkerResponse } from './worker-protocol';
 import type { SyntaxExtension } from './types';
+import { packSnapshot, packOwnedSnapshotCooperatively, snapshotTransferList } from './snapshot-codec';
 
 export interface DocumentWorkerHandlerOptions {
+  /** Opt in only with the shipped limr/standard registry. The host must also
+   * negotiate support. Custom registry IDs and unsupported graph payloads
+   * retain the ordinary clone contract. Forward send's optional transfer list
+   * to native postMessage to move packed pages without a second buffer copy. */
+  packedSnapshots?: boolean;
   /** Exact, versioned registry IDs whose factories preserve completed prose
    * prefixes and absolute UTF-16 ranges for every supported descriptor option.
    * On the isIndependentProse subset, these factories must not introduce shared
@@ -48,12 +54,25 @@ export function provisionalPrefixEnd(source: string): number {
 /** Install this protocol in a custom worker with its own extension registry.
  * Cancellation belongs to worker termination, including a busy tokenizer. */
 export function createDocumentWorkerHandler(registry: WorkerExtensionRegistry, options: DocumentWorkerHandlerOptions = {}) {
+  return createHandler(registry, options, packSnapshot);
+}
+
+/** Internal shipped-worker entry. Its freshly constructed standard snapshot
+ * has no outside owners; consuming it must never fall back to a partial tree.
+ * Deliberately omitted from the public worker implementation API. */
+export function createOwnedDocumentWorkerHandler(registry: WorkerExtensionRegistry, options: DocumentWorkerHandlerOptions = {}) {
+  return createHandler(registry, options, packOwnedSnapshotCooperatively);
+}
+
+function createHandler(registry: WorkerExtensionRegistry, options: DocumentWorkerHandlerOptions, pack: typeof packSnapshot | typeof packOwnedSnapshotCooperatively) {
   // Copy the capability once. Load descriptors cannot assert their own safety,
   // and later mutations of the caller's array cannot change this worker's policy.
   const independentProse = new Set(['limr/standard', ...(options.independentProseExtensions ?? [])]);
   const provisionalPreview = new Set(options.provisionalPreviewExtensions ?? []);
+  const packedSnapshots = options.packedSnapshots === true;
+  const ownsInput = pack === packOwnedSnapshotCooperatively;
   const acknowledgements = new Map<number, () => void>();
-  return async (request: DocumentWorkerRequest, send: (message: DocumentWorkerResponse) => void): Promise<void> => {
+  return async (request: DocumentWorkerRequest, send: (message: DocumentWorkerResponse, transfer?: Transferable[]) => void): Promise<void> => {
     if (request?.type === 'continue') { acknowledgements.get(request.revision)?.(); acknowledgements.delete(request.revision); return; }
     if (request?.type !== 'load') return;
     const { revision, id } = request;
@@ -73,6 +92,9 @@ export function createDocumentWorkerHandler(registry: WorkerExtensionRegistry, o
       // add browser timer-clamping latency here; keep cooperative yields for
       // the public/main-thread decoder and packet receiver's input/paint budget.
       const { source, sourceIndex } = await decodeDocumentInput(request.input, undefined, progress, { cooperative: false });
+      // Native worker messages own their transferred/cloned input. The public
+      // custom-handler path retains its caller's request unchanged.
+      if (ownsInput) request.input = '';
       const independent = canPublishProsePrefix(source, extensions, request.extensions.every(extension => independentProse.has(extension.id)));
       let progressive = independent, prefixPublished = false;
       if (request.mode === 'progressive' && independent) {
@@ -98,12 +120,29 @@ export function createDocumentWorkerHandler(registry: WorkerExtensionRegistry, o
           }
         } catch { /* optional preview failed; parse the complete original source */ }
       }
-      const document = new DocumentEngine(source, { id, extensions, onProgress: progress });
-      const snapshot = document.getSnapshot();
+      // Only the public graph is needed after parsing; release the temporary
+      // engine's incremental caches before transport grows its own buffers.
+      const documentOptions = { id, extensions, onProgress: progress };
+      const snapshot = new DocumentEngine(source, documentOptions).getSnapshot();
+      const packetized = independent && source.length > 1024 * 1024 && !snapshot.definitions.size && !snapshot.footnotes.size
+        && !snapshot.annotations.length && !snapshot.annotationRanges.size && !snapshot.occurrences.length;
+      // One graph-wide ID space preserves aliases between AST blocks and Map
+      // metadata. The receiver can end this worker before allocating its AST.
+      if (!packetized && packedSnapshots && request.acceptPackedSnapshot && source.length > 1024 * 1024
+        && request.extensions.every(extension => extension.id === 'limr/standard')) {
+        // End the parse/index job before starting another large allocation
+        // phase. This is a scheduling opportunity, not a forced GC guarantee.
+        await yieldTask();
+        const packed = await pack(snapshot);
+        if (packed) {
+          send({ type: 'snapshot-packed', revision, packed, progressive, sourceIndex }, snapshotTransferList(packed));
+          return;
+        }
+      }
       // Proven independent prose has no cross-block object references. Ship
       // bounded packets to avoid one large structured-clone task at readiness.
       // Arbitrary extension payloads retain the full clone/identity contract.
-      if (independent && source.length > 1024 * 1024 && !snapshot.definitions.size && !snapshot.footnotes.size && !snapshot.annotations.length && !snapshot.annotationRanges.size && !snapshot.occurrences.length) {
+      if (packetized) {
         const { source: text, blocks, ...metadata } = snapshot;
         // Backpressure bounds queued clone work as well as individual packets.
         // Merely posting small messages can still monopolize a MessagePort poll.

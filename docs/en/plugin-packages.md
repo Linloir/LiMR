@@ -66,3 +66,7 @@ Use the real name and peer version requirements for a third-party package. Repla
 After type checking, install the actual tgz into an independent consumer. Check public imports, SSR, CSS resources, preserved defaults, and new interactions. Packages supporting React 18/19 should verify both. Syntax plugins should compare finalized streams with one-shot parsing. Interactive plugins should cover desktop sidebars, narrow overlays, keyboard behavior, cancellation, and both themes.
 
 The repository also includes packable [reading-tools](../../examples/packages/reading-tools/index.js) and [paper-theme](../../examples/packages/paper-theme/index.css) examples. The [plugin development Skill](ai-skills.md) includes a portable template and references that do not require this repository.
+
+## Loading and large-document compatibility
+
+Plugins relying on 1.3.0 loading controls or windowing capabilities should declare that minimum peer version and validate workers, provisional/readOnly behavior, copy/search and offscreen state in a real package consumer. Simple examples using older APIs can retain their compatible peer range. CSS themes should also check light/dark image-preview portals and uniformly sized toolbar buttons. See [workers and windowed views](extensions.md#workers-and-windowed-views) and [large-document integration](large-documents.md).

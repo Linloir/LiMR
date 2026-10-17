@@ -4,7 +4,7 @@
 
 LiMR’s `typography="knuth-plass"` provides paragraph-level optimization of line breaks, spacing and hyphenation while retaining native text selection, copying and highlights. This page covers solver throughput and full-paper reading on desktop, narrow viewports and changing widths.
 
-A 10,000-word synthetic paragraph takes a median **8.184ms** to prepare and solve, or **7.647ms** with preparation retained. KP’s pooled scrolling rAF P95 for the full paper is **19.40ms** on desktop and **17.20ms** in the narrow viewport. Browser acceptance passes **18/18** across all three modes.
+A 10,000-word synthetic paragraph takes a median **6.826ms** to prepare and solve, or **6.722ms** with preparation retained. KP’s pooled scrolling rAF P95 for the full paper is **17.00ms** on desktop and **17.10ms** in the narrow viewport. Browser acceptance passes **18/18** across all three modes.
 
 ## Solver throughput and width reuse
 
@@ -14,17 +14,17 @@ Inputs use deterministic synthetic pixel widths, with 3 warmups and 15 samples p
 
 | Scenario | Words / items / lines | Prepare + solve | Prepared solve | 12-width total | Pass |
 | --- | --- | --- | --- | --- | --- |
-| words-50 | 50 / 102 / 4 | 0.011 / 0.130 / 0.130 | 0.008 / 0.124 / 0.124 | 0.102 / 0.669 / 0.669 | pretolerance |
-| words-200 | 200 / 402 / 14 | 0.064 / 0.328 / 0.328 | 0.055 / 0.071 / 0.071 | 0.518 / 0.590 / 0.590 | pretolerance |
-| words-1000 | 1000 / 2002 / 70 | 0.665 / 1.550 / 1.550 | 0.621 / 0.677 / 0.677 | 4.971 / 6.376 / 6.376 | pretolerance |
-| words-5000 | 5000 / 10002 / 349 | 4.253 / 6.874 / 6.874 | 3.854 / 12.317 / 12.317 | 32.124 / 93.977 / 93.977 | pretolerance |
-| words-10000 | 10000 / 20002 / 698 | 8.184 / 9.788 / 9.788 | 7.647 / 11.113 / 11.113 | 60.342 / 67.868 / 67.868 | pretolerance |
-| narrow | 1000 / 2002 / 191 | 0.149 / 0.254 / 0.254 | 0.102 / 0.171 / 0.171 | 4.907 / 5.394 / 5.394 | emergency |
-| discretionary-hyphens | 1000 / 4002 / 146 | 2.248 / 2.744 / 2.744 | 2.094 / 2.327 / 2.327 | 21.375 / 22.056 / 22.056 | tolerance |
-| varying-line-width | 1000 / 2002 / 71 | 1.538 / 1.689 / 1.689 | 1.511 / 1.727 / 1.727 | 6.248 / 7.128 / 7.128 | emergency |
-| looseness | 200 / 402 / 24 | 0.137 / 0.178 / 0.178 | 0.114 / 0.173 / 0.173 | 1.436 / 1.829 / 1.829 | emergency |
-| emergency-stretch | 3 / 8 / 2 | 0.008 / 0.011 / 0.011 | 0.007 / 0.023 / 0.023 | 0.033 / 0.054 / 0.054 | emergency |
-| overfull-atomic | 1 / 4 / 1 | 0.001 / 0.001 / 0.001 | 0.001 / 0.001 / 0.001 | 0.011 / 0.022 / 0.022 | emergency |
+| words-50 | 50 / 102 / 4 | 0.009 / 0.142 / 0.142 | 0.007 / 0.101 / 0.101 | 0.079 / 0.508 / 0.508 | pretolerance |
+| words-200 | 200 / 402 / 14 | 0.058 / 0.272 / 0.272 | 0.050 / 0.061 / 0.061 | 0.488 / 0.557 / 0.557 | pretolerance |
+| words-1000 | 1000 / 2002 / 70 | 0.608 / 1.241 / 1.241 | 0.567 / 1.006 / 1.006 | 4.516 / 7.066 / 7.066 | pretolerance |
+| words-5000 | 5000 / 10002 / 349 | 3.375 / 4.206 / 4.206 | 3.162 / 4.118 / 4.118 | 25.822 / 28.718 / 28.718 | pretolerance |
+| words-10000 | 10000 / 20002 / 698 | 6.826 / 7.670 / 7.670 | 6.722 / 7.491 / 7.491 | 52.182 / 56.220 / 56.220 | pretolerance |
+| narrow | 1000 / 2002 / 191 | 0.123 / 0.210 / 0.210 | 0.092 / 0.158 / 0.158 | 4.419 / 4.644 / 4.644 | emergency |
+| discretionary-hyphens | 1000 / 4002 / 146 | 2.111 / 2.295 / 2.295 | 1.935 / 2.144 / 2.144 | 19.831 / 20.481 / 20.481 | tolerance |
+| varying-line-width | 1000 / 2002 / 71 | 1.424 / 1.504 / 1.504 | 1.385 / 1.438 / 1.438 | 5.574 / 5.975 / 5.975 | emergency |
+| looseness | 200 / 402 / 24 | 0.127 / 0.143 / 0.143 | 0.113 / 0.125 / 0.125 | 1.318 / 1.489 / 1.489 | emergency |
+| emergency-stretch | 3 / 8 / 2 | 0.008 / 0.010 / 0.010 | 0.007 / 0.016 / 0.016 | 0.033 / 0.054 / 0.054 | emergency |
+| overfull-atomic | 1 / 4 / 1 | 0.001 / 0.002 / 0.002 | 0.001 / 0.002 / 0.002 | 0.012 / 0.019 / 0.019 | emergency |
 
 The 12-width operation spans 240–680px in 40px steps and reports the total for solving and path checks. Cases include narrow columns, hyphens, varying line widths, looseness, emergency stretch and indivisible objects. Checks verify ordered breaks, complete coverage, finite demerits and agreement between direct and prepared solving.
 
@@ -36,12 +36,12 @@ KP schedules paragraphs as they approach the viewport, batches font measurements
 
 | Viewport / mode | Passed | First sweep rAF P95 / max ms | Revisit rAF P95 / max ms | >50ms frames |
 | --- | --- | --- | --- | --- |
-| 1380 / standard | 3/3 | 17.20 / 18.10 | 17.20 / 19.00 | 0 / 1080 |
-| 1380 / justify | 3/3 | 19.20 / 23.70 | 19.10 / 32.30 | 0 / 1080 |
-| 1380 / knuth-plass | 3/3 | 19.70 / 25.90 | 19.20 / 27.00 | 0 / 1080 |
-| 390 / standard | 3/3 | 17.40 / 18.50 | 17.30 / 19.10 | 0 / 1080 |
-| 390 / justify | 3/3 | 17.10 / 18.10 | 17.10 / 17.70 | 0 / 1080 |
-| 390 / knuth-plass | 3/3 | 17.20 / 18.10 | 17.10 / 18.20 | 0 / 1080 |
+| 1380 / standard | 3/3 | 17.00 / 17.40 | 17.00 / 18.80 | 0 / 1080 |
+| 1380 / justify | 3/3 | 16.90 / 17.90 | 17.00 / 19.40 | 0 / 1080 |
+| 1380 / knuth-plass | 3/3 | 17.00 / 20.90 | 17.00 / 18.00 | 0 / 1080 |
+| 390 / standard | 3/3 | 17.30 / 18.50 | 17.10 / 17.50 | 0 / 1080 |
+| 390 / justify | 3/3 | 17.10 / 17.90 | 17.10 / 17.70 | 0 / 1080 |
+| 390 / knuth-plass | 3/3 | 17.10 / 18.00 | 17.10 / 17.60 | 0 / 1080 |
 
 Scroll statistics pool 1,080 frames per viewport/mode group. rAF measures scrollTo to the next animation-frame callback. Pure solver timings appear in the preceding table.
 
@@ -51,12 +51,12 @@ Each page visits viewport widths of 1380, 1200, 960, 800, 640, 480, 390, 480, 64
 
 | Initial viewport / mode | rAF P50 / P95 / max ms | Settled P50 / P95 / max ms | Paragraph width px |
 | --- | --- | --- | --- |
-| 1380 / standard | 30.60 / 50.00 / 60.20 | 115.00 / 117.60 / 131.70 | 350–900 |
-| 1380 / justify | 30.80 / 47.70 / 48.80 | 115.20 / 117.00 / 117.40 | 350–900 |
-| 1380 / knuth-plass | 41.00 / 60.80 / 68.60 | 115.30 / 135.20 / 149.00 | 350–900 |
-| 390 / standard | 30.90 / 57.10 / 67.00 | 115.30 / 117.40 / 135.10 | 350–900 |
-| 390 / justify | 31.40 / 61.40 / 75.60 | 115.60 / 134.00 / 149.50 | 350–900 |
-| 390 / knuth-plass | 50.70 / 93.60 / 108.70 | 116.00 / 183.20 / 216.00 | 350–900 |
+| 1380 / standard | 28.10 / 54.20 / 54.60 | 112.80 / 132.80 / 133.50 | 350–900 |
+| 1380 / justify | 28.40 / 54.00 / 55.50 | 113.50 / 129.30 / 132.90 | 350–900 |
+| 1380 / knuth-plass | 40.80 / 62.60 / 63.70 | 114.90 / 146.50 / 151.60 | 350–900 |
+| 390 / standard | 29.80 / 74.80 / 87.80 | 114.40 / 162.80 / 166.20 | 350–900 |
+| 390 / justify | 29.80 / 77.70 / 79.20 | 115.10 / 164.40 / 167.00 | 350–900 |
+| 390 / knuth-plass | 47.00 / 90.00 / 94.00 | 117.40 / 180.20 / 198.10 | 350–900 |
 
 ## Interaction integrity and resource use
 
@@ -64,18 +64,18 @@ Layout checks cover source text, native selections across width changes, retaine
 
 | Initial viewport / mode | Scroll main thread ms | Final JS heap MiB | DOM | Text / native range / cache retained |
 | --- | --- | --- | --- | --- |
-| 1380 / standard | 1443.87 | 10.73 | 726 | 3/3 / 3/3 / N/A |
-| 1380 / justify | 2323.62 | 11.28 | 726 | 3/3 / 3/3 / N/A |
-| 1380 / knuth-plass | 2625.42 | 16.48 | 1679 | 3/3 / 3/3 / 3/3 |
-| 390 / standard | 1084.11 | 11.05 | 726 | 3/3 / 3/3 / N/A |
-| 390 / justify | 715.83 | 10.91 | 726 | 3/3 / 3/3 / N/A |
-| 390 / knuth-plass | 1042.43 | 16.17 | 2071 | 3/3 / 3/3 / 3/3 |
+| 1380 / standard | 1026.27 | 12.58 | 867 | 3/3 / 3/3 / N/A |
+| 1380 / justify | 1011.56 | 13.12 | 867 | 3/3 / 3/3 / N/A |
+| 1380 / knuth-plass | 1225.45 | 18.49 | 1758 | 3/3 / 3/3 / 3/3 |
+| 390 / standard | 816.00 | 11.03 | 867 | 3/3 / 3/3 / N/A |
+| 390 / justify | 816.59 | 13.03 | 867 | 3/3 / 3/3 / N/A |
+| 390 / knuth-plass | 1038.42 | 16.71 | 2174 | 3/3 / 3/3 / 3/3 |
 
 Main-thread values are medians across pages of cumulative TaskDuration for all three sweeps. JS heap and DOM are sampled after scrolling and resizing, at a 390px viewport and after explicit GC; resource values are medians across pages.
 
 ## Environment and reproduction
 
-LiMR **1.1.0** · React **19.3.0** · Node **v20.19.5** · Chromium **156.0.8078.4**. 13th Gen Intel(R) Core(TM) i7-13700; 24 logical CPUs; 31.2 GiB; linux 6.18.40.1-microsoft-standard-WSL2.
+LiMR **1.3.0** · React **19.3.0** · Node **v20.19.5** · Chromium **156.0.8078.4**. 13th Gen Intel(R) Core(TM) i7-13700; 24 logical CPUs; 31.2 GiB; linux 6.18.40.1-microsoft-standard-WSL2.
 
 Measurements run sequentially against a local production build without CPU or network throttling. Narrow-screen results use Chromium viewport simulation. P95 uses nearest-rank calculation; with 15 algorithm samples, P95 equals the maximum.
 

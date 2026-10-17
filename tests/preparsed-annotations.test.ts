@@ -5,6 +5,7 @@ import { createParser } from '../src/core/parser';
 import { rememberPreparsed, takePreparsed } from '../src/core/preparsed';
 import { fromMarkdownSource } from '../src/core/markdown-input';
 import { lineStarts } from '../src/core/tree';
+import { parserGraphFingerprint } from '../benchmarks/core/parser-graph';
 
 // Foreign grammar hooks deliberately bypass raw-tree reuse. Compare complete
 // semantic snapshots, including original UTF-16 positions and hidden syntax.
@@ -13,6 +14,7 @@ const compare = (source: string, streaming = false) => {
   const optimized = createDocument(source, { id: 'cache-parity', extensions, streaming }).getSnapshot();
   const ordinary = createDocument(source, { id: 'cache-parity', extensions: [...extensions, { name: 'foreign-grammar', micromark: [{}] }], streaming }).getSnapshot();
   expect(optimized).toEqual(ordinary);
+  expect(parserGraphFingerprint(optimized)).toEqual(parserGraphFingerprint(ordinary));
 };
 const definition = '\n\n:::limr-annotation{id="note" type="footnote"}\nA **complete** note.\n:::\n';
 

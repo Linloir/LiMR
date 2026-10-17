@@ -5,7 +5,7 @@ description: Develop, package, and integrate new @linloir/limr extension modules
 
 # Develop a LiMR plugin
 
-Deliver the requested extension as a package plus a working host import using LiMR 1.2.3. Inspect the installed version and public declarations before choosing APIs.
+Deliver the requested extension as a package plus a working host import using LiMR 1.3.0. Inspect the installed version and public declarations before choosing APIs.
 
 Read [the contract](references/contract.md) for source mapping, native selection boundaries, annotation presentation, actions, resources, and localization. Start from [plugin-template](assets/plugin-template/README.md) when a standalone TypeScript/ESM package is useful. Copy the complete template to the requested project destination, rename its example package and IDs, and remove capabilities not needed by the task. Do not edit the installed skill as the project implementation.
 
@@ -20,5 +20,7 @@ Start an editable creation with addAnnotation(annotation, { edit: true }); save 
 Support host localization when requested: use useLocale() in components, locale.language for plugin dictionaries, label(locale) for annotation names, and context.locale in actions. Preserve stored user text across language changes. Declare the required LiMR APIs in peerDependencies.
 
 Integrate with a stable plugins array and explicit CSS imports. Use extensions + replaceExtension for default replacements; duplicate names/tags/directives are errors. Do not silently discard persisted unknown annotations.
+
+For large-document hosts, declare public virtualization text/state contracts for custom views, keep syntax registration separate from view plugins, and respect provisional/readOnly state. Register custom worker syntax by versioned ID on both sides; never assume scope:local alone proves safe independent parsing or transfer. See the contract reference.
 
 Validate the built package in an independent consumer, not just a source alias. Check TypeScript, SSR, retained built-ins, syntax/source mapping/finalized streaming where relevant, and desktop/mobile card interactions for UI features. Exercise supported React major versions and both languages/themes when claimed. Report the package path and verified limits. Publishing remains a separate user action unless explicitly requested.

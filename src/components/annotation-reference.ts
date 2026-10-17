@@ -2,6 +2,20 @@ import { annotationReferenceRange, mapText, type AnnotationOccurrence, type Docu
 import { intersects, rangeOf } from '../core/tree';
 import { literalValue, mapLiteral } from '../react/literal';
 
+/** Sidebar excerpts are needed only for mounted cards. Cache by occurrence
+ * identity within this snapshot so scrolling back does not repeat projection,
+ * and removed/replaced occurrences are not retained by the cache. */
+export function createAnnotationReferenceReader(document: DocumentSnapshot): (occurrence: AnnotationOccurrence) => string {
+  const cache = new WeakMap<AnnotationOccurrence, string>();
+  return occurrence => {
+    const previous = cache.get(occurrence);
+    if (previous !== undefined) return previous;
+    const value = annotationReferenceText(document, occurrence);
+    cache.set(occurrence, value);
+    return value;
+  };
+}
+
 /** Render the anchored text, without exposing Markdown syntax or <ref> tags. */
 export function annotationReferenceText(document: DocumentSnapshot, occurrence: AnnotationOccurrence): string {
   let referenceRange = annotationReferenceRange(document, occurrence);

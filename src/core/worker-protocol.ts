@@ -1,12 +1,16 @@
 import type { DocumentInput, Utf8SourceIndex } from './source-input';
 import type { Block, DocumentProgress, DocumentSnapshot } from './types';
 import type { WorkerExtensionDescriptor } from './worker-registry';
+import type { PackedSnapshot } from './snapshot-codec';
 export type DocumentWorkerRequest = { type: 'continue'; revision: number } | {
   type: 'load'; revision: number; id: string; input: DocumentInput; mode: 'blocking' | 'progressive'; extensions: readonly WorkerExtensionDescriptor[];
+  /** Negotiated capability; older/custom workers can keep the ordinary reply. */
+  acceptPackedSnapshot?: boolean;
 }
 export type DocumentWorkerResponse =
   | { type: 'progress'; revision: number; progress: DocumentProgress }
   | { type: 'snapshot'; revision: number; snapshot: DocumentSnapshot; complete: boolean; sourceIndex?: Utf8SourceIndex; progressive: boolean }
+  | { type: 'snapshot-packed'; revision: number; packed: PackedSnapshot; sourceIndex?: Utf8SourceIndex; progressive: boolean }
   | { type: 'snapshot-start'; revision: number; metadata: Omit<DocumentSnapshot, 'source' | 'blocks'>; sourceLength: number; blockCount: number; sourceIndex?: Utf8SourceIndex; progressive: boolean }
   | { type: 'snapshot-source'; revision: number; value: string }
   | { type: 'snapshot-blocks'; revision: number; blocks: Block[] }

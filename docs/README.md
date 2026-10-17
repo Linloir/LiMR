@@ -9,6 +9,7 @@ Documentation is organized around writing content, integrating LiMR, and develop
 - [中文入门](zh-CN/getting-started.md) / [Getting started](en/getting-started.md)
 - [默认语法](zh-CN/syntax.md) / [Default syntax](en/syntax.md)
 - [渲染器性能报告](zh-CN/performance.md) / [Renderer performance](en/performance.md)
+- [加载与内存性能](zh-CN/loading-performance.md) / [Loading and memory performance](en/loading-performance.md)
 - [KP 算法性能报告](zh-CN/knuth-plass-performance.md) / [Knuth–Plass performance](en/knuth-plass-performance.md)
 - [AI Skills 下载与导入](zh-CN/ai-skills.md) / [Download and install AI Skills](en/ai-skills.md)
 

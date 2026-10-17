@@ -1,6 +1,7 @@
 import { createParser } from './parser';
 import { hasDocumentSyntax } from './worker-registry';
 import { lineStarts, rangeOf, slugify, textContent, walk } from './tree';
+import { rememberSourceLines } from './source-position';
 import type { Annotation, AnnotationOccurrence, Block, DocumentMetrics, DocumentOptions, DocumentSnapshot, Heading, MarkdownNode, ParseContext, SourceAnnotationRange, SourceRange, SyntaxExtension } from './types';
 
 let sequence = 0;
@@ -92,6 +93,7 @@ export class DocumentEngine {
     } else this.lines = lineStarts(source);
     const lines = this.lines;
     const context: ParseContext = { source, streaming, documentId: this.id, onProgress: this.progress };
+    rememberSourceLines(context, lines);
     const omissions = this.extensions.flatMap(extension => [...extension.preprocess?.(context, this.extensions) ?? []]).sort((a, b) => a.start - b.start);
     const omissionsChanged = omissions.length !== this.sourceOmissions.length || omissions.some((range, index) => range.start !== this.sourceOmissions[index]?.start || range.end !== this.sourceOmissions[index]?.end);
     if (omissionsChanged) { start = 0; if (previous) reason = 'definitions'; }

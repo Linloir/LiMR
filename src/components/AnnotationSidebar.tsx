@@ -5,7 +5,7 @@ import type { AnnotationOccurrence } from '../core';
 import type { StyledProps } from '../react/types';
 import { SidebarCardBody } from './SidebarCardBody';
 import { AdaptiveAnnotationSidebar } from './AdaptiveAnnotationSidebar';
-import { annotationReferenceText } from './annotation-reference';
+import { createAnnotationReferenceReader } from './annotation-reference';
 import { createSourceRangeLookup } from '../react/source-geometry';
 import { useOverflowFade } from '../react/overflow-fade';
 import { isOwnedImagePreview } from './image-preview-behavior';
@@ -78,7 +78,7 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
     if (sync === 'none') for (const annotation of decorations.annotations.values()) if (annotation.type !== 'highlight' && runtime.supportsAnnotation(annotation) && !values.some(item => item.annotationIds.includes(annotation.id))) values.push({ id: `unanchored-${annotation.id}`, range: { start: 0, end: 0 }, annotationIds: [annotation.id] });
     return values;
   }, [runtime, decorations, sync]);
-  const references = useMemo(() => new Map(occurrences.map(occurrence => [occurrence.id, annotationReferenceText(document, occurrence)])), [document, occurrences]);
+  const referenceText = useMemo(() => createAnnotationReferenceReader(document), [document]);
   const annotationGroups = useMemo(() => new Map(occurrences.map(occurrence => [occurrence.id, occurrence.annotationIds.flatMap(id => { const annotation = decorations.annotations.get(id); return annotation ? [annotation] : []; })])), [decorations, occurrences]);
   const measure = useCallback((beforePaint = false) => {
     const next = new Map<string, number>();
@@ -276,9 +276,9 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
         onClick={event => {
           if ((!isActive || collapseOnContentClick) && !renderCard && !event.defaultPrevented && !(event.target as Element).closest('button,a,input,select,textarea,summary,[role="button"],[role="link"],[contenteditable="true"],[data-limr-card-interactive]') && window.getSelection()?.isCollapsed !== false) activate();
         }}>
-        {renderCard ? renderCard({ occurrence, active: isActive, activate }) : <SidebarCardBody occurrence={occurrence} annotation={annotation} annotations={annotationGroups.get(occurrence.id)!} reference={references.get(occurrence.id) ?? ''} point={decorations.referenceRanges.get(occurrence.id)?.start === decorations.referenceRanges.get(occurrence.id)?.end} active={isActive} title={definition?.label ?? annotation?.type ?? 'Reference'} toggleLabel={isActive ? locale.collapse : locale.expand} Preview={Preview} activate={activateCard} />}
+        {renderCard ? renderCard({ occurrence, active: isActive, activate }) : <SidebarCardBody occurrence={occurrence} annotation={annotation} annotations={annotationGroups.get(occurrence.id)!} reference={referenceText(occurrence)} point={decorations.referenceRanges.get(occurrence.id)?.start === decorations.referenceRanges.get(occurrence.id)?.end} active={isActive} title={definition?.label ?? annotation?.type ?? 'Reference'} toggleLabel={isActive ? locale.collapse : locale.expand} Preview={Preview} activate={activateCard} />}
       </div>;
-    }), [items, runtime, runtime.annotationTypes, decorations, active, hovered, source, alignmentId, minimumSizes, railHeight, anchorTops, viewportHeight, sync, positions, gap, locked?.id, renderCard, lockCard, activateCard, annotationGroups, references, locale.collapse, locale.expand]);
+    }), [items, runtime, runtime.annotationTypes, decorations, active, hovered, source, alignmentId, minimumSizes, railHeight, anchorTops, viewportHeight, sync, positions, gap, locked?.id, renderCard, lockCard, activateCard, annotationGroups, referenceText, locale.collapse, locale.expand]);
   return <aside ref={rail} aria-label={locale.annotations} className={`limr-sidebar ${className ?? ''}`} data-sync={sync} data-releasing={releasing ? '' : undefined} data-limr-theme={theme} data-limr-appearance={appearance} style={style}>
     {content}
   </aside>;

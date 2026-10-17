@@ -15,7 +15,7 @@ const archive = (await readdir(temporary)).find(name => name.endsWith('.tgz'));
 if (!archive) throw new Error('Package archive was not created');
 const contents = new Set(run('tar', ['-tzf', join(temporary, archive)], process.cwd()).trim().split('\n'));
 for (const path of ['README.md', 'README.en.md', 'docs/zh-CN/modules.md', 'docs/en/modules.md', 'docs/assets/source.svg',
-  'dist/worker.js', 'dist/worker.d.ts', 'dist/worker-api.js', 'dist/worker-api.d.ts', 'docs/en/large-documents.md', 'docs/zh-CN/large-documents.md',
+  'dist/worker.js', 'dist/worker.d.ts', 'dist/worker-api.js', 'dist/worker-api.d.ts', 'dist/THIRD_PARTY_LICENSES.txt', 'docs/en/large-documents.md', 'docs/zh-CN/large-documents.md',
   'docs/zh-CN/performance.md', 'docs/en/performance.md', 'docs/zh-CN/knuth-plass-performance.md', 'docs/en/knuth-plass-performance.md',
   'docs/assets/performance/limr-midpoint.png', 'docs/assets/performance/markstream-midpoint.png', 'benchmarks/README.md', 'benchmarks/results/renderers.json',
   'skills/limr-use/SKILL.md', 'skills/limr-plugin-development/SKILL.md', 'skills/limr-plugin-development/assets/plugin-template/package.json']) {
@@ -91,6 +91,16 @@ const pairedDocument = createDocument(paired, { extensions: standard() }).getSna
 if (pairedDocument.annotationRanges.size !== 1 || !pairedDocument.annotationRanges.get('range')[0].openingRange) throw new Error('Packed paired annotation parser failed');
 const pairedHtml = renderToString(createElement(Markdown, { source: paired }));
 if (pairedHtml.includes('%%limr') || !pairedHtml.includes('data-limr-marker')) throw new Error('Packed paired annotation rendering failed');
+// Exercise the bounded parser through the installed core entry, including a
+// forward definition outside every earlier batch. A repository-only dependency
+// patch would not reach this consumer.
+const complexUnit = '# Complex section\\n\\n> A **quoted** paragraph.\\n> Continued here.\\n\\n- [x] Read [the ending][packed-end] with $x^2$.\\n- Another item.\\n\\n| A | B |\\n| - | - |\\n| cell | value |\\n\\n~~~js\\nconst value = 42;\\n~~~\\n\\n';
+const complexSource = complexUnit.repeat(2000) + '[packed-end]: https://example.com/end\\n';
+const complexSnapshot = createDocument(complexSource, { id: 'packed-complex', extensions: standard() }).getSnapshot();
+let packedReferences = 0;
+function inspectPackedNode(node) { if (node.type === 'linkReference') packedReferences++; for (const child of node.children ?? []) inspectPackedNode(child); }
+for (const block of complexSnapshot.blocks) inspectPackedNode(block.node);
+if (complexSnapshot.headings.length !== 2000 || packedReferences !== 2000 || complexSnapshot.definitions.size !== 1 || complexSnapshot.diagnostics.length) throw new Error('Packed complex parser lost cross-batch semantics');
 const html = renderToString(createElement(Reader, { source: '# Packed package\\n\\n$x^2$\\n\\nText<ref id="p" />.\\n\\n<citation id="p" title="Paper" />', documentId: 'packed', extensions: standard(), justify: true }));
 if (!html.includes('packed-packed-package') || !html.includes('katex-mathml') || !html.includes('data-limr-justify="true"')) throw new Error('SSR output is incomplete');
 if (!renderToString(createElement(Markdown, {source:'**bold**'})).includes('<strong>')) throw new Error('Standalone Markdown failed');

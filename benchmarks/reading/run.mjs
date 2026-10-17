@@ -89,7 +89,7 @@ const server = createServer(async (request, response) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const baseURL = `http://127.0.0.1:${server.address().port}`;
 const stats = values => ({ ...summarize(values), over50: values.filter(value => value > 50).length });
-const measurement = 'Production React and default renderer features/animations. Font-ready isolated pages. Steady reading at 480px/s, fast scroll at 120px per animation frame, and 120 whole-document seeks are separate scenarios. rAF intervals are not physical input-to-photon latency. Resize completion is a visible-paragraph geometry/KP signature stable for 150ms with no visible stale KP; it is not an internal queue-drain signal. Visibility probes check DOM coverage, not rasterized pixels. Lazy images outside the visited viewport may remain unloaded. No public report is updated.';
+const measurement = 'Production React and default renderer features/animations. Font-ready isolated pages. Steady reading at 480px/s, fast scroll at 120px per animation frame, and 120 whole-document seeks are separate scenarios. rAF intervals are not physical input-to-photon latency. Resize completion is a visible-paragraph geometry/KP signature stable for 150ms with no visible stale KP; it is not an internal queue-drain signal. Visibility probes check DOM coverage, not rasterized pixels. Lazy images outside the visited viewport may remain unloaded.';
 const browser = await chromium.launch(browserConfiguration.launchOptions).catch(error => { server.close(); throw error; });
 const browserMetadata = await inspectBrowserIdentity(browser, browserConfiguration);
 const runs = [];

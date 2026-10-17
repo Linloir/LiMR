@@ -4,15 +4,19 @@ import { directiveFromMarkdown } from 'mdast-util-directive';
 import { mdxJsx } from 'micromark-extension-mdx-jsx';
 import { mdxJsxFromMarkdown } from 'mdast-util-mdx-jsx';
 import { omitSource, rangeOf, type Annotation, type HighlightData, type MarkdownNode, type ParseContext, type SourceAnnotationRange, type SourceRange, type SyntaxExtension } from '../core';
-import { lineStarts, sourcePoint } from '../core/tree';
+import { sourcePoint } from '../core/tree';
+import { sourceLines } from '../core/source-position';
 import { prepareSource } from '../core/streaming';
 import { annotationBody } from './source-annotation-format';
 import { sourceAnnotationTokenizer } from './source-annotation-tokenizer';
-import { rememberPreparsed } from '../core/preparsed';
+import { rememberOmittedSource, rememberPreparsed } from '../core/preparsed';
+import { hasTableLocalSyntax } from '../core/incremental-table';
+import { createOmissionLookup } from '../core/source-omissions';
+import { createAnnotationHostLookup, createDefinitionContainment } from './source-annotation-lookup';
 
 const marker = /::%%limr%%\{([<>])#([A-Za-z0-9][A-Za-z0-9_.:-]*)\}/g;
 interface Boundary extends SourceRange { id: string; opening: boolean }
-interface Prepared { ranges: SourceAnnotationRange[]; definitions: SourceRange[] }
+interface Prepared { ranges: SourceAnnotationRange[] }
 const isEscaped = (source: string, at: number) => {
   let slashes = 0;
   while (at > 0 && source[--at] === '\\') slashes++;
@@ -22,11 +26,14 @@ const isEscaped = (source: string, at: number) => {
 /** Discover definitions using Markdown's own block grammar. Removing candidate
  * boundaries here also permits a range to surround a fenced code block. Only
  * real, closed ::: definitions subsequently authorize any source removal. */
-function prepare(context: ParseContext, extensions: readonly SyntaxExtension[]): Prepared {
+function setupPreparation(context: ParseContext, extensions: readonly SyntaxExtension[]) {
   const { source } = context;
-  const boundaries: Boundary[] = [...source.matchAll(marker)].filter(match => !isEscaped(source, match.index!))
-    .map(match => ({ start: match.index!, end: match.index! + match[0].length, id: match[2], opening: match[1] === '<' }));
-  if (!boundaries.length || !source.includes(':::limr-annotation')) return { ranges: [], definitions: [] };
+  if (!source.includes(':::limr-annotation')) return;
+  const boundaries: Boundary[] = [];
+  for (const match of source.matchAll(marker)) {
+    if (!isEscaped(source, match.index!)) boundaries.push({ start: match.index!, end: match.index! + match[0].length, id: match[2], opening: match[1] === '<' });
+  }
+  if (!boundaries.length) return;
   const candidate = omitSource(source, boundaries);
   const names = new Set(extensions.flatMap(extension => [...extension.tags ?? [], ...extension.directives ?? []]));
   const tags = new Set(extensions.flatMap(extension => [...extension.tags ?? []]));
@@ -34,18 +41,33 @@ function prepare(context: ParseContext, extensions: readonly SyntaxExtension[]):
   const adapted = prepareSource(candidate.value, names, tags, false, literals);
   const syntax = [...extensions.flatMap(extension => [...extension.micromark ?? []]), directive()];
   const mdast = [...extensions.flatMap(extension => [...extension.mdast ?? []]), directiveFromMarkdown()];
+  const bounded = hasTableLocalSyntax(extensions.flatMap(extension => [...extension.micromark ?? [], ...extension.mdast ?? []]));
+  const progress = bounded ? (loaded: number) => context.onProgress?.({ phase: 'parse', loaded, total: adapted.value.length }) : undefined;
   // Match the main parser's JSX whitelist and recovery. Unknown JSX owns its
   // entire inert source, so apparent definitions inside it cannot authorize
   // removing markers elsewhere in the document.
+  const options = tags.size && adapted.value.includes('<') ? {
+    extensions: [...syntax, { disable: { null: ['htmlFlow', 'htmlText'] } }, mdxJsx()], mdastExtensions: [...mdast, mdxJsxFromMarkdown()],
+  } : { extensions: syntax, mdastExtensions: mdast };
+  return { boundaries, candidate, adapted, literals, tags, bounded, progress, options, fallback: { extensions: syntax, mdastExtensions: mdast } };
+}
+
+function prepare(context: ParseContext, extensions: readonly SyntaxExtension[]): Prepared {
+  const setup = setupPreparation(context, extensions);
+  if (!setup) return { ranges: [] };
   let tree: MarkdownNode;
   try {
-    tree = fromMarkdown(adapted.value, tags.size && adapted.value.includes('<') ? {
-      extensions: [...syntax, { disable: { null: ['htmlFlow', 'htmlText'] } }, mdxJsx()], mdastExtensions: [...mdast, mdxJsxFromMarkdown()],
-    } : { extensions: syntax, mdastExtensions: mdast }) as unknown as MarkdownNode;
-    rememberPreparsed(context, adapted.value, tree, extensions);
+    tree = fromMarkdown(setup.adapted.value, setup.options, setup.bounded, setup.progress);
+    rememberPreparsed(context, setup.adapted.value, tree, extensions);
   } catch {
-    tree = fromMarkdown(adapted.value, { extensions: syntax, mdastExtensions: mdast }) as unknown as MarkdownNode;
+    tree = fromMarkdown(setup.adapted.value, setup.fallback, setup.bounded, setup.progress);
   }
+  return finalizePreparation(context, setup, tree);
+}
+
+function finalizePreparation(context: ParseContext, setup: NonNullable<ReturnType<typeof setupPreparation>>, tree: MarkdownNode): Prepared {
+  const { source } = context;
+  const { boundaries, candidate, adapted, literals, tags } = setup;
   const definitions: SourceRange[] = [], finalDefinitions = new Map<string, string[]>();
   const visit = (node: MarkdownNode) => {
     if (node.type === 'footnoteDefinition' || node.type.endsWith('Directive') && literals.has(node.name ?? '')) return;
@@ -66,10 +88,12 @@ function prepare(context: ParseContext, extensions: readonly SyntaxExtension[]):
     node.children?.forEach(visit);
   };
   visit(tree);
-  const ids = new Set([...finalDefinitions.values()].flat());
+  const ids = new Set<string>();
+  for (const rangeIds of finalDefinitions.values()) for (const id of rangeIds) ids.add(id);
   const grouped = new Map<string, Boundary[]>();
+  const insideDefinition = createDefinitionContainment(definitions);
   for (const boundary of boundaries) {
-    if (!ids.has(boundary.id) || definitions.some(range => boundary.start >= range.start && boundary.end <= range.end)) continue;
+    if (!ids.has(boundary.id) || insideDefinition(boundary.start, boundary.end)) continue;
     const items = grouped.get(boundary.id) ?? []; items.push(boundary); grouped.set(boundary.id, items);
   }
   const ranges: SourceAnnotationRange[] = [];
@@ -83,19 +107,23 @@ function prepare(context: ParseContext, extensions: readonly SyntaxExtension[]):
         range: { start: opening.end, end: closing.start }, syntaxRange: { start: opening.start, end: closing.end } });
     }
   }
-  return { ranges: ranges.sort((a, b) => a.markerRange.start - b.markerRange.start), definitions };
+  rememberOmittedSource(context, source, boundaries, candidate);
+  return { ranges: ranges.sort((a, b) => a.markerRange.start - b.markerRange.start) };
 }
 
 /** Explicit paired ranges are resolved before Markdown tokenization, allowing
  * independent crossing/nested ranges across blocks, formatting and code. */
 export function sourceAnnotationSyntax(): SyntaxExtension {
   const prepared = new WeakMap<ParseContext, Prepared>();
-  return {
+  const remember = (context: ParseContext, state: Prepared) => {
+    prepared.set(context, state);
+    return state.ranges.flatMap(range => [range.openingRange, range.markerRange]).sort((a, b) => a.start - b.start);
+  };
+  const extension: SyntaxExtension = {
     name: 'source-annotations', directives: ['limr-annotation'], scope: 'local',
     micromark: [sourceAnnotationTokenizer],
     preprocess(context, extensions) {
-      const state = prepare(context, extensions); prepared.set(context, state);
-      return state.ranges.flatMap(range => [range.openingRange, range.markerRange]).sort((a, b) => a.start - b.start);
+      return remember(context, prepare(context, extensions));
     },
     transform(root, context) {
       const { source } = context;
@@ -123,28 +151,36 @@ export function sourceAnnotationSyntax(): SyntaxExtension {
       visit(root);
       const ranges = prepared.get(context)?.ranges ?? [];
       if (!ranges.length) return;
-      const lines = lineStarts(source), nodes = root.children ??= [];
+      const lines = sourceLines(context), nodes = root.children ??= [];
       const rootRange = rangeOf(root);
+      let hosts = createAnnotationHostLookup(nodes);
+      const omissionsWithin = createOmissionLookup(context.sourceOmissions);
       for (const range of ranges) {
         if (range.markerRange.end < rootRange.start || range.markerRange.start > rootRange.end) continue;
-        let host = nodes.find(node => !['annotationDefinition', 'definition', 'footnoteDefinition'].includes(node.type) && rangeOf(node).start <= range.markerRange.end && rangeOf(node).end >= range.markerRange.start);
-        if (!host) host = [...nodes].reverse().find(node => {
-          const end = rangeOf(node).end;
-          return !['annotationDefinition', 'definition', 'footnoteDefinition'].includes(node.type) && end < range.markerRange.start
-            && !omitSource(source.slice(end, range.markerRange.start), context.sourceOmissions ?? [], end).value.trim();
-        });
+        let host = hosts.find(range.markerRange.start, range.markerRange.end);
+        if (!host) for (const node of hosts.preceding(range.markerRange.start)) {
+          const end = node.position?.end.offset ?? 0;
+          const between = source.slice(end, range.markerRange.start);
+          if (!omitSource(between, omissionsWithin(end, end + between.length) ?? [], end).value.trim()) {
+            host = node;
+            break;
+          }
+        }
         if (!host) {
           const at = range.markerRange.start;
           host = { type: 'paragraph', position: { start: sourcePoint(at, lines), end: sourcePoint(range.markerRange.end, lines) },
             children: [{ type: 'text', value: '', position: { start: sourcePoint(at, lines), end: sourcePoint(at, lines) } }] };
           nodes.push(host); nodes.sort((a, b) => rangeOf(a).start - rangeOf(b).start);
+          hosts = createAnnotationHostLookup(nodes);
         }
         (host.sourceAnnotationRanges as SourceAnnotationRange[] | undefined ?? (host.sourceAnnotationRanges = []) as SourceAnnotationRange[]).push(range);
         // Keep collapsed boundaries within their host block for incremental
         // parsing and the ordinary external-marker placement path.
         const hostRange = rangeOf(host);
         host.position = { start: sourcePoint(Math.min(hostRange.start, range.markerRange.start), lines), end: sourcePoint(Math.max(hostRange.end, range.markerRange.end), lines) };
+        hosts.changed(host);
       }
     },
   };
+  return extension;
 }

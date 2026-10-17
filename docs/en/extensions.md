@@ -232,3 +232,11 @@ export const customCode = defineExtension({
 ```
 
 `when` also receives `pending` and `ancestors`. An explicit replacement owns its intermediate rendering while retaining LiMR's source wrapper, atomic selection and error boundary. Use `renderValue`, `renderAttribute` and `renderChildren` to preserve mappings. These restrictions scope rendering rules; they are not a JavaScript security sandbox.
+
+## Workers and windowed views
+
+Syntax and presentation are independent capabilities. Components, annotation types and actions can stay on the host. Custom parser hooks need matching versioned host/worker registrations and validated structured-cloneable configuration. Unregistered syntax takes the exact configured fallback or errors; plugins are never dropped to make loading faster. `scope: 'local'` alone proves neither independent packet transport nor safe preview parsing; `independentProseExtensions` and `provisionalPreviewExtensions` each require an explicit semantic guarantee from the worker author.
+
+Custom views can declare `virtualization: { copyText, searchText?, keepAlive? }` for selection/search projections and DOM retention. A contract belongs to the actual matching renderer override. Prefer `useNodeState` across offscreen unmounts and reserve keepAlive for opaque editors or media. If outside state changes visible text, call `invalidatePresentation()` to refresh TOC/search. Unknown views and oversized indivisible blocks cause an explicit fallback reported by `onVirtualizationChange`.
+
+During progressive loading, the preview sets `readOnly` to prevent writes and `provisional` to block operations requiring complete content. Mark an action `readOnly: true` only when it really avoids mutations. Use public navigation and print commands rather than assuming the entire DOM is mounted. See [large documents](large-documents.md) for worker examples, progress APIs and limits.

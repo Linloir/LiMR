@@ -66,3 +66,7 @@ export function Article({ source }: { source: string }) {
 本地类型检查通过后，还需把真实 tgz 安装到独立消费者中：检查公开导入、SSR、CSS 资源、默认模块仍可用和新增交互。支持 React 18/19 的包应分别验证两种宿主。语法插件检查流式结束与一次性解析等价；交互插件检查桌面侧栏、窄屏浮层、键盘、异步取消和两种主题。
 
 LiMR 仓库的 [reading-tools](../../examples/packages/reading-tools/index.js) 和 [paper-theme](../../examples/packages/paper-theme/index.css) 是另一组可打包示例。AI 可使用[插件开发 Skill](ai-skills.md)，其中的模板可独立复制，引用文件无需依赖本仓库路径。
+
+## 加载与大文档兼容性
+
+依赖 1.3.0 加载控制或窗口化能力的插件应在 peerDependencies 声明对应最低版本，并在真实包消费者中验证 Worker、provisional/readOnly、复制/搜索和离屏状态。保留旧 API 的简单示例可继续使用其兼容版本范围。CSS 主题也应检查图片预览 portal 的浅色/深色工具栏和等宽按钮。扩展契约见[Worker 与窗口化视图](extensions.md#worker-与窗口化视图)，接入示例见[大文档](large-documents.md)。

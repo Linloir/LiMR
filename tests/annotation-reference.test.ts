@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { annotationReferenceRange, createDocument } from '../src/core';
 import { standard } from '../src/extensions';
-import { annotationReferenceText, fitPointReference } from '../src/components/annotation-reference';
+import { annotationReferenceText, createAnnotationReferenceReader, fitPointReference } from '../src/components/annotation-reference';
 
 test('anchored excerpts preserve readable rich text, entities and partial selections', () => {
   const source = '# 标题\n\n前文 **重要内容**，&amp; `code` 后文。';
@@ -51,4 +51,31 @@ test('paired annotation excerpts use exact prose and literal code mappings', () 
     + ['prose', 'inline', 'code'].map(id => `:::limr-annotation{#${id} type="footnote"}\nNote\n:::`).join('\n\n');
   const document = createDocument(source, { extensions: standard() }).getSnapshot();
   expect(document.occurrences.map(occurrence => annotationReferenceText(document, occurrence))).toEqual(['marked & words', '&amp; literal', 'readCache()']);
+});
+
+test('sidebar reference projection is lazy, cached per occurrence and refreshed for a new snapshot', () => {
+  const source = 'Visible **words**<ref id="one" />.\n\n<ref id="one">Scoped &amp; words</ref>.\n\n<citation id="one" title="One" />';
+  const engine = createDocument(source, { extensions: standard() });
+  const document = engine.getSnapshot();
+  let reads = 0;
+  const observed = { ...document, get blocks() { reads++; return document.blocks; } };
+  const reference = createAnnotationReferenceReader(observed);
+  expect(reads).toBe(0);
+  expect(reference(document.occurrences[0])).toBe('…Visible words…');
+  const firstReads = reads;
+  expect(firstReads).toBeGreaterThan(0);
+  for (let index = 0; index < 1000; index++) expect(reference(document.occurrences[0])).toBe('…Visible words…');
+  expect(reads).toBe(firstReads);
+  expect(reference(document.occurrences[1])).toBe('Scoped & words');
+  expect(reads).toBeGreaterThan(firstReads);
+  engine.update(source.replace('Visible', 'Updated'));
+  const updated = engine.getSnapshot();
+  expect(createAnnotationReferenceReader(updated)(updated.occurrences[0])).toBe('…Updated words…');
+});
+
+test('lazy sidebar references retain original and translated scoped excerpts', () => {
+  const source = '<translations>\n\n<origin>\n\n<ref id="one">Original **text**</ref>\n\n</origin>\n\n<translation>\n\n<ref id="one">译文 **内容**</ref>\n\n</translation>\n\n</translations>\n\n<citation id="one" title="One" />';
+  const document = createDocument(source, { extensions: standard() }).getSnapshot();
+  const reference = createAnnotationReferenceReader(document);
+  expect(document.occurrences.map(reference)).toEqual(['Original text', '译文 内容']);
 });

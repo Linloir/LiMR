@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import type { AnnotationOccurrence } from '../core';
 import { useAppearance, useDocument, useIsomorphicLayoutEffect, useLocale, useRuntime, useStoreSelector, useTheme } from '../react/context';
 import { createSourceRangeLookup } from '../react/source-geometry';
-import { annotationReferenceText } from './annotation-reference';
+import { createAnnotationReferenceReader } from './annotation-reference';
 import { SidebarCardBody } from './SidebarCardBody';
 import { fitSidebarBoxes, foldWindowHeight, planSidebarCollapse, planSidebarCollapseSteps, reanchorSidebarPlan, type CollapsibleSidebarItem, type SidebarClusterPlan } from './sidebar-collapse';
 import type { AnnotationSidebarProps } from './AnnotationSidebar';
@@ -263,7 +263,7 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
     const state = runtime.interaction.get(); runtime.activate(state.active === id ? null : id, 'sidebar');
     if (cards.current.get(id)?.matches(':hover')) runtime.hover(id, 'sidebar');
   }, [runtime]);
-  const references = useMemo(() => new Map(decorations.occurrences.map(item => [item.id, annotationReferenceText(document, item)])), [document, decorations.occurrences]);
+  const referenceText = useMemo(() => createAnnotationReferenceReader(document), [document]);
   const annotationGroups = useMemo(() => new Map(decorations.occurrences.map(item => [item.id, item.annotationIds.flatMap(id => { const annotation = decorations.annotations.get(id); return annotation ? [annotation] : []; })])), [decorations]);
   const occurrences = useMemo(() => new Map(decorations.occurrences.map(item => [item.id, item])), [decorations.occurrences]);
   const renderItem = useCallback((occurrence: AnnotationOccurrence) => {
@@ -284,10 +284,10 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
       onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget) && runtime.interaction.get().hovered === id) runtime.hover(null); }}
       onClick={event => { if ((!active || definition?.sidebar?.collapseOnContentClick) && !renderCard && !event.defaultPrevented && !(event.target as Element).closest('button,a,input,textarea,select,summary,[role="button"],[contenteditable],[data-limr-card-interactive]') && window.getSelection()?.isCollapsed !== false) activate(id); }}>
       {renderCard ? renderCard({ occurrence, active, activate: () => activate(id) }) : <SidebarCardBody occurrence={occurrence} annotation={annotation} annotations={annotationGroups.get(id)!}
-        reference={references.get(id) ?? ''} point={decorations.referenceRanges.get(id)?.start === decorations.referenceRanges.get(id)?.end} active={active}
+        reference={referenceText(occurrence)} point={decorations.referenceRanges.get(id)?.start === decorations.referenceRanges.get(id)?.end} active={active}
         title={definition?.label ?? annotation?.type ?? locale.annotations} toggleLabel={active ? locale.collapse : locale.expand} Preview={palette?.Preview} activate={activate} />}
     </div>;
-  }, [runtime, decorations, interaction.active, focused, geometry.viewportHeight, geometry.height, renderCard, annotationGroups, references, locale.annotations, locale.collapse, locale.expand, activate]);
+  }, [runtime, decorations, interaction.active, focused, geometry.viewportHeight, geometry.height, renderCard, annotationGroups, referenceText, locale.annotations, locale.collapse, locale.expand, activate]);
   const content = useMemo(() => plans.map(plan => <section key={plan.id} className="limr-sidebar-cluster" data-group={plan.id} data-collapsible={plan.folded || undefined}>
       <div className="limr-sidebar-cluster-list"><div className="limr-sidebar-cluster-items" style={{ gap }}>
         {plan.items.map(item => renderItem(occurrences.get(item.id)!))}

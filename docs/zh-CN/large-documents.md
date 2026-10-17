@@ -1,5 +1,15 @@
 # 异步文档与解析 Worker
 
+[文档目录](README.md) · [English](../en/large-documents.md)
+
+| 入口 | 输入与显示时机 | 进度与编辑 |
+| --- | --- | --- |
+| AsyncReader / blocking | 一次完整输入，完整解析和索引后显示正文；默认模式 | 同一个 overallProgress；就绪后按宿主配置编辑 |
+| AsyncReader / progressive | 一次完整输入，可先显示明确标注为不完整的预览，再交接完整文档 | 同一个 overallProgress；预览只读，不可准备全文打印 |
+| Reader / Markdown streaming | 应用持续传入不断增长的累计 source，最后 streaming=false | 生成进度由传输应用决定；生成中不可编辑 |
+
+两种文件加载模式最终都得到完整 source、AST 和全局索引。progressive 改变首次可读时机，不是跳过剩余解析；blocking 也不表示必须阻塞主线程，Worker 可用于两者。默认卡片来自 LiMR，Playground 已通过公开回调改为由自身渲染统一进度条。实际加载与内存边界见[加载与内存性能](loading-performance.md)。
+
 `DocumentSession` 将加载与阅读分开。默认 `blocking` 模式等完整解析和全局索引完成后才发布文档；可选 `progressive` 模式可以提前发布经过独立语法证明的正文前缀，或由 Worker 明确授权的不完整预览。前缀的 `complete` 始终为 `false`，随后由完整文档替换；后续引用定义或闭合语法可能改变预览的含义。它是独立的暂态文档，不会把窗口或前缀冒充完整 `DocumentSnapshot`。
 
 ```ts
@@ -64,7 +74,7 @@ const registry: WorkerExtensionRegistry = {
 };
 const handle = createDocumentWorkerHandler(registry);
 self.addEventListener('message', (event: MessageEvent<DocumentWorkerRequest>) => {
-  void handle(event.data, (message: DocumentWorkerResponse) => self.postMessage(message));
+  void handle(event.data, (message: DocumentWorkerResponse, transfer?: Transferable[]) => self.postMessage(message, { transfer: transfer ?? [] }));
 });
 ```
 
@@ -76,9 +86,13 @@ Worker 作者还可单独声明经过证明的局部语法支持独立正文前�
 
 可选的 `DocumentWorkerHandlerOptions` 契约按完整 registry ID 精确匹配，内置 `limr/standard` 继续受支持；只有整篇源码通过 `isIndependentProse` 扫描才生效。声明中的每个工厂及其所有受支持的 descriptor 配置，都必须保证完整段落前缀与全文解析一致、原文 UTF-16 偏移稳定，且不能在不同块或块与文档元信息之间引入需要保留同一对象身份的引用。声明前应验证前缀/全文语义和分别克隆各块后的等价性，语义改变时升级 ID。即使列出 ID，`scope: 'document'` 仍禁用这条路径；完整快照还必须不含定义、脚注、批注、批注范围或 occurrence 才能分包。未知或未声明的 ID 保留完整解析及单次快照克隆，不根据扩展名称猜测，也不允许 load 请求自行打开能力。`blocking` 模式仍不发布暂态前缀，收到并组装全部分包后才进入 ready。
 
-解析分批与提前发布前缀、结果分包是不同能力。使用已验证且未修改的内置语法时，解析器还可以在完整空行后的零列 ATX 标题或 ASCII 字母起始行处分批，因此含列表、缩进代码或单美元行内公式的正文也可能受益。全局引用定义、HTML、围栏、双美元数学语法，以及自定义语法或编译钩子等仍保留完整解析路径。每批使用原解析器，分隔符与原文位置保留，文档转换在合并整树后执行一次。
+解析分批与提前发布前缀、结果分包是不同能力。使用已验证且未修改的内置语法时，大文档采用两遍解析：第一遍通过 Markdown 解析器确认根级空行处的容器和块已结束，记录分块位置并收集全文引用、脚注定义；第二遍使用这些全局定义逐块解析，生成 AST 后释放该块的临时 token 工作区。列表、围栏、HTML、公式和指令内部的空行不会被误当成分块边界。源码位置保留，文档转换在合并整树后执行一次。注释预解析和正文解析共用同一解析上下文；准备后的输入精确匹配时，复用源码映射与原始树，转换和索引仍只执行一次。自定义或被修改的语法、编译钩子保留完整解析路径。
 
-上述解析优化不额外授权前缀发布或传输分包。经过证明且没有跨块语义对象的正文采用分批 source/block 消息，降低一次性克隆大结果的停顿。当前阶段仍保留完整 source 和 AST，内存随文档大小增长，不能宣称任意大文件都只占固定内存。
+内部源码映射将删除标记的边界保存为紧凑数值数组，并在同一次解析中共享行索引；注释预解析与正文解析的删除区间完全一致时，直接复用处理后的文本和映射。公开源码、节点、位置和快照仍维持原有格式；这些优化不会通过删除位置或批注来减少内存。临时 tokenizer/event 工作区取决于分块大小和最大的不可拆分语义块，单个巨型列表、围栏或容器仍可能需要较大内存。分块解析遇到语法异常时会回退到完整解析，以保留原有错误顺序和恢复行为；此时不保证临时工作区受分块大小约束。
+
+上述解析优化不额外授权前缀发布或传输分包。经过证明且没有跨块语义对象的正文采用分批 source/block 消息，降低一次性克隆大结果的停顿。
+
+发布的标准 Worker 对较大的复杂文档启用紧凑快照传输：将对象属性形状、重复字符串和图内引用编码到分块 TypedArray，通过 transferable 缓冲区转移。内置 Worker 按深度优先顺序分批编码独占的临时快照，并释放已编码对象的引用，避免大量节点同时排队；对象编码结束、查找索引释放后，再分批生成字符串缓冲区，减少各阶段内存同时驻留。宿主收到数据后先终止解析 Worker，再以可取消的协作任务还原完整快照，避免同时持有两份完整对象树。UTF-16 源码、对象别名、Map 和节点位置均保留。该能力由请求与 Worker 双方协商；旧 Worker 和未知 registry ID 仍使用原有协议。通用 handler 遇到不支持的对象载荷时回退；内置 handler 独占并消耗其标准快照，遇到意外的不支持对象会报错，避免发布已被部分消耗的图。自定义 Worker 只有使用原版 `standardWorkerRegistry` 时才应显式设置 `packedSnapshots: true`，并向 `postMessage` 转发回调的第二个 transfer 参数。公开快照仍是完整 source 和 AST，压缩传输不会使最终内存与文档大小无关，也不是任意大文件的固定内存保证。
 
 不完整预览使用另一项独立权限 `DocumentWorkerHandlerOptions.provisionalPreviewExtensions`。发布的标准 Worker 明确允许 `limr/standard`，自定义 handler 默认不授予这项权限。审查示例 registry 的工厂后，可传入 `{ provisionalPreviewExtensions: ['limr/standard', 'my-syntax/v1'] }`；请求中的每个 descriptor ID 都必须列出，包括标准 ID。该权限不保证前缀语义稳定、不授权结果分包，也不能由加载请求自行开启。
 
@@ -110,7 +124,7 @@ Worker 作者还可单独声明经过证明的局部语法支持独立正文前�
 
 `state.overallProgress` 是当前加载请求内单调递增的 `[0, 1]` 总进度，与是否已经显示预览无关。读取、解析、索引和结果传递采用阶段权重估计，不代表剩余耗时；完整快照被接收前始终小于 `1`，替换输入或重试才归零。`state.progress.loaded/total` 仍提供当前阶段的原始计数：读取时为字节或源码单位，解析时为源码单位，索引时为块数，不能跨阶段直接比较。不提供中间进度的解析器会停留在上一进度，直到进入下一阶段。取消、失败通过独立状态表示，同一组 controls 可重试。Playground 使用该接口在两种加载方式中共用一条细进度条，样式也与流式演示一致。
 
-当源码超过一百万个 UTF-16 单元、顶层块超过 128 个，或可见语法节点超过 2,048 个时，`AsyncReader` 会自动尝试 DOM 窗口化。原有 `Reader` 默认行为不变，可通过 `virtualization` 显式启用；`false` 会关闭自动窗口化。`useDocument()` 始终返回完整源码、全部块、全局定义与索引。
+当源码超过一百万个 UTF-16 单元、顶层块超过 128 个，或可见语法节点超过 2,048 个时，`AsyncReader` 会自动尝试 DOM 窗口化。原有 `Reader` 默认行为不变，可通过 `virtualization` 显式启用；`false` 会关闭自动窗口化。DOM 窗口不裁剪 `useDocument()` 的快照：它仍包含当前 engine 的完整源码、全部块与索引；渐进预览的 engine 会明确标为 provisional，并不代表完整输入。
 
 窗口保留附近块，并保留原生选择的两端、获得焦点的控件、活动注释编辑器、已打开图片预览的原图，以及已经访问的媒体 DOM。这样既保留播放与原生状态，也不会因为跨越很远的拖选而挂载中间所有段落。普通节点界面状态通过 `useNodeState` 保存，卸载后恢复仍有效。渐进加载完成时保留当前源码阅读锚点；临时前缀只读，完整文档到达后才开放源码和注释写入。
 
@@ -132,13 +146,15 @@ const override: RendererOverride = {
 };
 ```
 
-扩展也可在 `RendererExtension.virtualization` 中按组件名提供契约。覆盖渲染器必须实际匹配其 `when` 条件并使用自己的契约，不能借用另一个同名渲染器的契约。上下文中惰性读取的 `value` 已完成选区源码映射，能正确处理只选中部分代码的情况；`source` 是节点完整 Markdown，`children` 是选中且可见的子节点投影。未知渲染器，以及超过 4,096 个节点或包含超过 256 KiB 文本叶的单一语义块，目前会回退到原有完整渲染；`onVirtualizationChange({ enabled, reason })` 会说明这个边界。当前实现不承诺任意巨型段落、列表、表格、自定义插件或无限数量媒体的 DOM 都有固定上界；完整源码和 AST 的内存仍随文档规模增长。
+扩展也可在 `RendererExtension.virtualization` 中按组件名提供契约。覆盖渲染器必须实际匹配其 `when` 条件并使用自己的契约，不能借用另一个同名渲染器的契约。上下文中惰性读取的 `value` 已完成选区源码映射，能正确处理只选中部分代码的情况；`source` 是节点完整 Markdown，`children` 是选中且可见的子节点投影。未知渲染器，以及超过 4,096 个节点或包含长度超过 262,144 个 UTF-16 单元的文本叶的单一语义块，目前会回退到原有完整渲染；`onVirtualizationChange({ enabled, reason })` 会说明这个边界。当前实现不承诺任意巨型段落、列表、表格、自定义插件或无限数量媒体的 DOM 都有固定上界；完整源码和 AST 的内存仍随文档规模增长。
 
 普通复制基于可见文字，遵循当前翻译语言和折叠状态，不复制 Markdown 定界符或隐藏定义。图片、数学公式和 `selection: 'atomic'` 节点仍按既有契约复制完整原始源码；显式“复制 Markdown”仍是源码操作。跨窗口选择根据逻辑源码区间补足未挂载的中间内容。在另一个 Reader、页面外文字或外部控件上操作时，旧 Reader 不会继续接管复制。
 
-窗口模式的 Ctrl+F 搜索完整文档的可见文字投影，包括图片替代文字、视频标题和数学载荷，不匹配隐藏翻译面板和源码定义。扫描约每 64 KiB 或四毫秒让出主线程，并可取消。源码中连续存在的文字返回精确 UTF-16 区间；跨行内 Markdown 格式的短语会定位到所在块。目前不合并跨块短语；数学搜索使用 LaTeX 载荷而非 KaTeX 视觉或无障碍树；不透明图表需要 `searchText`/`copyText` 适配器。因此不能把这个查找宣称为完全等同浏览器原生查找。`searchDocument()` 仍提供独立的完整源码搜索 API。自定义呈现若不通过 `useNodeState` 或 Reader 配置更新状态，应调用 `useLiMR().invalidatePresentation()`，让已打开的查找和目录更新；无需在每次滚动时重扫全文。
+窗口模式的 Ctrl+F 搜索完整文档的可见文字投影，包括图片替代文字、视频标题和数学载荷，不匹配隐藏翻译面板和源码定义。扫描约每 65,536 个 UTF-16 单元或四毫秒让出主线程，并可取消。源码中连续存在的文字返回精确 UTF-16 区间；跨行内 Markdown 格式的短语会定位到所在块。目前不合并跨块短语；数学搜索使用 LaTeX 载荷而非 KaTeX 视觉或无障碍树；不透明图表需要 `searchText`/`copyText` 适配器。因此不能把这个查找宣称为完全等同浏览器原生查找。`searchDocument()` 仍提供独立的完整源码搜索 API。自定义呈现若不通过 `useNodeState` 或 Reader 配置更新状态，应调用 `useLiMR().invalidatePresentation()`，让已打开的查找和目录更新；无需在每次滚动时重扫全文。
 
 ## 阅读书签
+
+较长的目录只挂载当前滚动窗口内的列表项，仍保留完整标题索引、自动跟随、换行标题和键盘访问（方向键、Home/End、Tab）。正文的批注和高亮按源码区间分配到块，避免每个块重复扫描全文批注。侧栏引用摘要只在对应卡片需要显示时计算并缓存。
 
 普通 `#heading-slug` 链接和引用式链接会通过全局标题索引定位未挂载的目标。精确 ID 优先于当前文档的标题别名，支持重复标题后缀和编码后的 Unicode。宿主为相对资源设置的 `<base>` 不会把纯片段链接导向阅读文档之外；旧式脚注也沿用同一文档内导航路径。
 
@@ -159,3 +175,5 @@ const override: RendererOverride = {
 搜索中混合格式或实体导致连续源码命中与可见命中无法逐一对应时，使用块范围导航，避免错误定位到同块另一个匹配。
 
 渐进加载前缀会启用公开的 `readOnly` 视图选项；普通 Reader 也可显式使用，默认行为不变。源码及批注增删改命令统一检查只读，翻译模式、折叠、图片预览和导航仍可使用。只显示声明 `SelectionAction.readOnly: true` 的选区操作，内建复制已声明；未知插件操作等完整加载以后恢复，避免显示无法提交的写入按钮。
+
+完整浏览器测量使用 `pnpm bench --extended`，串行执行基础矩阵、24 次大输入加载、36 次三组件大文档横向比较和 36 次完整论文交互，生成双语性能报告。输入、时钟边界、Worker 与 GPU 环境、RSS/堆差异和复现命令见[性能报告](loading-performance.md)与[基准说明](../../benchmarks/README.md)。

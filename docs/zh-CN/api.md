@@ -13,6 +13,8 @@
 | @linloir/limr/react | 组件、hooks、locale、React 类型 |
 | @linloir/limr/extensions | 模块工厂、扩展定义、选区动作、AnnotationMarkdown |
 | styles.css / styles/base.css / fonts.css / math.css | 公开样式资源，前面加包名 |
+| @linloir/limr/worker | 自包含的默认 Worker 入口；由宿主打包或托管为资源 |
+| @linloir/limr/worker-api | Worker handler、registry 与协议类型；导入时不安装全局监听器 |
 | @linloir/limr/package.json | 包元数据 |
 
 以下是使用入口；精确 TypeScript 签名随包导出，插件应以已安装版本的声明为准。
@@ -26,6 +28,10 @@ Reader、Markdown 与 DocumentProvider 接受：
 | source | 空字符串，原始 Markdown |
 | document | 可选现有 DocumentEngine，优先于 source/streaming，使用已恢复的快照时不再解析 |
 | streaming | false |
+| provisional | false；文档尚未完整，AsyncReader 预览自动设置；阻止全文打印 |
+| readOnly | false；阻止原文与标注写入，AsyncReader 预览自动设置 |
+| virtualization | Reader 默认关闭；AsyncReader 按文档规模自动选择；可传 boolean 或 `{ overscan? }` |
+| onVirtualizationChange | `{ enabled, reason? }`，报告窗口化是否可用及退化原因 |
 | documentId | 自动生成；显式值应稳定且页面内唯一 |
 | extensions | standard()，完整扩展清单 |
 | plugins | 追加到默认或显式清单 |
@@ -92,7 +98,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 
 | Hook | 返回 |
 | --- | --- |
-| useDocument() | 完整快照 |
+| useDocument() | 当前 engine 的完整快照；渐进加载时该 engine 可能仅代表显式 provisional 前缀 |
 | useDocumentSelector(select) | 选中值；返回值引用不变时不重渲染 |
 | useLocale() | 当前合并后的 locale；内置 language 为 en / zh-CN，供插件选择自己的词典 |
 | useSelection() | 选区或 null |
@@ -106,6 +112,26 @@ Reader、Markdown 与 DocumentProvider 接受：
 `useLiMR()` 与动作上下文提供 `updateAnnotation(id, partial): boolean`、`commitAnnotationEdit(id?): void` 和 `cancelAnnotationEdit(id?): boolean`。仅在 update 被接受后调用 commit，它结束编辑而不重复写入数据。cancel 删除尚未确认的新建标注及没有其他引用的临时高亮，保留已有标注和共享高亮。插件取消前将草稿还原到已保存的内容；宿主拒绝取消时恢复未完成草稿并保持编辑。配套笔记编辑器也会在点击外部时取消空白新草稿；当前编辑器激活时隐藏选区工具栏。
 
 不要将 useRuntime、useTheme 当作公开 API。useLocale、locale.language 和可本地化的标注 label 从 1.0.0 起提供。命令语义见[标注与选区](annotations.md)，渲染和动作契约见[扩展开发](extensions.md)。
+
+## 异步加载与宿主进度
+
+`AsyncReader` 使用 `input: DocumentInput`，不接收 Reader 的 `source`、`document`、`streaming`；其他阅读配置沿用 Reader。`loading` 接收 `DocumentSessionOptions`，但 id 与 extensions 由组件的 documentId 和扩展配置管理。
+
+| 接口 | 语义 |
+| --- | --- |
+| loading.mode | `blocking`（默认）或 `progressive`；控制是否提前提供不完整预览 |
+| loading.worker | 每次请求创建新 Worker 的工厂；由宿主解决资源 URL、CSP 与打包 |
+| loading.fallback | `main-thread`（默认）保留未注册语法的精确行为；`error` 明确拒绝回退 |
+| loadingFallback | `(state, retry, controls) => ReactNode`；`null` 关闭内置进度卡片 |
+| onLoadStateChange | `(state, controls) => void`；通知加载、完成、取消与错误，供宿主绘制 UI |
+| AsyncReaderLoadControls | 稳定的 `cancel()`、`retry()`；旧版 fallback 的第二参数仍为 retry |
+| DocumentSessionState | status、revision、phase、progress、overallProgress、complete、document?、error?、sourceIndex?、capabilities |
+| overallProgress | 单次请求内单调的 0–1 工作量估计；阶段切换不清零；完整快照接受后才为 1 |
+| capabilities | worker、progressive、reason?；可检查实际使用的能力与回退原因 |
+
+纯核心的 `createDocumentSession(options)` 提供 `subscribe`、`getSnapshot`、`load(input, { signal? })`、`cancel`、`dispose`。load 接收完整 string、UTF-8 Uint8Array 或 Blob/File，解析后返回 DocumentEngine；新请求取消旧请求，释放时应取消订阅并 dispose。Worker 与 DOM 窗口是独立能力，完整加载也不表示全文 DOM 全部挂载。详细示例、插件协议与边界见[大文档](large-documents.md)。
+
+`useLiMR()` 另提供 `scrollToSource(range)`、`getReadingPosition()`、`restoreReadingPosition(position)`、`invalidatePresentation()`、`isDocumentComplete()` 与 `preparePrint({ signal?, onProgress? })`。书签为 `{ source, offset }` 或未挂载时的 null；source 是原始 UTF-16 坐标，offset 为视口顶部的像素偏移。打印准备返回 revision、blocks、print、dispose，完整文档才能准备，丢弃结果时调用 dispose。
 
 ## 核心引擎
 
@@ -129,7 +155,7 @@ DocumentSnapshot 包含 id、revision、source、streaming、blocks、headings�
 
 `inlineHighlights({ color?, component? })`、`footnotes(annotationTypeOptions?)`、`sourceAnnotations()` 都在 `standard()` 中。命名源内标注使用成对的 `::%%limr%%{<#id}` / `::%%limr%%{>#id}` 边界与完整的 `:::limr-annotation` 定义块，详见[语法文档](syntax.md#保存在-markdown-中的标注)。`HighlightData.readOnly` 默认限制源内高亮工具栏为复制与提示；启用原文编辑且模块支持写回时可编辑。`AnnotationOccurrence.referenceRange` 将角标源位置与引用范围分开；独立引用的 referenceRange 为角标起点的零长度范围。
 
-`useLiMR()` 与动作 context 提供 `canEditSource()`、`canEditAnnotation(id)`、`editSource(edits, { revision? })`。`SourceEdit` 为 `{ range: { start, end }, text }`，同一批次全部相对修改前原文；越界、重叠和过期 revision 会抛错。`editSource` 原子接受后立即更新文档，宿主回传新的 source；返回 false 表示宿主拒绝。`applySourceEdits(source, edits)` 是对应的纯核心函数。流式生成期间拒绝编辑。
+`useLiMR()` 与动作 context 提供 `canEditSource()`、`canEditAnnotation(id)`、`editSource(edits, { revision? })`。`SourceEdit` 为 `{ range: { start, end }, text }`，同一批次全部相对修改前原文；越界、重叠和过期 revision 会抛错。`editSource` 原子接受后立即更新文档，宿主回传新的 source；返回 false 表示宿主拒绝。`applySourceEdits(source, edits)` 是对应的纯核心函数。流式生成或 readOnly 期间拒绝原文编辑；AsyncReader 会为 provisional 预览自动设置 readOnly。
 
 `addAnnotation(annotation, { target: 'source' })` 明确选择原文写回；target 默认为 annotations。`standard()` 的 sourceAnnotations 已安装公开的 `editSourceAnnotations` 通用序列化器。提供 onSourceChange 后，默认任务框可修改，默认 highlightSelection 动作新建高亮时选择 source；普通 addAnnotation 不改变默认存储目标。类型、卡片和专用动作仍由模块提供。`TaskCheckbox` 是默认禁用的菱形 UI 组件，可接收 checked、disabled、onChange、label、ideographic；默认 Markdown 渲染器负责根据编辑能力启用它。
 

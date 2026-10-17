@@ -3,6 +3,7 @@ import { intersects, rangeOf } from '../core/tree';
 import type { Annotation, AnnotationOccurrence, DocumentEngine, DocumentSnapshot, HighlightData, MarkdownNode, SelectionSnapshot, SourceRange } from '../core';
 import type { AnnotationType, DocumentCommands, LiMRLocale, NodeRenderer, RendererExtension, ViewConfiguration } from './types';
 import { scrollWithMotion } from './motion';
+import { indexBlockDecorations } from './decoration-index';
 
 export const english: LiMRLocale = {
   language: 'en', citation: 'Citation',
@@ -511,12 +512,14 @@ export class ReaderRuntime {
       allHighlights.push(old && old.occurrenceId === value.occurrenceId && old.annotationId === value.annotationId && sameRange(old.range, range) && old.color === value.color ? old : value);
     }
     const byBlock = new Map<string, BlockDecorations>();
-    for (const block of occurrences.length || allHighlights.length ? doc.blocks : []) {
-      const marks = occurrences.filter(item => !item.embedded && item.range.end > block.range.start && item.range.end <= block.range.end);
+    const marksByBlock = indexBlockDecorations(doc.blocks, occurrences.filter(item => !item.embedded), 'endpoint');
+    const highlightsByBlock = indexBlockDecorations(doc.blocks, allHighlights, 'overlap');
+    for (const [index, block] of (occurrences.length || allHighlights.length ? doc.blocks : []).entries()) {
+      const marks = marksByBlock.get(index) ?? [];
       const before = previous.byBlock.get(block.id) ?? emptyDecorations;
       const old = before.occurrences;
       const same = old && old.length === marks.length && old.every((item, index) => item.id === marks[index].id && item.range.start === marks[index].range.start && item.range.end === marks[index].range.end && item.annotationIds.join('\0') === marks[index].annotationIds.join('\0'));
-      const highlights = allHighlights.filter(item => intersects(item.range, block.range));
+      const highlights = highlightsByBlock.get(index) ?? [];
       const oldHighlights = before.highlights;
       const sameHighlights = oldHighlights.length === highlights.length && oldHighlights.every((item, i) => item === highlights[i]);
       if (marks.length || highlights.length) byBlock.set(block.id, same && sameHighlights ? before : { occurrences: same ? old : marks, highlights: sameHighlights ? oldHighlights : highlights });

@@ -8,6 +8,14 @@
 
 用 `Reader` 获取完整阅读体验；用 `Markdown` 渲染独立正文；自己设计布局时让一个 `DocumentProvider` 管理一个主 `Markdown` 及其目录、卡片和工具栏。Provider 内再次传入 `source` 的 Markdown 会创建独立文档，不再共享父文档状态。
 
+## 完整文件加载与外部进度
+
+文件或完整文本较大时，用 `AsyncReader input={file}` 配合宿主提供的 Worker 工厂。`loading={{ mode: 'blocking' }}` 等完整文档就绪后显示，`progressive` 可提前显示只读预览；两者最终都完成完整解析与索引。这与下面不断增长 source 的流式生成是不同入口。
+
+加载卡片默认由 LiMR 提供。传 `loadingFallback={null}` 后，通过 `onLoadStateChange(state, controls)` 把 `state.overallProgress`、错误和 `controls.cancel/retry` 接到自己的工具栏、VS Code 原生进度或状态栏。Playground 使用同一接口，在两种加载模式中共用一个进度条。宿主跨进程传递可序列化状态，并把取消/重试消息路由回会话所有者，不要传递 engine 或函数。
+
+保持输入对象与 Worker 工厂稳定，避免进度更新反复重建文档。源文档仍完整保存在快照中，DOM 按需挂载不等于仅解析当前屏幕；细节、可运行示例和插件约定见[大文档](large-documents.md)，实际加载与资源数据见[加载与内存性能](loading-performance.md)。
+
 ## 流式内容
 
 ```tsx

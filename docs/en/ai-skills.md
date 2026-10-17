@@ -55,3 +55,7 @@ For other SKILL.md-compatible agents, use their supported project/user locations
 ## Expected deliverables
 
 The use Skill should deliver working integration, stable configuration, and validation. The development Skill should deliver module source, exports/types/CSS, a host example, and real package-consumer verification. Both prioritize the installed API, avoid invented syntax and loss of persisted unknown annotations, and do not publish packages or modify external services unless instructed.
+
+## Loading and large-document integration
+
+The use Skill's [loading.md](../../skills/limr-use/references/loading.md) covers AsyncReader, host progress, cancel/retry, worker assets, read-only previews, bookmarks, printing and image previews. The development Skill's [contract](../../skills/limr-plugin-development/references/contract.md) covers custom worker registration, transferable results and windowed-view text/state contracts. Both target the public 1.3.0 declarations; update the whole Skill directory while preserving local customizations.

@@ -8,6 +8,14 @@
 
 Use `Reader` for the complete experience and `Markdown` for standalone content. For a custom layout, one DocumentProvider manages one primary Markdown plus its navigation, cards, and toolbar. Passing source to Markdown inside a provider creates an independent document instead of sharing the parent state.
 
+## Complete files and external progress
+
+Use `AsyncReader input={file}` with a host-owned Worker factory for large complete inputs. `loading={{ mode: 'blocking' }}` waits for the full document; `progressive` can show a read-only preview sooner. Both ultimately parse and index the complete input. This is a separate entry point from the growing-source streaming example below.
+
+LiMR supplies the default loading card. Pass `loadingFallback={null}` and connect `onLoadStateChange(state, controls)` to a toolbar, native VS Code progress or a status item using `state.overallProgress`, errors and `controls.cancel/retry`. Playground uses the same interface for one progress bar across both modes. Across a process bridge, send serializable state and route cancel/retry messages back to the session owner rather than sending functions or the engine.
+
+Keep input objects and Worker factories stable so progress updates do not recreate the document. Snapshots retain complete source; windowed DOM does not mean parsing only the screen. See [large documents](large-documents.md) for working examples and plugin contracts, and [loading and memory performance](loading-performance.md) for measurements.
+
 ## Streaming content
 
 ```tsx

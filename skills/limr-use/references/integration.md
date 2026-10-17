@@ -16,6 +16,8 @@ React/React DOM 18.3 or 19, Node 20+, ESM. Choose styles.css or styles/base.css;
 
 Markdown is body-only, with no automatic toolbar. A composed DocumentProvider contains one primary <Markdown /> plus TableOfContents, AnnotationSidebar or AnnotationOverlay, and SelectionToolbar. A Markdown with source creates another document. Synchronized body/sidebar share one scroll container and unscaled coordinates; the host/grid supplies sidebar height. Use sync="none" for a separately scrolling annotation list.
 
+For complete-file loading, worker setup, host-owned progress, cancellation, reading windows, print preparation and image preview, read [loading.md](loading.md). These APIs are separate from append streaming.
+
 ## State and commands
 
 Reader supports annotations/onAnnotationsChange. Supplying annotations makes it controlled; accept a change by storing the callback's complete array immutably and passing it back through annotations. Only a synchronous false return rejects a mutation. Other return values are ignored, including the number returned by array.push and Promises returned by async callbacks; an asynchronously resolved false does not undo a change. The callback type is (annotations: readonly Annotation[]) => void. Store data per article and supply a stable documentId. Changing Reader.key resets its internal state, not host state.

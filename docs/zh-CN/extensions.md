@@ -234,3 +234,11 @@ export const customCode = defineExtension({
 ```
 
 `when` 也能读取 `pending` 和 `ancestors`。显式替换组件拥有自己的中间态渲染，仍处于 LiMR 的源范围、原子选择和异常边界之内。使用 `renderValue`、`renderAttribute`、`renderChildren` 维持精确映射。这里的限制是渲染规则作用域，不是对第三方 JavaScript 的安全沙箱。
+
+## Worker 与窗口化视图
+
+语法与视图是两项独立能力。纯组件、标注类型和动作可留在宿主；带解析钩子的自定义语法需要在宿主与 Worker 以同一个版本化 ID 注册，并校验可结构化克隆的配置。未注册的语法按 `fallback` 精确回退或报错，不会为了提速丢弃插件。`scope: 'local'` 本身不代表可独立分包或安全提前预览；额外的 `independentProseExtensions`、`provisionalPreviewExtensions` 均要求 Worker 作者证明对应语义。
+
+自定义渲染器可通过 `virtualization: { copyText, searchText?, keepAlive? }` 声明窗口化的选区/搜索投影与 DOM 保留要求；契约属于实际匹配的 renderer override。优先使用 `useNodeState` 保留离屏状态，只有不透明编辑器或媒体才需要 keepAlive。显示内容由外部状态改变时调用 `invalidatePresentation()` 更新目录和搜索。未知视图或不可拆的大块会明确回退，宿主通过 `onVirtualizationChange` 观察。
+
+渐进加载的预览通过 `readOnly` 阻止写入，`provisional` 则阻止要求完整文档的操作；动作仅在确实不修改文档时声明 `readOnly: true`。使用公开导航与打印命令，不要依赖全部 DOM 已经存在。Worker 示例、进度 API、条件与限制见[大文档](large-documents.md)。

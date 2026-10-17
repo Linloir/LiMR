@@ -21,6 +21,7 @@
 | 查询组件 props、hooks 和核心 API | [API 参考](api.md) |
 | 理解解析、状态和资源边界 | [架构与行为](architecture.md) |
 | 对比三种渲染器、流式、内存和阅读体验 | [渲染器性能报告](performance.md) |
+| 查看完整加载、50/75 MiB 内存与真实论文阅读数据 | [加载与内存性能](loading-performance.md) |
 | 了解 KP 算法、滚动、变宽与正确性 | [KP 算法性能报告](knuth-plass-performance.md) |
 | 让 AI 使用 LiMR 或开发插件 | [AI Skills](ai-skills.md) |
 

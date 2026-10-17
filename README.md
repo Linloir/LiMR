@@ -1,6 +1,6 @@
 # LiMR
 
-[![package version](https://img.shields.io/badge/version-1.2.3-blue.svg)](package.json)
+[![package version](https://img.shields.io/badge/version-1.3.0-blue.svg)](package.json)
 
 **简体中文** · [English](README.en.md)
 
@@ -42,6 +42,12 @@ export function Answer({ text, generating }: { text: string; generating: boolean
 ```
 
 `source` 是累计的完整字符串，生成结束时把 `streaming` 设为 `false`。`followOutput` 默认关闭；开启后在读者向上滚动时暂停跟随。`Markdown` 不自带目录、侧栏或选区工具栏。
+
+## 完整文件与加载进度
+
+`AsyncReader` 接收完整 `input`（string、UTF-8 Uint8Array、Blob/File），配合宿主 Worker 工厂加载大文档。`loading.mode` 可选等待完整文档的 `blocking` 或提前阅读只读预览的 `progressive`；完整文档就绪后自动交接。使用 `loadingFallback={null}` 和 `onLoadStateChange(state, controls)`，即可把单一 `overallProgress`、取消和重试接入自己的工具栏或原生 UI。加载方式与正文 DOM 窗口分别配置。
+
+详见[大文档接入](docs/zh-CN/large-documents.md)和[加载与内存性能](docs/zh-CN/loading-performance.md)：报告覆盖完整 50/75 MiB 输入、复杂内容、真实论文交互及峰值/空闲内存，保留默认功能并说明测量边界。
 
 ## 支持什么
 

@@ -16,4 +16,4 @@ await writeFile('dist/base.css', base);
 await cp(join(katexDirectory, 'dist/katex.min.css'), 'dist/math.css');
 await cp(join(katexDirectory, 'dist/fonts'), 'dist/fonts', { recursive: true });
 await cp('src/fonts', 'dist/fonts', { recursive: true });
-await writeFile('dist/THIRD_PARTY_LICENSES.txt', `KaTeX\n${await readFile(join(katexDirectory, 'LICENSE'), 'utf8')}\nMaple Mono NF CN v7.9 (local web subsets)\n${await readFile('src/fonts/LICENSE.txt', 'utf8')}`);
+await writeFile('dist/THIRD_PARTY_LICENSES.txt', `KaTeX\n${await readFile(join(katexDirectory, 'LICENSE'), 'utf8')}\nMaple Mono NF CN v7.9 (local web subsets)\n${await readFile('src/fonts/LICENSE.txt', 'utf8')}\nmdast-util-from-markdown compiler adapter\n${await readFile('src/core/micromark/LICENSE.md', 'utf8')}`);

@@ -1,6 +1,6 @@
 # LiMR
 
-[![package version](https://img.shields.io/badge/version-1.2.3-blue.svg)](package.json)
+[![package version](https://img.shields.io/badge/version-1.3.0-blue.svg)](package.json)
 
 [简体中文](README.md) · **English**
 
@@ -42,6 +42,12 @@ export function Answer({ text, generating }: { text: string; generating: boolean
 ```
 
 `source` is the complete accumulated string. Set `streaming` to `false` when generation ends. `followOutput` is off by default and pauses when the reader scrolls up. `Markdown` does not include navigation, a sidebar, or a selection toolbar.
+
+## Complete files and loading progress
+
+`AsyncReader` accepts a complete `input` (string, UTF-8 Uint8Array, Blob/File) and a host-owned Worker factory. Choose `loading.mode: 'blocking'` to wait for the complete document, or `'progressive'` for an early read-only preview followed by the full document. Use `loadingFallback={null}` and `onLoadStateChange(state, controls)` to connect one `overallProgress` value, cancellation and retry to your own toolbar or native UI. Loading mode and body DOM windows are configured separately.
+
+See [large-document integration](docs/en/large-documents.md) and [loading and memory performance](docs/en/loading-performance.md): complete 50/75 MiB inputs, complex content, real-paper interactions and peak/idle memory, with default features and explicit measurement boundaries.
 
 ## Capabilities
 

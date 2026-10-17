@@ -10,7 +10,7 @@ import { useRuntime } from '../src/react/context';
 import { sourceRangeStartRect } from '../src/react/source-geometry';
 
 const root = createRoot(document.getElementById('root')!);
-const worker = () => { audit.workerStarts = (audit.workerStarts ?? 0) + 1; const port = new Worker(new URL('../src/worker.ts', import.meta.url), { type: 'module' }); port.addEventListener('message', event => { if (event.data.type === 'snapshot-end' || event.data.type === 'snapshot' && event.data.complete) audit.workerComplete = performance.now(); }); return port; };
+const worker = () => { audit.workerStarts = (audit.workerStarts ?? 0) + 1; const port = new Worker(new URL('../src/worker.ts', import.meta.url), { type: 'module' }); port.addEventListener('message', event => { if (event.data.type === 'snapshot-packed' || event.data.type === 'snapshot-end' || event.data.type === 'snapshot' && event.data.complete) audit.workerComplete = performance.now(); }); return port; };
 // Functional handoff tests hold only the final result from a real worker. This
 // is never enabled by loading/performance benchmarks; ACK packets still flow.
 const heldWorker = (): DocumentWorkerPort => {
@@ -18,7 +18,7 @@ const heldWorker = (): DocumentWorkerPort => {
   audit.completionQueued = false;
   audit.releaseCompletion = () => { if (final) { const event = final; final = undefined; events.dispatchEvent(new MessageEvent('message', { data: event.data })); } };
   port.addEventListener('message', event => {
-    if (event.data.type === 'snapshot-end' || event.data.type === 'snapshot' && event.data.complete) { final = event; audit.completionQueued = true; }
+    if (event.data.type === 'snapshot-packed' || event.data.type === 'snapshot-end' || event.data.type === 'snapshot' && event.data.complete) { final = event; audit.completionQueued = true; }
     else events.dispatchEvent(new MessageEvent('message', { data: event.data }));
   });
   port.addEventListener('error', event => events.dispatchEvent(new ErrorEvent('error', { message: event.message })));
@@ -41,7 +41,7 @@ audit.render = ({ source, mib, input: suppliedInput, mode = 'blocking', typograp
   const input = suppliedInput ?? audit.prepare(mib) ?? source ?? '# Start\n\nSmall initial document.';
   audit.history = []; audit.started = performance.now(); audit.capability = undefined;
   root.render(<AsyncReader {...options} input={input} loading={{ worker: holdCompletion ? heldWorker : worker, mode, fallback: 'error' }} typography={typography} virtualization={options.virtualization ?? (automaticWindowing ? undefined : true)} onVirtualizationChange={capability => { audit.capability = capability; }}
-    onLoadStateChange={(state, controls) => { audit.state = state; audit.controls = controls; audit.history.push({ at: performance.now(), status: state.status, phase: state.phase, complete: state.complete, prefix: !state.complete && !!state.document }); }}><AuditBridge /></AsyncReader>);
+    onLoadStateChange={(state, controls) => { audit.state = state; audit.controls = controls; audit.history.push({ at: performance.now(), status: state.status, phase: state.phase, overallProgress: state.overallProgress, complete: state.complete, prefix: !state.complete && !!state.document }); }}><AuditBridge /></AsyncReader>);
 };
 function Lifecycle({ blob, echo }: { blob: boolean; echo: boolean }) {
   const [input, setInput] = useState<string | Blob>(() => blob ? new Blob(['# Original\n\nEditable original.']) : '# Original\n\nEditable original.');

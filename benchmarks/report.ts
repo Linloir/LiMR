@@ -1,9 +1,10 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { quantile } from './shared/stats';
-import { root, hash } from './shared/environment';
+import { root, hash, environment } from './shared/environment';
 import { renderers } from './renderers/options';
 import { cases, richFixture } from './renderers/fixtures';
+import { writeExtendedReports } from './loading/report';
 
 const read = async (name: string) => JSON.parse(await readFile(`${root}/benchmarks/results/${name}.json`, 'utf8'));
 const [rendererData, core, streaming, algorithm, layout, selection] = await Promise.all(['renderers', 'core', 'streaming', 'kp-algorithm', 'kp-browser', 'selection'].map(read));
@@ -41,6 +42,9 @@ for (const data of [core, streaming, algorithm, layout, selection]) {
   assert.deepEqual(data.environment.versions, rendererData.environment.versions);
 }
 const env = rendererData.environment;
+const current = await environment();
+for (const key of ['sourceSHA256', 'harnessSHA256', 'playgroundSHA256', 'examplesSHA256', 'lockSHA256', 'liMR'] as const) assert.equal(current[key], env[key], `Results do not match current ${key}`);
+if (process.env.BENCH_EXTENDED === '1') await writeExtendedReports(env);
 const f = (value: number, digits = 2) => Number.isFinite(value) ? value.toFixed(digits) : '—';
 const med = (values: number[]) => quantile(values, .5);
 const metric = (rows: any[], get: (r: any) => number) => med(rows.map(get));
@@ -110,6 +114,7 @@ for (const zh of [true, false]) {
   }));
   doc += tr('\n首个正文可读由 DOM 与两次 rAF 确认，从页面导航开始计时；滚动 P95 统计 rAF 间隔。窄屏使用 Chromium 视口模拟。\n\n', '\nFirst readable content is confirmed by DOM checks and two rAF callbacks, timed from navigation. Scroll P95 measures rAF intervals. Narrow screens are simulated with a Chromium viewport.\n\n');
 
+  doc += tr('完整输入的 Worker 加载、渐进预览、50/75 MiB 峰值与空闲内存，以及真实论文交互矩阵见 [加载与内存性能](loading-performance.md)。该报告单独计量完整管线，不与上述同步提交耗时混用。\n\n', 'For complete-input worker loading, progressive previews, 50/75 MiB peak and idle memory, and real-paper interactions, see [Loading and memory performance](loading-performance.md). Those end-to-end pipeline measurements are separate from synchronous commit timings above.\n\n');
   doc += `## ${tr('交互式选区与标注', 'Interactive selection and annotations')}\n\n`;
   doc += tr('在 2,000 节长文和 1,000 行代码中连续拖选，LiMR 随选区变化更新高亮覆盖层。每种情况在三个字体就绪页面上执行连续鼠标移动。\n\n', 'LiMR updates its highlight overlay while selections are dragged through 2,000 prose sections or 1,000 lines of code. Each scenario performs continuous pointer movement on three font-ready pages.\n\n');
   doc += table([tr('LiMR 场景', 'LiMR scenario'), tr('帧间隔 P95 ms', 'Frame interval P95 ms'), tr('覆盖层更新 P95 ms', 'Overlay update P95 ms')], selection.results.filter((r: any) => r.renderer === 'limr').map((r: any) => [tr(r.kind === 'prose' ? '长文拖选' : '代码拖选', r.kind === 'prose' ? 'Prose selection' : 'Code selection'), f(med(r.samples.map((x: any) => x.frameP95Ms))), f(med(r.samples.map((x: any) => x.paintP95Ms)))]));
@@ -204,4 +209,11 @@ for (const zh of [true, false]) {
   kp += `${raw('kp-algorithm')} · ${raw('kp-browser')} · [${tr('基准方法', 'Benchmark methodology')}](../../benchmarks/README.md) · [${tr('渲染性能', 'Rendering performance')}](performance.md).\n`;
   await writeFile(`${root}/docs/${locale}/knuth-plass-performance.md`, kp);
 }
-console.log('Generated four public performance pages from the complete benchmark matrix.');
+await writeFile(`${root}/benchmarks/results/home-performance.json`, JSON.stringify({
+  version: env.liMR, cpu: env.cpu,
+  fullMountSeconds: f(metric(groups('full-dom', 'static-large', 'limr'), row => row.totalMs) / 1000),
+  richStreamP95Ms: f(metric(groups('default-streaming', 'rich-stream', 'limr'), row => row.p95Ms), 1),
+  kpPrepareSolveMs: f(algorithm.results.find((row: any) => row.scenario === 'words-10000').measurements['prepare-and-solve'].medianMs, 3),
+  sourceSHA256: env.sourceSHA256, harnessSHA256: env.harnessSHA256, lockSHA256: env.lockSHA256,
+}, null, 2) + '\n');
+console.log('Generated public performance pages and Home metrics from the complete benchmark matrix.');

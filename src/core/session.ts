@@ -3,7 +3,8 @@ import { abortError, decodeDocumentInput, throwIfAborted, yieldTask, type Docume
 import { canPublishProsePrefix, prosePrefixEnd } from './worker-handler';
 import { hasDocumentSyntax, workerExtensionDescriptor, type WorkerExtensionDescriptor } from './worker-registry';
 import type { DocumentWorkerPort, DocumentWorkerResponse } from './worker-protocol';
-import type { Block, DocumentProgress, SyntaxExtension } from './types';
+import type { Block, DocumentProgress, DocumentSnapshot, SyntaxExtension } from './types';
+import { unpackSnapshotCooperatively } from './snapshot-codec';
 
 export interface DocumentSessionOptions {
   id?: string;
@@ -68,19 +69,41 @@ export class DocumentSession {
     return new Promise<DocumentEngine>((resolve, reject) => {
       const abort = () => this.cancel(); signal?.addEventListener('abort', abort, { once: true });
       let port: DocumentWorkerPort | undefined;
-      const cleanup = () => { signal?.removeEventListener('abort', abort); port?.terminate(); port = undefined; };
+      const terminateWorker = () => { port?.terminate(); port = undefined; };
+      const cleanup = () => { signal?.removeEventListener('abort', abort); terminateWorker(); };
       this.active = { revision, controller, reject, cleanup };
       const current = () => this.active?.revision === revision && !controller.signal.aborted;
       const fail = (error: unknown) => {
         if (!current()) return;
-        this.active = undefined; cleanup();
+        this.active = undefined; controller.abort(); cleanup();
         const actual = error instanceof Error ? error : new Error(String(error));
         this.publish({ status: actual.name === 'AbortError' ? 'cancelled' : 'error', error: actual, complete: false, document: undefined }); reject(actual);
       };
       let transfer: { header: Extract<DocumentWorkerResponse, {type: 'snapshot-start'}>; source: string[]; sourceLength: number; blocks: Block[] } | undefined;
+      let decodingPacked = false;
       const receive = (response: DocumentWorkerResponse) => {
         if (!current() || response.revision !== revision) return;
         if (response.type === 'error') { fail(new Error(response.message)); return; }
+        if (response.type === 'snapshot-packed') {
+          if (decodingPacked || transfer) { fail(new Error('Unexpected packed worker snapshot.')); return; }
+          decodingPacked = true;
+          try {
+            // Keep the external abort listener until decoding completes. Only
+            // worker lifetime ends here, before allocating the receiver AST.
+            terminateWorker();
+            this.publish({ overallProgress: Math.max(this.state.overallProgress, .95) });
+            const { packed, progressive, sourceIndex } = response;
+            void unpackSnapshotCooperatively<DocumentSnapshot>(packed, {
+              signal: controller.signal,
+              onProgress: (loaded, total) => {
+                if (current()) this.publish({ overallProgress: Math.max(this.state.overallProgress, .95 + .04 * (total ? loaded / total : 1)) });
+              },
+            }).then(snapshot => {
+              if (current()) receive({ type: 'snapshot', revision, snapshot, complete: true, progressive, sourceIndex });
+            }).catch(fail);
+          } catch (error) { fail(error); }
+          return;
+        }
         if (response.type === 'snapshot-start') {
           transfer = { header: response, source: [], sourceLength: 0, blocks: [] };
           this.publish({ overallProgress: Math.max(this.state.overallProgress, .95) }); return;
@@ -131,7 +154,7 @@ export class DocumentSession {
           // synchronous serialization pass. Native workers transfer this copy.
           const payload = input instanceof Uint8Array ? input.slice() : input;
           const transfer = payload instanceof Uint8Array ? [payload.buffer as ArrayBuffer] : undefined;
-          port.postMessage({ type: 'load', revision, id: this.id, input: payload, mode: this.options.mode ?? 'blocking', extensions: descriptors as readonly WorkerExtensionDescriptor[] }, transfer);
+          port.postMessage({ type: 'load', revision, id: this.id, input: payload, mode: this.options.mode ?? 'blocking', extensions: descriptors as readonly WorkerExtensionDescriptor[], acceptPackedSnapshot: true }, transfer);
         } catch (error) { fail(error); }
         return;
       }

@@ -8,8 +8,8 @@ import { concealIncomplete, prepareSource } from './streaming';
 import { hasTableLocalSyntax, incrementalTable } from './incremental-table';
 import { syntaxForSource } from './source-syntax';
 import { parseInBatches } from './batched-parse';
-import { omitSource } from './source-omissions';
-import { discardPreparsed, takePreparsed } from './preparsed';
+import { createOmissionLookup, omitSource } from './source-omissions';
+import { discardPreparsed, takeOmittedSource, takePreparsed } from './preparsed';
 import type { Diagnostic, MarkdownNode, ParseContext, SourcePosition, SyntaxExtension } from './types';
 
 export function validateExtensions(extensions: readonly SyntaxExtension[]): void {
@@ -57,7 +57,9 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
 
   return (fragment: string, offset: number, context: ParseContext, lines: readonly number[], environment = '') => {
     const originalFragment = fragment;
-    const omitted = omitSource(fragment, context.sourceOmissions ?? [], offset);
+    const omissions = context.sourceOmissions ?? [];
+    const omitted = (offset === 0 && fragment === context.source ? takeOmittedSource(context, fragment, omissions) : undefined)
+      ?? omitSource(fragment, omissions, offset);
     fragment = omitted.value;
     // Config objects can be changed in place after the session was created.
     // Once foreign behavior appears, discard all builtin-only fast paths.
@@ -100,7 +102,7 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
       return fromMarkdown(value, {
         extensions: forSource(hasJsx ? hasDirectives ? jsxSyntax : plainJsxSyntax : activeSyntax, value),
         mdastExtensions: hasJsx ? hasDirectives ? jsxMdast : plainJsxMdast : activeMdast,
-      }) as unknown as MarkdownNode;
+      }, tableLocal, tableLocal && value === input ? loaded => context.onProgress?.({ phase: 'parse', loaded, total: value.length }) : undefined) as unknown as MarkdownNode;
     };
     let root: MarkdownNode;
     try {
@@ -111,7 +113,7 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
     } catch (error) {
       // Incomplete JSX is common during streaming. Preserve readable Markdown,
       // treat HTML as inert source and retry the final block on the next append.
-      root = fromMarkdown(input, { extensions: forSource(activeSyntax, input), mdastExtensions: activeMdast }) as unknown as MarkdownNode;
+      root = fromMarkdown(input, { extensions: forSource(activeSyntax, input), mdastExtensions: activeMdast }, tableLocal) as unknown as MarkdownNode;
       recoveryOffset = offset;
       diagnostics.push({ message: error instanceof Error ? error.message : String(error), offset });
     }
@@ -119,6 +121,7 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
     const only = root.children?.length === 1 ? root.children[0] : undefined;
     const fence = !prefix && only?.type === 'code' && prepared.incomplete.has(0) && /^(`{3,}|~{3,})[^\r\n]*(?:\r\n|\r|\n)/.exec(fragment);
     literalCache = originalFragment === fragment && tableLocal && fence ? { fragment, offset, node: { ...only! }, fence: fence[1], content: fence[0].length } : undefined;
+    const omissionsWithin = createOmissionLookup(context.sourceOmissions);
     if (offset || prefix.length || tagDefinitions.size || directiveDefinitions.size || context.streaming || originalFragment !== fragment) walk(root, node => {
       const incomplete = node.position && prepared.incomplete.has(prepared.original(Math.max(0, node.position.start.offset - prefix.length)));
       if (node.position && (offset || prefix.length || prepared.value !== fragment || originalFragment !== fragment || canAppendLiteral)) {
@@ -128,8 +131,7 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
       }
       if (incomplete) node.incomplete = true;
       if (node.position && originalFragment !== fragment) {
-        const range = { start: node.position.start.offset, end: node.position.end.offset };
-        const inside = context.sourceOmissions?.filter(span => span.start >= range.start && span.end <= range.end);
+        const inside = omissionsWithin(node.position.start.offset, node.position.end.offset);
         if (inside?.length) node.sourceOmissions = inside;
       }
       if (node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement') {
@@ -146,7 +148,7 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
               const raw = context.source.slice(start, end), opening = raw.search(/["']/);
               if (opening >= 0) {
                 const valueStart = start + opening + 1, valueEnd = end - 1;
-                const omissions = context.sourceOmissions?.filter(span => span.start >= valueStart && span.end <= valueEnd);
+                const omissions = omissionsWithin(valueStart, valueEnd);
                 attributeNodes[attr.name] = { type: 'text', value: attr.value, verbatimEscapes: true,
                   ...(omissions?.length ? { sourceOmissions: omissions } : {}), position: { start: attributePoint(valueStart), end: attributePoint(valueEnd) } };
               }
@@ -183,7 +185,7 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
               const valueLength = (match[2] ?? match[3] ?? match[4]).length;
               const valueEnd = start + brace + 1 + match.index! + match[0].length - (quoted ? 1 : 0);
               const valueStart = valueEnd - valueLength;
-              const omissions = context.sourceOmissions?.filter(span => span.start >= valueStart && span.end <= valueEnd);
+              const omissions = omissionsWithin(valueStart, valueEnd);
               attributeNodes[name] = { type: 'text', value, ...(omissions?.length ? { sourceOmissions: omissions } : {}),
                 position: { start: attributePoint(valueStart), end: attributePoint(valueEnd) } };
             }

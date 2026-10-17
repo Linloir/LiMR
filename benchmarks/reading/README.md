@@ -1,6 +1,6 @@
 # Long-document reading
 
-This independent production harness runs the two real LiMR papers with default renderer features and animations. It covers standard, CSS justify and Knuth–Plass typography with both aligned and automatically folded sidebars. It does not update the public benchmark reports.
+This independent production harness runs the two real LiMR papers with default renderer features and animations. It covers standard, CSS justify and Knuth–Plass typography with both aligned and automatically folded sidebars. Standalone runs keep diagnostic output separate; `pnpm bench --extended` writes a complete public AsyncReader matrix and generates the loading/memory report.
 
 ```sh
 BENCH_READING_SOURCE_DIR=/path/to/test-reading NODE_ENV=production pnpm exec tsx benchmarks/reading/run.mjs
@@ -8,7 +8,7 @@ BENCH_READING_SOURCE_DIR=/path/to/test-reading NODE_ENV=production pnpm exec tsx
 
 Keep the Markdown files and their relative image directories together. The defaults are `1706.03762v7.limr.md` and `2305.10435v2.zh-CN.limr.md`, with three fresh pages per combination in rotated order. Build and measurements run serially; do not run other builds, tests or benchmarks concurrently. Inputs are copied to a frozen snapshot before a separate build process runs and exits. Workspace edits after that copy cannot affect the browser run.
 
-Results and the build go under ignored `artifacts/benchmarks/`. Options:
+Standalone results and the build go under ignored `artifacts/benchmarks/`. The extended public run uses `benchmarks/results/reading.json` and defaults to headed Chromium. Options:
 
 - `BENCH_READING_DOCUMENTS`: comma-separated filenames in the source directory.
 - `BENCH_READING_MODES`: `standard,justify,knuth-plass` or a subset.

@@ -12,6 +12,16 @@
 
 Docs navigation and Playground persistence/loading/language menus belong to the demo application, not the LiMR core.
 
+## Complete-input loading pipeline
+
+`DocumentSession` owns input reading/decoding, parsing, indexing, transport, cancellation and the final document state; React's `AsyncReader` connects it to Reader. State is independent of UI, so hosts can render their own progress. Blocking waits for the final snapshot; progressive may offer an explicitly incomplete read-only preview. Document completeness and full DOM mounting are separate properties.
+
+Verified unmodified built-in syntax uses two-pass bounded parsing: Markdown grammar first identifies safe root boundaries and global definitions; each window then builds its AST and releases temporary token/event workspace before document transforms run once on the merged tree. Lists, fences, HTML, directives and math are never split at arbitrary byte positions. Annotation discovery and body parsing reuse a matching tree/compact mapping and shared line indexes. Foreign or modified parser hooks retain the complete path.
+
+Large complex snapshots use negotiated paged TypedArray transport with deduplicated strings/object shapes, shared references, Maps/Sets and original positions. The default worker is terminated after delivery and before cooperative main-thread reconstruction, reducing overlapping graphs. Eligible independent prose uses a separate block-packet path. These are internal representations: public source/AST/snapshot contracts remain intact, without arbitrary parallel plugin parsing or a fixed memory ceiling.
+
+Body and long-TOC windows, annotation interval indexes and lazy sidebar excerpts reduce reading-time mounting and lookup work. The full tree remains resident; a single indivisible block, custom syntax, retained media or full printing can still be costly. See [large documents](large-documents.md) for capability/fallback contracts and [loading and memory performance](loading-performance.md) for reproducible data.
+
 ## Append parsing
 
 Streaming reparses from the unstable final top-level block, reusing stable prefixes, line indexes, and node semantic indexes. Growing code fences can use a literal fast path. Finalization can also reparse only the tail rather than always parsing the whole document. Late Markdown reference/footnote definitions, middle edits, document-scoped transforms, or extension changes can still require a full parse. Long paragraphs, lists, and complex unclosed tags retain tail-parsing costs.

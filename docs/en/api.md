@@ -13,6 +13,8 @@
 | @linloir/limr/react | Components, hooks, locales, React types |
 | @linloir/limr/extensions | Module factories, definitions, selection actions, AnnotationMarkdown |
 | styles.css / styles/base.css / fonts.css / math.css | Public styles, prefixed by the package name |
+| @linloir/limr/worker | Self-contained default worker entry; bundle or serve it as a host asset |
+| @linloir/limr/worker-api | Worker handler, registry and protocol types; no global handler installed by import |
 | @linloir/limr/package.json | Package metadata |
 
 This is an API guide. Exact TypeScript declarations ship with the package; plugins should use the installed version's declarations.
@@ -26,6 +28,10 @@ Reader, Markdown, and DocumentProvider accept:
 | source | Empty string; original Markdown |
 | document | Optional existing DocumentEngine; takes precedence over source/streaming and avoids reparsing a hydrated snapshot |
 | streaming | false |
+| provisional | false; incomplete document, set automatically for AsyncReader previews; prevents full printing |
+| readOnly | false; prevents source/annotation writes, set automatically for AsyncReader previews |
+| virtualization | Reader defaults off; AsyncReader chooses by document size; boolean or `{ overscan? }` |
+| onVirtualizationChange | `{ enabled, reason? }`; reports windowing capability and fallback reason |
 | documentId | Generated; explicit values should be stable and unique on the page |
 | extensions | standard(); the complete extension list |
 | plugins | Appended to the default or explicit list |
@@ -92,7 +98,7 @@ Custom virtualized renderers receive `VirtualizedTextContext`: `source` is the c
 
 | Hook | Result |
 | --- | --- |
-| useDocument() | Complete snapshot |
+| useDocument() | Complete snapshot of the current engine; a progressive engine can represent an explicitly provisional prefix |
 | useDocumentSelector(select) | Selected value; unchanged references avoid rerenders |
 | useLocale() | Merged locale; built-in language is en / zh-CN for plugin dictionaries |
 | useSelection() | Selection or null |
@@ -106,6 +112,26 @@ Custom virtualized renderers receive `VirtualizedTextContext`: `source` is the c
 `useLiMR()` and action contexts expose `updateAnnotation(id, partial): boolean`, `commitAnnotationEdit(id?): void` and `cancelAnnotationEdit(id?): boolean`. Call commit only after the update is accepted; it finishes editing without writing data again. Cancel removes an uncommitted creation and its otherwise unused temporary highlights, while preserving existing annotations and shared highlights. Plugins reset their draft to saved content before canceling, restoring the unfinished draft and editor if the host declines cancellation. The supplied note editors also cancel empty new drafts on outside clicks; the active editor hides its selection toolbar.
 
 useRuntime and useTheme are not public APIs. useLocale, locale.language, and localized annotation labels are available from 1.0.0. See [annotations](annotations.md) for commands and [extensions](extensions.md) for renderer/action contracts.
+
+## Asynchronous loading and host progress
+
+`AsyncReader` accepts `input: DocumentInput` instead of Reader's `source`, `document` or `streaming`; other reading options follow Reader. `loading` accepts `DocumentSessionOptions` except id and extensions, which come from the component's documentId and extension configuration.
+
+| API | Meaning |
+| --- | --- |
+| loading.mode | `blocking` (default) or `progressive`; controls whether an incomplete preview can appear early |
+| loading.worker | Factory for a fresh Worker per request; the host resolves asset URLs, CSP and bundling |
+| loading.fallback | `main-thread` (default) retains exact unregistered syntax; `error` rejects that fallback |
+| loadingFallback | `(state, retry, controls) => ReactNode`; `null` suppresses the built-in progress card |
+| onLoadStateChange | `(state, controls) => void`; loading, ready, cancelled and error notifications for host UI |
+| AsyncReaderLoadControls | Stable `cancel()` and `retry()`; the legacy second fallback argument remains retry |
+| DocumentSessionState | status, revision, phase, progress, overallProgress, complete, document?, error?, sourceIndex?, capabilities |
+| overallProgress | Monotonic 0–1 estimated work for one request; continues across phases; 1 only after complete adoption |
+| capabilities | worker, progressive, reason?; inspect actual capability and fallback reasons |
+
+Core `createDocumentSession(options)` provides `subscribe`, `getSnapshot`, `load(input, { signal? })`, `cancel` and `dispose`. Load accepts a complete string, UTF-8 Uint8Array or Blob/File and resolves to DocumentEngine. A replacement cancels the old request; unsubscribe and dispose on teardown. Worker loading and DOM windows are independent: fully loaded does not mean all DOM is mounted. See [large documents](large-documents.md) for examples, plugin contracts and limits.
+
+`useLiMR()` also exposes `scrollToSource(range)`, `getReadingPosition()`, `restoreReadingPosition(position)`, `invalidatePresentation()`, `isDocumentComplete()` and `preparePrint({ signal?, onProgress? })`. A bookmark is `{ source, offset }`, or null before mounting; source is an original UTF-16 coordinate and offset is a pixel distance from the viewport top. Print preparation returns revision, blocks, print and dispose; it requires complete content, and discarded results must be disposed.
 
 ## Core engine
 
@@ -129,7 +155,7 @@ Other core exports include walk, textContent, rangeOf, intersects, safeUrl, mapT
 
 `inlineHighlights({ color?, component? })`, `footnotes(annotationTypeOptions?)` and `sourceAnnotations()` are included in `standard()`. Named source annotations use paired `::%%limr%%{<#id}` / `::%%limr%%{>#id}` boundaries and complete `:::limr-annotation` definition blocks; see [syntax](syntax.md#annotations-stored-in-markdown). `HighlightData.readOnly` defaults to a copy-only toolbar; source editing makes supported authored highlights editable. `AnnotationOccurrence.referenceRange` separates the marker location from its referenced text. Standalone references have a zero-length referenceRange at their marker start.
 
-`useLiMR()` and action contexts expose `canEditSource()`, `canEditAnnotation(id)` and `editSource(edits, { revision? })`. A `SourceEdit` is `{ range: { start, end }, text }`; all edits address the same original source. Invalid, overlapping or stale-revision edits throw. Accepted edits update the document atomically and immediately; the host echoes the new source. A false result means the host declined. `applySourceEdits(source, edits)` is the equivalent pure core utility. Editing is unavailable during streaming.
+`useLiMR()` and action contexts expose `canEditSource()`, `canEditAnnotation(id)` and `editSource(edits, { revision? })`. A `SourceEdit` is `{ range: { start, end }, text }`; all edits address the same original source. Invalid, overlapping or stale-revision edits throw. Accepted edits update the document atomically and immediately; the host echoes the new source. A false result means the host declined. `applySourceEdits(source, edits)` is the equivalent pure core utility. Source editing is unavailable during streaming or readOnly viewing; AsyncReader sets readOnly for its provisional preview.
 
 `addAnnotation(annotation, { target: 'source' })` explicitly chooses source storage; target defaults to annotations. The sourceAnnotations module in `standard()` installs the public `editSourceAnnotations` generic serializer. Supplying onSourceChange enables default task toggles and makes the default highlightSelection action choose source for new highlights; ordinary addAnnotation keeps its default storage target. Modules still own types, cards and dedicated actions. `TaskCheckbox` is a disabled-by-default diamond UI primitive with checked, disabled, onChange, label and ideographic props; the default Markdown renderer enables it according to editing capability.
 
