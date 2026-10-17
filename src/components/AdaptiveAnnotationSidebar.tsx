@@ -7,6 +7,7 @@ import { SidebarCardBody } from './SidebarCardBody';
 import { fitSidebarBoxes, foldWindowHeight, planSidebarCollapse, planSidebarCollapseSteps, reanchorSidebarPlan, type CollapsibleSidebarItem, type SidebarClusterPlan } from './sidebar-collapse';
 import type { AnnotationSidebarProps } from './AnnotationSidebar';
 import { isOwnedImagePreview } from './image-preview-behavior';
+import { useSidebarDocumentAlignment } from './sidebar-document-alignment';
 
 interface Geometry { anchors: Map<string, number>; height: number; viewportHeight: number; clipTop: number; clipBottom: number }
 interface Pose { top: number; height: number; offset: number }
@@ -141,7 +142,7 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
   }, [interaction.hovered, interaction.hoverSource, interaction.active, interaction.activeSource]);
   useIsomorphicLayoutEffect(() => {
     const element = rail.current; if (!element) return;
-    const top = element.getBoundingClientRect().top, anchors = new Map<string, number>();
+    const top = element.getBoundingClientRect().top + runtime.getContentOffset(), anchors = new Map<string, number>();
     const parked = new Set<string>(), interaction = runtime.interaction.get();
     sourceLookup.withPass(() => {
     for (const occurrence of decorations.occurrences) {
@@ -205,7 +206,6 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
     measure(); return () => observer.disconnect();
   }, [membership, decorations, measure]);
   useEffect(() => {
-    runtime.documentOffset.set(0);
     const observer = new ResizeObserver(() => runtime.requestLayout()); if (rail.current) observer.observe(rail.current);
     const dismiss = (event: PointerEvent) => {
       if (event.button !== 0 || !(event.target instanceof Element) || rail.current?.contains(event.target) || event.target.closest('.limr-selection-toolbar,.limr-overlay-positioner') || isOwnedImagePreview(event.target, rail.current)) return;
@@ -259,6 +259,12 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
     return { targets, focusGroup };
   }, [plans, sizes.actual, alignment, geometry.anchors, geometry.height, geometry.viewportHeight, gap]);
   useSidebarMotion(rail, targets, membership, `${alignment ?? ''}:${interaction.active ?? ''}:${membership}`, geometry, gap, focusGroup);
+  const focusSource = interaction.hovered ? interaction.hoverSource : interaction.activeSource;
+  const focusTarget = focused ? [...targets.values()].find(target => target.cards.some(card => card.id === focused)) : undefined;
+  const focusCard = focusTarget?.cards.find(card => card.id === focused);
+  useSidebarDocumentAlignment(runtime, true,
+    focusSource === 'sidebar' && focused ? geometry.anchors.get(focused) : undefined,
+    focusTarget && focusCard ? focusTarget.top + focusCard.top - focusTarget.offset : undefined);
   const activate = useCallback((id: string) => {
     const state = runtime.interaction.get(); runtime.activate(state.active === id ? null : id, 'sidebar');
     if (cards.current.get(id)?.matches(':hover')) runtime.hover(id, 'sidebar');

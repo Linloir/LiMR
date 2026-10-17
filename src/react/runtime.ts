@@ -11,6 +11,7 @@ export const english: LiMRLocale = {
   copyFailed: 'Copy failed', copyImage: 'Copy image URL', copyFigures: 'Copy figures Markdown',
   previewImage: 'Preview image', imagePreview: 'Image preview', closeImagePreview: 'Close image preview', imageFit: 'Fit to window', imageActualSize: 'Actual size',
   imageFill: 'Fill window', imageZoomIn: 'Zoom in', imageZoomOut: 'Zoom out', imageCopy: 'Copy image',
+  imageLoadFailed: 'Unable to load image', imageLoadFailedHint: 'The link may be broken or the file may not exist.',
   translationOriginal: 'original', translationTranslated: 'translation', translationBoth: 'bilingual',
   translationSwitchLabel: 'Showing {mode}; switch to {next}', translationLockedLabel: 'Showing {mode}; controlled by display settings',
   loading: 'Loading…', retry: 'Retry', unavailable: 'Content unavailable', footnotes: 'Footnotes',
@@ -29,6 +30,7 @@ export const chinese: LiMRLocale = {
   copyFailed: '复制失败', copyImage: '复制图片 URL', copyFigures: '复制图组 Markdown',
   previewImage: '预览图片', imagePreview: '图片预览', closeImagePreview: '关闭图片预览', imageFit: '适应窗口', imageActualSize: '原始大小',
   imageFill: '铺满窗口', imageZoomIn: '放大', imageZoomOut: '缩小', imageCopy: '复制图片',
+  imageLoadFailed: '图片无法加载', imageLoadFailedHint: '可能是链接损坏或文件不存在。',
   translationOriginal: '原文', translationTranslated: '译文', translationBoth: '对照',
   translationSwitchLabel: '当前{mode}，切换到{next}', translationLockedLabel: '当前{mode}，由全局展示模式控制',
   loading: '加载中…', retry: '重试', unavailable: '暂无内容', footnotes: '脚注',
@@ -546,6 +548,8 @@ export class ReaderRuntime {
   unobserveBlock(element: HTMLElement) { if (element.dataset.limrBlock && this.blocks.get(element.dataset.limrBlock) === element) { this.blocks.delete(element.dataset.limrBlock); this.blockRevision++; } this.observer?.unobserve(element); }
   getScrollTop() { return this.configuration.get().scrollRoot?.scrollTop ?? (typeof window !== 'undefined' ? window.scrollY : 0); }
   getViewportTop() { return this.configuration.get().scrollRoot?.getBoundingClientRect().top ?? 0; }
+  /** Share a small arrival tolerance across ordinary and windowed readers. */
+  getHeadingActivationInset() { return (this.configuration.get().scrollOffset ?? 24) + 16; }
   getContentOffset() {
     // Read the interpolated value during motion, not the destination offset.
     const translate = this.content && getComputedStyle(this.content).translate;
@@ -556,19 +560,28 @@ export class ReaderRuntime {
     if (behavior === 'smooth') scrollWithMotion(root, top);
     else root.scrollTo({ top: Math.max(0, top), behavior });
   }
+  private scrollToElement(element: HTMLElement) {
+    let top = element.getBoundingClientRect().top - this.getViewportTop() + this.getScrollTop() - (this.configuration.get().scrollOffset ?? 24);
+    // Leaving a sidebar card can start a prose translation before this click.
+    // Navigate to the settled position, rather than that animation's first frame.
+    if (this.content?.getAnimations().some(animation => animation instanceof CSSTransition && animation.transitionProperty === 'translate' && animation.playState === 'running')) {
+      top += this.documentOffset.get() - this.getContentOffset();
+    }
+    this.scrollTo(top);
+  }
   scrollToHeading(id: string) {
     if (this.documentViewport) {
       const heading = this.document.getSnapshot().headings.find(item => item.id === id);
       if (heading) { this.documentViewport.reveal(heading.range); return; }
     }
     const element = this.headings.get(id);
-    if (element) this.scrollTo(element.getBoundingClientRect().top - this.getViewportTop() + this.getScrollTop() - (this.configuration.get().scrollOffset ?? 24));
+    if (element) this.scrollToElement(element);
   }
   scrollToSource(range: SourceRange) {
     if (this.documentViewport) { this.documentViewport.reveal(range); return; }
     const block = this.document.getSnapshot().blocks.find(block => block.range.end > range.start && block.range.start <= range.start);
     const element = block && this.blocks.get(block.id);
-    if (element) this.scrollTo(element.getBoundingClientRect().top - this.getViewportTop() + this.getScrollTop() - (this.configuration.get().scrollOffset ?? 24));
+    if (element) this.scrollToElement(element);
   }
   scrollToOccurrence(id: string) {
     if (this.documentViewport) {
@@ -576,7 +589,7 @@ export class ReaderRuntime {
       if (occurrence) { this.documentViewport.reveal(occurrence.referenceRange ?? occurrence.range); return; }
     }
     const element = this.anchors.get(id);
-    if (element) this.scrollTo(element.getBoundingClientRect().top - this.getViewportTop() + this.getScrollTop() - (this.configuration.get().scrollOffset ?? 24));
+    if (element) this.scrollToElement(element);
   }
   /** Called by the article's React bubble handler after child controls have
    * had the opportunity to claim a click or prevent its default action. */
@@ -641,7 +654,7 @@ export class ReaderRuntime {
     }
     if (!target) return;
     event.preventDefault();
-    this.scrollTo(target.getBoundingClientRect().top - this.getViewportTop() + this.getScrollTop() - (this.configuration.get().scrollOffset ?? 24));
+    this.scrollToElement(target);
     // Keyboard navigation retains a meaningful destination without a second jump.
     if (event.detail === 0) {
       focusTarget(target);
@@ -651,7 +664,7 @@ export class ReaderRuntime {
     if (typeof window === 'undefined' || !this.content || this.layoutFrame) return;
     this.layoutFrame = window.requestAnimationFrame(() => {
       this.layoutFrame = 0;
-      const offset = this.getScrollTop() - this.getViewportTop();
+      const offset = this.getScrollTop() - this.getViewportTop() - this.getContentOffset();
       this.headingPositions = [...this.headings].filter(([, element]) => !element.closest('[inert]')).map(([id, element]) => ({ id, top: element.getBoundingClientRect().top + offset })).sort((a, b) => a.top - b.top);
       const state = this.interaction.get();
       if (state.active && this.anchors.get(state.active)?.closest('[inert]')) this.activate(null);
@@ -663,7 +676,7 @@ export class ReaderRuntime {
   private trackHeading = () => {
     if (this.documentViewport) { this.updateInteraction({ activeHeading: this.documentViewport.activeHeading() }); return; }
     const positions = this.headingPositions;
-    const top = this.getScrollTop() + (this.configuration.get().scrollOffset ?? 24) + 2;
+    const top = this.getScrollTop() + this.getHeadingActivationInset() - this.getContentOffset();
     let lo = 0, hi = positions.length;
     while (lo < hi) { const mid = (lo + hi) >>> 1; if (positions[mid].top <= top) lo = mid + 1; else hi = mid; }
     const root = this.configuration.get().scrollRoot;

@@ -160,7 +160,7 @@ test('module title, accent, body, excerpt and rich inline colors remain independ
   }
 });
 
-test('short readers fill available height and sidebar hover preserves both prose and its hit area', async ({ page }) => {
+test('short readers fill available height and sidebar hover aligns prose while preserving its hit area', async ({ page }) => {
   const canvas = reader(page), rail = canvas.locator('.limr-sidebar');
   const initial = await pageGeometry(page);
   const bounds = (await canvas.boundingBox())!;
@@ -171,6 +171,9 @@ test('short readers fill available height and sidebar hover preserves both prose
   const id = await card.getAttribute('data-occurrence');
   const marker = canvas.locator(`[data-limr-anchor="${id}"]`);
   const cardTop = (await card.boundingBox())!.y, markerTop = (await marker.boundingBox())!.y;
+  const sourceTop = () => canvas.locator('.limr-reader-content strong').first().evaluate(element => {
+    const range = document.createRange(); range.selectNodeContents(element); return range.getClientRects()[0].top;
+  });
   expect(cardTop - markerTop).toBeGreaterThan(80);
   await card.locator('.limr-sidebar-card-heading').hover();
   await expect(card).toHaveAttribute('data-locked', 'true');
@@ -187,12 +190,10 @@ test('short readers fill available height and sidebar hover preserves both prose
   expect(frames.every(frame => frame.active)).toBe(true);
   expect(new Set(frames.map(frame => frame.height))).toEqual(new Set([initial.height]));
   expect(new Set(frames.map(frame => frame.scroll))).toEqual(new Set([initial.top]));
-  expect((await marker.boundingBox())!.y).toBeCloseTo(markerTop, 0);
-  await expect(canvas.locator('.limr-reader-content > article')).toHaveCSS('translate', 'none');
+  await expect.poll(sourceTop).toBeCloseTo(cardTop, 0);
   await card.locator('.limr-sidebar-card-heading').click();
   await expect(card).toHaveAttribute('data-expanded', 'true');
-  expect((await marker.boundingBox())!.y).toBeCloseTo(markerTop, 0);
-  await expect(canvas.locator('.limr-reader-content > article')).toHaveCSS('translate', 'none');
+  await expect.poll(sourceTop).toBeCloseTo(cardTop, 0);
   expect((await card.boundingBox())!.y).toBeCloseTo(cardTop, 0);
   await card.locator('.limr-sidebar-card-heading').click();
   await expect(card).toHaveAttribute('data-active', 'true');

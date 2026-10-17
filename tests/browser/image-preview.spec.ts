@@ -37,7 +37,9 @@ test('keyboard, standalone images, opt-out and failed resources retain their int
   await image.press('Space'); await expect(page.getByRole('dialog')).toBeVisible();
   await page.locator('.limr-image-preview-stage').click({ position: { x: 3, y: 3 } }); await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByAltText('Disabled preview')).not.toHaveAttribute('role', 'button');
-  const missing = page.getByAltText('Missing image'); await missing.scrollIntoViewIfNeeded(); await expect(missing).not.toHaveAttribute('role', 'button');
+  const missing = page.locator('img[alt="Missing image"]'), atomic = missing.locator('..');
+  await atomic.scrollIntoViewIfNeeded(); await expect(atomic.locator('[data-limr-image-fallback]')).toBeVisible();
+  await expect(missing).toBeHidden(); await expect(missing).not.toHaveAttribute('role', 'button');
 });
 
 test('theme and locale updates retain the modal, while resource changes and removals close it', async ({ page }) => {

@@ -1,4 +1,15 @@
 @layer limr {
+  .limr-image-fallback {
+    box-sizing: border-box; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 360px; max-width: 100%; min-height: 156px; padding: 24px 20px; gap: 6px; vertical-align: middle;
+    border: 1px solid var(--limr-border, #e8e5df); border-radius: 14px;
+    background: color-mix(in srgb, var(--limr-secondary, #736e66) 5%, transparent); color: var(--limr-secondary, #736e66);
+    font: 13px/1.6 var(--limr-font-text, system-ui, sans-serif); text-align: center; overflow-wrap: anywhere;
+  }
+  .limr-image-fallback-icon { display: grid; place-items: center; width: 48px; height: 48px; margin-bottom: 4px; border-radius: 16px; background: color-mix(in srgb, currentColor 8%, transparent); }
+  .limr-image-fallback-icon > svg { width: 28px; height: 28px; }
+  .limr-image-fallback-title { color: var(--limr-text, #292621); font-size: 14px; font-weight: 500; }
+  .limr-image-fallback-hint { max-width: 28em; }
   .limr-previewable-image { cursor: zoom-in; }
   .limr-previewable-image:focus-visible { outline: 2px solid var(--limr-link, #6b8fb5); outline-offset: 4px; }
   .limr-image-preview {

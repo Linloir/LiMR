@@ -261,7 +261,7 @@ export function sourceRangeStartRect(runtime: ReaderRuntime, source: SourceRange
         }
       } else {
         const node = leaf.node as HTMLElement;
-        const surface = node.querySelector<HTMLElement>(leaf.kind === 'image' ? 'img' : '[data-limr-selection-surface]') ?? node;
+        const surface = node.querySelector<HTMLElement>(leaf.kind === 'image' ? '[data-limr-selection-surface],img' : '[data-limr-selection-surface]') ?? node;
         const rect = surface.getBoundingClientRect();
         if (rect.width && rect.height) return remember({ node: surface }, rect);
       }

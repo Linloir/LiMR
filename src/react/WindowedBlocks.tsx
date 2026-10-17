@@ -296,16 +296,16 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
     const viewport = {
       reveal(range: SourceRange, offset = config.scrollOffset ?? 24) { requested = { range, offset }; refineAfterCommit.current = true; move(heights.offset(sourceIndex(range.start))); schedule(); },
       activeHeading() {
-        const headings = currentHeadings.current, cutoff = viewportTop() + (config.scrollOffset ?? 24);
+        const headings = currentHeadings.current, cutoff = viewportTop() + runtime.getHeadingActivationInset();
         const visible = new Set(headings.map(heading => heading.id));
         let nearest: { id: string; top: number } | undefined;
         for (const [id, node] of runtime.headings) {
           if (!visible.has(id) || node.closest('[inert],[data-window-parked]')) continue;
           const top = node.getBoundingClientRect().top;
-          if (top <= cutoff + 1 && (!nearest || top > nearest.top)) nearest = { id, top };
+          if (top <= cutoff && (!nearest || top > nearest.top)) nearest = { id, top };
         }
         if (nearest) return nearest.id;
-        const index = heights.at(logical + (config.scrollOffset ?? 24));
+        const index = heights.at(logical + runtime.getHeadingActivationInset());
         let active = headings[0]?.id ?? null;
         for (const heading of headings) { if (sourceIndex(heading.range.start) < index) active = heading.id; else break; }
         return active;

@@ -253,6 +253,7 @@ export interface LiMRLocale {
   inlineHighlightHint?: string;
   previewImage?: string; imagePreview?: string; closeImagePreview?: string; imageFit?: string; imageActualSize?: string;
   imageFill?: string; imageZoomIn?: string; imageZoomOut?: string; imageCopy?: string;
+  imageLoadFailed?: string; imageLoadFailedHint?: string;
   translationOriginal?: string; translationTranslated?: string; translationBoth?: string;
   /** Templates accept {mode} and {next}. */
   translationSwitchLabel?: string; translationLockedLabel?: string;

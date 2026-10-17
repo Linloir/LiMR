@@ -33,7 +33,7 @@ export function captureReadingPosition(runtime: ReaderRuntime, measuredBlock?: {
     if (leaf.kind === 'marker') continue;
     if (leaf.kind !== 'text') {
       const element = leaf.node as HTMLElement;
-      const rect = (element.querySelector(leaf.kind === 'image' ? 'img' : '[data-limr-selection-surface]') ?? element).getBoundingClientRect();
+      const rect = (element.querySelector(leaf.kind === 'image' ? '[data-limr-selection-surface],img' : '[data-limr-selection-surface]') ?? element).getBoundingClientRect();
       if (rect.height && rect.bottom > edge) return { source: leaf.range.start, offset: rect.top - viewport };
       continue;
     }

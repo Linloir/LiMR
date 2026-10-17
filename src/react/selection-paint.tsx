@@ -101,7 +101,7 @@ function rectangles(leaves: readonly Leaf[], source: SourceRange, viewport: View
         }
       } else {
         const element = leaf.node as HTMLElement;
-        const surface = leaf.kind === 'image' ? element.querySelector<HTMLImageElement>('img') ?? element : leaf.kind === 'block' ? element.querySelector<HTMLElement>('[data-limr-selection-surface]') ?? element : element;
+        const surface = leaf.kind === 'image' ? element.querySelector<HTMLElement>('[data-limr-selection-surface],img') ?? element : leaf.kind === 'block' ? element.querySelector<HTMLElement>('[data-limr-selection-surface]') ?? element : element;
         const rect = surface.getBoundingClientRect();
         if (!rect.width || !rect.height || rect.bottom < viewport.top || rect.top > viewport.bottom) continue;
         if (leaf.kind === 'block' || leaf.kind === 'image') raw.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height, atomic: true, image: leaf.kind === 'image', baseline: rect.bottom, flow: leaf.kind === 'image' ? element : surface, radius: getComputedStyle(surface).borderRadius });

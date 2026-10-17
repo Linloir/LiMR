@@ -154,6 +154,8 @@ createRoot(document.getElementById('root')).render(h(Fragment, null,
   h(Reader, { source: 'Independent classic reader.', toc: false, sidebar: false }),
   h(Reader, { documentId: 'template', source: 'A **template passage**.\\n\\n<reading-tip title="Template">\\n\\nA template tip.\\n\\n</reading-tip>', plugins: [templateTools()], locale: chinese, toc: false, sidebar: false }),
   h(Reader, { documentId: 'modules', source: '> [!tip] Tip\\n> Built in.\\n\\n==Standalone== and ==Marked==[^n]\\n\\n[^n]: Packed footnote.\\n\\n::mermaid\\nflowchart LR\\nA-->B\\n::', typography: 'knuth-plass', locale: chinese, toc: false, sidebar: false }),
+  h(Reader, { documentId: 'editable-highlight', source: 'Before ::%%limr%%{<#r}**Editable highlight**::%%limr%%{>#r} after.\\n\\n:::limr-annotation{#paint ranges="r" type="highlight"}\\n:::', onSourceChange: () => {}, locale: chinese, toc: false, sidebar: false }),
+  h(Reader, { documentId: 'failed-image', source: '![Missing image](/missing-image.png)', locale: chinese, toc: false, sidebar: false }),
   h(AsyncReader, { documentId: 'worker', input: workerSource, loading: { fallback: 'error', worker: () => new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }) }, onLoadStateChange: state => { window.workerState = state; }, toc: false, sidebar: false }, h(WorkerIntegration))
 ));
 const tableHost = document.createElement('div'); tableHost.id = 'packed-table'; document.body.append(tableHost);
@@ -178,6 +180,7 @@ window.renderPackedTable({ tableLayout: false });
     browser = await chromium.launch();
     const page = await browser.newPage({ viewport: { width: 800, height: 900 } });
     const errors = []; page.on('pageerror', error => errors.push(error.message));
+    await page.route('**/missing-image.png', route => route.fulfill({ status: 404, contentType: 'text/plain', body: 'Missing image' }));
     await page.goto(url);
     await page.waitForFunction(() => ['ready', 'error'].includes(window.workerState?.status));
     const workerError = await page.evaluate(() => window.workerState.error?.message);
@@ -219,10 +222,26 @@ window.renderPackedTable({ tableLayout: false });
     await expect(modules.locator('p').first()).toHaveAttribute('data-limr-kp');
     await modules.getByRole('button', { name: '脚注', exact: true }).click();
     await expect(page.getByRole('dialog', { name: '脚注', exact: true })).toContainText('Packed footnote.');
+    await expect(page.getByRole('toolbar').getByRole('button', { name: '删除', exact: true })).toHaveCount(0);
     await page.keyboard.press('Escape');
     await modules.locator('mark').first().click();
     await expect(page.getByRole('toolbar')).toHaveAttribute('data-readonly', 'true');
     await expect(page.getByRole('toolbar').getByRole('button')).toHaveCount(1);
+    await page.keyboard.press('Escape');
+    const editable = page.locator('[data-limr-document="editable-highlight"]');
+    await editable.locator('strong').click();
+    await expect(page.getByRole('toolbar').getByRole('button', { name: '隐藏高亮', exact: true })).toHaveCount(0);
+    await page.getByRole('toolbar').getByRole('button', { name: '删除', exact: true }).click();
+    await expect(editable.locator('.limr-highlight-layer [data-paint]')).toHaveCount(0);
+    await expect(editable.locator('strong')).toHaveText('Editable highlight');
+    const failedImage = page.locator('[data-limr-document="failed-image"]');
+    await failedImage.scrollIntoViewIfNeeded();
+    const fallback = failedImage.locator('[data-limr-image-fallback]');
+    await expect(fallback).toContainText('图片无法加载');
+    await expect(fallback).toContainText('可能是链接损坏或文件不存在。');
+    await expect(fallback.locator('svg')).toBeVisible();
+    await expect(failedImage.locator('img')).toBeHidden();
+    await expect(fallback).toHaveCSS('border-radius', '14px');
     await page.getByRole('button', { name: 'Read the loaded ending' }).click();
     await expect(page.locator('[data-limr-document="worker"]').getByText('Loaded paragraph 199.', { exact: true })).toBeInViewport();
     const table = page.locator('#packed-table');

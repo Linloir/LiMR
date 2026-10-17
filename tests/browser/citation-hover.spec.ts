@@ -61,7 +61,7 @@ test('citation paint is hidden by default, light, behind text and isolated to th
   await expect(paint.first()).toHaveCSS('opacity', '1');
 });
 
-for (const nested of [false, true]) test(`citation markers align cards while sidebar hover keeps prose still${nested ? ' inside a nested scroll root' : ''}`, async ({ page }) => {
+for (const nested of [false, true]) test(`citation markers and sidebar cards align in both directions${nested ? ' inside a nested scroll root' : ''}`, async ({ page }) => {
   if (nested) {
     await page.goto('/?fixture=sidebar&citations&nested');
     await page.evaluate(() => document.fonts.ready);
@@ -82,7 +82,7 @@ for (const nested of [false, true]) test(`citation markers align cards while sid
   await card.locator('.limr-sidebar-card-heading').hover();
   await expect(card).toHaveAttribute('data-locked', 'true');
   expect((await card.boundingBox())!.y).toBeCloseTo(rest, 0);
-  expect(await referenceTop(marker)).toBeCloseTo(initialReference, 0);
+  await expect.poll(() => referenceTop(marker)).toBeCloseTo(rest, 0);
   await expect((await referencePaint(page, marker)).first()).toHaveCSS('opacity', '1');
   expect(await geometry()).toEqual(initial);
   await page.mouse.move(10, 10);
@@ -139,7 +139,7 @@ test('pinned citation highlights survive hover transfers and clear when deactiva
   await unpainted(paint);
 });
 
-for (const nested of [false, true]) test(`sidebar hover keeps offscreen prose fixed until the page is scrolled${nested ? ' inside a nested scroll root' : ''}`, async ({ page }) => {
+for (const nested of [false, true]) test(`sidebar hover reveals offscreen prose without scrolling the page${nested ? ' inside a nested scroll root' : ''}`, async ({ page }) => {
   await page.goto(`/?fixture=sidebar&citations&viewport${nested ? '&nested' : ''}`);
   await page.evaluate(() => document.fonts.ready);
   await markers(page).first().click();
@@ -161,11 +161,15 @@ for (const nested of [false, true]) test(`sidebar hover keeps offscreen prose fi
   const marker = reader(page).locator(`[data-limr-anchor="${id}"]`), paint = await referencePaint(page, marker);
   await expect(paint).toHaveCount(0);
   const original = await referenceTop(marker);
+  const scroll = await page.evaluate(() => ({ page: scrollY, nested: document.querySelector('#sidebar-scroll-root')?.scrollTop }));
   await card.locator('.limr-sidebar-card-heading').hover();
   await expect(card).toHaveAttribute('data-active', 'true');
-  await expect(reader(page).locator('.limr-reader-content > article')).toHaveCSS('translate', 'none');
-  expect(await referenceTop(marker)).toBeCloseTo(original, 0);
-  await expect(paint).toHaveCount(0);
+  await expect.poll(async () => Math.abs(await referenceTop(marker) - (await card.boundingBox())!.y)).toBeLessThan(1);
+  await expect(paint.first()).toHaveCSS('opacity', '1');
+  await expect(paint.first()).toBeInViewport();
+  expect(await page.evaluate(() => ({ page: scrollY, nested: document.querySelector('#sidebar-scroll-root')?.scrollTop }))).toEqual(scroll);
+  await page.mouse.move(10, 10);
+  await expect.poll(() => referenceTop(marker)).toBeCloseTo(original, 0);
   await marker.scrollIntoViewIfNeeded(); await marker.hover();
   await aligned(page, marker, card);
   await expect(paint.first()).toHaveCSS('opacity', '1');
@@ -174,7 +178,7 @@ for (const nested of [false, true]) test(`sidebar hover keeps offscreen prose fi
 
 });
 
-for (const width of [1800, 1380]) test(`scikit-learn's unfolded bibliography remains reachable with stable prose at ${width}px`, async ({ page }) => {
+for (const width of [1800, 1380]) test(`scikit-learn's unfolded bibliography aligns in both directions without changing page height at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 1000 });
   await page.goto('/#/playground');
   await page.getByRole('button', { name: '旁注折叠', exact: true }).click();
@@ -202,7 +206,7 @@ for (const width of [1800, 1380]) test(`scikit-learn's unfolded bibliography rem
   const offscreenPaint = await referencePaint(page, offscreenMarker);
   await expect(offscreenPaint).toHaveCount(0);
   await offscreenCard.locator('.limr-sidebar-card-heading').hover();
-  await expect(reader(page).locator('.limr-reader-content > article')).toHaveCSS('translate', 'none');
+  await expect.poll(async () => Math.abs(await referenceTop(offscreenMarker) - (await offscreenCard.boundingBox())!.y)).toBeLessThan(1);
   await expect(offscreenPaint).toHaveCount(0);
   await offscreenCard.locator('.limr-sidebar-card-heading').click();
   await page.mouse.move(10, 10);
@@ -229,7 +233,7 @@ for (const width of [1800, 1380]) test(`scikit-learn's unfolded bibliography rem
   await last.locator('.limr-sidebar-card-heading').click();
   await expect(last).toHaveAttribute('data-expanded', 'true');
   await settled(page);
-  await expect(reader(page).locator('.limr-reader-content > article')).toHaveCSS('translate', 'none');
+  await expect.poll(async () => Math.abs(await referenceTop(references.last()) - (await last.boundingBox())!.y)).toBeLessThan(1);
   await expect(last.locator('.limr-citation-title')).toBeInViewport();
   await page.mouse.click(10, 10);
   await settled(page);
@@ -243,7 +247,7 @@ for (const width of [1800, 1380]) test(`scikit-learn's unfolded bibliography rem
     const before = (await card.boundingBox())!.y, scroll = await page.evaluate(() => scrollY);
     await card.locator('.limr-sidebar-card-heading').hover();
     await expect(card).toHaveAttribute('data-locked', 'true');
-    await expect(reader(page).locator('.limr-reader-content > article')).toHaveCSS('translate', 'none');
+    await expect.poll(async () => Math.abs(await referenceTop(marker) - (await card.boundingBox())!.y)).toBeLessThan(1);
     expect((await card.boundingBox())!.y).toBeCloseTo(before, 0);
     expect(await page.evaluate(() => scrollY)).toBe(scroll);
     await page.mouse.move(10, 10);

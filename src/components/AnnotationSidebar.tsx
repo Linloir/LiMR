@@ -9,6 +9,7 @@ import { createAnnotationReferenceReader } from './annotation-reference';
 import { createSourceRangeLookup } from '../react/source-geometry';
 import { useOverflowFade } from '../react/overflow-fade';
 import { isOwnedImagePreview } from './image-preview-behavior';
+import { useSidebarDocumentAlignment } from './sidebar-document-alignment';
 
 /** anchorTop is the first referenced text line, falling back to the marker. */
 export interface SidebarItem { id: string; anchorTop: number; height: number }
@@ -219,9 +220,9 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
     }
     return positions;
   }, [positioner, sidebarItems, locked, alignmentId, gap, sync, railHeight, hovered, active, releasing]);
-  // Sidebar interactions never translate prose. Marker interaction owns
-  // alignment; wheel/page scrolling cannot feed back through a hovered card.
-  useIsomorphicLayoutEffect(() => { if (sync === 'document') runtime.documentOffset.set(0); }, [runtime, sync]);
+  useSidebarDocumentAlignment(runtime, sync === 'document',
+    source === 'sidebar' && focusedId ? anchorTops.get(focusedId) : undefined,
+    focusedId ? positions.get(focusedId) : undefined);
   const lockCard = useCallback((id: string) => {
     // Keep the original resting position while this card is hovered or active.
     // Relocking its boundary-raised top would prevent a collapse from moving
@@ -273,6 +274,8 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
         className="limr-sidebar-card" data-type={annotation?.type} data-locked={locked?.id === occurrence.id || undefined} data-active={isActive || hovered === occurrence.id || undefined} data-expanded={isActive || undefined} data-default-card={!renderCard || undefined} data-content-toggle={collapseOnContentClick || undefined} data-citations={occurrence.annotationIds.every(id => decorations.annotations.get(id)?.type === 'citation') || undefined} data-occurrence={occurrence.id}
         style={cardStyle}
         onPointerEnter={event => { if (event.pointerType !== 'touch') { lockCard(occurrence.id); runtime.hover(occurrence.id, 'sidebar'); } }} onPointerLeave={() => { if (runtime.interaction.get().hovered === occurrence.id && runtime.interaction.get().hoverSource === 'sidebar') runtime.hover(null); }}
+        onFocus={event => { if (!event.currentTarget.contains(event.relatedTarget)) { lockCard(occurrence.id); runtime.hover(occurrence.id, 'sidebar'); } }}
+        onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget) && runtime.interaction.get().hovered === occurrence.id && runtime.interaction.get().hoverSource === 'sidebar') runtime.hover(null); }}
         onClick={event => {
           if ((!isActive || collapseOnContentClick) && !renderCard && !event.defaultPrevented && !(event.target as Element).closest('button,a,input,select,textarea,summary,[role="button"],[role="link"],[contenteditable="true"],[data-limr-card-interactive]') && window.getSelection()?.isCollapsed !== false) activate();
         }}>

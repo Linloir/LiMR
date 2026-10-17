@@ -30,7 +30,7 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
   const config = useStoreSelector(runtime.configuration, value => value);
   const paint = interaction.activeHighlight ? decorations.highlights.get(interaction.activeHighlight) : null;
   const active = decorations.occurrences.find(item => item.id === interaction.active);
-  const markerActive = active && interaction.toolbarOccurrence === active.id;
+  const markerActive = !selection && !paint && active && interaction.toolbarOccurrence === active.id;
   const surfaces = floatingSurfaces(runtime);
   const overlayRect = useSyncExternalStore(surfaces.overlayRect.subscribe, surfaces.overlayRect.get, surfaces.overlayRect.get);
   const combined = useMemo(() => {

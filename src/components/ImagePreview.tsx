@@ -46,6 +46,8 @@ export function imagePreviewLabels(locale: Partial<LiMRLocale>) {
     copy: locale.imageCopy ?? (zh ? '复制图片' : 'Copy image'),
     copied: locale.copied ?? (zh ? '已复制' : 'Copied'),
     copyFailed: locale.copyFailed ?? (zh ? '复制失败' : 'Copy failed'),
+    loadFailed: locale.imageLoadFailed ?? (zh ? '图片无法加载' : 'Unable to load image'),
+    loadFailedHint: locale.imageLoadFailedHint ?? (zh ? '可能是链接损坏或文件不存在。' : 'The link may be broken or the file may not exist.'),
   };
 }
 

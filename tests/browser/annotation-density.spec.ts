@@ -221,6 +221,6 @@ test('wheel over a revealed card scrolls only the page without hover feedback ju
   const frames = await sampling;
   expect(frames.at(-1)!.top).toBeGreaterThan(initial.top);
   expect(frames.at(-1)!.top - initial.top).toBeLessThanOrEqual(241);
-  expect(frames.every(frame => frame.height === initial.height && frame.translate === 'none' && frame.scrolls.every(top => top === 0))).toBe(true);
+  expect(frames.every(frame => frame.height === initial.height && frame.translate === 'none' && frame.scrolls.every(top => top === 0)), JSON.stringify({ initial, frames })).toBe(true);
   expect(frames.slice(1).every((frame, index) => frame.top >= frames[index].top - 1)).toBe(true);
 });

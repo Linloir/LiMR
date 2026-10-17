@@ -6,7 +6,7 @@ import { sourceQuestionType } from '../examples/notes';
 import { useRuntime } from '../src/react/context';
 import type { ReaderRuntime } from '../src/react/runtime';
 
-interface StreamInput { source: string; streaming?: boolean; effect?: StreamEffect | false; custom?: boolean; sidebar?: boolean; sidebarCollapse?: boolean; chinese?: boolean; legacyFootnotes?: boolean; editable?: boolean; typography?: 'pretty' | 'normal' | 'standard' | 'knuth-plass' | 'justify'; parameters?: RendererParameters; plugins?: readonly RendererExtension[] }
+interface StreamInput { source: string; streaming?: boolean; effect?: StreamEffect | false; custom?: boolean; toc?: boolean; sidebar?: boolean; sidebarCollapse?: boolean; chinese?: boolean; legacyFootnotes?: boolean; editable?: boolean; typography?: 'pretty' | 'normal' | 'standard' | 'knuth-plass' | 'justify'; parameters?: RendererParameters; plugins?: readonly RendererExtension[] }
 declare global { interface Window { limrStream: (input: StreamInput) => void; limrStreamRuntime?: ReaderRuntime } }
 function RuntimeAudit() {
   const runtime = useRuntime();
@@ -30,7 +30,7 @@ export function StreamingFixture() {
   const [selection, setSelection] = useState<SelectionSnapshot | null>(null);
   useEffect(() => { window.limrStream = value => flushSync(() => setInput(value)); }, []);
   return <main style={{ maxWidth: input.sidebar ? 1700 : 780, padding: 24, marginInline: 'auto' }}>
-    <Reader source={input.source} onSourceChange={input.editable ? source => setInput(current => ({ ...current, source })) : undefined} streaming={input.streaming ?? true} streamEffect={input.effect} typography={input.typography} parameters={input.parameters} extensions={input.legacyFootnotes ? legacy : undefined} locale={input.chinese ? chinese : undefined} plugins={input.plugins ?? (input.custom ? customPlugins : basePlugins)} toc={false} sidebar={input.sidebar ?? false} sidebarCollapse={input.sidebarCollapse} onSelectionChange={setSelection}><RuntimeAudit /></Reader>
+    <Reader source={input.source} onSourceChange={input.editable ? source => setInput(current => ({ ...current, source })) : undefined} streaming={input.streaming ?? true} streamEffect={input.effect} typography={input.typography} parameters={input.parameters} extensions={input.legacyFootnotes ? legacy : undefined} locale={input.chinese ? chinese : undefined} plugins={input.plugins ?? (input.custom ? customPlugins : basePlugins)} toc={input.toc ?? false} sidebar={input.sidebar ?? false} sidebarCollapse={input.sidebarCollapse} onSelectionChange={setSelection}><RuntimeAudit /></Reader>
     <output id="stream-selection" hidden>{JSON.stringify(selection)}</output>
     <output id="stream-source" hidden>{input.source}</output>
   </main>;

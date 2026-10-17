@@ -52,6 +52,7 @@ function HighlightSettings({ context, options }: { context: ToolbarActionContext
 export function highlightPalette(options: HighlightOptions = {}): SelectionAction {
   return {
     id: 'highlight-palette', label: context => context.locale.editHighlight, icon: <ToolIcon name="background" />, placement: 'start',
+    visible: context => !context.highlight || context.canEditAnnotation(context.highlight.id),
     render: context => <button type="button" className="limr-toolbar-swatch" aria-label={context.locale.editHighlight} aria-expanded={context.expanded} disabled={context.busy} onClick={() => context.expanded ? context.collapse() : context.expand()} style={{ '--swatch': context.highlightAppearance.color ?? defaultHighlight.color } as CSSProperties} />,
     renderExpanded: context => <HighlightSettings context={context} options={options} />,
   };
@@ -62,10 +63,11 @@ export function highlightSelection(): SelectionAction {
     id: 'highlight',
     label: context => !context.highlight ? context.locale.addHighlight : context.highlight.data?.hidden ? context.locale.showHighlight : context.locale.hideHighlight,
     icon: context => <ToolIcon name={!context.highlight ? 'highlight' : context.highlight.data?.hidden ? 'eye' : 'eye-off'} />,
-    visible: context => !context.highlight || context.annotations.some(annotation => annotation.type !== 'highlight'),
+    visible: context => !context.highlight || context.canEditAnnotation(context.highlight.id) && context.annotations.some(annotation => annotation.type !== 'highlight'),
     run: context => {
-      if (context.highlight) context.updateAnnotation(context.highlight.id, { data: { ...context.highlight.data, hidden: !context.highlight.data?.hidden } });
-      else {
+      if (context.highlight) {
+        if (context.canEditAnnotation(context.highlight.id) && context.annotations.some(annotation => annotation.type !== 'highlight')) context.updateAnnotation(context.highlight.id, { data: { ...context.highlight.data, hidden: !context.highlight.data?.hidden } });
+      } else {
         context.addAnnotation({ id: `highlight-${crypto.randomUUID()}`, type: 'highlight', data: { ...context.highlightAppearance, hidden: false }, anchors: context.selection.syntax.ranges.map(range => ({ range, documentId: context.document.id, quote: context.document.source.slice(range.start, range.end) })) }, { target: context.canEditSource() ? 'source' : 'annotations' });
         context.clearSelection();
       }
@@ -76,7 +78,12 @@ export function highlightSelection(): SelectionAction {
 export function deleteAnnotations(): SelectionAction {
   return {
     id: 'delete-annotations', label: context => context.locale.deleteAnnotations, icon: <ToolIcon name="trash" />, placement: 'end', tone: 'danger',
-    visible: context => context.annotations.length > 0,
-    run: context => { context.removeAnnotationsAt([...context.selection.raw.ranges, ...context.selection.syntax.ranges]); context.activateAnnotation(null); context.clearSelection(); },
+    // This action deletes the whole selected group. Do not offer a partial or
+    // ineffective deletion for legacy syntax, immutable data or disabled edits.
+    visible: context => context.annotations.length > 0 && context.annotations.every(annotation => context.canEditAnnotation(annotation.id)),
+    run: context => {
+      if (!context.annotations.length || !context.annotations.every(annotation => context.canEditAnnotation(annotation.id))) return;
+      context.removeAnnotationsAt([...context.selection.raw.ranges, ...context.selection.syntax.ranges]); context.activateAnnotation(null); context.clearSelection();
+    },
   };
 }
