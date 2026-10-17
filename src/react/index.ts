@@ -18,5 +18,5 @@ export * from '../components/ToolIcon';
 export { TaskCheckbox } from '../components/TaskCheckbox';
 export * from '../components/InlineMarker';
 export { Image, type ImageProps } from '../components/Image';
-export { MarkdownTable, type MarkdownTableProps } from '../components/Table';
+export { MarkdownTable, type MarkdownTableProps, type TableLayoutConfig } from '../components/Table';
 export { ImagePreview, type ImagePreviewProps, type ImagePreviewSource } from '../components/ImagePreview';

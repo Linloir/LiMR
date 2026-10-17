@@ -4,7 +4,52 @@
 
 LiMR computes table tracks in the core, measures rendered content in the React adapter, and uses the ordinary annotation UI for overflow. The same component serves the Playground and VS Code. Table layout does not depend on paragraph alignment or KP typography.
 
-## Constraints and measurement
+## Disable or replace the planner (1.3.1)
+
+This capability belongs to the default table renderer; no separate layout module is required. Omit `parameters.tableLayout` or pass `{}` to retain the 1.3.0 `layoutTable` algorithm, measurement and bounded caches. Existing numeric options remain compatible.
+
+```tsx
+import { Reader } from '@linloir/limr';
+
+export function NativeTables({ source }: { source: string }) {
+  return <Reader source={source} parameters={{ tableLayout: false }} />;
+}
+```
+
+`false` retains GFM tables, alignment, rich content, source selection and source annotations, using native browser table layout and horizontal scrolling. It mounts no LiMR table measurement, layout observers, fixed tracks, height clipping or derived overflow previews. Switching modes remounts the table view and releases old overflow annotations; DOM focus and selections need not survive that switch. Parameter changes do not reparse source. `Reader`, `AsyncReader`, `Markdown` and `DocumentProvider` all accept this parameter.
+
+Replace the planner through `algorithm`, or register its configuration as an ordinary module parameter:
+
+```tsx
+import { Reader, defineExtension, layoutTable, type TableLayoutAlgorithm } from '@linloir/limr';
+
+const compactLayout: TableLayoutAlgorithm = input => layoutTable({
+  ...input,
+  options: { ...input.options, maxColumnWidth: 560 },
+});
+const plugins = [defineExtension({
+  name: 'compact-table-layout',
+  parameters: { tableLayout: { algorithm: compactLayout } },
+})];
+
+export function Article({ source }: { source: string }) {
+  return <Reader source={source} plugins={plugins} />;
+}
+```
+
+A planner may implement its own algorithm without calling `layoutTable`. It synchronously receives `TableLayoutInput` on the browser main thread: measured `rows`, `availableWidth` in CSS pixels, and `options` including measured font size and horizontal padding. Inputs belong to the cache and must be treated as read-only. Return a complete `TableLayoutPlan`:
+
+- `widths` and `contentWidths`: one positive number per column, both including horizontal padding; content windows may be narrower than tracks.
+- `heights`: content height per row, excluding padding; `clipped` matches the cell matrix and marks cells requiring height limits. Custom header heights are honored; body height limits apply only to cells marked for clipping.
+- `width` is the sum of track widths; `scroll` indicates horizontal scrolling; `cost` and `evaluations` are numeric diagnostics and may be zero when unused.
+
+Custom planners reuse measurement, cached width plans, actual DOM overflow checks and full-content previews. Keep function and configuration references stable; replace the configuration when its state changes to invalidate the cache. Planners must be synchronous and side-effect-free and return valid plans; errors are not silently replaced with default plans. SSR does not call measured planners. `layoutTable` and its algorithm types are also available from `@linloir/limr/core`; the React entry exports `TableLayoutConfig`.
+
+Priority is per-table `MarkdownTable.options` > host `parameters.tableLayout` > the last extension supplying the parameter > the built-in default. Values replace the entire configuration rather than merging fields: a host `{}` restores the built-in algorithm, `false` disables it, and omission inherits plugins. Plugins may also register `tableLayout: false`. These are view parameters: keep GFM parsing and do not send planner functions to workers. To replace measurement and the entire table DOM, use existing `rendererOverrides`; see [extension development](extensions.md).
+
+The default path adds no per-cell validation, measurements, observers or scoring passes. It selects the native or measured view at the table boundary and calls the selected planner on existing cache misses. Plugin authors own their custom algorithm's performance.
+
+## Default constraints and measurement
 
 The table fills at least the available body width. Track widths are explicit; spare space first goes to measurable reductions in wrapping or overflow, then to a content-weighted allocation. A single column can therefore fill a wide page while its text window retains a readable maximum line length.
 

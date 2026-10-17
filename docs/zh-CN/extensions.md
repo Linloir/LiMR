@@ -14,6 +14,7 @@
 | 一种独立标注类型 | defineAnnotation |
 | 组合语法、标注、动作和参数 | defineExtension / RendererExtension |
 | 改写已有节点外观或只替换满足条件的节点 | components / rendererOverrides |
+| 关闭或替换表格布局计算 | parameters.tableLayout：false 或 { algorithm }，见[表格布局](table-layout.md) |
 | 新的解析规则 | micromark + mdast 扩展，必要时 transform |
 | 仅修改视觉 | CSS 主题包 + appearance |
 

@@ -37,7 +37,13 @@
 - 最终 WSL Linux Electron 表格 layout 组一次通过，含 500/760/1100px 多种表格、长表头、字形、引用角标、省略后缀和原有旁注。此前 760/750 记录未等待稳定宽度；新增明确等待后的本次结果为容器 760px、表格 760px，无横溢。原有记录仍保留，不能倒推其当时的完整时序。
 - VSIX 压缩包逐文件读回校验 983 个宿主构建文件；核心 tar 逐文件读回校验 432 个发布文件，均与已验证产物匹配。
 
-本地验证包：[LiMR tar](../../artifacts/final-2026-10-17/linloir-limr-1.2.3.tgz)，[VS Code 收尾与 VSIX](../../../limr-vscode/benchmarks/FINAL-2026-10-17.md)。版本号保持现有值，属于本地构建交付。必要 JSON、身份及报告索引在 [artifacts/final-2026-10-17](../../artifacts/final-2026-10-17/)。
+以下本地验证产物未随本仓库提交，路径均相对本仓库根目录：
+
+- LiMR tar：`artifacts/final-2026-10-17/linloir-limr-1.2.3.tgz`。
+- VS Code 收尾与 VSIX：`../limr-vscode/benchmarks/FINAL-2026-10-17.md`（相邻仓库）。
+- 必要 JSON、身份及报告索引：`artifacts/final-2026-10-17/`。
+
+版本号保持现有值，属于本地构建交付。
 
 ## 性能证据边界与未解决项
 

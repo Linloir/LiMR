@@ -58,4 +58,4 @@ $limr-plugin-development 创建术语解释插件包，包含术语块、选区�
 
 ## 加载与大文档接入
 
-`limr-use` 的 [loading.md](../../skills/limr-use/references/loading.md) 覆盖 AsyncReader、宿主进度、取消/重试、Worker 资源、只读预览、书签、打印与图片预览。`limr-plugin-development` 的[契约](../../skills/limr-plugin-development/references/contract.md) 补充自定义 Worker 注册、可转移结果与窗口化视图的文本/状态契约。两者以 1.3.0 的公开声明为准；升级时复制整个 Skill 文件夹，保留本地定制。
+`limr-use` 的 [loading.md](../../skills/limr-use/references/loading.md) 覆盖 AsyncReader、宿主进度、取消/重试、Worker 资源、只读预览、书签、打印与图片预览。`limr-plugin-development` 的[契约](../../skills/limr-plugin-development/references/contract.md) 补充自定义 Worker 注册、可转移结果与窗口化视图的文本/状态契约。两者以 1.3.1 的公开声明为准；升级时复制整个 Skill 文件夹，保留本地定制。

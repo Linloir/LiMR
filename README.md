@@ -1,6 +1,6 @@
 # LiMR
 
-[![package version](https://img.shields.io/badge/version-1.3.0-blue.svg)](package.json)
+[![package version](https://img.shields.io/badge/version-1.3.1-blue.svg)](package.json)
 
 **简体中文** · [English](README.en.md)
 
@@ -87,6 +87,8 @@ export function Answer({ text, generating }: { text: string; generating: boolean
 默认正文组件支持对应的标签、`:::` 容器和成对 `::` 指令：例如 `::definition{title="定义"}` 与独立一行的 `::` 包围正文。Mermaid 使用 `mermaid` 代码围栏或 `::mermaid`，图像模式支持缩放、拖拽平移和键盘/滚轮移动。
 
 ## 排版与流式行为
+
+表格默认使用内置自适应布局。1.3.1 起，`parameters={{ tableLayout: false }}` 可切换为浏览器原生布局，`tableLayout: { algorithm }` 可由宿主或插件替换布局计算函数；默认算法、测量与缓存保持不变。见[表格布局](docs/zh-CN/table-layout.md)。
 
 `typography` 支持 `standard`（默认）、`knuth-plass`、`justify`。KP 使用 TeX 的 box/glue/penalty 段落优化和 Knuth–Liang 英文断词，缓存测量及断行准备结果，滚动保留已排版节点。浏览器字体测量与 TeX PDF 不保证逐像素相同；[KP 算法性能报告](docs/zh-CN/knuth-plass-performance.md)包含求解器、Scikit Learn 滚动/窗口变化与测量边界；[渲染器性能报告](docs/zh-CN/performance.md)对比 react-markdown 和 Markstream。
 

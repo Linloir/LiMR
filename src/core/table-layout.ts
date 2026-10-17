@@ -32,7 +32,7 @@ export interface TableLayoutPlan {
   /** Text windows can be narrower than tracks when a very wide viewport must
    * be filled without exceeding the configured maximum readable line length. */
   contentWidths: number[];
-  /** Content heights, excluding padding. Header is bounded to three lines. */
+  /** Content heights, excluding padding. The built-in planner caps headers at three lines. */
   heights: number[];
   clipped: boolean[][];
   scroll: boolean;
@@ -40,6 +40,10 @@ export interface TableLayoutPlan {
   cost: number;
   evaluations: number;
 }
+/** Synchronous, pure planner over measured cells. Inputs are borrowed/read-only;
+ * return a complete plan with one width per column and one height per row. */
+export type TableLayoutAlgorithm = (input: TableLayoutInput) => TableLayoutPlan;
+
 const finite = (value: number | undefined, fallback: number) => value !== undefined && Number.isFinite(value) && value > 0 ? value : fallback;
 const quantile = (values: readonly number[], fraction: number) => values.length ? [...values].sort((a, b) => a - b)[Math.floor((values.length - 1) * fraction)] : 0;
 

@@ -36,6 +36,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 | extensions | standard()，完整扩展清单 |
 | plugins | 追加到默认或显式清单 |
 | parameters | 文档级模块参数覆盖 |
+| parameters.tableLayout | 内置自适应布局；`false` 使用原生布局，`TableLayoutConfig` 可设置宽高限制和 `algorithm: TableLayoutAlgorithm`，见[表格布局](table-layout.md) |
 | components | 按 AST 类型/特殊标签覆盖 NodeRenderer |
 | annotationTypes | 按 type 追加/覆盖标注呈现 |
 | annotations | 不传则内部管理；传入则受控 |
@@ -79,7 +80,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 | InlineMarker | label 必填，color、children 和 button 属性/ref |
 | Image | 原生图片 props/ref；preview=true、loading='lazy'、decoding='async'；已加载图片可打开共享预览 |
 | ImagePreview | 受控 image/onClose；image 包含 src、width、height，可选 alt/来源 element；可选 locale/theme/appearance/className/style |
-| MarkdownTable | 绑定原文的 node/renderChildren 适配组件，默认渲染器自动使用，见[表格布局](table-layout.md) |
+| MarkdownTable | 绑定原文的 node/renderChildren 适配组件；`options?: false \| TableLayoutConfig` 优先于宿主和插件参数，见[表格布局](table-layout.md) |
 | ToolIcon | name 与 SVG 属性；如 note、copy、highlight、comment、zoom-in、zoom-out、source、image |
 
 共享文档组件/hooks 应位于 Provider 内，独立 Markdown 和 Reader 会建立自己的文档。AnnotationEditor 是受控 UI，可独立使用；AnnotationCard 是浮层内容模板，不负责自建 portal。sidebar.renderCard 接收 `{ occurrence, active, activate }`；toolbar.render 接收 `{ context, actions, run }`。

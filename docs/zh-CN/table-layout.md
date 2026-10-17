@@ -4,7 +4,52 @@
 
 LiMR 的 core 负责列宽与行高决策，React 适配层测量实际渲染内容，溢出内容复用现有注释 UI。Playground 与 VS Code 使用同一个组件；表格算法独立于段落对齐及 KP 排版。
 
-## 约束与测量
+## 关闭或替换布局算法（1.3.1）
+
+这是默认表格渲染器内置的能力，无需额外安装布局模块。省略 `parameters.tableLayout` 或传 `{}`，继续使用 1.3.0 的 `layoutTable` 算法、测量与有界缓存；原有数字配置保持兼容。
+
+```tsx
+import { Reader } from '@linloir/limr';
+
+export function NativeTables({ source }: { source: string }) {
+  return <Reader source={source} parameters={{ tableLayout: false }} />;
+}
+```
+
+`false` 保留 GFM 表格、对齐、富文本、源码选区和原文注释，使用浏览器原生表格布局与横向滚动。此模式不挂载 LiMR 的表格测量、布局观察器、固定列宽、行高裁剪或派生溢出预览。切换模式会重新挂载表格视图并释放旧的溢出注释；不要依赖切换前的 DOM 焦点或选区继续存在。修改参数不重新解析源码。`Reader`、`AsyncReader`、`Markdown` 和 `DocumentProvider` 均支持该参数。
+
+通过 `algorithm` 替换计算函数，也可在普通模块的 `parameters` 中注册默认配置：
+
+```tsx
+import { Reader, defineExtension, layoutTable, type TableLayoutAlgorithm } from '@linloir/limr';
+
+const compactLayout: TableLayoutAlgorithm = input => layoutTable({
+  ...input,
+  options: { ...input.options, maxColumnWidth: 560 },
+});
+const plugins = [defineExtension({
+  name: 'compact-table-layout',
+  parameters: { tableLayout: { algorithm: compactLayout } },
+})];
+
+export function Article({ source }: { source: string }) {
+  return <Reader source={source} plugins={plugins} />;
+}
+```
+
+算法可完全自行实现，不必调用 `layoutTable`。它在浏览器主线程同步接收 `TableLayoutInput`：实际测量的 `rows`、CSS 像素 `availableWidth` 与包含测得字号/水平内边距的 `options`。输入由缓存持有，须视为只读；返回完整 `TableLayoutPlan`：
+
+- `widths`、`contentWidths`：每列一个正数，均包含水平内边距；文字窗口可小于列轨道。
+- `heights`：每行的内容高度，不含内边距；`clipped` 与单元格矩阵一致，表示需要限制高度的单元格。自定义算法的表头高度也会被采用，正文仅对标记为裁剪的格子应用行高限制。
+- `width` 为列轨道宽度之和；`scroll` 表示横向滚动；`cost`、`evaluations` 为数值诊断信息，不计算时可设为零。
+
+自定义算法继续复用测量、宽度方案缓存、实际 DOM 溢出检查与完整内容预览。保持函数和配置引用稳定；状态变化时传入新配置以失效缓存。算法必须同步、无副作用并返回有效方案；异常不会被静默替换为默认方案。SSR 不调用需要浏览器测量的算法。`layoutTable` 与算法类型也可从 `@linloir/limr/core` 导入；React 层公开 `TableLayoutConfig`。
+
+优先级为单表 `MarkdownTable.options` > 宿主 `parameters.tableLayout` > 最后一个提供该参数的扩展 > 内置默认值。整个配置值替换，不逐字段合并；宿主传 `{}` 可覆盖插件并恢复内置算法，传 `false` 可关闭，省略则继承插件。插件同样可注册 `tableLayout: false`。这些是视图参数，不需要改写 GFM 解析模块或向 Worker 传递算法函数。若还需替换测量和整个表格 DOM，使用现有 `rendererOverrides`，见[扩展开发](extensions.md)。
+
+默认路径没有新增逐单元格校验、测量、观察器或评分步骤；仅在表格入口选择原生或测量布局，并在已有缓存未命中时调用选定算法。自定义算法自身的性能由插件负责。
+
+## 默认算法的约束与测量
 
 表格总宽至少填满正文可用宽度。列宽由算法明确指定：先把剩余宽度用于减少换行与截断，再按内容权重分配。因此单列表格也能填满正文，同时保留文字区域的最大可读行长。
 

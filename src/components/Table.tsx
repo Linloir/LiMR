@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { AnnotationOccurrence, MarkdownNode } from '../core';
-import { layoutTable, type TableLayoutOptions, type TableLayoutPlan } from '../core/table-layout';
+import { layoutTable, type TableLayoutAlgorithm, type TableLayoutOptions, type TableLayoutPlan } from '../core/table-layout';
 import { measureTable, tableFontKey, type TableMeasurement } from '../react/table-measure';
 import { useIsomorphicLayoutEffect, useLocale, useOwnedNodeState, useRendererParameter, useRuntime } from '../react/context';
 import { AnnotationMarker } from '../react/render';
@@ -15,14 +15,20 @@ import { cellContentLease, sameCellContent, claimTableViews, recordTableViews, f
 
 const tableStateOwner: NodeStateOwner = { name: 'tableStateOwner', nativeTypes: ['table'], keys: { 'table-expanded-cells': value => value instanceof Set && [...value].every(item => typeof item === 'string' && /^\d+:\d+$/.test(item)) }, signature: tableStateIdentity };
 
-
+/** Adapter configuration; omitted options preserve the built-in measured layout. */
+export interface TableLayoutConfig extends TableLayoutOptions {
+  /** Replace only the planner; measurement, caching and overflow UI are reused.
+   * Keep the function/configuration stable; replace them to invalidate layout. */
+  algorithm?: TableLayoutAlgorithm;
+}
 declare module '@linloir/limr' {
-  interface RendererParameters { tableLayout?: TableLayoutOptions }
+  interface RendererParameters { tableLayout?: false | TableLayoutConfig }
 }
 export interface MarkdownTableProps {
   node: MarkdownNode;
   renderChildren: (nodes: readonly MarkdownNode[]) => ReactNode;
-  options?: TableLayoutOptions;
+  /** Overrides the reader/plugin parameter. false uses native browser layout. */
+  options?: false | TableLayoutConfig;
 }
 const sameFlags = (left: boolean[][], right: boolean[][]) => left.length === right.length && left.every((row, i) => row.length === right[i]?.length && row.every((value, j) => value === right[i][j]));
 function MoreIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="3" /><path d="M8 8h8M8 12h5" /><circle cx="8" cy="16" r=".65" /><circle cx="12" cy="16" r=".65" /><circle cx="16" cy="16" r=".65" /></svg>; }
@@ -131,6 +137,26 @@ const tableCellType: AnnotationType<CellPreview> = {
 export function MarkdownTable({ node, renderChildren, options }: MarkdownTableProps) {
   const configured = useRendererParameter('tableLayout');
   const settings = options ?? configured;
+  return settings === false
+    ? <NativeMarkdownTable node={node} renderChildren={renderChildren} />
+    : <MeasuredMarkdownTable node={node} renderChildren={renderChildren} options={settings} />;
+}
+
+/** No measurement hooks, observers, fixed tracks or derived overflow annotations.
+ * Switching modes unmounts the measured adapter and releases its registrations. */
+function NativeMarkdownTable({ node, renderChildren }: MarkdownTableProps) {
+  const locale = useLocale(), rows = node.children ?? [], alignment = node.align as (string | null)[] | undefined;
+  const renderRow = (row: MarkdownNode, rowIndex: number) => <tr key={row.position?.start.offset ?? rowIndex}>{row.children?.map((cell, column) => {
+    const Tag = rowIndex === 0 ? 'th' : 'td';
+    return <Tag key={cell.position?.start.offset ?? column} scope={rowIndex === 0 ? 'col' : undefined} style={{ textAlign: alignment?.[column] as CSSProperties['textAlign'] }}>{renderChildren(cell.children ?? [])}</Tag>;
+  })}</tr>;
+  return <div className="limr-table-scroll" data-table-layout="native" tabIndex={0} role="region" aria-label={locale.language?.startsWith('zh') ? '横向滚动表格' : 'Scrollable table'}>
+    <table><thead>{rows.slice(0, 1).map(row => renderRow(row, 0))}</thead><tbody>{rows.slice(1).map((row, i) => renderRow(row, i + 1))}</tbody></table>
+  </div>;
+}
+
+function MeasuredMarkdownTable({ node, renderChildren, options: settings }: Omit<MarkdownTableProps, 'options'> & { options?: TableLayoutConfig }) {
+  const algorithm = settings?.algorithm ?? layoutTable;
   const runtime = useRuntime(), locale = useLocale();
   const root = useRef<HTMLDivElement>(null), table = useRef<HTMLTableElement>(null), measured = useRef<TableMeasurement | undefined>(undefined);
   const overflowMarker = useRef<HTMLButtonElement>(null);
@@ -160,6 +186,11 @@ export function MarkdownTable({ node, renderChildren, options }: MarkdownTablePr
   useEffect(() => { const current = owner.current; return () => { forgetTableViews(runtime, current); runtime.setViewAnnotations(current, []); }; }, [runtime]);
   useIsomorphicLayoutEffect(() => {
     const host = root.current, target = table.current; if (!host || !target) return;
+    let layoutOptions: TableLayoutOptions | undefined = settings;
+    if (settings?.algorithm) {
+      const { algorithm: _algorithm, ...options } = settings;
+      layoutOptions = options;
+    }
     let frame = 0, visible = typeof IntersectionObserver === 'undefined', disposed = false, lastWidth = -1;
     measured.current = undefined;
     const cache = new Map<string, TableLayoutPlan>();
@@ -176,7 +207,7 @@ export function MarkdownTable({ node, renderChildren, options }: MarkdownTablePr
       const key = String(Math.round(availableWidth));
       let next = cache.get(key);
       if (!next) {
-        next = layoutTable({ rows: measurement.rows, availableWidth, options: { fontSize: measurement.fontSize, cellPadding: measurement.padding, ...settings } });
+        next = algorithm({ rows: measurement.rows, availableWidth, options: { fontSize: measurement.fontSize, cellPadding: measurement.padding, ...layoutOptions } });
         if (cache.size > 8) cache.delete(cache.keys().next().value!);
         cache.set(key, next);
       }
@@ -212,7 +243,7 @@ export function MarkdownTable({ node, renderChildren, options }: MarkdownTablePr
     fonts?.addEventListener('loadingerror', invalidate);
     schedule();
     return () => { disposed = true; cancelAnimationFrame(frame); resize.disconnect(); visibility.disconnect(); intersection?.disconnect(); mutations.disconnect(); target.removeEventListener('load', invalidate, true); fonts?.removeEventListener('loading', invalidate); fonts?.removeEventListener('loadingdone', invalidate); fonts?.removeEventListener('loadingerror', invalidate); };
-  }, [node, runtime, settings]);
+  }, [node, runtime, settings, algorithm]);
   useIsomorphicLayoutEffect(() => {
     const element = table.current; if (!element || !plan) return;
     const flags: boolean[][] = [];
@@ -291,7 +322,7 @@ export function MarkdownTable({ node, renderChildren, options }: MarkdownTablePr
     // inline controls can make an otherwise complete line slightly taller
     // than its CSS line-height and must remain fully visible.
     const lineHeight = measured.current?.rows[rowIndex]?.[column]?.lineHeight;
-    const requestedHeight = rowIndex === 0 && lineHeight ? lineHeight * 3 : plan?.heights[rowIndex];
+    const requestedHeight = rowIndex === 0 && lineHeight && algorithm === layoutTable ? lineHeight * 3 : plan?.heights[rowIndex];
     const maximum = isExpanded || rowIndex > 0 && !plan?.clipped[rowIndex]?.[column] ? undefined : requestedHeight && lineHeight ? Math.max(lineHeight, Math.floor(requestedHeight / lineHeight + .01) * lineHeight) : requestedHeight;
     const contentMaximum = plan && plan.contentWidths[column] < plan.widths[column] - .1 ? Math.max(1, plan.contentWidths[column] - (settings?.cellPadding ?? measured.current?.padding ?? 0)) : undefined;
     return <Tag key={cell.position?.start.offset ?? column} scope={rowIndex === 0 ? 'col' : undefined} style={{ textAlign: alignment?.[column] as CSSProperties['textAlign'] }} className="limr-table-cell" data-cell-expanded={isExpanded || undefined}>

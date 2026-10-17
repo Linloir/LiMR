@@ -14,6 +14,7 @@ Start with [built-in modules](modules.md) for module objects, factories, names, 
 | A standalone annotation type | defineAnnotation |
 | Combined syntax, annotations, actions, and parameters | defineExtension / RendererExtension |
 | A different view for existing nodes or a matching subset | components / rendererOverrides |
+| Disable or replace table layout calculation | parameters.tableLayout: false or { algorithm }; see [table layout](table-layout.md) |
 | New parsing rules | micromark + mdast, with transform when needed |
 | Visual changes only | CSS theme package + appearance |
 

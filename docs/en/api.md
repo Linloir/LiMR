@@ -36,6 +36,7 @@ Reader, Markdown, and DocumentProvider accept:
 | extensions | standard(); the complete extension list |
 | plugins | Appended to the default or explicit list |
 | parameters | Document-wide module parameter overrides |
+| parameters.tableLayout | Built-in adaptive layout; `false` selects native layout; `TableLayoutConfig` accepts numeric limits and `algorithm: TableLayoutAlgorithm`; see [table layout](table-layout.md) |
 | components | NodeRenderer overrides by AST type/custom tag |
 | annotationTypes | Add/override presentation by type |
 | annotations | Internal state if omitted; controlled if supplied |
@@ -79,7 +80,7 @@ The default locale is english. Missing partial keys fall back to English. locale
 | InlineMarker | Required label, color, children, button props/ref |
 | Image | Native image props/ref; preview=true, loading='lazy', decoding='async'; loaded images open the shared preview |
 | ImagePreview | Controlled image/onClose; image supplies src, width, height, optional alt/originating element; optional locale/theme/appearance/className/style |
-| MarkdownTable | Source-bound node/renderChildren adapter; the default renderer uses it automatically; see [table layout](table-layout.md) |
+| MarkdownTable | Source-bound node/renderChildren adapter; `options?: false \| TableLayoutConfig` overrides host/plugin parameters; see [table layout](table-layout.md) |
 | ToolIcon | name and SVG props; e.g. note, copy, highlight, comment, zoom-in, zoom-out, source, image |
 
 Shared document views/hooks require a provider; standalone Markdown and Reader create their own documents. AnnotationEditor is controlled UI and can be used independently. AnnotationCard is an interior template, not its own portal. sidebar.renderCard receives occurrence/active/activate; toolbar.render receives context/actions/run.

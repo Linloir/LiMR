@@ -1,6 +1,6 @@
 # LiMR
 
-[![package version](https://img.shields.io/badge/version-1.3.0-blue.svg)](package.json)
+[![package version](https://img.shields.io/badge/version-1.3.1-blue.svg)](package.json)
 
 [简体中文](README.md) · **English**
 
@@ -87,6 +87,8 @@ This passage has a source<ref id="paper" />.
 Default body components support matching tags, `:::` containers and paired `::` directives: for example, `::definition{title="Definition"}` followed by its body and a standalone closing `::`. Mermaid accepts `mermaid` code fences or `::mermaid`; diagram mode supports zoom, drag panning, and keyboard/wheel navigation.
 
 ## Typography and streaming
+
+Tables use the built-in adaptive layout by default. Since 1.3.1, `parameters={{ tableLayout: false }}` selects native browser layout, while `tableLayout: { algorithm }` lets a host or plugin replace the planner. The default algorithm, measurement and caches are preserved. See [table layout](docs/en/table-layout.md).
 
 `typography` accepts `standard` (default), `knuth-plass`, or `justify`. KP uses TeX's box/glue/penalty paragraph optimization and Knuth–Liang English hyphenation, caches measurements and prepared breakpoints, and retains typeset nodes while scrolling. Browser font measurements do not guarantee pixel-identical TeX PDF output. The [KP performance report](docs/en/knuth-plass-performance.md) covers solving, Scikit Learn scrolling/resizing and measurement boundaries; the [renderer report](docs/en/performance.md) compares react-markdown and Markstream.
 

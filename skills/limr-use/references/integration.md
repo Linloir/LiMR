@@ -40,6 +40,12 @@ Each editable card owns its single-annotation delete action, gated by canEditAnn
 
 `parameters.translationSelectionBoundary` is a boolean, defaulting to true. Set `<Reader source={source} parameters={{ translationSelectionBoundary: false }} />` to restore the previous native selection behavior and suppress boundary hints. It applies independently of translationMode and updates without reparsing. Omit it or use true to enable the boundary. Customize feedback through `locale.translationSelectionHint`; built-in English and Chinese locales supply the text. This is a browser-selection constraint only: preserve existing cross-boundary annotations and allow explicit addAnnotation/updateAnnotation ranges. It is not an annotation validation rule.
 
+## Table layout (1.3.1)
+
+Adaptive table layout is built into the default renderer and is independent of typography. `parameters={{ tableLayout: false }}` selects native browser layout without LiMR table measurement, layout observers, fixed columns, clipping or derived overflow previews. GFM, rich content, source selection and original annotations remain available. Omit the parameter for defaults, or use `{ maxColumnWidth, maxRowHeight, fontSize, cellPadding }` for numeric limits. `Reader`, `AsyncReader`, `Markdown` and `DocumentProvider` accept it.
+
+`tableLayout: { algorithm }` accepts a synchronous `TableLayoutAlgorithm` over measured cells. Keep configuration/function references stable; replace them when closed-over state changes. Per-table `MarkdownTable.options` overrides host parameters, which override the last plugin supplying the parameter. The whole value is replaced, not merged: a host `{}` restores the built-in planner even if a plugin disabled or replaced it; omission inherits the plugin. Switching native/measured modes remounts table DOM and releases derived previews without reparsing source; focus and native selection need not survive the switch. See the plugin contract for a custom planner; use rendererOverrides only when measurement or DOM must also change.
+
 ## Streaming and resources
 
 Pass the complete accumulated text to source and set streaming=false at completion. followOutput is opt-in and pauses after upward scrolling. Keep extensions/plugins stable. Appends and eligible finalization reuse stable prefixes; full-document transforms, changed definitions, and middle edits may require complete parsing. Growing code fences have a literal fast path.

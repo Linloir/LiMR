@@ -52,7 +52,8 @@ for (const version of ['18.3.1', '19']) {
   await writeFile(join(directory, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, skipLibCheck: false, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', jsx: 'react-jsx', noEmit: true }, include: ['consumer.tsx'] }));
   await writeFile(join(directory, 'consumer.tsx'), `
 import { AsyncReader, Reader, Markdown, DocumentProvider, standard, defineAnnotation, AnnotationCard, AnnotationMarkdown, ToolIcon, InlineMarker, useLiMR, useLocale, useRendererParameter, type RendererExtension, type SelectionAction, type ReadingPosition } from '@linloir/limr';
-import { createDocument, prepareKnuthPlass } from '@linloir/limr/core';
+import { createDocument, prepareKnuthPlass, layoutTable, type TableLayoutAlgorithm } from '@linloir/limr/core';
+import { MarkdownTable, type TableLayoutConfig } from '@linloir/limr/react';
 import { createDocumentWorkerHandler, standardWorkerRegistry, type DocumentWorkerRequest } from '@linloir/limr/worker-api';
 import { readingTools } from '@limr-example/reading-tools';
 import { readingTools as templateTools } from '@example/limr-reading-tools';
@@ -67,6 +68,11 @@ declare module '@linloir/limr' { interface RendererParameters { consumerDensity?
 const parameterPlugin: RendererExtension = { name: 'consumer-parameters', parameters: { consumerDensity: 2 }, components: { parameter: () => <InlineMarker label="Density">{useRendererParameter('consumerDensity')}</InlineMarker> } };
 const standalone = <Markdown source="Text" justify plugins={[parameterPlugin]} parameters={{ consumerDensity: 3, translationMode: 'both', onTranslationModeChange: mode => { const checked: 'origin' | 'translation' | 'both' = mode; } }} />;
 const shared = <DocumentProvider source="Text" justify><Markdown justify={false} /></DocumentProvider>;
+const tableAlgorithm: TableLayoutAlgorithm = input => layoutTable(input);
+const tableConfig: TableLayoutConfig = { algorithm: tableAlgorithm, maxColumnWidth: 420 };
+const tablePlugin: RendererExtension = { name: 'consumer-table-layout', parameters: { tableLayout: tableConfig } };
+const nativeTables = <Reader source="| A | B |" plugins={[tablePlugin]} parameters={{ tableLayout: false }} />;
+const customTables = <Markdown source="| A | B |" plugins={[tablePlugin]} components={{ table: props => <MarkdownTable {...props} options={tableConfig} /> }} />;
 function ReaderIntegration() { const api = useLiMR(); const position: ReadingPosition | null = api.getReadingPosition(); return <button disabled={!api.isDocumentComplete()} onClick={() => position ? api.restoreReadingPosition(position) : api.scrollToSource({ start: 10, end: 20 })}>Jump</button>; }
 const asynchronous = <AsyncReader input={new Blob(['A book'])} loading={{ mode: 'blocking', worker: () => new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }) }}><ReaderIntegration /></AsyncReader>;
 const layoutApp = <Reader source="==Marked==" typography="knuth-plass" knuthPlass={{ tolerance: 200, hyphenate: word => [word] }} streamEffect={{ keyframes: [{ opacity: 0 }, { opacity: 1 }] }} rendererOverrides={[{ type: 'code', when: (node, context) => node.lang === 'js' && !context.incomplete, component: ({ renderValue }) => <pre>{renderValue()}</pre> }]} />;
@@ -104,6 +110,8 @@ if (complexSnapshot.headings.length !== 2000 || packedReferences !== 2000 || com
 const html = renderToString(createElement(Reader, { source: '# Packed package\\n\\n$x^2$\\n\\nText<ref id="p" />.\\n\\n<citation id="p" title="Paper" />', documentId: 'packed', extensions: standard(), justify: true }));
 if (!html.includes('packed-packed-package') || !html.includes('katex-mathml') || !html.includes('data-limr-justify="true"')) throw new Error('SSR output is incomplete');
 if (!renderToString(createElement(Markdown, {source:'**bold**'})).includes('<strong>')) throw new Error('Standalone Markdown failed');
+const nativeTableHtml = renderToString(createElement(Markdown, { source: '| A | B |\\n| --- | --- |\\n| body | 1 |', parameters: { tableLayout: false } }));
+if (!nativeTableHtml.includes('data-table-layout="native"') || nativeTableHtml.includes('limr-table-marker-measure')) throw new Error('Packed native table SSR failed');
 const cssPath = fileURLToPath(import.meta.resolve('@linloir/limr/math.css'));
 const css = await readFile(cssPath, 'utf8');
 for (const match of css.matchAll(/url\\(([^)]+)\\)/g)) await access(resolve(dirname(cssPath), match[1].replace(/['"]/g, '')));
@@ -128,7 +136,7 @@ console.log('SSR, extension entry and local math/Maple assets passed');
   await writeFile(join(directory, 'browser.js'), `
 import { createElement as h, Fragment } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AsyncReader, Reader, chinese, useLiMR } from '@linloir/limr';
+import { AsyncReader, Reader, chinese, useLiMR, layoutTable } from '@linloir/limr';
 import { readingTools } from '@limr-example/reading-tools';
 import { readingTools as templateTools } from '@example/limr-reading-tools';
 import '@linloir/limr/styles.css';
@@ -148,6 +156,12 @@ createRoot(document.getElementById('root')).render(h(Fragment, null,
   h(Reader, { documentId: 'modules', source: '> [!tip] Tip\\n> Built in.\\n\\n==Standalone== and ==Marked==[^n]\\n\\n[^n]: Packed footnote.\\n\\n::mermaid\\nflowchart LR\\nA-->B\\n::', typography: 'knuth-plass', locale: chinese, toc: false, sidebar: false }),
   h(AsyncReader, { documentId: 'worker', input: workerSource, loading: { fallback: 'error', worker: () => new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }) }, onLoadStateChange: state => { window.workerState = state; }, toc: false, sidebar: false }, h(WorkerIntegration))
 ));
+const tableHost = document.createElement('div'); tableHost.id = 'packed-table'; document.body.append(tableHost);
+const tableRoot = createRoot(tableHost);
+window.packedTableCalls = 0;
+const tablePlugins = [{ name: 'packed-table-planner', parameters: { tableLayout: { algorithm: input => { window.packedTableCalls++; return layoutTable(input); } } } }];
+window.renderPackedTable = parameters => tableRoot.render(h(Reader, { documentId: 'table-smoke', source: '| Name | Value |\\n| --- | --- |\\n| Body | 42 |', parameters, plugins: tablePlugins, toc: false, sidebar: false }));
+window.renderPackedTable({ tableLayout: false });
 `);
   // Build and serve actual installed tarballs, never repository aliases or HMR.
   run('pnpm', ['exec', 'vite', 'build'], directory, { NODE_ENV: 'production' });
@@ -211,8 +225,18 @@ createRoot(document.getElementById('root')).render(h(Fragment, null,
     await expect(page.getByRole('toolbar').getByRole('button')).toHaveCount(1);
     await page.getByRole('button', { name: 'Read the loaded ending' }).click();
     await expect(page.locator('[data-limr-document="worker"]').getByText('Loaded paragraph 199.', { exact: true })).toBeInViewport();
+    const table = page.locator('#packed-table');
+    await table.scrollIntoViewIfNeeded();
+    await expect(table.locator('[data-table-layout="native"]')).toHaveCount(1);
+    expect(await page.evaluate(() => window.packedTableCalls)).toBe(0);
+    await page.evaluate(() => window.renderPackedTable(undefined));
+    await expect(table.locator('.limr-table-layout')).toHaveAttribute('data-table-ready', 'true');
+    expect(await page.evaluate(() => window.packedTableCalls)).toBeGreaterThan(0);
+    await page.evaluate(() => window.renderPackedTable({ tableLayout: false }));
+    await expect(table.locator('colgroup,.limr-table-marker-measure')).toHaveCount(0);
+    await expect(table.locator('[data-table-layout="native"]')).toHaveCount(1);
     if (errors.length) throw new Error(errors.join('\n'));
-    console.log(`React ${version}: packed plugins, scoped CSS, skill template, KP, Mermaid, callout, highlight and footnote modules passed in Chromium`);
+    console.log(`React ${version}: packed plugins, table layout controls, scoped CSS, skill template, KP, Mermaid, callout, highlight and footnote modules passed in Chromium`);
   } finally { await browser?.close(); server.kill('SIGTERM'); }
 }
 await mkdir('artifacts', { recursive: true });

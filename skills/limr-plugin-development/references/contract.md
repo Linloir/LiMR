@@ -60,6 +60,16 @@ useLocale() exposes the merged locale. language is an optional BCP-47-style tag,
 
 CSS is explicitly imported. For themes use [data-limr-appearance='your-theme']; reader ancestor selectors miss portals. Keep annotation IDs and CSS names unique. Use the provided .limr-underline on an inline span inside a layout wrapper: a direct flex child becomes a block and cannot paint an underline per text line. Labels that must remain on one line need intrinsic-width buttons; allow button groups to wrap on narrow screens.
 
+## Table planners (1.3.1)
+
+Export an ordinary `RendererExtension`/`defineExtension` with `parameters: { tableLayout: { algorithm } }`, or `tableLayout: false` to select native browser layout. This is a view parameter; preserve GFM syntax and keep function values on the main thread. Declare LiMR >=1.3.1 as the minimum peer version when using these controls.
+
+`TableLayoutAlgorithm` is `(input: TableLayoutInput) => TableLayoutPlan`, exported with `layoutTable` from the root/core entries. `TableLayoutConfig` is exported by root/react. Input rows contain actual font/token/line-height metrics, availableWidth is in CSS pixels, and options include measured fontSize/cellPadding plus overrides. Treat borrowed inputs as immutable. Return positive finite widths/contentWidths per column (both include horizontal padding), content heights per row (excluding padding), a matching clipped matrix, total width, scroll, cost and evaluations. Custom header heights are respected; body height limits apply to clipped cells. Cost/evaluations may be zero for a different solver. Errors propagate; async planners are unsupported.
+
+The adapter retains measurements, bounded width-plan caching, DOM overflow checks and annotation previews. Stable function/configuration references preserve caching; replace configuration to invalidate closed-over state. Keep algorithms pure and bounded. Native mode mounts none of the measured-table machinery. Parameter-only changes do not reparse source, but switching native/measured modes remounts the table view and removes its derived annotations. Original annotations remain source-owned.
+
+Precedence: MarkdownTable.options > host parameters.tableLayout > last extension supplying tableLayout > default. Values replace, not merge: host `{}` restores the built-in algorithm, false disables, omission inherits. Use rendererOverrides for entirely different measurement/DOM. Verify defaults, disable/restore, source selection, active-preview cleanup, algorithm replacement, width-cache reuse, and real packed consumers; do not claim default-path performance from a custom algorithm benchmark.
+
 ## Consumer verification
 
 Build ESM and .d.ts, pack, install into a temporary React consumer without source aliases, and exercise exported CSS. Test supported React versions rather than claiming compatibility from one host. Check final streaming vs one-shot parse equivalence for syntax changes, source offsets for entities/emoji, and actual browser states for card/toolbar/portal behavior. Test loader cancellation and isolation if adding remote data. No real network service is required by the starter.
