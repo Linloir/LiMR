@@ -1,4 +1,5 @@
 import { createParser } from './parser';
+import { hasDocumentSyntax } from './worker-registry';
 import { lineStarts, rangeOf, slugify, textContent, walk } from './tree';
 import type { Annotation, AnnotationOccurrence, Block, DocumentMetrics, DocumentOptions, DocumentSnapshot, Heading, MarkdownNode, ParseContext, SourceAnnotationRange, SourceRange, SyntaxExtension } from './types';
 
@@ -16,6 +17,8 @@ export class DocumentEngine {
   private recoveryOffset: number | undefined;
   private sourceOmissions: readonly SourceRange[] = [];
   private lines: number[] = [0];
+  private hydrated = false;
+  private progress?: DocumentOptions['onProgress'];
   private facts = new WeakMap<MarkdownNode, readonly MarkdownNode[]>();
   private relevant(node: MarkdownNode): readonly MarkdownNode[] {
     let result = this.facts.get(node);
@@ -31,7 +34,23 @@ export class DocumentEngine {
     this.id = options.id ?? `limr-${++sequence}`;
     this.extensions = options.extensions ?? [];
     this.parse = createParser(this.extensions);
+    this.progress = options.onProgress;
     this.update(source, { streaming: options.streaming });
+  }
+
+  /** Adopt a trusted parser result without re-tokenizing or copying its source
+   * and AST. The first edit reparses to rebuild private incremental caches. */
+  static fromSnapshot(snapshot: DocumentSnapshot, options: DocumentOptions = {}): DocumentEngine {
+    if (!snapshot || typeof snapshot.id !== 'string' || typeof snapshot.source !== 'string' || !Number.isInteger(snapshot.revision) || snapshot.revision < 0
+      || !Array.isArray(snapshot.blocks) || !(snapshot.definitions instanceof Map) || !(snapshot.footnotes instanceof Map) || !(snapshot.annotationRanges instanceof Map)) throw new TypeError('Invalid LiMR document snapshot.');
+    if (options.id !== undefined && options.id !== snapshot.id) throw new Error('Snapshot document id does not match the requested id.');
+    for (const block of snapshot.blocks) if (!block.node || !Number.isInteger(block.range.start) || !Number.isInteger(block.range.end) || block.range.start < 0 || block.range.end < block.range.start || block.range.end > snapshot.source.length) throw new TypeError('Invalid snapshot block range.');
+    const document = new DocumentEngine('', { id: snapshot.id });
+    document.extensions = options.extensions ?? []; document.parse = createParser(document.extensions);
+    document.snapshot = snapshot; document.hydrated = true; document.progress = options.onProgress;
+    const prefix = `${snapshot.id}-b`;
+    document.nextBlock = snapshot.blocks.reduce((maximum, block) => Math.max(maximum, block.id.startsWith(prefix) ? Number(block.id.slice(prefix.length)) || 0 : 0), 0);
+    return document;
   }
 
   getSnapshot = (): DocumentSnapshot => this.snapshot!;
@@ -39,8 +58,12 @@ export class DocumentEngine {
 
   setExtensions(extensions: readonly SyntaxExtension[]): void {
     if (extensions === this.extensions) return;
+    const before = this.extensions.filter(hasDocumentSyntax), after = extensions.filter(hasDocumentSyntax);
+    // View modules can change while a 50 MiB document is open. Validate their
+    // names/configuration, but preserve the indexed AST when syntax is identical.
     this.parse = createParser(extensions);
     this.extensions = extensions;
+    if (before.length === after.length && before.every((extension, index) => extension === after[index])) return;
     const previous = this.snapshot!;
     this.update(previous.source, { streaming: previous.streaming }, true);
   }
@@ -52,6 +75,8 @@ export class DocumentEngine {
     const previous = this.snapshot;
     const streaming = options.streaming ?? false;
     if (!force && previous?.source === source && previous.streaming === streaming) return previous;
+    if (this.hydrated) { this.hydrated = false; force = true; }
+    this.progress?.({ phase: 'parse', loaded: 0, total: source.length });
     const globalTransform = this.extensions.some(ext => ext.transform && ext.scope !== 'local');
     const append = !force && previous?.streaming && source.startsWith(previous.source) && !globalTransform;
     const finalizing = !!previous?.streaming && !streaming;
@@ -66,7 +91,7 @@ export class DocumentEngine {
       for (const at of lineStarts(source.slice(from)).slice(1)) this.lines.push(from + at);
     } else this.lines = lineStarts(source);
     const lines = this.lines;
-    const context: ParseContext = { source, streaming, documentId: this.id };
+    const context: ParseContext = { source, streaming, documentId: this.id, onProgress: this.progress };
     const omissions = this.extensions.flatMap(extension => [...extension.preprocess?.(context, this.extensions) ?? []]).sort((a, b) => a.start - b.start);
     const omissionsChanged = omissions.length !== this.sourceOmissions.length || omissions.some((range, index) => range.start !== this.sourceOmissions[index]?.start || range.end !== this.sourceOmissions[index]?.end);
     if (omissionsChanged) { start = 0; if (previous) reason = 'definitions'; }
@@ -111,6 +136,7 @@ export class DocumentEngine {
       if (reusable) { blocks.push(old); reused++; }
       else blocks.push({ id: old?.id ?? `${this.id}-b${++this.nextBlock}`, node, range, pending });
     }
+    this.progress?.({ phase: 'index', loaded: 0, total: blocks.length });
     const headings: Heading[] = [];
     const definitions = new Map<string, MarkdownNode>();
     const footnotes = new Map<string, MarkdownNode>();
@@ -189,6 +215,7 @@ export class DocumentEngine {
       diagnostics: parsed.diagnostics,
       metrics: { parsedCharacters, reusedBlocks: reused, parsedBlocks: parsed.nodes.length, fullParse: start === 0, reason },
     };
+    this.progress?.({ phase: 'index', loaded: blocks.length, total: blocks.length });
     for (const listener of this.listeners) listener();
     return this.snapshot;
   }

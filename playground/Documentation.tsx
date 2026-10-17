@@ -19,6 +19,8 @@ const entries = [
   ['architecture', '架构与行为', 'Architecture and behavior'],
   ['performance', '渲染器性能报告', 'Renderer performance'],
   ['knuth-plass-performance', 'KP 算法性能报告', 'Knuth–Plass performance'],
+  ['table-layout', '表格布局', 'Table layout'],
+  ['large-documents', '大文档', 'Large documents'],
   ['ai-skills', 'AI Skills', 'AI Skills'],
 ] as const;
 

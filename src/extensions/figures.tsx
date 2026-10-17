@@ -1,7 +1,9 @@
+import { transformFigures } from './syntax-transforms';
 import { BlockLoading } from '../components/LoadingRing';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { safeUrl, type MarkdownNode } from '../core';
 import { CopyButton } from '../components/CopyButton';
+import { Image } from '../components/Image';
 import type { NodeRendererProps, RendererExtension } from '../react/types';
 import { defaultFigureLimits, dimension, figureColumns, figureLimits, figureWidths, type FigureLimits, type FigureMeasure } from './figure-layout';
 import { useLocale } from '../react/context';
@@ -93,18 +95,7 @@ export function figures(options: FiguresOptions = {}): RendererExtension {
   return {
     name: 'figures', streaming: { Loading: BlockLoading }, tags: ['figures', 'figure', 'figcaption', 'caption', 'img'], directives: ['figures', 'figure', 'figcaption'], scope: 'local', display: 'block',
     components: { figures: Figures, figure: Figure, figcaption: Caption, caption: Caption,
-      img: ({ node }) => <img src={safeUrl(node.attributes?.src, true)} alt={String(node.attributes?.alt ?? '')} loading="lazy" decoding="async" /> },
-    transform(root) {
-      // Attribute images retain a source binding just like Markdown images.
-      const visit = (node: MarkdownNode) => {
-        if (node.type === 'component' && node.name === 'img') { node.selection = 'atomic'; node.inline = true; }
-        if (node.type === 'component' && node.name === 'figure' && (node.attributes?.src || node.attributes?.url)) {
-          const image = node.attributeNodes?.[node.attributes.src ? 'src' : 'url'];
-          node.children = [{ type: 'image', url: node.attributes.src ?? node.attributes.url, alt: node.attributes.alt ?? '', position: image?.position ?? node.position }, ...(node.children ?? [])];
-        }
-        node.children?.forEach(visit);
-      };
-      visit(root);
-    },
+      img: ({ node }) => <Image src={safeUrl(node.attributes?.src, true)} alt={String(node.attributes?.alt ?? '')} title={node.attributes?.title ? String(node.attributes.title) : undefined} /> },
+    transform: transformFigures,
   };
 }

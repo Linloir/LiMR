@@ -51,7 +51,7 @@ describe('default media and translations modules', () => {
     expect(renderToString(<Markdown source="<density />" plugins={[plugin]} parameters={{ exampleDensity: 7 }} />)).toContain('density:<!-- -->7');
     const html = renderToString(<Markdown source={source} parameters={{ translationMode: 'translation' }} />);
     expect(html).toContain('data-mode="translation"');
-    expect(html).toContain('由全局展示模式控制');
+    expect(html).toContain('controlled by display settings');
   });
   it('supports directive forms and recovers complete streaming output', () => {
     const input = ':::figures{columns="2"}\n::figure{src="/one.png" caption="One"}\n::figure{src="/two.png"}\n:::\n\n:::translations{default="translation"}\n::origin[Original]\n::translation[译文]\n:::';

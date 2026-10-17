@@ -24,6 +24,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 | 属性 | 默认 / 说明 |
 | --- | --- |
 | source | 空字符串，原始 Markdown |
+| document | 可选现有 DocumentEngine，优先于 source/streaming，使用已恢复的快照时不再解析 |
 | streaming | false |
 | documentId | 自动生成；显式值应稳定且页面内唯一 |
 | extensions | standard()，完整扩展清单 |
@@ -57,6 +58,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 | 组件 | 额外属性及默认值 |
 | --- | --- |
 | Reader | toc=true、sidebar=true、sidebarCollapse=false、fillHeight=true、sidebarBreakpoint=1120、actions、followOutput=false、className/style |
+| AsyncReader | Reader 配置加 input、loading、loadingFallback、onLoadStateChange，见[大文档](large-documents.md) |
 | Markdown | interactive=true、followOutput=false、className/style |
 | DocumentProvider | children；为下方组件提供上下文 |
 | TableOfContents | title、maxDepth=6、followActive=true、topInset=24、updateHash=false、className/style |
@@ -69,9 +71,20 @@ Reader、Markdown 与 DocumentProvider 接受：
 | AnnotationGroup | occurrence、presentation、expanded=true、enabled=true |
 | AnnotationMarkdown | MarkdownProps，source 必填；默认 interactive=false |
 | InlineMarker | label 必填，color、children 和 button 属性/ref |
+| Image | 原生图片 props/ref；preview=true、loading='lazy'、decoding='async'；已加载图片可打开共享预览 |
+| ImagePreview | 受控 image/onClose；image 包含 src、width、height，可选 alt/来源 element；可选 locale/theme/appearance/className/style |
+| MarkdownTable | 绑定原文的 node/renderChildren 适配组件，默认渲染器自动使用，见[表格布局](table-layout.md) |
 | ToolIcon | name 与 SVG 属性；如 note、copy、highlight、comment、zoom-in、zoom-out、source、image |
 
 共享文档组件/hooks 应位于 Provider 内，独立 Markdown 和 Reader 会建立自己的文档。AnnotationEditor 是受控 UI，可独立使用；AnnotationCard 是浮层内容模板，不负责自建 portal。sidebar.renderCard 接收 `{ occurrence, active, activate }`；toolbar.render 接收 `{ context, actions, run }`。
+
+`Reader` 和 `AsyncReader` 也接受 `children`，位于同一文档 Provider 内、阅读布局之后。宿主适配组件可在其中调用 `useLiMR()`，通过 `scrollToSource(range)` 定位任意原文位置，包括长文中尚未挂载的段落。宿主编辑器的滚动同步仍由宿主负责。
+
+逐段翻译偏好可通过 `parameters.translationModeForNode(node, document)` 和 `onTranslationBlockModeChange(node, mode, document)` 提供。解析函数优先于 `translationMode`；返回 `undefined` 时恢复全局、本地和源码默认值。可见段落、复制、搜索及全文目录共同使用它，包括尚未挂载的内容。角标点击优先交给逐段回调，再考虑全局回调或本地状态；已解析出的逐段模式若没有回调则锁定。`TranslationBlock` 也支持组件级 `mode`/`onModeChange`；若该状态需要参与窗口阅读，应使用上述参数接口。偏好变化时替换解析函数，不要静默修改其闭包数据。
+
+自定义窗口渲染器收到 `VirtualizedTextContext`：`source` 是完整节点源码，`children` 是已按选区和展示状态过滤的子节点文字，惰性 `value` getter 返回选中的解码后叶节点内容。代码保留字面空白和实体。代码主题适配器可使用 `copyText: (_node, { value }) => value`，无需重新实现源码映射，也不会在局部选择时复制整块代码。
+
+`Image` 和 `ImagePreview` 也可独立于 Reader 使用。预览支持适应窗口、原始大小、Escape 关闭和焦点返回。本地或受保护图片的 URL 由宿主解析后传入，核心组件不负责文件系统查找。
 
 `SidebarPositioner` 接收 `{ id, anchorTop, height }[]` 与 `{ activeId, gap, height?, prioritizeActive? }`，返回 ID 到 top 的映射。anchorTop 是关联文本首行的位置；prioritizeActive 区分悬浮/激活条目与随阅读位置选择的条目。默认 alignSidebar 在静止时收拢文末卡片，交互时优先保留当前条目的对齐。
 

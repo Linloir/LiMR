@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type RefObject } from 'react';
 import type { AnnotationOccurrence } from '../core';
 import { useAppearance, useDocument, useIsomorphicLayoutEffect, useLocale, useRuntime, useStoreSelector, useTheme } from '../react/context';
-import { sourceRangeStartRect } from '../react/source-geometry';
+import { createSourceRangeLookup } from '../react/source-geometry';
 import { annotationReferenceText } from './annotation-reference';
 import { SidebarCardBody } from './SidebarCardBody';
-import { fitSidebarBoxes, foldWindowHeight, planSidebarCollapse } from './sidebar-collapse';
+import { fitSidebarBoxes, foldWindowHeight, planSidebarCollapse, planSidebarCollapseSteps, reanchorSidebarPlan, type CollapsibleSidebarItem, type SidebarClusterPlan } from './sidebar-collapse';
 import type { AnnotationSidebarProps } from './AnnotationSidebar';
+import { isOwnedImagePreview } from './image-preview-behavior';
 
 interface Geometry { anchors: Map<string, number>; height: number; viewportHeight: number; clipTop: number; clipBottom: number }
 interface Pose { top: number; height: number; offset: number }
@@ -15,7 +16,7 @@ const sameSizes = (a: Map<string, number>, b: Map<string, number>) => a.size ===
 /** One clock for group placement, clipping and content translation. Geometry is
  * cached before the animation; frames only write transforms and clipping state,
  * with no scroll events, layout reads or React renders to feed back into hover. */
-function useSidebarMotion(rail: RefObject<HTMLElement | null>, targets: Map<string, Target>, intent: string, geometry: Geometry, gap: number, focusGroup?: string) {
+function useSidebarMotion(rail: RefObject<HTMLElement | null>, targets: Map<string, Target>, membership: string, intent: string, geometry: Geometry, gap: number, focusGroup?: string) {
   const latest = useRef({ targets, geometry, gap, focusGroup }), previousIntent = useRef(intent), frame = useRef(0), current = useRef(new Map<string, Pose>());
   const nodes = useRef(new Map<string, { group: HTMLElement; viewport: HTMLElement; content: HTMLElement; cards: Map<string, HTMLElement> }>());
   const write = useCallback((poses: Map<string, Pose>) => {
@@ -32,8 +33,8 @@ function useSidebarMotion(rail: RefObject<HTMLElement | null>, targets: Map<stri
       if (!previous || previous.top !== pose.top) node.group.style.transform = `translate3d(0,${pose.top}px,0)`;
       if (!previous || previous.height !== pose.height) node.viewport.style.height = `${pose.height}px`;
       if (!previous || previous.offset !== pose.offset) node.content.style.transform = `translate3d(0,${-pose.offset}px,0)`;
-      node.group.dataset.ready = 'true';
-      const start = Math.max(0, geometry.clipTop - pose.top), end = Math.max(start, Math.min(pose.height, geometry.clipBottom - pose.top));
+      if (node.group.dataset.ready !== 'true') node.group.dataset.ready = 'true';
+      const start = Math.max(0, Math.min(pose.height, geometry.clipTop - pose.top)), end = Math.max(start, Math.min(pose.height, geometry.clipBottom - pose.top));
       const topOverflow = Math.max(0, pose.offset + start), bottomOverflow = Math.max(0, target.contentHeight - pose.offset - end);
       node.viewport.toggleAttribute('data-overflow-top', end > start && topOverflow > .5);
       node.viewport.toggleAttribute('data-overflow-bottom', end > start && bottomOverflow > .5);
@@ -55,7 +56,6 @@ function useSidebarMotion(rail: RefObject<HTMLElement | null>, targets: Map<stri
     current.current = poses;
   }, []);
   useIsomorphicLayoutEffect(() => {
-    latest.current = { targets, geometry, gap, focusGroup };
     const host = rail.current; if (!host) return;
     const groups = new Map<string, { group: HTMLElement; viewport: HTMLElement; content: HTMLElement; cards: Map<string, HTMLElement> }>();
     for (const group of host.querySelectorAll<HTMLElement>(':scope > .limr-sidebar-cluster')) {
@@ -63,6 +63,10 @@ function useSidebarMotion(rail: RefObject<HTMLElement | null>, targets: Map<stri
       groups.set(group.dataset.group!, { group, viewport, content, cards: new Map([...content.children].map(card => [(card as HTMLElement).dataset.occurrence!, card as HTMLElement])) });
     }
     nodes.current = groups;
+  }, [membership, rail]);
+  useIsomorphicLayoutEffect(() => {
+    latest.current = { targets, geometry, gap, focusGroup };
+    const host = rail.current; if (!host) return;
     if (previousIntent.current === intent) { if (!frame.current) write(targets); return; }
     previousIntent.current = intent;
     cancelAnimationFrame(frame.current); frame.current = 0;
@@ -89,14 +93,39 @@ function useSidebarMotion(rail: RefObject<HTMLElement | null>, targets: Map<stri
   useEffect(() => () => cancelAnimationFrame(frame.current), []);
 }
 
+function useSidebarPlans(items: readonly CollapsibleSidebarItem[], height: number, maxHeight: number, gap: number) {
+  const [settled, setSettled] = useState<{ items: readonly CollapsibleSidebarItem[]; height: number; maxHeight: number; gap: number; plans: SidebarClusterPlan[] }>();
+  const immediate = useMemo(() => items.length <= 32 ? planSidebarCollapse(items, height, maxHeight, gap) : undefined, [items, height, maxHeight, gap]);
+  useEffect(() => {
+    if (immediate) return;
+    const steps = planSidebarCollapseSteps(items, height, maxHeight, gap);
+    let frame = 0, cancelled = false;
+    const advance = () => {
+      const deadline = performance.now() + 3;
+      do {
+        const next = steps.next();
+        if (next.done) { if (!cancelled) setSettled({ items, height, maxHeight, gap, plans: next.value }); return; }
+      } while (performance.now() < deadline);
+      frame = requestAnimationFrame(advance);
+    };
+    frame = requestAnimationFrame(advance);
+    return () => { cancelled = true; cancelAnimationFrame(frame); };
+  }, [items, height, maxHeight, gap, immediate]);
+  return useMemo(() => immediate ?? (settled?.items === items && settled.height === height && settled.maxHeight === maxHeight && settled.gap === gap
+    ? settled.plans : reanchorSidebarPlan(settled?.plans ?? [], items, maxHeight, gap)), [immediate, settled, items, height, maxHeight, gap]);
+}
+
 export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = '', style }: AnnotationSidebarProps) {
   const runtime = useRuntime(), theme = useTheme(), appearance = useAppearance(), locale = useLocale(), document = useDocument();
+  const sourceLookup = useMemo(() => createSourceRangeLookup(runtime), [runtime]);
+  useEffect(() => () => sourceLookup.dispose(), [sourceLookup]);
   const decorations = useStoreSelector(runtime.decorations, value => value), interaction = useStoreSelector(runtime.interaction, value => value);
   const layout = useSyncExternalStore(runtime.layout.subscribe, runtime.layout.get, runtime.layout.get);
   const viewport = useSyncExternalStore(runtime.viewport.subscribe, runtime.viewport.get, runtime.viewport.get);
   const rail = useRef<HTMLElement>(null), cards = useRef(new Map<string, HTMLDivElement>());
   const [geometry, setGeometry] = useState<Geometry>({ anchors: new Map(), height: 0, viewportHeight: 0, clipTop: 0, clipBottom: 0 });
   const [sizes, setSizes] = useState({ preview: new Map<string, number>(), actual: new Map<string, number>() });
+  const measuredSizes = useRef(sizes);
   const [alignment, setAlignment] = useState<string | null>(null), aligned = useRef(alignment), pinned = useRef<string | null>(null);
   aligned.current = alignment;
   const focused = interaction.hovered ?? interaction.active;
@@ -113,14 +142,27 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
   useIsomorphicLayoutEffect(() => {
     const element = rail.current; if (!element) return;
     const top = element.getBoundingClientRect().top, anchors = new Map<string, number>();
+    const parked = new Set<string>(), interaction = runtime.interaction.get();
+    sourceLookup.withPass(() => {
     for (const occurrence of decorations.occurrences) {
       const marker = runtime.anchors.get(occurrence.id);
       if (!marker || marker.closest('[inert]')) continue;
-      const rect = sourceRangeStartRect(runtime, decorations.referenceRanges.get(occurrence.id) ?? occurrence.range) ?? marker.getBoundingClientRect();
+      if (marker.closest('[data-window-parked]')) {
+        if (interaction.active === occurrence.id || interaction.hovered === occurrence.id || interaction.toolbarOccurrence === occurrence.id || interaction.editing && occurrence.annotationIds.includes(interaction.editing)) parked.add(occurrence.id);
+        continue;
+      }
+      const rect = sourceLookup.startRect(decorations.referenceRanges.get(occurrence.id) ?? occurrence.range) ?? marker.getBoundingClientRect();
       anchors.set(occurrence.id, Math.max(0, rect.top - top));
     }
-    setGeometry(old => sameSizes(old.anchors, anchors) ? old : { ...old, anchors });
-  }, [runtime, decorations, layout]);
+    });
+    setGeometry(old => {
+      // Kept-alive editors/media live outside the physical reading window.
+      // Their artificial parking position must never become a card anchor.
+      const next = parked.size ? new Map(anchors) : anchors;
+      for (const id of parked) if (old.anchors.has(id)) next.set(id, old.anchors.get(id)!);
+      return sameSizes(old.anchors, next) ? old : { ...old, anchors: next };
+    });
+  }, [runtime, sourceLookup, decorations, layout]);
   useIsomorphicLayoutEffect(() => {
     const element = rail.current; if (!element) return;
     const bounds = element.getBoundingClientRect(), root = runtime.configuration.get().scrollRoot, rootBounds = root?.getBoundingClientRect();
@@ -130,9 +172,15 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
     const viewportHeight = Math.min(screenHeight, root?.clientHeight ?? Infinity);
     setGeometry(old => old.height === bounds.height && old.viewportHeight === viewportHeight && old.clipTop === clipTop && old.clipBottom === clipBottom ? old : { ...old, height: bounds.height, viewportHeight, clipTop, clipBottom });
   }, [runtime, layout, viewport]);
-  const measure = useCallback(() => {
-    const actual = new Map<string, number>(), preview = new Map<string, number>();
-    cards.current.forEach((element, id) => {
+  const measure = useCallback((entries?: readonly ResizeObserverEntry[]) => {
+    const old = measuredSizes.current, actual = new Map(old.actual), preview = new Map(old.preview);
+    const changed = entries ? new Set(entries.flatMap(entry => {
+      const card = (entry.target as HTMLElement).closest<HTMLElement>('.limr-sidebar-card'); return card ? [card] : [];
+    })) : new Set(cards.current.values());
+    for (const id of actual.keys()) if (!cards.current.has(id)) { actual.delete(id); preview.delete(id); }
+    changed.forEach(element => {
+      const id = element.dataset.occurrence!;
+      if (cards.current.get(id) !== element) return;
       actual.set(id, element.getBoundingClientRect().height);
       const body = element.querySelector<HTMLElement>(':scope > .limr-sidebar-card-body');
       if (!body) { preview.set(id, element.getBoundingClientRect().height); return; }
@@ -143,10 +191,13 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
         + (heading?.getBoundingClientRect().height ?? 0) + parseFloat(css.paddingTop) + parseFloat(css.paddingBottom)
         + summaryHeight + (summaryHeight && summary ? parseFloat(getComputedStyle(summary).marginTop) || 0 : 0));
     });
-    setSizes(old => sameSizes(old.actual, actual) && sameSizes(old.preview, preview) ? old : { actual, preview: sameSizes(old.preview, preview) ? old.preview : preview });
+    const samePreview = sameSizes(old.preview, preview);
+    if (sameSizes(old.actual, actual) && samePreview) return;
+    const next = { actual, preview: samePreview ? old.preview : preview };
+    measuredSizes.current = next; setSizes(next);
   }, []);
   const items = useMemo(() => decorations.occurrences.filter(item => geometry.anchors.has(item.id)).map(item => ({ id: item.id, anchorTop: geometry.anchors.get(item.id)!, height: sizes.preview.get(item.id) ?? 110 })).sort((a, b) => a.anchorTop - b.anchorTop), [decorations.occurrences, geometry.anchors, sizes.preview]);
-  const plans = useMemo(() => planSidebarCollapse(items, geometry.height, Math.min(460, geometry.viewportHeight * .55), gap), [items, geometry.height, geometry.viewportHeight, gap]);
+  const plans = useSidebarPlans(items, geometry.height, Math.min(460, geometry.viewportHeight * .55), gap);
   const membership = plans.map(group => group.items.map(item => item.id).join(',')).join('|');
   useEffect(() => {
     const observer = new ResizeObserver(measure);
@@ -157,7 +208,7 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
     runtime.documentOffset.set(0);
     const observer = new ResizeObserver(() => runtime.requestLayout()); if (rail.current) observer.observe(rail.current);
     const dismiss = (event: PointerEvent) => {
-      if (event.button !== 0 || !(event.target instanceof Element) || rail.current?.contains(event.target) || event.target.closest('.limr-selection-toolbar,.limr-overlay-positioner')) return;
+      if (event.button !== 0 || !(event.target instanceof Element) || rail.current?.contains(event.target) || event.target.closest('.limr-selection-toolbar,.limr-overlay-positioner') || isOwnedImagePreview(event.target, rail.current)) return;
       const marker = event.target.closest<HTMLElement>('[data-limr-anchor]');
       if (marker && runtime.anchors.get(marker.dataset.limrAnchor!) === marker) return;
       runtime.activate(null); setAlignment(null);
@@ -171,9 +222,10 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
     window.document.addEventListener('pointerdown', dismiss); window.document.addEventListener('keydown', escape);
     return () => { observer.disconnect(); window.document.removeEventListener('pointerdown', dismiss); window.document.removeEventListener('keydown', escape); };
   }, [runtime]);
-  const targets = new Map<string, Target>();
-  let focusGroup: string | undefined;
-  const boxes = plans.map(plan => {
+  const { targets, focusGroup } = useMemo(() => {
+    const targets = new Map<string, Target>();
+    let focusGroup: string | undefined;
+    const boxes = plans.map(plan => {
     let contentHeight = 0, selectedTop = 0, selectedHeight = 0;
     const cardPositions = plan.items.map(item => {
       const height = sizes.actual.get(item.id) ?? item.height, top = contentHeight;
@@ -201,23 +253,25 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
     const bottomFade = plan.folded && !isFocused && cutCard ? Math.max(24, cutCard.height * .5) : 24;
     targets.set(plan.id, { top, height, offset, contentHeight, bottomFade, cards: cardPositions });
     return { id: plan.id, anchorTop: top, height, weight: isFocused ? 10000 : 1 };
-  });
-  const positions = fitSidebarBoxes(boxes, gap, geometry.height, focusGroup);
-  for (const [id, target] of targets) target.top = positions.get(id)!;
-  useSidebarMotion(rail, targets, `${alignment ?? ''}:${interaction.active ?? ''}:${membership}`, geometry, gap, focusGroup);
+    });
+    const positions = fitSidebarBoxes(boxes, gap, geometry.height, focusGroup);
+    for (const [id, target] of targets) target.top = positions.get(id)!;
+    return { targets, focusGroup };
+  }, [plans, sizes.actual, alignment, geometry.anchors, geometry.height, geometry.viewportHeight, gap]);
+  useSidebarMotion(rail, targets, membership, `${alignment ?? ''}:${interaction.active ?? ''}:${membership}`, geometry, gap, focusGroup);
   const activate = useCallback((id: string) => {
     const state = runtime.interaction.get(); runtime.activate(state.active === id ? null : id, 'sidebar');
     if (cards.current.get(id)?.matches(':hover')) runtime.hover(id, 'sidebar');
   }, [runtime]);
   const references = useMemo(() => new Map(decorations.occurrences.map(item => [item.id, annotationReferenceText(document, item)])), [document, decorations.occurrences]);
   const annotationGroups = useMemo(() => new Map(decorations.occurrences.map(item => [item.id, item.annotationIds.flatMap(id => { const annotation = decorations.annotations.get(id); return annotation ? [annotation] : []; })])), [decorations]);
-  const occurrences = new Map(decorations.occurrences.map(item => [item.id, item]));
-  const renderItem = (occurrence: AnnotationOccurrence) => {
+  const occurrences = useMemo(() => new Map(decorations.occurrences.map(item => [item.id, item])), [decorations.occurrences]);
+  const renderItem = useCallback((occurrence: AnnotationOccurrence) => {
     const id = occurrence.id, annotation = decorations.annotations.get(occurrence.annotationIds[0]);
     const definition = runtime.annotationTypes.get(annotation?.type ?? 'citation'), palette = definition?.sidebar;
     const active = interaction.active === id;
     const cardStyle = {
-      '--limr-sidebar-card-height': `${Math.max(80, Math.min(560, geometry.viewportHeight * .65, geometry.height))}px`,
+      [renderCard ? '--limr-sidebar-card-height' : '--limr-sidebar-layout-height']: `${Math.max(80, Math.min(560, geometry.viewportHeight * .65, geometry.height))}px`,
       '--limr-annotation-color': palette?.color ?? definition?.color, '--limr-annotation-border': palette?.borderColor,
       '--limr-annotation-title': palette?.titleColor, '--limr-annotation-text': palette?.textColor, '--limr-annotation-excerpt': palette?.excerptColor,
       '--limr-annotation-preview': palette?.previewColor, '--limr-sidebar-preview-lines': String(Math.max(1, Math.floor(palette?.previewLines ?? 2))),
@@ -233,12 +287,13 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
         reference={references.get(id) ?? ''} point={decorations.referenceRanges.get(id)?.start === decorations.referenceRanges.get(id)?.end} active={active}
         title={definition?.label ?? annotation?.type ?? locale.annotations} toggleLabel={active ? locale.collapse : locale.expand} Preview={palette?.Preview} activate={activate} />}
     </div>;
-  };
-  return <aside ref={rail} className={`limr-sidebar ${className}`} aria-label={locale.annotations} data-sync="document" data-collapse-overflow="true" data-limr-theme={theme} data-limr-appearance={appearance} style={style}>
-    {plans.map(plan => <section key={plan.id} className="limr-sidebar-cluster" data-group={plan.id} data-collapsible={plan.folded || undefined}>
+  }, [runtime, decorations, interaction.active, focused, geometry.viewportHeight, geometry.height, renderCard, annotationGroups, references, locale.annotations, locale.collapse, locale.expand, activate]);
+  const content = useMemo(() => plans.map(plan => <section key={plan.id} className="limr-sidebar-cluster" data-group={plan.id} data-collapsible={plan.folded || undefined}>
       <div className="limr-sidebar-cluster-list"><div className="limr-sidebar-cluster-items" style={{ gap }}>
         {plan.items.map(item => renderItem(occurrences.get(item.id)!))}
       </div></div>
-    </section>)}
+    </section>), [plans, gap, renderItem, occurrences]);
+  return <aside ref={rail} className={`limr-sidebar ${className}`} aria-label={locale.annotations} data-sync="document" data-collapse-overflow="true" data-limr-theme={theme} data-limr-appearance={appearance} style={style}>
+    {content}
   </aside>;
 }

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { fitSidebarBoxes, planSidebarCollapse } from '../src/components/sidebar-collapse';
+import { fitSidebarBoxes, planSidebarCollapse, planSidebarCollapseSteps, reanchorSidebarPlan } from '../src/components/sidebar-collapse';
 
 test('minimal-displacement packing keeps mild collisions and isolated cards unfolded', () => {
   const items = [{ id: 'a', anchorTop: 100, height: 100 }, { id: 'b', anchorTop: 180, height: 100 }, { id: 'c', anchorTop: 700, height: 100 }];
@@ -42,4 +42,28 @@ test('a local dense group does not consume distant sparse annotations', () => {
   expect(plan.find(group => group.id === 'c')?.folded).toBe(false);
   expect(plan.filter(group => group.folded)).toHaveLength(1);
   expect(planSidebarCollapse([], 100)).toEqual([]);
+});
+
+test('a paused folding search preserves the synchronous optimum and its input', () => {
+  const items = Array.from({ length: 96 }, (_, i) => ({ id: String(i), anchorTop: 50 + i * 65, height: 110 + i % 3 }));
+  const original = structuredClone(items), search = planSidebarCollapseSteps(items, 7600);
+  let checkpoints = 0, next = search.next();
+  while (!next.done) { checkpoints++; next = search.next(); }
+  expect(checkpoints).toBeGreaterThan(items.length);
+  expect(next.value).toEqual(planSidebarCollapse(items, 7600));
+  expect(items).toEqual(original);
+});
+
+test('pending geometry keeps every surviving and new note reachable without changing the settled plan', () => {
+  const items = Array.from({ length: 12 }, (_, index) => ({ id: String(index), anchorTop: 100, height: 100 }));
+  const plan = planSidebarCollapse(items, 1200), saved = structuredClone(plan);
+  const changed = items.slice(1).map(item => ({ ...item, anchorTop: item.anchorTop + 85 }));
+  changed.push({ id: 'new', anchorTop: 950, height: 120 });
+  const pending = reanchorSidebarPlan(plan, changed, 420, 14);
+  expect(pending.flatMap(group => group.items.map(item => item.id))).toEqual(changed.map(item => item.id));
+  expect(pending[0].anchorTop).toBe(185);
+  expect(pending.at(-1)?.items[0].id).toBe('new');
+  expect(pending.some(group => group.folded)).toBe(true);
+  expect(plan).toEqual(saved);
+  expect(reanchorSidebarPlan(plan, changed.slice(0, 2), 420, 14).every(group => !group.folded)).toBe(true);
 });

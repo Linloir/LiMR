@@ -6,15 +6,16 @@ import { prepareKnuthPlass, type KnuthPlassOptions, type LineItem, type Paragrap
 import { LruCache } from '../core/cache';
 import type { ReaderRuntime } from './runtime';
 import { measurementRange } from './source-geometry';
+import { finishTypographyLayout, observeTypographyLayout, queueTypographyLayout } from './typography-layout-state';
 
 const hypher = new Hypher(patterns), wordWidths = new LruCache<string, number>(8192), hyphens = new LruCache<string, readonly string[]>(2048);
 const plans = new LruCache<string, ParagraphLayout>(256);
 let canvas: CanvasRenderingContext2D | null;
 interface Segment { node: Text | Element; start: number; end: number; text: string }
-interface Anchor { node: Text | Element; start: number; end: number; existingBreak?: boolean; wordSpacing?: number }
+interface Anchor { node: Text | Element; start: number; end: number; existingBreak?: boolean; wordSpacing?: number; letterSpacing?: number }
 type Item = LineItem & { anchor?: Anchor };
 interface Preparation { items: Item[]; signature: string; layout: ReturnType<typeof prepareKnuthPlass>; styles: Map<Element, string>; atomics: { element: Element; width: number }[] }
-interface Job { prepared?: Preparation; plan?: ParagraphLayout; update?: (plan: ParagraphLayout) => void; reflow?: (plan: ParagraphLayout) => Application; element: HTMLElement; runtime: ReaderRuntime; options: KnuthPlassOptions; visible: boolean; dirty: boolean; undo?: (changed?: ReadonlySet<Node>) => void; width?: number; font?: string; observer: MutationObserver; disposed: boolean }
+interface Job { prepared?: Preparation; plan?: ParagraphLayout; update?: (plan: ParagraphLayout) => void; reflow?: (plan: ParagraphLayout) => Application; element: HTMLElement; runtime: ReaderRuntime; options: KnuthPlassOptions; visible: boolean; dirty: boolean; undo?: (changed?: ReadonlySet<Node>) => void; width?: number; measuredWidth?: number; settledWidth?: number; font?: string; observer: MutationObserver; disposed: boolean }
 const jobs = new Map<HTMLElement, Job>(), queue = new Set<Job>();
 let frame = 0, resize: ResizeObserver | undefined, intersection: IntersectionObserver | undefined;
 let listening = false;
@@ -31,6 +32,7 @@ function enqueue(job: Job) {
   if (job.disposed) return;
   job.dirty = true;
   if (!job.visible) return;
+  queueTypographyLayout(job.runtime, job.element, true);
   queue.add(job);
   if (!frame) frame = requestAnimationFrame(flush);
 }
@@ -43,13 +45,14 @@ function flush() {
   const end = performance.now() + 6, writes: (() => void)[] = [];
   for (const job of queue) {
     queue.delete(job);
-    if (job.disposed || !job.visible || selected(job.element)) continue;
+    if (job.disposed || !job.visible || selected(job.element)) { queueTypographyLayout(job.runtime, job.element, false); continue; }
     const animations = job.element.getAnimations({ subtree: true }).filter(animation => animation.playState === 'running' && animation.effect?.getTiming().iterations !== Infinity);
     if (animations.length) { void Promise.allSettled(animations.map(animation => animation.finished)).then(() => enqueue(job)); continue; }
     const apply = prepare(job);
     writes.push(() => {
       if (job.disposed) return;
-      apply?.(); job.element.removeAttribute('data-limr-kp-stale'); job.dirty = false; observe(job); if (apply) job.runtime.requestLayout();
+      const wasPending = job.dirty || job.settledWidth !== job.measuredWidth;
+      apply?.(); job.element.removeAttribute('data-limr-kp-stale'); job.settledWidth = job.measuredWidth; job.dirty = false; queueTypographyLayout(job.runtime, job.element, false); observe(job); if (apply || wasPending) finishTypographyLayout(job.runtime);
     });
     if (performance.now() >= end) break;
   }
@@ -84,6 +87,7 @@ function initialize() {
       const job = jobs.get(entry.target as HTMLElement);
       if (!job) continue;
       job.visible = entry.isIntersecting;
+      if (!job.visible) queueTypographyLayout(job.runtime, job.element, false);
       if (job.visible && (job.dirty || !job.undo)) enqueue(job);
       // Earlier paragraphs can change height before this job runs, moving it
       // out of the queue's visible region after ResizeObserver saw it inside.
@@ -117,10 +121,21 @@ export function typeset(root: HTMLElement, runtime: ReaderRuntime, options: Knut
       restore(job, new Set(relevant.filter(record => record.type === 'characterData').map(record => record.target)));
       observe(job); enqueue(job);
     }) };
+    observeTypographyLayout(element, () => {
+      // Active native selections intentionally keep their current DOM/native
+      // wrapping. No typesetting is scheduled until the selection is released.
+      if (job.disposed || selected(element)) return false;
+      if (job.dirty || job.settledWidth === undefined) return true;
+      const style = getComputedStyle(element);
+      return Math.abs(job.settledWidth - (element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight))) > .5;
+    });
+    // The first IntersectionObserver delivery decides whether this new job is
+    // visible. Until then it can still affect an already requested neighbour.
+    queueTypographyLayout(runtime, element, true);
     owned.push(job); jobs.set(element, job); resize!.observe(element); intersection!.observe(element); observe(job);
   }
   return () => {
-    for (const job of owned) { job.disposed = true; queue.delete(job); restore(job); resize!.unobserve(job.element); intersection!.unobserve(job.element); jobs.delete(job.element); }
+    for (const job of owned) { job.disposed = true; observeTypographyLayout(job.element); queueTypographyLayout(job.runtime, job.element, false); queue.delete(job); restore(job); resize!.unobserve(job.element); intersection!.unobserve(job.element); jobs.delete(job.element); }
     if (!jobs.size) {
       resize?.disconnect(); intersection?.disconnect(); cancelAnimationFrame(frame); frame = 0;
       document.removeEventListener('selectionchange', selectionChanged); document.fonts.removeEventListener('loadingdone', fontsChanged); listening = false;
@@ -163,7 +178,7 @@ function itemize(element: HTMLElement, options: KnuthPlassOptions): Preparation 
     for (const piece of pieces.slice(0, -1)) { at += piece.length; if (!breaks.has(at)) breaks.set(at, { hyphen: true, automatic: true }); }
   }
   const atomics: Preparation['atomics'] = [];
-  const items: Item[] = [], styleCache = new Map<Element, { key: string; space: number; hyphen: number; em: number; wordSpacing: number }>();
+  const items: Item[] = [], styleCache = new Map<Element, { key: string; space: number; hyphen: number; em: number; wordSpacing: number; letterSpacing: number }>();
   const range = measurementRange(element.ownerDocument);
   function metrics(parent: Element) {
     let found = styleCache.get(parent); if (found) return found;
@@ -172,7 +187,7 @@ function itemize(element: HTMLElement, options: KnuthPlassOptions): Preparation 
     canvas!.font = font;
     const spacing = parseFloat(style.letterSpacing) || 0;
     const wordSpacing = parseFloat(style.wordSpacing) || 0;
-    found = { key: fontKey(style), space: canvas!.measureText(' ').width + spacing + wordSpacing, hyphen: canvas!.measureText('-').width + spacing, em: parseFloat(style.fontSize), wordSpacing };
+    found = { key: fontKey(style), space: canvas!.measureText(' ').width + spacing + wordSpacing, hyphen: canvas!.measureText('-').width + spacing, em: parseFloat(style.fontSize), wordSpacing, letterSpacing: spacing };
     styleCache.set(parent, found); return found;
   }
   function measure(node: Text, from: number, to: number, key: string) {
@@ -196,7 +211,7 @@ function itemize(element: HTMLElement, options: KnuthPlassOptions): Preparation 
     const sorted = [...points].sort((a, b) => a - b);
     for (let i = 1; i < sorted.length; i++) {
       const start = sorted[i - 1], end = sorted[i], value = segment.text.slice(start, end);
-      const anchor = { node, start, end, wordSpacing: style.wordSpacing };
+      const anchor = { node, start, end, wordSpacing: style.wordSpacing, letterSpacing: style.letterSpacing };
       if (/^[ \t\r\n\f]+$/.test(value)) {
         const preceding = items.at(-1);
         const space = preceding?.type === 'glue' ? 0 : style.space;
@@ -207,7 +222,7 @@ function itemize(element: HTMLElement, options: KnuthPlassOptions): Preparation 
         // An annotation marker belongs to the preceding word/atomic object.
         const next = segmentStarts.get(point);
         if (opportunity && !(next?.node instanceof Element && next.node.hasAttribute('data-limr-ignore'))) {
-          const at = { node, start: end, end };
+          const at = { node, start: end, end, letterSpacing: style.letterSpacing };
           if (opportunity.hyphen) items.push({ type: 'penalty', width: style.hyphen, penalty: options.hyphenPenalty ?? 50, flagged: true, automatic: opportunity.automatic, anchor: at });
           else if (opportunity.required) items.push({ type: 'glue', width: 0, stretch: 1, shrink: 0, infinite: true }, { type: 'penalty', width: 0, penalty: -10000, anchor: at });
           else if (!/[ \t\r\n\f]/.test(text[point] ?? '')) items.push({ type: 'glue', width: 0, stretch: style.em * .15, shrink: 0, anchor: at });
@@ -222,6 +237,7 @@ function prepare(job: Job): (() => void) | undefined {
   const { element, options } = job, base = getComputedStyle(element);
   const width = element.clientWidth - parseFloat(base.paddingLeft) - parseFloat(base.paddingRight);
   if (width <= 0) return;
+  job.measuredWidth = width;
   if (job.prepared && ([...job.prepared.styles].some(([element, key]) => !element.isConnected || fontKey(getComputedStyle(element)) !== key) || job.prepared.atomics.some(({ element, width }) => element.getBoundingClientRect().width !== width))) job.prepared = undefined;
   if (!job.prepared) { restore(job); job.prepared = itemize(element, options); }
   const prepared = job.prepared; if (!prepared) return;
@@ -249,7 +265,7 @@ function prepare(job: Job): (() => void) | undefined {
   };
 }
 
-interface Insertion { start: number; end: number; width?: number; spacing?: number; measure?: (plan: ParagraphLayout) => number; break?: boolean; hyphen?: boolean }
+interface Insertion { start: number; end: number; width?: number; spacing?: number; letterSpacing?: number; measure?: (plan: ParagraphLayout) => number; break?: boolean; hyphen?: boolean }
 interface Original { node: Text; value: string; shell: HTMLSpanElement }
 interface Application { undo: (changed?: ReadonlySet<Node>) => void; update: (plan: ParagraphLayout) => void; reflow: (plan: ParagraphLayout) => Application }
 function apply(element: HTMLElement, items: Item[], plan: ParagraphLayout, previous: Original[] = []): Application {
@@ -272,7 +288,7 @@ function apply(element: HTMLElement, items: Item[], plan: ParagraphLayout, previ
       };
       const width = measure(plan);
       const spacing = !boundary && item.width > 0 && item.anchor.end > item.anchor.start ? (item.anchor.wordSpacing ?? 0) + width - item.width : undefined;
-      if (width || item.anchor.end !== item.anchor.start || i === current.index || item.stretch) add(item.anchor, { width, spacing, measure: spacing === undefined ? measure : next => (item.anchor!.wordSpacing ?? 0) + measure(next) - item.width, break: !last && i === current.index });
+      if (width || item.anchor.end !== item.anchor.start || i === current.index || item.stretch) add(item.anchor, { width, spacing, letterSpacing: item.anchor.letterSpacing, measure: spacing === undefined ? measure : next => (item.anchor!.wordSpacing ?? 0) + measure(next) - item.width, break: !last && i === current.index });
     } else if (item.type === 'penalty' && i === current.index && !last && !item.anchor?.existingBreak) add(item.anchor, { break: true, hyphen: !!item.width });
   }
   const originals: Original[] = [];
@@ -293,8 +309,33 @@ function apply(element: HTMLElement, items: Item[], plan: ParagraphLayout, previ
         } else fragment.append(text);
         at = end;
       };
-      for (const change of group) {
+      for (let index = 0; index < group.length; index++) {
+        const change = group[index];
         if (change.spacing !== undefined && change.spacing === spacing) continue;
+        // A CJK run has an equal TeX glue after each individual ideograph.
+        // CSS letter spacing represents those same gaps without a DOM element
+        // for every boundary. Only complete single-codepoint ideographs qualify;
+        // punctuation, combined clusters, mixed-script shaping and real spaces
+        // keep the original glue representation.
+        if (change.width !== undefined && change.start === change.end && !change.break && !change.hyphen) {
+          const begin = change.start - 1;
+          if (begin >= at && /^[\u3400-\u9fff\u3041-\u3096\u30a1-\u30fa\uac00-\ud7a3]$/u.test(value.slice(begin, change.start))) {
+            let last = index;
+            while (last + 1 < group.length) {
+              const next = group[last + 1];
+              if (next.spacing !== undefined || next.width !== change.width || next.letterSpacing !== change.letterSpacing || next.start !== next.end || next.break || next.hyphen || next.start !== group[last].end + 1 || !/^[\u3400-\u9fff\u3041-\u3096\u30a1-\u30fa\uac00-\ud7a3]$/u.test(value.slice(group[last].end, next.start))) break;
+              last++;
+            }
+            if (last > index) {
+              append(begin);
+              const run = document.createElement('span'); run.dataset.limrKpCjk = '';
+              run.style.letterSpacing = `${(change.letterSpacing ?? 0) + change.width}px`;
+              run.textContent = value.slice(begin, group[last].end); fragment.append(run);
+              if (change.measure) patches.push(next => { run.style.letterSpacing = `${(change.letterSpacing ?? 0) + change.measure!(next)}px`; });
+              at = group[last].end; index = last; continue;
+            }
+          }
+        }
         append(change.start);
         if (change.width !== undefined) {
           const glue = document.createElement('span'); glue.className = 'limr-kp-glue'; glue.style.width = `${change.width}px`; glue.textContent = value.slice(change.start, change.end); fragment.append(glue);

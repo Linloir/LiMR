@@ -1,6 +1,7 @@
 import type { SourceRange } from '../core';
 import { intersects } from '../core/tree';
 import type { ReaderRuntime, SourceBinding } from './runtime';
+import { SourceElementMetadata } from './source-element-metadata';
 
 export interface Leaf {
   node: Text | HTMLElement;
@@ -34,19 +35,30 @@ export function leavesIn(block: HTMLElement, runtime: ReaderRuntime): Leaf[] {
 
 /** Short-circuit a source lookup without building every KP line's leaf list.
  * Full-range paint still visits all leaves; card anchors stop at the first ink. */
-function visitLeaves(block: HTMLElement, runtime: ReaderRuntime, accept: (leaf: Leaf) => boolean, source?: SourceRange, onBreak?: (range: SourceRange) => void) {
+function visitLeaves(block: HTMLElement, runtime: ReaderRuntime, accept: (leaf: Leaf) => boolean, source?: SourceRange, onBreak?: (range: SourceRange) => void, metadata?: SourceElementMetadata) {
   runtime.prepareTextBindings(block);
-  const emit = (leaf: Leaf) => (!source || intersects(leaf.range, source)) && accept(leaf);
+  metadata?.sync();
+  // Custom/stale block registrations can sit outside the observed reader.
+  // Check once per actual walk, after prepare may have moved its DOM.
+  if (metadata && (metadata.content !== runtime.content || !metadata.content.contains(block))) metadata = undefined;
+  const emit = (leaf: Leaf) => {
+    const accepted = (!source || intersects(leaf.range, source)) && accept(leaf);
+    // A custom resolver/callback may mutate a later node before traversal
+    // continues. Successful queries synchronize again at the next startRect.
+    if (!accepted) metadata?.sync();
+    return accepted;
+  };
   const visit = (node: Node, inherited?: { binding: SourceBinding; offset: number }): boolean => {
     if (node instanceof HTMLElement) {
-      if (node !== block && node.hasAttribute('data-limr-document') || node.hasAttribute('inert')) return false;
-      const marker = node.dataset.limrMarker;
-      const atomic = node.dataset.limrAtomic;
+      const known = metadata?.get(node);
+      if (node !== block && (known ? known.document : node.hasAttribute('data-limr-document')) || (known ? known.inert : node.hasAttribute('inert'))) return false;
+      const marker = known ? known.marker : node.dataset.limrMarker;
+      const atomic = known ? known.atomic : node.dataset.limrAtomic;
       if (marker || atomic) {
-        const image = node.dataset.limrMedia === 'image';
-        return emit({ node, kind: marker ? 'marker' : image ? 'image' : atomic === 'block' ? 'block' : 'inline', range: { start: Number(node.dataset.sourceStart), end: Number(node.dataset.sourceEnd) }, flow: image ? node : flowOf(node, runtime.content!), offset: 0 });
+        const image = known ? known.image : node.dataset.limrMedia === 'image';
+        return emit({ node, kind: marker ? 'marker' : image ? 'image' : atomic === 'block' ? 'block' : 'inline', range: known?.range ?? { start: Number(node.dataset.sourceStart), end: Number(node.dataset.sourceEnd) }, flow: image ? node : flowOf(node, runtime.content!), offset: 0 });
       }
-      if (node.hasAttribute('data-limr-ignore')) return false;
+      if (known ? known.ignore : node.hasAttribute('data-limr-ignore')) return false;
       if (onBreak && node.hasAttribute('data-limr-break')) onBreak({ start: Number(node.dataset.sourceStart), end: Number(node.dataset.sourceEnd) });
       const binding = runtime.bindings.get(node);
       if (source && binding && !intersects(binding.range, source)) return false;
@@ -139,13 +151,99 @@ export function atomicSelectionText(runtime: ReaderRuntime, ranges: readonly Sou
   return paragraphs.join('\n\n');
 }
 
+interface SourceInk { node: Text | HTMLElement; start?: number; end?: number }
+function inkRect(ink: SourceInk): DOMRect | null {
+  if (!ink.node.isConnected || (ink.node instanceof HTMLElement ? ink.node : ink.node.parentElement)?.closest('[inert]')) return null;
+  if (ink.node instanceof Text) {
+    const range = measurementRange(ink.node.ownerDocument);
+    range.setStart(ink.node, ink.start!); range.setEnd(ink.node, ink.end!);
+    const rect = range.getBoundingClientRect();
+    return rect.width && rect.height ? rect : null;
+  }
+  const rect = ink.node.getBoundingClientRect();
+  return rect.width && rect.height ? rect : null;
+}
+type InkCache = WeakMap<HTMLElement, Map<string, SourceInk>>;
+
+/** Cache the source-to-DOM lookup, never its viewport rectangle. Moving a block
+ * does not change its first character. One observer invalidates only blocks
+ * whose text, visibility or KP-owned nodes changed; paint layers are ignored. */
+export function createSourceRangeLookup(runtime: ReaderRuntime) {
+  let content: HTMLElement | null = null, observer: MutationObserver | undefined;
+  let snapshot = runtime.document.getSnapshot(), cache: InkCache = new WeakMap();
+  type Pass = { previous?: Pass; metadata?: SourceElementMetadata };
+  let pass: Pass | undefined;
+  const passMetadata = () => {
+    if (!pass) return;
+    if (pass.metadata?.content !== runtime.content) {
+      pass.metadata?.dispose();
+      pass.metadata = runtime.content ? new SourceElementMetadata(runtime.content) : undefined;
+    }
+    return pass.metadata;
+  };
+  const invalidate = (records: MutationRecord[]) => {
+    if (records.length) pass?.metadata?.clear();
+    for (const record of records) {
+      const target = record.target instanceof Element ? record.target : record.target.parentElement;
+      if (target?.closest('.limr-highlight-layer,.limr-paint-layer')) continue;
+      if (record.type === 'childList' && [...record.addedNodes, ...record.removedNodes].every(node => node instanceof Element && node.matches('.limr-highlight-layer,.limr-paint-layer'))) continue;
+      const block = target?.closest<HTMLElement>('[data-limr-block]');
+      if (block) cache.delete(block); else cache = new WeakMap();
+    }
+  };
+  return {
+    withPass<T>(read: () => T): T {
+      const current: Pass = { previous: pass }; pass = current;
+      try {
+        const result = read();
+        if (result && typeof (result as { then?: unknown }).then === 'function') throw new TypeError('Source lookup passes must be synchronous.');
+        return result;
+      } finally {
+        current.metadata?.dispose();
+        if (pass === current) { pass = current.previous; pass?.metadata?.clear(); }
+      }
+    },
+    startRect(source: SourceRange) {
+      if (content !== runtime.content) {
+        observer?.disconnect(); content = runtime.content; cache = new WeakMap();
+        if (content) {
+          observer = new MutationObserver(invalidate);
+          observer.observe(content, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['inert', 'hidden', 'class', 'style'] });
+        }
+      }
+      // Layout effects can query after a React commit but before the observer's
+      // microtask. Drain those mutations before using an old character offset.
+      if (observer) invalidate(observer.takeRecords());
+      if (snapshot !== runtime.document.getSnapshot()) { snapshot = runtime.document.getSnapshot(); cache = new WeakMap(); pass?.metadata?.clear(); }
+      const metadata = passMetadata(); metadata?.sync();
+      return sourceRangeStartRect(runtime, source, cache, metadata);
+    },
+    dispose() {
+      observer?.disconnect(); observer = undefined; content = null; cache = new WeakMap();
+      for (let current = pass; current; current = current.previous) current.metadata?.dispose();
+      pass = undefined;
+    },
+  };
+}
+
 /** First rendered character of a source range, independent of its trailing marker. */
-export function sourceRangeStartRect(runtime: ReaderRuntime, source: SourceRange): DOMRect | null {
-  for (const block of runtime.document.getSnapshot().blocks) {
-    if (!intersects(block.range, source)) continue;
+export function sourceRangeStartRect(runtime: ReaderRuntime, source: SourceRange, cache?: InkCache, metadata?: SourceElementMetadata): DOMRect | null {
+  if (source.start === source.end) return null;
+  const blocks = runtime.document.getSnapshot().blocks;
+  let lo = 0, hi = blocks.length;
+  while (lo < hi) { const mid = (lo + hi) >>> 1; if (blocks[mid].range.end <= source.start) lo = mid + 1; else hi = mid; }
+  for (let index = lo; index < blocks.length && blocks[index].range.start < source.end; index++) {
+    const block = blocks[index];
     const element = runtime.blocks.get(block.id);
     if (!element) continue;
+    const key = `${source.start}:${source.end}`, known = cache?.get(element)?.get(key);
+    if (known && element.contains(known.node)) { const rect = inkRect(known); if (rect) return rect; }
     let found: DOMRect | null = null;
+    const remember = (ink: SourceInk, rect: DOMRect) => {
+      found = rect;
+      if (cache) { let entries = cache.get(element); if (!entries) cache.set(element, entries = new Map()); entries.set(key, ink); }
+      return true;
+    };
     visitLeaves(element, runtime, leaf => {
       if (leaf.kind === 'marker') return false;
       if (leaf.kind === 'text') {
@@ -158,16 +256,17 @@ export function sourceRangeStartRect(runtime: ReaderRuntime, source: SourceRange
           const next = Math.min(end, start + (node.data.codePointAt(start)! > 0xffff ? 2 : 1));
           range.setStart(node, start); range.setEnd(node, next);
           const rect = range.getBoundingClientRect();
-          if (rect.width && rect.height) { found = rect; return true; }
+          if (rect.width && rect.height) return remember({ node, start, end: next }, rect);
           start = next;
         }
       } else {
         const node = leaf.node as HTMLElement;
-        const rect = (node.querySelector(leaf.kind === 'image' ? 'img' : '[data-limr-selection-surface]') ?? node).getBoundingClientRect();
-        if (rect.width && rect.height) { found = rect; return true; }
+        const surface = node.querySelector<HTMLElement>(leaf.kind === 'image' ? 'img' : '[data-limr-selection-surface]') ?? node;
+        const rect = surface.getBoundingClientRect();
+        if (rect.width && rect.height) return remember({ node: surface }, rect);
       }
       return false;
-    }, source);
+    }, source, undefined, metadata);
     if (found) return found;
   }
   return null;

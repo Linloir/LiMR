@@ -4,7 +4,7 @@ import type { NodeRendererProps, RendererExtension, TextToken } from '../react/t
 import { useRuntime } from '../react/context';
 import { CopyButton } from '../components/CopyButton';
 import { literalValue } from '../react/literal';
-import { literalDirective } from './literal-directive';
+import { transformCode } from './syntax-transforms';
 
 const cache = new ResourceCache<readonly TextToken[]>(96);
 export interface CodeHighlightOptions { languages?: readonly string[]; lightTheme?: string; darkTheme?: string; eager?: boolean; maxLength?: number }
@@ -73,5 +73,5 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
       <pre className={tokens?.length ? 'shiki' : undefined}><code>{renderValue(tokens)}</code></pre>
     </div>;
   }
-  return { name: 'code-highlight', directives: ['code', 'code-highlight'], literal: true, scope: 'local', components: { code: CodeNode }, transform: (root, context) => literalDirective(root, context.source, 'code', ['code', 'code-highlight']) };
+  return { name: 'code-highlight', directives: ['code', 'code-highlight'], literal: true, scope: 'local', components: { code: CodeNode }, transform: transformCode };
 }

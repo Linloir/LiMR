@@ -1,12 +1,18 @@
-import { useState, type CSSProperties } from 'react';
+import { transformCallout } from './syntax-transforms';
+import type { CSSProperties } from 'react';
 import { walk } from '../core';
 import { sliceInline } from './inline-source';
 import { BlockLoading } from '../components/LoadingRing';
 import { Collapse } from '../components/Collapse';
 import { ToolIcon } from '../components/ToolIcon';
-import { useLocale } from '../react/context';
+import { useLocale, useOwnedNodeState } from '../react/context';
 import type { NodeRenderer, NodeRendererProps, RendererExtension } from '../react/types';
 import { defineBlock } from './define';
+import { declareNodeStateRenderer, type NodeStateOwner } from '../react/node-state-handoff';
+import { calloutStateIdentity } from '../react/module-state-identity';
+
+const calloutStateOwner: NodeStateOwner = { name: 'calloutStateOwner', keys: { 'callout-expanded': value => typeof value === 'boolean' }, signature: calloutStateIdentity };
+
 
 const types: Record<string, string> = {
   note: '#6488b5', abstract: '#4b9ba0', info: '#6488b5',
@@ -26,7 +32,7 @@ function Callout({ node, renderChildren, renderAttribute }: NodeRendererProps) {
   const title = node.children?.find(child => child.type === 'calloutTitle');
   const body = node.children?.filter(child => child.type !== 'calloutTitle') ?? [];
   const fold = node.attributes?.fold;
-  const [expanded, setExpanded] = useState(fold !== '-' && fold !== 'closed');
+  const [expanded, setExpanded] = useOwnedNodeState(calloutStateOwner, node, 'callout-expanded', fold !== '-' && fold !== 'closed');
   const content = <div className="limr-block-content">{renderChildren(body)}</div>;
   const label = <span>{title ? renderChildren(title.children ?? []) : node.attributes?.title ? renderAttribute('title') : <span data-limr-ignore="true">{name.charAt(0).toUpperCase() + name.slice(1)}</span>}</span>;
   return <aside className="limr-note limr-callout" data-callout={name} data-callout-type={type} data-collapsed={fold && !expanded || undefined} style={{ '--limr-callout-color': types[type] } as CSSProperties}>
@@ -37,27 +43,8 @@ function Callout({ node, renderChildren, renderAttribute }: NodeRendererProps) {
 
 /** Obsidian blockquotes and LiMR ::callout share the same renderer and AST. */
 export function callout(options: { component?: NodeRenderer } = {}): RendererExtension {
+  if (!options.component) declareNodeStateRenderer(calloutStateOwner, Callout);
   return { ...defineBlock({ name: 'callout', component: options.component ?? Callout, streaming: options.component ? undefined : { Loading: BlockLoading } }),
-    transform(root, context) {
-      walk(root, node => {
-        if (node.type !== 'blockquote') return;
-        const first = node.children?.[0];
-        if (first?.type !== 'paragraph' || !first.position) return;
-        const from = first.position.start.offset, end = first.position.end.offset;
-        const raw = context.source.slice(from, end);
-        const header = /^\[!([\w-]+)\]([+-])?[ \t]*/.exec(raw);
-        if (!header) {
-          if (context.streaming && /^\[![\w-]*$/.test(raw)) { node.type = 'callout'; node.incomplete = true; node.children = []; }
-          return;
-        }
-        node.type = 'callout';
-        node.attributes = { type: header[1].toLowerCase(), ...(header[2] ? { fold: header[2] } : {}) };
-        const newline = /\r\n|\r|\n/.exec(raw), titleEnd = newline ? from + newline.index : end;
-        const bodyStart = newline ? titleEnd + newline[0].length : end;
-        const title = sliceInline(first, from + header[0].length, titleEnd, context.source);
-        const body = sliceInline(first, bodyStart, end, context.source);
-        node.children = [...title?.children?.length ? [{ ...title, type: 'calloutTitle' }] : [], ...body?.children?.length ? [body] : [], ...node.children!.slice(1)];
-      });
-    },
+    transform: transformCallout,
   };
 }

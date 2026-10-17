@@ -7,6 +7,7 @@ import { AnnotationCard } from './AnnotationCard';
 import type { AnnotationOccurrence } from '../core';
 import type { AnnotationOverlayCardProps } from '../react/types';
 import { floatingSurfaces, useOverlayGeometry } from './floating-surfaces';
+import { imagePreviewSurfaces, isOwnedImagePreview } from './image-preview-behavior';
 
 export interface AnnotationOverlayProps { disabled?: boolean; portalRoot?: HTMLElement | null; previewWidth?: number; maxHeight?: string }
 const length = (value: number | string) => typeof value === 'number' ? `${value}px` : value;
@@ -111,7 +112,7 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
     if (open && anchor) update();
   }, [anchor, update, open, shownExpanded]);
   useOverlayGeometry(runtime, refs.floating.current, open);
-  const dismiss = useDismiss(context, { escapeKey: true, outsidePress: event => !(event.target instanceof Node && surfaces.toolbar?.contains(event.target)) });
+  const dismiss = useDismiss(context, { escapeKey: true, outsidePress: event => !(event.target instanceof Node && surfaces.toolbar?.contains(event.target)) && !isOwnedImagePreview(event.target, refs.floating.current) });
   const role = useRole(context, { role: 'dialog' });
   const { getFloatingProps } = useInteractions([dismiss, role]);
   const positioned = middlewareData.limrAnchor;
@@ -171,7 +172,7 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
     children: <AnnotationGroup occurrence={occurrence} presentation={shownExpanded ? 'expanded' : 'preview'} expanded={shownExpanded} />,
   };
   const modal = open && !!centered;
-  const card = <FloatingFocusManager context={context} modal={modal} disabled={!open || !pinned || measuringPreview} initialFocus={editing ? -1 : refs.floating} returnFocus={false} getInsideElements={() => surfaces.toolbar ? [surfaces.toolbar] : []}>
+  const card = <FloatingFocusManager context={context} modal={modal} disabled={!open || !pinned || measuringPreview} initialFocus={editing ? -1 : refs.floating} returnFocus={false} getInsideElements={() => [...(surfaces.toolbar ? [surfaces.toolbar] : []), ...imagePreviewSurfaces(refs.floating.current)]}>
     <div ref={refs.setFloating} {...getFloatingProps()} tabIndex={-1} aria-label={definition?.label ?? locale.annotations} className="limr-overlay-positioner" style={{ ...style, pointerEvents: open ? 'auto' : 'none', visibility: ready && !measuringPreview ? 'visible' : 'hidden' }}>
       <div ref={setSurface} className={`limr-annotation-overlay ${shownExpanded ? 'limr-annotation-expanded' : 'limr-annotation-preview'}`} style={{ '--limr-annotation-color': definition?.color } as CSSProperties} data-type={annotation?.type} data-state={open ? 'open' : 'closing'} data-pinned={shownPinned || undefined} data-placement={centered ? 'center' : anchoredExpansion ? fromPreview.placement : placement} data-limr-theme={theme} data-limr-appearance={appearance}
         onPointerEnter={event => { if (!pinned && event.pointerType !== 'touch') runtime.hover(occurrence.id); }} onPointerLeave={() => { if (!pinned) runtime.hover(null); }}>

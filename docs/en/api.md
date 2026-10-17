@@ -24,6 +24,7 @@ Reader, Markdown, and DocumentProvider accept:
 | Prop | Default / meaning |
 | --- | --- |
 | source | Empty string; original Markdown |
+| document | Optional existing DocumentEngine; takes precedence over source/streaming and avoids reparsing a hydrated snapshot |
 | streaming | false |
 | documentId | Generated; explicit values should be stable and unique on the page |
 | extensions | standard(); the complete extension list |
@@ -57,6 +58,7 @@ The default locale is english. Missing partial keys fall back to English. locale
 | Component | Extra props and defaults |
 | --- | --- |
 | Reader | toc=true, sidebar=true, sidebarCollapse=false, fillHeight=true, sidebarBreakpoint=1120, actions, followOutput=false, className/style |
+| AsyncReader | Reader configuration plus input, loading, loadingFallback and onLoadStateChange; see [large documents](large-documents.md) |
 | Markdown | interactive=true, followOutput=false, className/style |
 | DocumentProvider | children; supplies context to composed views |
 | TableOfContents | title, maxDepth=6, followActive=true, topInset=24, updateHash=false, className/style |
@@ -69,9 +71,20 @@ The default locale is english. Missing partial keys fall back to English. locale
 | AnnotationGroup | occurrence, presentation, expanded=true, enabled=true |
 | AnnotationMarkdown | MarkdownProps with required source; interactive=false by default |
 | InlineMarker | Required label, color, children, button props/ref |
+| Image | Native image props/ref; preview=true, loading='lazy', decoding='async'; loaded images open the shared preview |
+| ImagePreview | Controlled image/onClose; image supplies src, width, height, optional alt/originating element; optional locale/theme/appearance/className/style |
+| MarkdownTable | Source-bound node/renderChildren adapter; the default renderer uses it automatically; see [table layout](table-layout.md) |
 | ToolIcon | name and SVG props; e.g. note, copy, highlight, comment, zoom-in, zoom-out, source, image |
 
 Shared document views/hooks require a provider; standalone Markdown and Reader create their own documents. AnnotationEditor is controlled UI and can be used independently. AnnotationCard is an interior template, not its own portal. sidebar.renderCard receives occurrence/active/activate; toolbar.render receives context/actions/run.
+
+`Reader` and `AsyncReader` also accept `children` inside their document provider, after the reading layout. A host integration can consume `useLiMR()` there and use `scrollToSource(range)` to reveal any source position, including an unmounted paragraph in a large document. Host editor synchronization stays outside the renderer.
+
+Translation preferences can be supplied through `parameters.translationModeForNode(node, document)` and `onTranslationBlockModeChange(node, mode, document)`. The resolver takes priority over `translationMode`; returning `undefined` restores global/local/source defaults. It is shared by the visible block, copy, search, and the global TOC, including unmounted content. The callback handles a marker click before the global callback or local state. A resolved per-block mode without a callback is locked. `TranslationBlock` also accepts `mode`/`onModeChange` for a controlled component; use the parameter resolver when its state must be visible to windowed reading. Replace the resolver when preferences change, rather than mutating closed-over data silently.
+
+Custom virtualized renderers receive `VirtualizedTextContext`: `source` is the complete node source, `children` is the selected visible descendant text, and the lazy `value` getter is the selected decoded leaf value. Literal code retains whitespace and entities. A code theme adapter can use `copyText: (_node, { value }) => value` without reimplementing source mapping or copying an entire block for a partial selection.
+
+`Image` and `ImagePreview` also work outside a reader. The preview offers fit/actual size, Escape to close, and focus return. Hosts resolve local or protected image URLs before passing them to these components; the core performs no filesystem lookup.
 
 `SidebarPositioner` receives `{ id, anchorTop, height }[]` and `{ activeId, gap, height?, prioritizeActive? }`, returning a map of IDs to top positions. anchorTop is the first line of referenced text; prioritizeActive distinguishes hovered or active items from the item selected by reading position. The default alignSidebar packs footer cards at rest and prioritizes the current item during interaction.
 

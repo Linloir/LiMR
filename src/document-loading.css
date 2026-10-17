@@ -1,0 +1,35 @@
+@layer limr {
+  .limr-document-loading { box-sizing: border-box; width: min(28rem, calc(100% - 3rem)); margin: clamp(3rem, 12vh, 8rem) auto; padding: 1.5rem; border: 1px solid var(--limr-border, #e8e5df); border-radius: 14px; background: var(--limr-background, #fffefa); color: var(--limr-text, #292621); font: 400 .875rem/1.6 system-ui, sans-serif; }
+  .limr-document-loading-label { margin-bottom: .8rem; }
+  .limr-document-loading progress { display: block; width: 100%; height: 5px; border: 0; border-radius: 5px; overflow: hidden; accent-color: var(--limr-secondary, #8a8178); }
+  .limr-document-loading progress::-webkit-progress-bar { background: var(--limr-border, #e8e5df); border-radius: 5px; }
+  .limr-document-loading progress::-webkit-progress-value { background: var(--limr-secondary, #8a8178); border-radius: 5px; }
+  .limr-document-loading-footer { display: flex; align-items: center; justify-content: space-between; margin-top: .75rem; font-size: .75rem; color: var(--limr-muted, #8a8178); }
+  .limr-document-loading button { padding: .2rem .4rem; border: 0; border-radius: 5px; background: transparent; font: inherit; color: inherit; cursor: pointer; }
+  .limr-document-loading button:hover { background: #87837818; }
+  .limr-document-loading[data-provisional] { width: auto; margin: .5rem 1rem; padding: .65rem 1rem; }
+  .limr-document-loading[data-provisional] .limr-document-loading-label { margin: 0 0 .3rem; }
+  .limr-document-search { position: fixed; z-index: 1100; inset-block-start: 1rem; inset-inline-end: 1rem; display: flex; align-items: center; gap: .4rem; max-width: calc(100vw - 2rem); padding: .5rem; border: 1px solid var(--limr-border, #e8e5df); border-radius: 10px; background: var(--limr-background, #fffefa); box-shadow: 0 4px 20px #29231d20; font: 400 .8rem/1.4 system-ui,sans-serif; }
+  .limr-document-search input { min-width: 4rem; width: 14rem; padding: .4rem; border: 0; outline-offset: 1px; border-radius: 4px; background: transparent; color: inherit; font: inherit; }
+  .limr-document-search button { display: grid; place-items: center; width: 26px; height: 26px; padding: 3px; border: 0; border-radius: 5px; background: transparent; color: inherit; cursor: pointer; }
+  .limr-document-search button:first-of-type { rotate: 180deg; }
+  .limr-document-search button:hover { background: #87837818; }
+  .limr-document-search button:disabled { opacity: .35; cursor: default; }
+}
+
+.limr-print-unprepared { display: none; }
+.limr-provisional-print-notice { display: none; }
+.limr-print-document { position: fixed; left: -100000px; top: 0; visibility: hidden; pointer-events: none; }
+.limr-print-progress { position: fixed; z-index: 3000; inset: 30% auto auto 50%; transform: translateX(-50%); width: min(24rem, 80vw); padding: 1.5rem; border-radius: 14px; background: var(--limr-background, #fffefa); border: 1px solid var(--limr-border, #e8e5df); box-shadow: 0 12px 48px #0002; }
+.limr-print-progress progress { display: block; width: 100%; margin: 1rem 0; }
+@media print {
+  .limr-reader[data-limr-provisional] { display: block !important; min-height: 0 !important; }
+  .limr-reader[data-limr-provisional] > :not(.limr-provisional-print-notice) { display: none !important; }
+  .limr-reader[data-limr-provisional] > .limr-provisional-print-notice { display: block; }
+  .limr-document-window { height: auto !important; }
+  .limr-document-window > :not(.limr-print-unprepared) { display: none !important; }
+  .limr-print-unprepared { display: block; }
+  body.limr-printing-document > :not(.limr-print-document) { display: none !important; }
+  .limr-print-document { display: none; }
+  body.limr-printing-document > .limr-print-document { display: block; position: static; left: auto; visibility: visible; width: auto !important; pointer-events: auto; }
+}

@@ -27,11 +27,14 @@ export interface MarkdownNode {
   [key: string]: unknown;
 }
 
+export interface DocumentProgress { phase: 'read' | 'parse' | 'index' | 'ready'; loaded: number; total?: number }
+
 export interface ParseContext {
   source: string;
   streaming: boolean;
   documentId: string;
   sourceOmissions?: readonly SourceRange[];
+  onProgress?: (progress: DocumentProgress) => void;
 }
 export interface SyntaxExtension {
   /** Unique name. Duplicate names are an error unless explicitly replaced. */
@@ -138,6 +141,8 @@ export interface DocumentOptions {
   id?: string;
   extensions?: readonly SyntaxExtension[];
   streaming?: boolean;
+  /** Parse/index progress; callbacks run synchronously with parser work. */
+  onProgress?: (progress: DocumentProgress) => void;
 }
 export interface SelectionResult {
   ranges: readonly SourceRange[];

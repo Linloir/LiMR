@@ -1,6 +1,6 @@
 import { annotationReferenceRange, applySourceEdits, createDocument, defaultHighlight, resolveAnnotationAnchors, sameRange, ResourceCache, selectionFromRange } from '../core';
-import { intersects } from '../core/tree';
-import type { Annotation, AnnotationOccurrence, DocumentEngine, DocumentSnapshot, HighlightData, SelectionSnapshot, SourceRange } from '../core';
+import { intersects, rangeOf } from '../core/tree';
+import type { Annotation, AnnotationOccurrence, DocumentEngine, DocumentSnapshot, HighlightData, MarkdownNode, SelectionSnapshot, SourceRange } from '../core';
 import type { AnnotationType, DocumentCommands, LiMRLocale, NodeRenderer, RendererExtension, ViewConfiguration } from './types';
 import { scrollWithMotion } from './motion';
 
@@ -8,6 +8,9 @@ export const english: LiMRLocale = {
   language: 'en', citation: 'Citation',
   contents: 'Contents', annotations: 'Annotations', expand: 'Expand', collapse: 'Collapse', close: 'Close', copy: 'Copy', copied: 'Copied',
   copyFailed: 'Copy failed', copyImage: 'Copy image URL', copyFigures: 'Copy figures Markdown',
+  previewImage: 'Preview image', imagePreview: 'Image preview', closeImagePreview: 'Close image preview', imageFit: 'Fit to window', imageActualSize: 'Actual size',
+  translationOriginal: 'original', translationTranslated: 'translation', translationBoth: 'bilingual',
+  translationSwitchLabel: 'Showing {mode}; switch to {next}', translationLockedLabel: 'Showing {mode}; controlled by display settings',
   loading: 'Loading…', retry: 'Retry', unavailable: 'Content unavailable', footnotes: 'Footnotes',
   definition: 'Definition', question: 'Question', note: 'Note', extra: 'Extended reading', hint: 'Hint', answer: 'Answer', submit: 'Submit',
   correct: 'Correct', incorrect: 'Try again', play: 'Play video',
@@ -22,6 +25,9 @@ export const chinese: LiMRLocale = {
   language: 'zh-CN', citation: '引用',
   contents: '目录', annotations: '注释', expand: '展开', collapse: '收起', close: '关闭', copy: '复制', copied: '已复制',
   copyFailed: '复制失败', copyImage: '复制图片 URL', copyFigures: '复制图组 Markdown',
+  previewImage: '预览图片', imagePreview: '图片预览', closeImagePreview: '关闭图片预览', imageFit: '适应窗口', imageActualSize: '原始大小',
+  translationOriginal: '原文', translationTranslated: '译文', translationBoth: '对照',
+  translationSwitchLabel: '当前{mode}，切换到{next}', translationLockedLabel: '当前{mode}，由全局展示模式控制',
   loading: '加载中…', retry: '重试', unavailable: '暂无内容', footnotes: '脚注',
   definition: '释义', question: '提问', note: '注释', extra: '拓展阅读', hint: '提示', answer: '答案', submit: '提交',
   correct: '回答正确', incorrect: '再试一次', play: '播放视频',
@@ -67,6 +73,15 @@ export interface Decorations {
   byBlock: ReadonlyMap<string, BlockDecorations>;
 }
 export interface BlockDecorations { occurrences: readonly AnnotationOccurrence[]; highlights: readonly PaintHighlight[] }
+export interface ViewAnnotation {
+  annotation: Annotation;
+  occurrence: AnnotationOccurrence;
+  type: AnnotationType<any>;
+}
+export interface DocumentViewport {
+  reveal(range: SourceRange, viewportOffset?: number): void;
+  activeHeading(): string | null;
+}
 export interface SourceBinding {
   range: SourceRange;
   atomic: boolean;
@@ -83,6 +98,8 @@ export class ReaderRuntime {
   readonly interaction = new Store<InteractionState>({ selection: null, activeHeading: null, hovered: null, active: null, editing: null, activeHighlight: null, hoveredHighlight: null });
   readonly layout = new Store(0);
   readonly viewport = new Store(0);
+  /** Visible text/state changes, separate from high-frequency geometry updates. */
+  readonly presentation = new Store(0);
   readonly documentOffset = new Store(0);
   readonly decorations = new Store<Decorations>({ annotations: new Map(), highlights: new Map(), occurrences: [], referenceRanges: new Map(), byBlock: new Map() });
   readonly configuration: Store<ViewConfiguration>;
@@ -95,13 +112,25 @@ export class ReaderRuntime {
   readonly headings = new Map<string, HTMLElement>();
   readonly bindings = new WeakMap<Node, SourceBinding>();
   readonly textBinders = new WeakMap<HTMLElement, () => void>();
+  readonly nodeStates = new WeakMap<MarkdownNode, Map<string, Store<unknown>>>();
   components: Readonly<Record<string, NodeRenderer>> = {};
   rendererOverrides = new Map<string, import('./types').RendererOverride[]>();
   annotationTypes = new Map<string, ResolvedAnnotationType>();
   private resolvedTypes = new WeakMap<AnnotationType<any>, ResolvedAnnotationType>();
+  /** Presentation modules may expose computed detail without editing Markdown.
+   * Entries are owned by their mounted view and published in one batch. */
+  private viewAnnotations = new Map<object, readonly ViewAnnotation[]>();
+  private viewAnnotationIds = new Set<string>();
+  // Private prototype: staged views can only initialize a never-published runtime.
+  private viewHandoffPublished = false;
+  private initialViewOwners = new Set<object>();
+  private initialViewAnchors = new Map<string, HTMLElement>();
   locale = english;
   content: HTMLElement | null = null;
+  documentViewport: DocumentViewport | null = null;
   selectionRange: Range | null = null;
+  /** Select-all in a windowed view addresses source outside mounted DOM. */
+  virtualSelection = false;
   /** Live geometry supplied by the paint layer; independent of native selection. */
   highlightReference: { getBoundingClientRect: () => DOMRect; getClientRects: () => DOMRect[]; text?: string } | null = null;
   private layoutFrame = 0;
@@ -114,8 +143,10 @@ export class ReaderRuntime {
   private taskController = new AbortController();
   get signal() { return this.taskController.signal; }
   readonly commands: DocumentCommands = {
-    canEditSource: () => !!this.configuration.get().onSourceChange && !this.document.getSnapshot().streaming,
+    canEditSource: () => !this.configuration.get().readOnly && !!this.configuration.get().onSourceChange && !this.document.getSnapshot().streaming,
     canEditAnnotation: id => {
+      if (this.configuration.get().readOnly) return false;
+      if (this.viewAnnotationIds.has(id)) return false;
       const annotation = this.decorations.get().annotations.get(id);
       if (!annotation || !this.supportsAnnotation(annotation)) return false;
       if (annotation.source) return this.commands.canEditSource() && !!this.configuration.get().extensions?.some(extension => extension.sourceEditing);
@@ -124,6 +155,7 @@ export class ReaderRuntime {
       return config.annotations === undefined || !!config.onAnnotationsChange;
     },
     editSource: (edits, options) => {
+      if (this.configuration.get().readOnly) throw new Error('This document is read-only.');
       const document = this.document.getSnapshot(), accept = this.configuration.get().onSourceChange;
       if (!accept) throw new Error('Source editing requires onSourceChange.');
       if (document.streaming) throw new Error('Source editing is unavailable while streaming.');
@@ -175,6 +207,7 @@ export class ReaderRuntime {
       return keep.length ? [{ ...item, range: undefined, anchors: keep }] : [];
     })),
     editAnnotation: id => {
+      if (id && this.configuration.get().readOnly) return;
       const annotation = id && (this.decorations.get().annotations.get(id) ?? this.pendingAnnotations?.value.find(item => item.id === id));
       if (id && (!annotation || !this.supportsAnnotation(annotation))) return;
       if (!id) this.commitCreation(this.interaction.get().editing);
@@ -228,6 +261,7 @@ export class ReaderRuntime {
   }
   private changeAnnotations(update: (items: readonly Annotation[]) => readonly Annotation[], target: 'annotations' | 'source' = 'annotations') {
     const config = this.configuration.get();
+    if (config.readOnly) throw new Error('This document is read-only.');
     const external = this.pendingAnnotations && this.pendingAnnotations.input === config.annotations ? this.pendingAnnotations.value : config.annotations ?? this.localAnnotations;
     const document = this.document.getSnapshot();
     const authored = document.annotations.filter(annotation => annotation.source && !external.some(item => item.id === annotation.id));
@@ -269,7 +303,7 @@ export class ReaderRuntime {
     }
     return true;
   }
-  start() { if (this.taskController.signal.aborted) this.taskController = new AbortController(); }
+  start() { this.sealViewHandoff(); if (this.taskController.signal.aborted) this.taskController = new AbortController(); }
   dispose() { this.taskController.abort(); this.resources.invalidate(); this.resourceKeys.clear(); this.annotationCreations.clear(); }
   getResourceKey(annotation: Annotation) {
     const old = this.resourceKeys.get(annotation.id);
@@ -287,10 +321,11 @@ export class ReaderRuntime {
     this.resourceVersions.set(versions);
   }
 
-  constructor(id: string, source: string, streaming: boolean, config: ViewConfiguration) {
+  constructor(id: string, source: string, streaming: boolean, config: ViewConfiguration, document?: DocumentEngine, nodeStates?: ReaderRuntime['nodeStates']) {
+    if (nodeStates) this.nodeStates = nodeStates;
     this.configuration = new Store(config);
     this.installConfiguration(config);
-    this.document = createDocument(source, { id, streaming, extensions: config.extensions });
+    this.document = document ?? createDocument(source, { id, streaming, extensions: config.extensions });
     this.rebuildDecorations();
     this.document.subscribe(() => {
       this.rebuildDecorations();
@@ -310,7 +345,9 @@ export class ReaderRuntime {
     const rules = [...(config.extensions ?? []).flatMap(ext => ext.rendererOverrides ?? []),
       ...Object.entries(config.components ?? {}).map(([type, component]) => ({ type, component })), ...config.rendererOverrides ?? []];
     for (const rule of rules) this.rendererOverrides.set(rule.type, [...this.rendererOverrides.get(rule.type) ?? [], rule]);
-    const annotationTypes = [...(config.extensions ?? []).flatMap(ext => [...ext.annotationTypes ?? []]), ...config.annotationTypes ?? []];
+    const viewTypes = new Map<string, AnnotationType<any>>();
+    for (const entries of this.viewAnnotations.values()) for (const entry of entries) viewTypes.set(entry.type.type, entry.type);
+    const annotationTypes = [...viewTypes.values(), ...(config.extensions ?? []).flatMap(ext => [...ext.annotationTypes ?? []]), ...config.annotationTypes ?? []];
     this.annotationTypes = new Map(annotationTypes.map(type => {
       if (typeof type.label === 'string') return [type.type, type as ResolvedAnnotationType];
       const label = type.label(this.locale);
@@ -322,17 +359,56 @@ export class ReaderRuntime {
   }
   /** Stored data stays available when its presentation module is uninstalled. */
   supportsAnnotation(annotation: Annotation) { return annotation.type === 'highlight' || this.annotationTypes.has(annotation.type); }
+  setViewAnnotations(owner: object, entries: readonly ViewAnnotation[]) {
+    if (this.viewAnnotations.get(owner) === entries || !entries.length && !this.viewAnnotations.has(owner)) return;
+    if (entries.length) this.viewAnnotations.set(owner, entries);
+    else this.viewAnnotations.delete(owner);
+    this.viewAnnotationIds = new Set([...this.viewAnnotations.values()].flatMap(items => items.map(item => item.annotation.id)));
+    this.installConfiguration(this.configuration.get());
+    this.rebuildDecorations();
+    this.requestLayout();
+  }
+  private sealViewHandoff() { this.viewHandoffPublished = true; this.initialViewOwners.clear(); this.initialViewAnchors.clear(); }
+  /** Private prototype initialization, never a plugin/runtime migration API.
+   * Called only before the receiving content/reader has ever been published.
+   * No layout scheduling or user activation callbacks occur during staging. */
+  initializeViewHandoff(owners: readonly { owner: object; entries: readonly ViewAnnotation[] }[],
+    interaction: Partial<Pick<InteractionState, 'active' | 'activeSource' | 'hovered' | 'hoverSource' | 'toolbarOccurrence'>>,
+    anchors: readonly (readonly [string, HTMLElement])[]): void {
+    if (this.viewHandoffPublished || this.content || this.signal.aborted) throw new Error('Cannot seed a published reader');
+    for (const owner of this.initialViewOwners) this.viewAnnotations.delete(owner);
+    for (const [id, element] of this.initialViewAnchors) if (this.anchors.get(id) === element) this.anchors.delete(id);
+    this.initialViewOwners = new Set(owners.map(item => item.owner));
+    this.initialViewAnchors = new Map(anchors);
+    for (const { owner, entries } of owners) if (entries.length) this.viewAnnotations.set(owner, entries);
+    this.viewAnnotationIds = new Set([...this.viewAnnotations.values()].flatMap(entries => entries.map(entry => entry.annotation.id)));
+    // Removing a no-longer-admitted initial pin must not synthesize an old
+    // user's close event. These are fresh, unpublished stores only.
+    this.interaction.set({ ...this.interaction.get(), active: null, activeSource: null, hovered: null, hoverSource: null, toolbarOccurrence: null });
+    this.installConfiguration(this.configuration.get());
+    this.rebuildDecorations();
+    const ids = this.decorations.get().referenceRanges;
+    const active = interaction.active && ids.has(interaction.active) ? interaction.active : null;
+    const hovered = interaction.hovered && ids.has(interaction.hovered) ? interaction.hovered : null;
+    this.interaction.set({ ...this.interaction.get(), active, activeSource: active ? interaction.activeSource : null,
+      hovered, hoverSource: hovered ? interaction.hoverSource : null,
+      toolbarOccurrence: interaction.toolbarOccurrence && ids.has(interaction.toolbarOccurrence) ? interaction.toolbarOccurrence : null });
+    for (const [id, element] of anchors) if (ids.has(id) && element.isConnected) this.anchors.set(id, element);
+  }
   configure(config: ViewConfiguration) {
     const old = this.configuration.get();
     if (this.pendingAnnotations?.input !== config.annotations) this.pendingAnnotations = undefined;
     this.installConfiguration(config);
     this.configuration.set(config);
-    if (old.extensions !== config.extensions) this.document.setExtensions(config.extensions ?? []);
-    else if (old.annotations !== config.annotations || old.annotationTypes !== config.annotationTypes) this.rebuildDecorations();
+    if (old.extensions !== config.extensions) {
+      const previous = this.document.getSnapshot();
+      this.document.setExtensions(config.extensions ?? []);
+      if (previous === this.document.getSnapshot()) this.rebuildDecorations();
+    } else if (old.annotations !== config.annotations || old.annotationTypes !== config.annotationTypes) this.rebuildDecorations();
     if (old.annotationTypes !== config.annotationTypes || old.extensions !== config.extensions) this.resources.invalidate();
   }
   updateInteraction(patch: Partial<InteractionState>) {
-    if (patch.selection === null) patch = { ...patch, selectionHint: null };
+    if (patch.selection === null) { this.virtualSelection = false; patch = { ...patch, selectionHint: null }; }
     const old = this.interaction.get();
     if (Object.keys(patch).every(key => Object.is(old[key as keyof InteractionState], patch[key as keyof InteractionState]))) return;
     this.interaction.set({ ...old, ...patch });
@@ -377,6 +453,7 @@ export class ReaderRuntime {
     const config = this.configuration.get();
     const previous = this.decorations.get();
     const annotations = new Map(doc.annotations.map(annotation => [annotation.id, annotation]));
+    for (const entries of this.viewAnnotations.values()) for (const entry of entries) annotations.set(entry.annotation.id, entry.annotation);
     for (const annotation of config.annotations ?? this.localAnnotations) annotations.set(annotation.id, annotation);
     for (const id of this.annotationCreations.keys()) if (!annotations.has(id) && !this.pendingAnnotations?.value.some(annotation => annotation.id === id)) this.annotationCreations.delete(id);
     for (const [id, resource] of this.resourceKeys) if (!annotations.has(id)) {
@@ -396,6 +473,7 @@ export class ReaderRuntime {
         id: `${occurrence.id}:${encodeURIComponent(id)}`, markerId: occurrence.id, annotationIds: [id],
       }));
     });
+    for (const entries of this.viewAnnotations.values()) for (const entry of entries) occurrences.push({ ...entry.occurrence, embedded: true });
     const allHighlights: PaintHighlight[] = [];
     for (const annotation of annotations.values()) {
       if (!this.supportsAnnotation(annotation)) continue;
@@ -405,7 +483,7 @@ export class ReaderRuntime {
           const value = { ...(annotation.data as HighlightData), id, annotationId: annotation.id, range: anchor.range };
           const old = previous.highlights.get(id);
           allHighlights.push(old && !old.occurrenceId && sameRange(old.range, value.range) && old.color === value.color && old.style === value.style && old.hidden === value.hidden && old.readOnly === value.readOnly ? old : value);
-        } else if (annotation.source?.module !== 'source-annotations') occurrences.push({ ...anchor, id: anchor.id ?? `${doc.id}-${annotation.id}-${index}`, annotationIds: [annotation.id] });
+        } else if (!this.viewAnnotationIds.has(annotation.id) && annotation.source?.module !== 'source-annotations') occurrences.push({ ...anchor, id: anchor.id ?? `${doc.id}-${annotation.id}-${index}`, annotationIds: [annotation.id] });
       });
     }
     occurrences.sort((a, b) => a.range.end - b.range.end || a.id.localeCompare(b.id));
@@ -458,8 +536,9 @@ export class ReaderRuntime {
   }
   registerAnchor(id: string, element: HTMLElement | null) { if (element) this.anchors.set(id, element); else this.anchors.delete(id); this.requestLayout(); }
   registerHeading(id: string, element: HTMLElement | null) { if (element) this.headings.set(id, element); else this.headings.delete(id); this.requestLayout(); }
-  observeBlock(element: HTMLElement | null) { if (element) { if (element.dataset.limrBlock) this.blocks.set(element.dataset.limrBlock, element); this.observer?.observe(element); } }
-  unobserveBlock(element: HTMLElement) { if (element.dataset.limrBlock) this.blocks.delete(element.dataset.limrBlock); this.observer?.unobserve(element); }
+  blockRevision = 0;
+  observeBlock(element: HTMLElement | null) { if (element) { if (element.dataset.limrBlock && this.blocks.get(element.dataset.limrBlock) !== element) { this.blocks.set(element.dataset.limrBlock, element); this.blockRevision++; } this.observer?.observe(element); } }
+  unobserveBlock(element: HTMLElement) { if (element.dataset.limrBlock && this.blocks.get(element.dataset.limrBlock) === element) { this.blocks.delete(element.dataset.limrBlock); this.blockRevision++; } this.observer?.unobserve(element); }
   getScrollTop() { return this.configuration.get().scrollRoot?.scrollTop ?? (typeof window !== 'undefined' ? window.scrollY : 0); }
   getViewportTop() { return this.configuration.get().scrollRoot?.getBoundingClientRect().top ?? 0; }
   getContentOffset() {
@@ -473,29 +552,94 @@ export class ReaderRuntime {
     else root.scrollTo({ top: Math.max(0, top), behavior });
   }
   scrollToHeading(id: string) {
+    if (this.documentViewport) {
+      const heading = this.document.getSnapshot().headings.find(item => item.id === id);
+      if (heading) { this.documentViewport.reveal(heading.range); return; }
+    }
     const element = this.headings.get(id);
     if (element) this.scrollTo(element.getBoundingClientRect().top - this.getViewportTop() + this.getScrollTop() - (this.configuration.get().scrollOffset ?? 24));
   }
+  scrollToSource(range: SourceRange) {
+    if (this.documentViewport) { this.documentViewport.reveal(range); return; }
+    const block = this.document.getSnapshot().blocks.find(block => block.range.end > range.start && block.range.start <= range.start);
+    const element = block && this.blocks.get(block.id);
+    if (element) this.scrollTo(element.getBoundingClientRect().top - this.getViewportTop() + this.getScrollTop() - (this.configuration.get().scrollOffset ?? 24));
+  }
   scrollToOccurrence(id: string) {
+    if (this.documentViewport) {
+      const occurrence = this.decorations.get().occurrences.find(item => item.id === id);
+      if (occurrence) { this.documentViewport.reveal(occurrence.referenceRange ?? occurrence.range); return; }
+    }
     const element = this.anchors.get(id);
     if (element) this.scrollTo(element.getBoundingClientRect().top - this.getViewportTop() + this.getScrollTop() - (this.configuration.get().scrollOffset ?? 24));
   }
-  private followFragment = (event: MouseEvent) => {
+  /** Called by the article's React bubble handler after child controls have
+   * had the opportunity to claim a click or prevent its default action. */
+  followFragment = (event: MouseEvent) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[href]') : null;
     if (!link || link.hasAttribute('download') || link.target && link.target !== '_self' || !this.content?.contains(link)) return;
-    const url = new URL(link.href, document.baseURI);
-    if (!url.hash || url.origin !== location.origin || url.pathname !== location.pathname || url.search !== location.search) return;
+    // Markdown fragment-only links belong to this reader even when a host
+    // supplies <base> for relative image/document resources (for example an
+    // editor webview). Explicit URLs still need to identify this actual page.
+    const href = link.getAttribute('href') ?? '';
+    let fragment: string;
+    if (href.startsWith('#')) fragment = href.slice(1);
+    else {
+      const url = new URL(link.href, document.baseURI);
+      if (url.origin !== location.origin || url.pathname !== location.pathname || url.search !== location.search) return;
+      fragment = url.hash.slice(1);
+    }
+    if (!fragment) return;
     let id: string;
-    try { id = decodeURIComponent(url.hash.slice(1)); } catch { return; }
-    const target = this.content.querySelector<HTMLElement>(`[id="${CSS.escape(id)}"]`);
+    try { id = decodeURIComponent(fragment); } catch { return; }
+    const rawId = fragment, snapshot = this.document.getSnapshot();
+    // Prefer exact IDs, including literal encoded IDs, before accepting the
+    // document-local heading slug used in ordinary Markdown links.
+    const candidates = [...new Set([id, rawId, `${snapshot.id}-${id}`, `${snapshot.id}-${rawId}`])];
+    const findTarget = () => {
+      for (const candidate of candidates) {
+        const target = this.content?.querySelector<HTMLElement>(`[id="${CSS.escape(candidate)}"]`);
+        if (target) return target;
+      }
+    };
+    const focusTarget = (target: HTMLElement) => {
+      if (!target.hasAttribute('tabindex')) { target.tabIndex = -1; target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true }); }
+      target.focus({ preventScroll: true });
+    };
+    const target = findTarget();
+    if (this.documentViewport && (!target || target.closest('[data-window-parked]'))) {
+      let destination: SourceRange | undefined;
+      for (const candidate of candidates) { destination = snapshot.headings.find(heading => heading.id === candidate)?.range; if (destination) break; }
+      const notePrefix = `${snapshot.id}-fn-`, referencePrefix = `${snapshot.id}-fnref-`;
+      if (!destination && id.startsWith(notePrefix)) {
+        const identifier = id.slice(notePrefix.length), note = snapshot.footnotes.get(identifier);
+        if (note) destination = rangeOf(note);
+      }
+      if (!destination && id.startsWith(referencePrefix)) {
+        const offset = Number(id.slice(referencePrefix.length));
+        if (Number.isInteger(offset) && offset >= 0 && offset < snapshot.source.length) destination = { start: offset, end: offset + 1 };
+      }
+      if (destination) {
+        event.preventDefault(); this.documentViewport.reveal(destination);
+        if (event.detail === 0) {
+          let attempts = 0;
+          const focus = () => {
+            const mounted = findTarget();
+            if (mounted && !mounted.closest('[data-window-parked],[inert]')) focusTarget(mounted);
+            else if (++attempts < 4 && this.content) requestAnimationFrame(focus);
+          };
+          requestAnimationFrame(focus);
+        }
+      }
+      return;
+    }
     if (!target) return;
     event.preventDefault();
     this.scrollTo(target.getBoundingClientRect().top - this.getViewportTop() + this.getScrollTop() - (this.configuration.get().scrollOffset ?? 24));
     // Keyboard navigation retains a meaningful destination without a second jump.
     if (event.detail === 0) {
-      if (!target.hasAttribute('tabindex')) { target.tabIndex = -1; target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true }); }
-      target.focus({ preventScroll: true });
+      focusTarget(target);
     }
   };
   requestLayout = () => {
@@ -512,6 +656,7 @@ export class ReaderRuntime {
     });
   };
   private trackHeading = () => {
+    if (this.documentViewport) { this.updateInteraction({ activeHeading: this.documentViewport.activeHeading() }); return; }
     const positions = this.headingPositions;
     const top = this.getScrollTop() + (this.configuration.get().scrollOffset ?? 24) + 2;
     let lo = 0, hi = positions.length;
@@ -522,6 +667,7 @@ export class ReaderRuntime {
     this.updateInteraction({ activeHeading: positions[atEnd ? positions.length - 1 : Math.max(0, lo - 1)]?.id ?? null });
   };
   mountContent(element: HTMLElement): () => void {
+    this.sealViewHandoff();
     this.content = element;
     this.observer = new ResizeObserver(this.requestLayout);
     this.observer.observe(element);
@@ -536,14 +682,12 @@ export class ReaderRuntime {
     window.addEventListener('resize', this.requestLayout);
     document.fonts?.addEventListener('loadingdone', this.requestLayout);
     element.addEventListener('load', this.requestLayout, true);
-    element.addEventListener('click', this.followFragment);
     this.requestLayout();
     return () => {
       this.content = null; this.observer?.disconnect(); this.observer = null;
       cancelAnimationFrame(frame); cancelAnimationFrame(this.layoutFrame); this.layoutFrame = 0;
       scrollRoot.removeEventListener('scroll', scroll); window.removeEventListener('resize', this.requestLayout);
       document.fonts?.removeEventListener('loadingdone', this.requestLayout); element.removeEventListener('load', this.requestLayout, true);
-      element.removeEventListener('click', this.followFragment);
     };
   }
 }

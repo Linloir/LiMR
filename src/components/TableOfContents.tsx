@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useAppearance, useDocumentSelector, useLocale, useRuntime, useStoreSelector, useTheme } from '../react/context';
 import type { StyledProps } from '../react/types';
+import { windowedHeadings } from '../react/windowed-headings';
 import { scrollWithMotion } from '../react/motion';
 import { useOverflowFade } from '../react/overflow-fade';
 
@@ -11,13 +12,17 @@ export function TableOfContents({ title, maxDepth = 6, followActive = true, topI
   const theme = useTheme(), locale = useLocale();
   const headings = useDocumentSelector(doc => doc.headings);
   useStoreSelector(runtime.layout, value => value);
+  const presentation = useStoreSelector(runtime.presentation, revision => revision);
+  const configuration = useStoreSelector(runtime.configuration, value => value);
+  const revision = useDocumentSelector(doc => doc.revision);
+  const semantic = useMemo(() => configuration.virtualization ? windowedHeadings(runtime) : headings, [headings, revision, runtime, presentation, configuration]);
   const active = useStoreSelector(runtime.interaction, state => state.activeHeading);
   const list = useRef<HTMLDivElement>(null);
   useOverflowFade(list, runtime, ':scope > ol');
   const manualUntil = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const visible = headings.filter(heading => heading.level <= maxDepth && !runtime.headings.get(heading.id)?.closest('[inert]'));
-  visible.sort((a, b) => {
+  const visible = semantic.filter(heading => heading.level <= maxDepth && !runtime.headings.get(heading.id)?.closest('[inert]'));
+  if (!configuration.virtualization) visible.sort((a, b) => {
     const left = runtime.headings.get(a.id), right = runtime.headings.get(b.id);
     return left && right && left !== right ? left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1 : 0;
   });

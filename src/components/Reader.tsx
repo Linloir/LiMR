@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
-import { useAppearance, DocumentProvider, useIsomorphicLayoutEffect, useLocale, useRuntime, useStoreSelector, useTheme, type DocumentProviderProps } from '../react/context';
+import { createContext, useContext, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useAppearance, DocumentProvider, useDocumentSelector, useIsomorphicLayoutEffect, useLocale, useRuntime, useStoreSelector, useTheme, type DocumentProviderProps } from '../react/context';
 import { Markdown } from '../react/Markdown';
 import type { SelectionAction, StyledProps } from '../react/types';
 import { TableOfContents } from './TableOfContents';
@@ -8,8 +8,15 @@ import { AnnotationOverlay } from './AnnotationOverlay';
 import { SelectionToolbar } from './SelectionToolbar';
 import { Collapse } from './Collapse';
 import { useOverflowFade } from '../react/overflow-fade';
+import { DocumentSearch } from './DocumentSearch';
+import { ProvisionalPrintGuard } from './ProvisionalPrintGuard';
+
+/** Internal loading-shell measurement; ordinary readers still measure locally. */
+export const ReaderInitialWidthContext = createContext(0);
 
 export interface ReaderProps extends Omit<DocumentProviderProps, 'children'>, StyledProps {
+  /** Optional reader-local integrations can consume the public document hooks. */
+  children?: ReactNode;
   actions?: readonly SelectionAction[];
   toc?: boolean;
   sidebar?: boolean;
@@ -20,12 +27,15 @@ export interface ReaderProps extends Omit<DocumentProviderProps, 'children'>, St
   /** Fill unused viewport height without deriving the layout from annotations. */
   fillHeight?: boolean;
 }
-export function Reader({ actions, toc = true, sidebar = true, sidebarCollapse = false, followOutput = false, sidebarBreakpoint = 1120, fillHeight = true, className, style, ...provider }: ReaderProps) {
-  return <DocumentProvider {...provider}><ReaderLayout actions={actions} toc={toc} sidebar={sidebar} sidebarCollapse={sidebarCollapse} followOutput={followOutput} sidebarBreakpoint={sidebarBreakpoint} fillHeight={fillHeight} className={className} style={style} /></DocumentProvider>;
+export function Reader({ children, actions, toc = true, sidebar = true, sidebarCollapse = false, followOutput = false, sidebarBreakpoint = 1120, fillHeight = true, className, style, ...provider }: ReaderProps) {
+  return <DocumentProvider {...provider}><ReaderLayout actions={actions} toc={toc} sidebar={sidebar} sidebarCollapse={sidebarCollapse} followOutput={followOutput} sidebarBreakpoint={sidebarBreakpoint} fillHeight={fillHeight} className={className} style={style} />{children}</DocumentProvider>;
 }
 function ReaderLayout({ actions, toc, sidebar, sidebarCollapse, followOutput, sidebarBreakpoint, fillHeight, className, style }: Pick<ReaderProps, 'actions' | 'toc' | 'sidebar' | 'sidebarCollapse' | 'followOutput' | 'className' | 'style' | 'fillHeight'> & { sidebarBreakpoint: number }) {
   const runtime = useRuntime();
   const scrollRoot = useStoreSelector(runtime.configuration, config => config.scrollRoot);
+  const windowed = useStoreSelector(runtime.configuration, config => !!config.virtualization);
+  const provisional = useStoreSelector(runtime.configuration, config => !!config.provisional);
+  const streaming = useDocumentSelector(document => document.streaming);
   const layout = useStoreSelector(runtime.layout, value => value);
   const appearance = useAppearance();
   const theme = useTheme();
@@ -33,7 +43,7 @@ function ReaderLayout({ actions, toc, sidebar, sidebarCollapse, followOutput, si
   const tocRail = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLElement>(null);
   useOverflowFade(content, runtime, ':scope > .limr-prose');
-  const [width, setWidth] = useState(0);
+  const [width, setWidth] = useState(useContext(ReaderInitialWidthContext));
   const [availableHeight, setAvailableHeight] = useState(0);
   useIsomorphicLayoutEffect(() => {
     if (!fillHeight || !ref.current) return;
@@ -66,9 +76,13 @@ function ReaderLayout({ actions, toc, sidebar, sidebarCollapse, followOutput, si
         top = Math.max(top, origin); bottom = Math.min(bottom, origin + scrollRoot.clientHeight);
       }
       const reader = ref.current!.getBoundingClientRect();
+      const railTop = rail.getBoundingClientRect().top;
       // A reader that has left the viewport must not cover the next reader.
-      rail.toggleAttribute('inert', reader.bottom <= top || reader.top >= bottom);
-      const height = `${Math.max(0, bottom - Math.max(top, rail.getBoundingClientRect().top)).toFixed(2)}px`;
+      // Finish geometry reads before changing attributes: even writing the same
+      // inert value invalidates styles across a large document in Chromium.
+      const inactive = reader.bottom <= top || reader.top >= bottom;
+      const height = `${Math.max(0, bottom - Math.max(top, railTop)).toFixed(2)}px`;
+      if (rail.hasAttribute('inert') !== inactive) rail.toggleAttribute('inert', inactive);
       if (rail.style.getPropertyValue('--limr-toc-available-height') !== height) rail.style.setProperty('--limr-toc-available-height', height);
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
@@ -86,12 +100,14 @@ function ReaderLayout({ actions, toc, sidebar, sidebarCollapse, followOutput, si
     };
   }, [runtime, scrollRoot, toc]);
   const sidebarVisible = !!sidebar && width >= sidebarBreakpoint;
-  return <div ref={ref} className={`limr-reader ${className ?? ''}`} style={{ '--limr-reader-available-height': fillHeight ? `${availableHeight}px` : undefined, ...style } as CSSProperties} data-fill-height={fillHeight || undefined} data-sidebar={sidebarVisible || undefined} data-toc={toc && width >= 800 || undefined} data-limr-theme={theme} data-limr-appearance={appearance}>
+  return <div ref={ref} className={`limr-reader ${className ?? ''}`} style={{ '--limr-reader-available-height': fillHeight ? `${availableHeight}px` : undefined, ...style } as CSSProperties} data-fill-height={fillHeight || undefined} data-sidebar={sidebarVisible || undefined} data-toc={toc && width >= 800 || undefined} data-limr-theme={theme} data-limr-appearance={appearance} data-limr-provisional={provisional || streaming || undefined}>
     {toc && <><div ref={tocRail} className="limr-reader-toc"><TableOfContents /></div><MobileContents /></>}
     <main ref={content} className="limr-reader-content"><Markdown followOutput={followOutput} /></main>
     {sidebarVisible && <AnnotationSidebar collapseOverflow={sidebarCollapse} />}
     <AnnotationOverlay disabled={sidebarVisible} />
     <SelectionToolbar actions={actions} />
+    {windowed && <DocumentSearch />}
+    {(provisional || streaming) && <ProvisionalPrintGuard />}
   </div>;
 }
 

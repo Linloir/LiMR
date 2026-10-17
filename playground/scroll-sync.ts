@@ -1,7 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
+
+export interface ScrollSyncReader { scrollToSource(range: { start: number; end: number }): void }
 
 /** Piecewise mapping between source lines and rendered top-level blocks. */
-export function useScrollSync(editor: HTMLTextAreaElement | null, preview: HTMLElement | null, source: string, wrap = false) {
+export function useScrollSync(editor: HTMLTextAreaElement | null, preview: HTMLElement | null, source: string, wrap = false, reader?: RefObject<ScrollSyncReader | null>) {
   const previous = useRef<{ editor: HTMLTextAreaElement | null; wrap: boolean } | null>(null);
   useEffect(() => {
     if (!editor || !preview) return;
@@ -23,6 +25,8 @@ export function useScrollSync(editor: HTMLTextAreaElement | null, preview: HTMLE
       editor.scrollLeft = 0;
     }
     let points: { source: number; rendered: number }[] = [];
+    let sourcePosition = (position: number) => starts[Math.min(starts.length - 1, Math.max(0, Math.floor(position / 24)))];
+    let previewOwnedByEditor = false;
     // Ignore only the scroll position this synchronizer actually wrote. A time
     // window can discard a real user scroll, or let a delayed programmatic echo
     // through when pointerdown clears it before that echo is dispatched.
@@ -44,18 +48,36 @@ export function useScrollSync(editor: HTMLTextAreaElement | null, preview: HTMLE
       const first = mirror ? document.createRange() : null;
       if (first && mirror) { first.setStart(mirror.firstChild!, 0); first.setEnd(mirror.firstChild!, 1); }
       const firstGlyphTop = first?.getBoundingClientRect().top ?? 0;
+      const glyphTop = (offset: number) => {
+        const range = document.createRange();
+        range.setStart(mirror!.firstChild!, offset); range.setEnd(mirror!.firstChild!, offset + 1);
+        return range.getBoundingClientRect().top - firstGlyphTop;
+      };
       const sourceTop = (offset: number) => {
         const line = lineAt(offset);
         if (!mirror) return line * lineHeight;
-        const at = starts[line], range = document.createRange();
-        range.setStart(mirror.firstChild!, at); range.setEnd(mirror.firstChild!, at + 1);
         // Inline glyph rectangles omit leading; remove the first line's glyph
         // offset so each point remains the textarea's visual line position.
-        return range.getBoundingClientRect().top - firstGlyphTop;
+        return glyphTop(starts[line]);
+      };
+      sourcePosition = position => {
+        let lo = 0, hi = starts.length;
+        while (lo < hi) { const mid = (lo + hi) >>> 1; if (sourceTop(starts[mid]) <= position) lo = mid + 1; else hi = mid; }
+        const line = Math.max(0, lo - 1), start = starts[line];
+        if (!mirror) return start;
+        // A hard line can occupy many soft lines in a wrapped textarea. Locate
+        // the first glyph on its current visual line instead of the paragraph's
+        // first source character.
+        lo = start; hi = starts[line + 1] ?? source.length;
+        while (lo < hi) { const mid = (lo + hi) >>> 1; if (glyphTop(mid) <= position) lo = mid + 1; else hi = mid; }
+        const last = Math.max(start, lo - 1), rowTop = glyphTop(last);
+        lo = start; hi = last;
+        while (lo < hi) { const mid = (lo + hi) >>> 1; if (glyphTop(mid) < rowTop - .5) lo = mid + 1; else hi = mid; }
+        return lo;
       };
       const end = { source: Math.max(0, editor.scrollHeight - editor.clientHeight), rendered: Math.max(0, preview.scrollHeight - preview.clientHeight) };
       points = [{ source: 0, rendered: 0 }];
-      for (const block of preview.querySelectorAll<HTMLElement>('.limr-reader-content > .limr-prose > [data-limr-block]')) {
+      for (const block of preview.querySelectorAll<HTMLElement>('.limr-reader-content > .limr-prose > [data-limr-block], .limr-reader-content [data-window-slot]:not([data-window-parked]) > [data-limr-block]')) {
         const point = { source: sourceTop(Number(block.dataset.sourceStart)), rendered: block.getBoundingClientRect().top - top + preview.scrollTop };
         const previous = points.at(-1)!;
         if (point.source > previous.source && point.rendered > previous.rendered && point.source < end.source && point.rendered < end.rendered) points.push(point);
@@ -76,19 +98,35 @@ export function useScrollSync(editor: HTMLTextAreaElement | null, preview: HTMLE
       const echo = echoes.get(origin);
       echoes.delete(origin);
       if (echo !== undefined && Math.abs(position - echo) < .5) return;
+      if (origin === preview && previewOwnedByEditor) return;
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const fromEditor = origin === editor, target = fromEditor ? preview : editor;
+        if (preview.querySelector('[data-limr-windowed]')) {
+          if (fromEditor && reader?.current) {
+            // Source commands can reveal an unmounted paragraph, including
+            // documents whose logical height exceeds the browser scroll limit.
+            const offset = Math.min(Math.max(0, source.length - 1), sourcePosition(position));
+            previewOwnedByEditor = true;
+            reader.current.scrollToSource({ start: offset, end: Math.min(source.length, offset + 1) });
+            return;
+          }
+          // Virtual blocks change while scrolling; only their bounded visible
+          // geometry participates in the reverse mapping.
+          measure();
+        }
         setScroll(target, map(position, fromEditor ? 'source' : 'rendered', fromEditor ? 'rendered' : 'source'));
       });
     };
+    const previewInput = () => { previewOwnedByEditor = false; };
     const resize = new ResizeObserver(scheduleMeasure);
     resize.observe(preview); resize.observe(editor);
     const prose = preview.querySelector('.limr-prose'); if (prose) resize.observe(prose);
     const mutation = new MutationObserver(scheduleMeasure);
-    if (prose) mutation.observe(prose, { childList: true });
+    if (prose) mutation.observe(prose, { childList: true, subtree: !!prose.querySelector('[data-limr-windowed]') });
     editor.addEventListener('scroll', synchronize, { passive: true }); preview.addEventListener('scroll', synchronize, { passive: true });
+    for (const type of ['pointerdown', 'wheel', 'touchstart', 'keydown']) preview.addEventListener(type, previewInput, { passive: true });
     document.fonts.addEventListener('loadingdone', scheduleMeasure); measure();
-    return () => { cancelAnimationFrame(frame); cancelAnimationFrame(measureFrame); resize.disconnect(); mutation.disconnect(); mirror?.remove(); editor.removeEventListener('scroll', synchronize); preview.removeEventListener('scroll', synchronize); document.fonts.removeEventListener('loadingdone', scheduleMeasure); };
-  }, [editor, preview, source, wrap]);
+    return () => { cancelAnimationFrame(frame); cancelAnimationFrame(measureFrame); resize.disconnect(); mutation.disconnect(); mirror?.remove(); editor.removeEventListener('scroll', synchronize); preview.removeEventListener('scroll', synchronize); for (const type of ['pointerdown', 'wheel', 'touchstart', 'keydown']) preview.removeEventListener(type, previewInput); document.fonts.removeEventListener('loadingdone', scheduleMeasure); };
+  }, [editor, preview, source, wrap, reader]);
 }

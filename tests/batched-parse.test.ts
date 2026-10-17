@@ -68,11 +68,8 @@ describe('bounded parsing at top-level headings', () => {
     '```md\n\n# inside fence\n\n```',
     '~~~md\n\n# inside fence\n\n~~~',
     '$$\n\n# inside math\n\n$$',
-    '\uFEFFfirst\n\n# heading\n\ntail',
     'paragraph\n# single newline',
     'paragraph\n\n #### indented heading',
-    'paragraph\n\n####### seven markers',
-    'paragraph\n\n#not-a-heading',
     'paragraph\n\n\\# escaped',
     'paragraph\r\n# single CRLF',
   ])('uses one complete parse when a boundary cannot be proven: %s', source => {

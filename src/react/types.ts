@@ -20,10 +20,33 @@ export interface NodeRendererProps {
 }
 export interface TextToken { content: string; offset: number; style?: CSSProperties }
 export type NodeRenderer = ComponentType<NodeRendererProps>;
+export interface VirtualizedTextContext {
+  /** Complete original source for atomic/custom presentation. */
+  source: string;
+  /** Descendant text already filtered to the active presentation and selection. */
+  children: string;
+  /** This leaf's decoded value, clipped to the selected source interval.
+   * Code keeps literal whitespace and entities. Computed only when read. */
+  readonly value: string;
+}
+export interface VirtualizedRenderer {
+  /** Visible plain text for an offscreen node; children is already projected
+   * through the active presentation and selected source interval. */
+  copyText: (node: MarkdownNode, context: VirtualizedTextContext) => string;
+  /** Preserve the actual DOM after its first mount (media/editors/opaque state). */
+  keepAlive?: boolean;
+  /** Optional visible search text when atomic clipboard text differs (for example media). */
+  searchText?: (node: MarkdownNode, context: VirtualizedTextContext) => string;
+}
+export interface VirtualizationCapability { enabled: boolean; reason?: string }
+/** A visible text/atomic source anchor and its pixel offset from the viewport.
+ * Store this alongside the host's document identity, not a global scroll ratio. */
+export interface ReadingPosition { source: number; offset: number }
 export interface RendererOverride {
   /** AST type, or the registered name of a component. */
   type: string;
   component: NodeRenderer;
+  virtualization?: VirtualizedRenderer;
   /** Limits the replacement; false falls back to the next match or built-in. */
   when?: (node: MarkdownNode, context: { pending: boolean; incomplete: boolean; ancestors: readonly MarkdownNode[] }) => boolean;
 }
@@ -111,6 +134,7 @@ export interface AnnotationType<T = unknown> {
   load?: (annotation: Annotation<T>, context: { signal: AbortSignal }) => Promise<T>;
 }
 export interface RendererExtension extends SyntaxExtension {
+  virtualization?: Readonly<Record<string, VirtualizedRenderer>>;
   /** Optional serialization owned by the module. Last registered handler that
    * returns edits wins; undefined delegates to the preceding handler. */
   sourceEditing?: {
@@ -195,6 +219,9 @@ export interface ToolbarActionContext extends ActionContext {
   run: (operation: (context: ActionContext) => void | Promise<void>) => Promise<void>;
 }
 export interface SelectionAction {
+  /** Safe to expose while source/annotation writes are disabled. Unknown
+   * extension actions stay hidden in an explicitly read-only reader. */
+  readOnly?: boolean;
   id: string;
   label: string | ((context: ActionContext) => string);
   /** Required, decorative, ideally a rounded SVG with a square viewBox. */
@@ -224,10 +251,25 @@ export interface LiMRLocale {
   highlightBackground: string; highlightUnderline: string; highlightDotted: string; highlightWavy: string;
   hideHighlight: string; showHighlight: string;
   inlineHighlightHint?: string;
+  previewImage?: string; imagePreview?: string; closeImagePreview?: string; imageFit?: string; imageActualSize?: string;
+  translationOriginal?: string; translationTranslated?: string; translationBoth?: string;
+  /** Templates accept {mode} and {next}. */
+  translationSwitchLabel?: string; translationLockedLabel?: string;
   translationSelectionHint?: string;
   deleteAnnotations: string; deleteAnnotationsHint: string;
 }
 export interface ViewConfiguration {
+  /** This snapshot is a loading prefix, not the complete document. Unlike
+   * readOnly, this also prevents operations requiring complete content. */
+  provisional?: boolean;
+  /** Disable document/annotation writes while retaining reading interactions.
+   * AsyncReader enforces this for provisional loading prefixes. */
+  readOnly?: boolean;
+  /** Window the DOM while retaining the complete document and semantic index.
+   * AsyncReader enables this for large inputs. */
+  virtualization?: boolean | { overscan?: number };
+  /** Reports a semantic compatibility fallback instead of silently dropping a plugin. */
+  onVirtualizationChange?: (capability: VirtualizationCapability) => void;
   /** Opt into editing the original Markdown. Accept synchronously (void/true),
    * or return false to decline. The host owns file I/O and error/undo UI. */
   onSourceChange?: (source: string, change: SourceChange) => boolean | void;

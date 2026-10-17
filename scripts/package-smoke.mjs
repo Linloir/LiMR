@@ -5,8 +5,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { chromium, expect } from '@playwright/test';
 
 const temporary = await mkdtemp(join(tmpdir(), 'limr-package-'));
-function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'development' } });
+function run(command, args, cwd, environment = {}) {
+  const result = spawnSync(command, args, { cwd, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'development', ...environment } });
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')}\n${result.stdout}\n${result.stderr}`);
   return result.stdout;
 }
@@ -15,6 +15,7 @@ const archive = (await readdir(temporary)).find(name => name.endsWith('.tgz'));
 if (!archive) throw new Error('Package archive was not created');
 const contents = new Set(run('tar', ['-tzf', join(temporary, archive)], process.cwd()).trim().split('\n'));
 for (const path of ['README.md', 'README.en.md', 'docs/zh-CN/modules.md', 'docs/en/modules.md', 'docs/assets/source.svg',
+  'dist/worker.js', 'dist/worker.d.ts', 'dist/worker-api.js', 'dist/worker-api.d.ts', 'docs/en/large-documents.md', 'docs/zh-CN/large-documents.md',
   'docs/zh-CN/performance.md', 'docs/en/performance.md', 'docs/zh-CN/knuth-plass-performance.md', 'docs/en/knuth-plass-performance.md',
   'docs/assets/performance/limr-midpoint.png', 'docs/assets/performance/markstream-midpoint.png', 'benchmarks/README.md', 'benchmarks/results/renderers.json',
   'skills/limr-use/SKILL.md', 'skills/limr-plugin-development/SKILL.md', 'skills/limr-plugin-development/assets/plugin-template/package.json']) {
@@ -50,8 +51,9 @@ for (const version of ['18.3.1', '19']) {
   }
   await writeFile(join(directory, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, skipLibCheck: false, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', jsx: 'react-jsx', noEmit: true }, include: ['consumer.tsx'] }));
   await writeFile(join(directory, 'consumer.tsx'), `
-import { Reader, Markdown, DocumentProvider, standard, defineAnnotation, AnnotationCard, AnnotationMarkdown, ToolIcon, InlineMarker, useLocale, useRendererParameter, type RendererExtension, type SelectionAction } from '@linloir/limr';
+import { AsyncReader, Reader, Markdown, DocumentProvider, standard, defineAnnotation, AnnotationCard, AnnotationMarkdown, ToolIcon, InlineMarker, useLiMR, useLocale, useRendererParameter, type RendererExtension, type SelectionAction, type ReadingPosition } from '@linloir/limr';
 import { createDocument, prepareKnuthPlass } from '@linloir/limr/core';
+import { createDocumentWorkerHandler, standardWorkerRegistry, type DocumentWorkerRequest } from '@linloir/limr/worker-api';
 import { readingTools } from '@limr-example/reading-tools';
 import { readingTools as templateTools } from '@example/limr-reading-tools';
 import { inlineNotes } from './inline-notes.js';
@@ -65,9 +67,13 @@ declare module '@linloir/limr' { interface RendererParameters { consumerDensity?
 const parameterPlugin: RendererExtension = { name: 'consumer-parameters', parameters: { consumerDensity: 2 }, components: { parameter: () => <InlineMarker label="Density">{useRendererParameter('consumerDensity')}</InlineMarker> } };
 const standalone = <Markdown source="Text" justify plugins={[parameterPlugin]} parameters={{ consumerDensity: 3, translationMode: 'both', onTranslationModeChange: mode => { const checked: 'origin' | 'translation' | 'both' = mode; } }} />;
 const shared = <DocumentProvider source="Text" justify><Markdown justify={false} /></DocumentProvider>;
+function ReaderIntegration() { const api = useLiMR(); const position: ReadingPosition | null = api.getReadingPosition(); return <button disabled={!api.isDocumentComplete()} onClick={() => position ? api.restoreReadingPosition(position) : api.scrollToSource({ start: 10, end: 20 })}>Jump</button>; }
+const asynchronous = <AsyncReader input={new Blob(['A book'])} loading={{ mode: 'blocking', worker: () => new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }) }}><ReaderIntegration /></AsyncReader>;
 const layoutApp = <Reader source="==Marked==" typography="knuth-plass" knuthPlass={{ tolerance: 200, hyphenate: word => [word] }} streamEffect={{ keyframes: [{ opacity: 0 }, { opacity: 1 }] }} rendererOverrides={[{ type: 'code', when: (node, context) => node.lang === 'js' && !context.incomplete, component: ({ renderValue }) => <pre>{renderValue()}</pre> }]} />;
 prepareKnuthPlass([{ type: 'box', width: 10 }, { type: 'penalty', width: 0, penalty: -10000 }])(400);
 createDocument('Core').getSnapshot();
+const workerHandler = createDocumentWorkerHandler(standardWorkerRegistry);
+const acceptsWorkerRequest: Parameters<typeof workerHandler>[0] = {} as DocumentWorkerRequest;
 `);
   run('pnpm', ['exec', 'tsc'], directory);
   await writeFile(join(directory, 'smoke.mjs'), `
@@ -103,12 +109,16 @@ console.log('SSR, extension entry and local math/Maple assets passed');
   console.log(`React ${version}: ${run('node', ['smoke.mjs'], directory).trim()}; TypeScript passed`);
   await writeFile(join(directory, 'deny-react.mjs'), `export function resolve(specifier, context, next) { if (/^react(?:-dom)?(?:$|\\/)/.test(specifier)) throw new Error('React imported by core'); return next(specifier, context); }`);
   run('node', ['--loader', './deny-react.mjs', '--input-type=module', '-e', `import {createDocument} from '@linloir/limr/core'; if (createDocument('# Core').getSnapshot().headings.length !== 1) throw Error('Core failed');`], directory);
+  run('node', ['--loader', './deny-react.mjs', '--input-type=module', '-e', `globalThis.addEventListener = () => { throw Error('worker-api installed a listener'); }; globalThis.postMessage = () => { throw Error('worker-api posted a message'); }; const api = await import('@linloir/limr/worker-api'); if (typeof api.createDocumentWorkerHandler !== 'function' || !Object.keys(api.standardWorkerRegistry).length) throw Error('Worker API exports missing');`], directory);
   console.log(`React ${version}: core imports without React/DOM`);
+  // This side-effect import is deliberately bundled in production: the worker
+  // entry must register its listener rather than being removed by tree shaking.
+  await writeFile(join(directory, 'worker.js'), "import '@linloir/limr/worker';\n");
   await writeFile(join(directory, 'index.html'), '<!doctype html><html><meta charset="utf-8"><div id="root"></div><script type="module" src="/browser.js"></script></html>');
   await writeFile(join(directory, 'browser.js'), `
 import { createElement as h, Fragment } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Reader, chinese } from '@linloir/limr';
+import { AsyncReader, Reader, chinese, useLiMR } from '@linloir/limr';
 import { readingTools } from '@limr-example/reading-tools';
 import { readingTools as templateTools } from '@example/limr-reading-tools';
 import '@linloir/limr/styles.css';
@@ -116,15 +126,22 @@ import '@linloir/limr/math.css';
 import '@limr-example/paper-theme';
 import '@example/limr-reading-tools/styles.css';
 const plugins = [readingTools()];
+const workerSource = '# Worker &amp; reader\\n\\n' + Array.from({ length: 200 }, (_, index) => 'Loaded paragraph ' + index + '.').join('\\n\\n');
+function WorkerIntegration() {
+  const reader = useLiMR();
+  return h('button', { onClick: () => { const start = workerSource.indexOf('Loaded paragraph 199.'); reader.scrollToSource({ start, end: start + 1 }); } }, 'Read the loaded ending');
+}
 createRoot(document.getElementById('root')).render(h(Fragment, null,
   h(Reader, { source: '# Package consumer\\n\\nChoose **this passage** with $x^2$.\\n\\n<reading-tip>\\n\\nA plugin **tip**.\\n\\n</reading-tip>', plugins, appearance: 'paper', toc: false, sidebar: false }),
   h(Reader, { source: 'Independent classic reader.', toc: false, sidebar: false }),
   h(Reader, { documentId: 'template', source: 'A **template passage**.\\n\\n<reading-tip title="Template">\\n\\nA template tip.\\n\\n</reading-tip>', plugins: [templateTools()], locale: chinese, toc: false, sidebar: false }),
-  h(Reader, { documentId: 'modules', source: '> [!tip] Tip\\n> Built in.\\n\\n==Standalone== and ==Marked==[^n]\\n\\n[^n]: Packed footnote.\\n\\n::mermaid\\nflowchart LR\\nA-->B\\n::', typography: 'knuth-plass', locale: chinese, toc: false, sidebar: false })
+  h(Reader, { documentId: 'modules', source: '> [!tip] Tip\\n> Built in.\\n\\n==Standalone== and ==Marked==[^n]\\n\\n[^n]: Packed footnote.\\n\\n::mermaid\\nflowchart LR\\nA-->B\\n::', typography: 'knuth-plass', locale: chinese, toc: false, sidebar: false }),
+  h(AsyncReader, { documentId: 'worker', input: workerSource, loading: { fallback: 'error', worker: () => new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }) }, onLoadStateChange: state => { window.workerState = state; }, toc: false, sidebar: false }, h(WorkerIntegration))
 ));
 `);
-  // Serve the actual installed tarballs, never an alias back into the repo.
-  const server = spawn(process.execPath, [join(directory, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '0'], { cwd: directory, stdio: ['ignore', 'pipe', 'pipe'] });
+  // Build and serve actual installed tarballs, never repository aliases or HMR.
+  run('pnpm', ['exec', 'vite', 'build'], directory, { NODE_ENV: 'production' });
+  const server = spawn(process.execPath, [join(directory, 'node_modules/vite/bin/vite.js'), 'preview', '--host', '127.0.0.1', '--port', '0'], { cwd: directory, stdio: ['ignore', 'pipe', 'pipe'] });
   let url;
   const listening = new Promise((resolve, reject) => {
     const timeout = setTimeout(() => reject(new Error('Consumer server did not start')), 20000);
@@ -138,6 +155,14 @@ createRoot(document.getElementById('root')).render(h(Fragment, null,
     const page = await browser.newPage({ viewport: { width: 800, height: 900 } });
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     await page.goto(url);
+    await page.waitForFunction(() => ['ready', 'error'].includes(window.workerState?.status));
+    const workerError = await page.evaluate(() => window.workerState.error?.message);
+    if (workerError) throw new Error(`Packed worker failed: ${workerError}`);
+    expect(await page.evaluate(() => window.workerState.capabilities.worker)).toBe(true);
+    expect(await page.evaluate(() => ({ complete: window.workerState.complete, blocks: window.workerState.document.getSnapshot().blocks.length, ending: window.workerState.document.getSnapshot().source.endsWith('Loaded paragraph 199.') }))).toEqual({ complete: true, blocks: 201, ending: true });
+    await expect(page.locator('[data-limr-document="worker"] [data-limr-windowed]')).toHaveCount(1);
+    await expect(page.getByRole('heading', { name: 'Worker & reader' })).toHaveCount(1);
+    expect(await page.locator('[data-limr-document="worker"] [data-limr-block]').count()).toBeLessThan(100);
     await expect(page.locator('.reading-tip')).toContainText('A plugin tip.');
     await expect(page.locator('.katex')).toHaveCount(1);
     await expect(page.locator('.limr-reader[data-limr-appearance="paper"]')).toHaveCSS('background-color', 'rgb(252, 250, 244)');
@@ -174,6 +199,8 @@ createRoot(document.getElementById('root')).render(h(Fragment, null,
     await modules.locator('mark').first().click();
     await expect(page.getByRole('toolbar')).toHaveAttribute('data-readonly', 'true');
     await expect(page.getByRole('toolbar').getByRole('button')).toHaveCount(1);
+    await page.getByRole('button', { name: 'Read the loaded ending' }).click();
+    await expect(page.locator('[data-limr-document="worker"]').getByText('Loaded paragraph 199.', { exact: true })).toBeInViewport();
     if (errors.length) throw new Error(errors.join('\n'));
     console.log(`React ${version}: packed plugins, scoped CSS, skill template, KP, Mermaid, callout, highlight and footnote modules passed in Chromium`);
   } finally { await browser?.close(); server.kill('SIGTERM'); }

@@ -4,10 +4,14 @@ import { walk } from '../core/tree';
 import { CopyButton } from '../components/CopyButton';
 import { LoadingRing } from '../components/LoadingRing';
 import { ToolIcon } from '../components/ToolIcon';
-import { useLocale, useRuntime, useTheme } from '../react/context';
+import { useLocale, useNodeState, useOwnedNodeState, useRuntime, useTheme } from '../react/context';
 import { useStreamEntrance } from '../react/stream-effect';
 import type { NodeRendererProps, RendererExtension } from '../react/types';
-import { literalDirective } from './literal-directive';
+import { transformMermaid } from './syntax-transforms';
+import { declareNodeStateRenderer, completeNodeStateShape, type NodeStateOwner } from '../react/node-state-handoff';
+
+const mermaidStateOwner: NodeStateOwner = { name: 'mermaidStateOwner', keys: { 'mermaid-source': value => typeof value === 'boolean', 'mermaid-scale': value => typeof value === 'number' && Number.isFinite(value) && value > 0 }, signature: completeNodeStateShape };
+
 
 let nextId = 0;
 let queue = Promise.resolve();
@@ -41,10 +45,10 @@ async function diagram(id: string, code: string, dark: boolean, font: string, si
 function MermaidNode({ node, incomplete }: NodeRendererProps) {
   const locale = useLocale(), theme = useTheme(), runtime = useRuntime();
   const zh = locale.language?.startsWith('zh');
-  const [id] = useState(() => `limr-mermaid-${++nextId}`);
+  const [id] = useNodeState(node, 'mermaid-id', () => `limr-mermaid-${++nextId}`);
   const [systemDark, setSystemDark] = useState(false);
   const [result, setResult] = useState<{ key: string; svg?: string; error?: boolean }>();
-  const [sourceView, setSourceView] = useState(false), [scale, setScale] = useState(1), [attempt, setAttempt] = useState(0);
+  const [sourceView, setSourceView] = useOwnedNodeState(mermaidStateOwner, node, 'mermaid-source', false), [scale, setScale] = useOwnedNodeState(mermaidStateOwner, node, 'mermaid-scale', 1), [attempt, setAttempt] = useState(0);
   const ref = useRef<HTMLDivElement>(null), content = useRef<HTMLDivElement>(null);
   const drag = useRef<{ id: number; x: number; y: number; left: number; top: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
@@ -156,13 +160,8 @@ function MermaidNode({ node, incomplete }: NodeRendererProps) {
 
 /** Lazy, atomic diagrams. An unclosed streaming fence never reaches Mermaid. */
 export function mermaid(): RendererExtension {
+  declareNodeStateRenderer(mermaidStateOwner, MermaidNode);
   return { name: 'mermaid', directives: ['mermaid'], literal: true, scope: 'local', components: { mermaid: MermaidNode },
-    transform(root, context) {
-      literalDirective(root, context.source, 'mermaid');
-      walk(root, node => {
-        if (node.type === 'code' && String(node.lang).toLowerCase() === 'mermaid') node.type = 'mermaid';
-        if (node.type === 'mermaid') node.selection = 'atomic';
-      });
-    },
+    transform: transformMermaid,
   };
 }

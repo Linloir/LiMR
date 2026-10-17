@@ -1,11 +1,19 @@
-import type { Extension } from 'micromark-util-types';
+import type { Construct, Extension } from 'micromark-util-types';
 
-const autolinks = new WeakMap<Extension, Map<number, Extension>>();
+interface BundledSyntax { variants: Map<number, Extension>; tables: ReadonlySet<Construct> }
+const bundledSyntax = new WeakMap<Extension, BundledSyntax>();
 
 /** Register only the bundled GFM tokenizer. Third-party tokenizer objects and
  * their compiler hooks retain the complete token stream they supplied. */
 export function sourceAwareAutolinks<T extends Extension>(extension: T): T {
-  autolinks.set(extension, new Map([[7, extension]]));
+  const flow = extension.flow?.null;
+  const tables = new Set<Construct>();
+  // Registration is only called for the shipped GFM object. Preserve the
+  // actual construct identities: later objects named 'table' are not ours.
+  for (const construct of Array.isArray(flow) ? flow : flow ? [flow] : []) {
+    if (construct.name === 'table') tables.add(construct);
+  }
+  bundledSyntax.set(extension, { variants: new Map([[15, extension]]), tables });
   return extension;
 }
 
@@ -14,9 +22,13 @@ export function sourceAwareAutolinks<T extends Extension>(extension: T): T {
  * only attempts that cannot succeed; mdast's decoded-text transform is retained
  * so character references and escapes keep their ordinary GFM semantics. */
 export function syntaxForSource(extension: Extension, source: string): Extension {
-  const variants = autolinks.get(extension);
-  if (!variants) return extension;
-  const mask = (source.includes('@') ? 1 : 0) | (/www\./i.test(source) ? 2 : 0) | (/https?:\/\//i.test(source) ? 4 : 0);
+  const registered = bundledSyntax.get(extension);
+  if (!registered) return extension;
+  const { variants, tables } = registered;
+  // A GFM delimiter needs a pipe or a colon touching its hyphen filler.
+  // In particular, pipe-free single-column tables must remain possible.
+  const tablePossible = source.includes('|') || source.includes(':-') || source.includes('-:');
+  const mask = (source.includes('@') ? 1 : 0) | (/www\./i.test(source) ? 2 : 0) | (/https?:\/\//i.test(source) ? 4 : 0) | (tablePossible ? 8 : 0);
   const cached = variants.get(mask);
   if (cached) return cached;
   const text: NonNullable<Extension['text']> = {};
@@ -32,7 +44,15 @@ export function syntaxForSource(extension: Extension, source: string): Extension
     });
     if (retained.length) text[code] = retained;
   }
-  const result = { ...extension, text };
+  let flow = extension.flow;
+  if (!(mask & 8) && tables.size && flow?.null) {
+    const constructs = flow.null;
+    const retained = (Array.isArray(constructs) ? constructs : [constructs]).filter(construct => !tables.has(construct));
+    flow = { ...flow };
+    if (retained.length) flow.null = retained;
+    else delete flow.null;
+  }
+  const result = { ...extension, text, flow };
   variants.set(mask, result);
   return result;
 }

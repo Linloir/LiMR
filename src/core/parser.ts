@@ -1,4 +1,4 @@
-import { fromMarkdown } from 'mdast-util-from-markdown';
+import { fromMarkdownSource as fromMarkdown } from './markdown-input';
 import { mdxJsx } from 'micromark-extension-mdx-jsx';
 import { mdxJsxFromMarkdown } from 'mdast-util-mdx-jsx';
 import { directive } from 'micromark-extension-directive';
@@ -9,6 +9,7 @@ import { hasTableLocalSyntax, incrementalTable } from './incremental-table';
 import { syntaxForSource } from './source-syntax';
 import { parseInBatches } from './batched-parse';
 import { omitSource } from './source-omissions';
+import { takePreparsed } from './preparsed';
 import type { Diagnostic, MarkdownNode, ParseContext, SourcePosition, SyntaxExtension } from './types';
 
 export function validateExtensions(extensions: readonly SyntaxExtension[]): void {
@@ -89,7 +90,7 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
     const attributePoint = (at: number) => sourcePoint(at, lines.length ? lines : attributeLines ??= lineStarts(context.source));
     let recoveryOffset = prepared.recoveryOffset === undefined ? undefined : offset + omitted.original(prepared.recoveryOffset, 'end');
     const canBatch = tableLocal && !prefix && prepared.value === fragment && !hasJsx && !hasDirectives;
-    const parse = (value: string) => fromMarkdown(value, {
+    const parse = (value: string) => (tableLocal ? takePreparsed(context, value, extensions) : undefined) ?? fromMarkdown(value, {
       extensions: forSource(hasJsx ? hasDirectives ? jsxSyntax : plainJsxSyntax : activeSyntax, value),
       mdastExtensions: hasJsx ? hasDirectives ? jsxMdast : plainJsxMdast : activeMdast,
     }) as unknown as MarkdownNode;
@@ -98,7 +99,7 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
       root = canAppendLiteral ? { type: 'root', children: [{ ...cached.node,
         value: fragment.slice(cached.content).replace(/(?:\r\n|\r|\n)$/, ''),
         position: { start: { offset: 0, line: 1, column: 1 }, end: { offset: fragment.length, line: 0, column: 0 } },
-      }] } : parseTable(input, offset, context.streaming, canBatch, value => parseInBatches(value, canBatch, parse));
+      }] } : parseTable(input, offset, context.streaming, canBatch, value => parseInBatches(value, canBatch, parse, { onProgress: context.onProgress }));
     } catch (error) {
       // Incomplete JSX is common during streaming. Preserve readable Markdown,
       // treat HTML as inert source and retry the final block on the next append.

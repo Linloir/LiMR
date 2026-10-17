@@ -1,9 +1,15 @@
 /* LiMR classic skin. Local assets only; unlayered application CSS wins. */
 @import "./fonts/maple.css";
+@import "./image-preview.css";
+@import "./table.css";
+@import "./document-loading.css";
 /* Viewport coordinates change on every scroll. They belong to the mask host,
    never its text descendants; inheriting them invalidates the entire article. */
 @property --limr-fade-start { syntax: '<length>'; inherits: false; initial-value: 0px; }
 @property --limr-fade-end { syntax: '<length>'; inherits: false; initial-value: 0px; }
+/* A measured card cap changes while prose expands. Keep that layout value on
+   the card instead of invalidating every descendant's inherited properties. */
+@property --limr-sidebar-layout-height { syntax: '<length> | none'; inherits: false; initial-value: none; }
 
 @layer limr {
   :where([data-limr-appearance]) {
@@ -353,7 +359,7 @@
   .limr-sidebar-card[data-locked] { z-index: 1; transition-property: border-color, background-color; }
   .limr-sidebar:is([data-resizing],[data-releasing]) > .limr-sidebar-card { transition-property: border-color, background-color; }
   .limr-sidebar-card[data-default-card] { display: flex; flex-direction: column; }
-  .limr-sidebar-card[data-default-card] { max-height: var(--limr-sidebar-card-height, none); }
+  .limr-sidebar-card[data-default-card] { max-height: var(--limr-sidebar-card-height, var(--limr-sidebar-layout-height, none)); }
   .limr-sidebar-card-body { display: flex; flex-direction: column; min-height: 0; transition: border-color var(--limr-motion) var(--limr-ease), background-color var(--limr-motion) var(--limr-ease); }
   .limr-sidebar-card-body > .limr-collapse { min-height: 0; }
   /* Preview and details trade height; fading both can leave a blank card when

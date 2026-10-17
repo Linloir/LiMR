@@ -55,6 +55,8 @@ try {
       '@linloir/limr/core': [join(root, 'src/core/index.ts')],
       '@linloir/limr/react': [join(root, 'src/react/index.ts')],
       '@linloir/limr/extensions': [join(root, 'src/extensions/index.ts')],
+      '@linloir/limr/worker': [join(root, 'src/worker.ts')],
+      '@linloir/limr/worker-api': [join(root, 'src/worker-api.ts')],
     },
   });
   for (const diagnostic of ts.getPreEmitDiagnostics(program)) {

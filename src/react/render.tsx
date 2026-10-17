@@ -12,6 +12,8 @@ import { StreamSelectionBoundary } from './stream-selection';
 import { StreamEntrance } from './stream-effect';
 import { KnuthPlassBoundary } from './knuth-plass-boundary';
 import { SourceTaskItem, TaskText } from '../components/TaskCheckbox';
+import { Image } from '../components/Image';
+import { MarkdownTable } from '../components/Table';
 
 interface RenderContext {
   runtime: ReaderRuntime;
@@ -188,7 +190,7 @@ function HeadingNode({ node, children, runtime, blockElement }: { node: Markdown
 function Reference({ node, children, image }: { node: MarkdownNode; children: ReactNode; image: boolean }) {
   const definition = useDocumentSelector(doc => doc.definitions.get(String(node.identifier)));
   if (!definition) return <>{children || String(node.alt ?? node.label ?? '')}</>;
-  return image ? <img src={safeUrl(definition.url, true)} alt={String(node.alt ?? '')} title={definition.title ? String(definition.title) : undefined} loading="lazy" decoding="async" /> : <a href={safeUrl(definition.url)} title={definition.title ? String(definition.title) : undefined}>{children}</a>;
+  return image ? <Image src={safeUrl(definition.url, true)} alt={String(node.alt ?? '')} title={definition.title ? String(definition.title) : undefined} /> : <a href={safeUrl(definition.url)} title={definition.title ? String(definition.title) : undefined}>{children}</a>;
 }
 function FootnoteReference({ node }: { node: MarkdownNode }) {
   const runtime = useRuntime();
@@ -211,17 +213,28 @@ function containsBlock(node: MarkdownNode): boolean {
   return (node.type === 'component' && !node.inline) || ['math', 'code', 'list', 'table', 'blockquote'].includes(node.type) || (node.children?.some(containsBlock) ?? false);
 }
 
+function lastVisibleChild(nodes: readonly MarkdownNode[]): number {
+  for (let index = nodes.length - 1; index >= 0; index--) {
+    const node = nodes[index];
+    if (!['definition', 'footnoteDefinition', 'annotationDefinition', 'streamPending'].includes(node.type)
+      && !(node.type === 'text' && !node.value?.trim())) return index;
+  }
+  return -1;
+}
+
 function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trailing?: ReactNode): ReactNode {
   const { runtime } = context;
-  if (node.type === 'text' && context.compact) return context.live ? <StreamText key={`text-${node.position?.start.offset ?? index}`} value={node.value ?? ''} animateInitial={rangeOf(node).end > context.revealFrom} /> : node.value ?? '';
+  if (node.type === 'text' && context.compact) {
+    const text = context.live ? <StreamText key={`text-${node.position?.start.offset ?? index}`} value={node.value ?? ''} animateInitial={rangeOf(node).end > context.revealFrom} /> : node.value ?? '';
+    return trailing ? <Fragment key={`text-${node.position?.start.offset ?? index}`}>{text}{trailing}</Fragment> : text;
+  }
   if (node.type === 'streamPending') return null;
   const blockElement = node === context.block.node ? context.blockElement : undefined;
   const key = `${node.type}-${node.position?.start.offset ?? index}-${index}`;
   let childContext = node.type === 'list' ? { ...context, tightList: !node.spread } : context;
   if (runtime.rendererOverrides.size) childContext = { ...childContext, ancestors: [...context.ancestors ?? [], node] };
   const renderChildren = (nodes: readonly MarkdownNode[], options?: { trailing?: ReactNode }) => {
-    let last = -1;
-    nodes.forEach((child, i) => { if (!['definition', 'footnoteDefinition', 'annotationDefinition'].includes(child.type)) last = i; });
+    const last = lastVisibleChild(nodes);
     if (last < 0 && options?.trailing) return [<Fragment key="trailing">{options.trailing}</Fragment>];
     return nodes.map((child, i) => renderNode(child, childContext, i, i === last ? options?.trailing : undefined));
   };
@@ -230,17 +243,26 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trail
   const override = rules?.slice().reverse().find(rule => !rule.when || rule.when(node, { pending: context.block.pending, incomplete: !!node.incomplete, ancestors: context.ancestors ?? [] }));
   const owner = node.incomplete && !override ? runtime.configuration.get().extensions?.slice().reverse().find(extension => extension.components?.[componentName]) : undefined;
   const Renderer = override?.component ?? (node.incomplete && owner?.streaming?.Loading || runtime.components[componentName]);
+  // A trailing action belongs to the last flow inside a structural container,
+  // not a sibling after the entire list/quote. Inline formatting and arbitrary
+  // extension renderers retain their existing outside-marker behavior.
+  const nestedTrailing = !Renderer && (['list', 'listItem', 'blockquote'].includes(node.type) || node.type === 'paragraph' && containsBlock(node)) ? trailing : undefined;
+  if (nestedTrailing) trailing = undefined;
+  const lastChild = nestedTrailing ? lastVisibleChild(node.children ?? []) : -1;
   const children = node.type === 'table' ? [] : node.type === 'listItem'
     ? (node.children ?? []).flatMap((child, index) => {
-      const rendered = child.type === 'paragraph' && context.tightList ? renderChildren(child.children ?? []) : renderNode(child, childContext, index);
+      const tail = index === lastChild ? nestedTrailing : undefined;
+      const taskParagraph = !Renderer && typeof node.checked === 'boolean' && child.type === 'paragraph' && !containsBlock(child);
+      const tightParagraph = child.type === 'paragraph' && context.tightList;
+      const rendered = tightParagraph ? renderChildren(child.children ?? []) : renderNode(child, childContext, index, taskParagraph ? undefined : tail);
       // Keep paragraph/list structure and text bindings intact. The inline
       // wrapper shares the question option's per-line underline animation.
-      if (!Renderer && typeof node.checked === 'boolean' && child.type === 'paragraph' && !containsBlock(child)) {
-        if (context.tightList) return <TaskText key={`task-text-${index}`}>{rendered}</TaskText>;
-        if (isValidElement<{ children?: ReactNode }>(rendered) && rendered.type === 'p') return cloneElement(rendered, {}, <TaskText>{rendered.props.children}</TaskText>);
+      if (taskParagraph) {
+        if (context.tightList) return <Fragment key={`task-text-${index}`}><TaskText>{rendered}</TaskText>{tail}</Fragment>;
+        if (isValidElement<{ children?: ReactNode }>(rendered) && rendered.type === 'p') return cloneElement(rendered, {}, <TaskText>{rendered.props.children}</TaskText>, tail);
       }
-      return rendered;
-    }) : renderChildren(node.children ?? []);
+      return tightParagraph && tail ? <Fragment key={`list-text-${index}`}>{rendered}{tail}</Fragment> : rendered;
+    }) : renderChildren(node.children ?? [], { trailing: nestedTrailing });
   let element: ReactNode;
   if (Renderer) {
     const range = rangeOf(node);
@@ -268,14 +290,13 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trail
       case 'list': element = node.ordered ? <ol start={Number(node.start ?? 1)}>{children}</ol> : <ul>{children}</ul>; break;
       case 'listItem': element = typeof node.checked === 'boolean' ? <SourceTaskItem node={node} source={runtime.document.getSnapshot().source.slice(rangeOf(node).start, rangeOf(node).end)}>{children}</SourceTaskItem> : <li>{children}</li>; break;
       case 'link': element = <a href={safeUrl(node.url)} title={node.title ? String(node.title) : undefined}>{children}</a>; break;
-      case 'image': element = <img src={safeUrl(node.url, true)} alt={String(node.alt ?? '')} title={node.title ? String(node.title) : undefined} loading="lazy" decoding="async" />; break;
+      case 'image': element = <Image src={safeUrl(node.url, true)} alt={String(node.alt ?? '')} title={node.title ? String(node.title) : undefined} />; break;
       case 'linkReference': element = <Reference node={node} image={false}>{children}</Reference>; break;
       case 'imageReference': element = <Reference node={node} image>{children}</Reference>; break;
       case 'thematicBreak': element = <hr />; break;
       case 'break': element = <br data-limr-break="" data-source-start={rangeOf(node).start} data-source-end={rangeOf(node).end} />; break;
       case 'table': {
-        const rows = node.children ?? [], alignment = node.align as (string | null)[];
-        element = <div className="limr-table-scroll"><table><thead>{rows.slice(0, 1).map((row, i) => <tr key={i}>{row.children?.map((cell, j) => <th key={j} style={{ textAlign: alignment?.[j] as CSSProperties['textAlign'] }}>{renderChildren(cell.children ?? [])}</th>)}</tr>)}</thead><tbody>{rows.slice(1).map((row, i) => <tr key={i}>{row.children?.map((cell, j) => <td key={j} style={{ textAlign: alignment?.[j] as CSSProperties['textAlign'] }}>{renderChildren(cell.children ?? [])}</td>)}</tr>)}</tbody></table></div>; break;
+        element = <MarkdownTable node={node} renderChildren={renderChildren} />; break;
       }
       case 'definition': case 'footnoteDefinition': case 'annotationDefinition': return null;
       case 'footnoteReference': return <Fragment key={key}><FootnoteReference node={node} />{trailing}</Fragment>;

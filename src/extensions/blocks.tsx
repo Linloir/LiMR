@@ -1,13 +1,16 @@
 import { BlockLoading } from '../components/LoadingRing';
-import { useState } from 'react';
 import { defineBlock } from './define';
 import { rangeOf, safeUrl, textContent, walk } from '../core/tree';
-import { useRuntime } from '../react/context';
+import { useOwnedNodeState, useRuntime } from '../react/context';
 import type { MarkdownNode } from '../core';
 import type { NodeRenderer, NodeRendererProps, RendererExtension } from '../react/types';
 import { Disclosure } from '../components/Disclosure';
 import { Collapse } from '../components/Collapse';
 import { DiamondCheck } from '../components/DiamondCheck';
+import { declareNodeStateRenderer, completeNodeStateShape, type NodeStateOwner } from '../react/node-state-handoff';
+
+const questionStateOwner: NodeStateOwner = { name: 'questionStateOwner', keys: { 'question-hint': value => typeof value === 'boolean', 'question-answer': value => typeof value === 'boolean', 'question-checked': value => typeof value === 'boolean', 'question-selected': value => Array.isArray(value) && value.every(item => Number.isSafeInteger(item) && item >= 0) }, signature: completeNodeStateShape };
+
 
 function parts(node: MarkdownNode, name: string): MarkdownNode[] {
   const result: MarkdownNode[] = [];
@@ -32,8 +35,8 @@ export function definition(options: { component?: NodeRenderer } = {}): Renderer
 export function question(options: { component?: NodeRenderer } = {}): RendererExtension {
   function Question({ node, children, renderChildren, renderAttribute }: NodeRendererProps) {
     const runtime = useRuntime();
-    const [showHint, setHint] = useState(false), [showAnswer, setAnswer] = useState(false);
-    const [selected, setSelected] = useState<number[]>([]), [checked, setChecked] = useState(false);
+    const [showHint, setHint] = useOwnedNodeState(questionStateOwner, node, 'question-hint', false), [showAnswer, setAnswer] = useOwnedNodeState(questionStateOwner, node, 'question-answer', false);
+    const [selected, setSelected] = useOwnedNodeState<number[]>(questionStateOwner, node, 'question-selected', []), [checked, setChecked] = useOwnedNodeState(questionStateOwner, node, 'question-checked', false);
     const content = parts(node, 'question-content')[0];
     const hint = parts(node, 'question-hint')[0];
     const answer = parts(node, 'question-answer')[0];
@@ -64,6 +67,7 @@ export function question(options: { component?: NodeRenderer } = {}): RendererEx
     </section>;
   }
   const names = ['question-content', 'question-hint', 'question-answer', 'question-sel-grp', 'question-sel'];
+  if (!options.component) declareNodeStateRenderer(questionStateOwner, Question);
   return { ...defineBlock({ name: 'question', streaming: options.component ? undefined : { Loading: BlockLoading }, component: options.component ?? Question }), tags: ['question', ...names], components: { question: options.component ?? Question, ...Object.fromEntries(names.map(name => [name, PassThrough])) } };
 }
 

@@ -1,0 +1,141 @@
+# 异步文档与解析 Worker
+
+`DocumentSession` 将加载与阅读分开。默认 `blocking` 模式等完整解析和全局索引完成后才发布文档；可选 `progressive` 模式可以提前发布经过独立语法证明的正文前缀，或由 Worker 明确授权的不完整预览。前缀的 `complete` 始终为 `false`，随后由完整文档替换；后续引用定义或闭合语法可能改变预览的含义。它是独立的暂态文档，不会把窗口或前缀冒充完整 `DocumentSnapshot`。
+
+```ts
+import { createDocumentSession, standard } from '@linloir/limr';
+
+const extensions = standard();
+const session = createDocumentSession({
+  id: 'book', extensions,
+  worker: () => new Worker(new URL('./limr-worker.js', import.meta.url), { type: 'module' }),
+  mode: 'blocking',
+  fallback: 'error',
+});
+const unsubscribe = session.subscribe(() => {
+  const state = session.getSnapshot();
+  // status、phase、progress、complete、document、error、capabilities
+});
+const file = new File(['# Chapter 1\n\nA short example.\n'], 'book.md', { type: 'text/markdown' });
+const document = await session.load(file); // string、UTF-8 Uint8Array、Blob/File
+// <Reader document={document} extensions={extensions} />
+unsubscribe();
+session.dispose();
+```
+
+上面的 `limr-worker.js` 是宿主资源地址。可复制已发布的 `@linloir/limr/worker` 独立资源，或将该包入口打包为 worker。发布的默认 worker 已完整打包，并采用依赖的 `worker` 导出条件。文件访问、CSP、资源 URL 与 worker 创建属于宿主；LiMR 不引入编辑器 API。`worker-api` 入口只提供工厂，不自动安装全局消息处理。
+
+`load(input, { signal })` 返回完整的 `DocumentEngine`。新加载会取消上一次加载；`cancel()` 与 `dispose()` 会终止正在解析的 worker，旧 revision 的消息不能覆盖新结果。销毁后的 session 不再接受加载。`getSnapshot()` 在状态变化前保持同一对象，可直接用于 `useSyncExternalStore`。`DocumentEngine.fromSnapshot(snapshot, { extensions })` 共享已有 source/AST，不重复解析，首次编辑时才重建内部增量缓存。
+
+`standard()` 为新建的默认语法实例注册默认 worker 能力。React 组件与浏览器回调留在主线程。修改已注册实例的语法函数或嵌套 tokenizer 配置会使注册失效。未知扩展不会被静默丢弃：默认 `fallback: 'main-thread'` 先让出一次主线程供 loading UI 绘制，再在主线程运行完整的原扩展，并通过 `capabilities.reason` 说明；`fallback: 'error'` 则拒绝加载。兼容回退不能让任意同步插件钩子变得可中断。
+
+自定义语法可以显式注册到自定义 Worker。下面的宿主模块注册局部 `<my-note>` 语法：
+
+```ts
+import { registerWorkerExtension, type SyntaxExtension } from '@linloir/limr/core';
+
+const myExtension: SyntaxExtension = {
+  name: 'my-syntax', tags: ['my-note'], scope: 'local',
+};
+registerWorkerExtension(myExtension, {
+  id: 'my-syntax/v1', options: { dialect: 'example' },
+});
+// 将 myExtension 加入宿主 session 的 extensions。
+```
+
+独立的自定义 Worker 入口实现相同语法，并校验 descriptor 配置。构建时启用依赖的 `worker` 导出条件：
+
+```ts
+import {
+  createDocumentWorkerHandler, standardWorkerRegistry,
+  type DocumentWorkerRequest, type DocumentWorkerResponse,
+  type WorkerExtensionRegistry,
+} from '@linloir/limr/worker-api';
+
+const registry: WorkerExtensionRegistry = {
+  ...standardWorkerRegistry,
+  'my-syntax/v1': options => {
+    if (!options || typeof options !== 'object' ||
+        !('dialect' in options) || options.dialect !== 'example') {
+      throw new Error('Unsupported my-syntax dialect');
+    }
+    return { name: 'my-syntax', tags: ['my-note'], scope: 'local' };
+  },
+};
+const handle = createDocumentWorkerHandler(registry);
+self.addEventListener('message', (event: MessageEvent<DocumentWorkerRequest>) => {
+  void handle(event.data, (message: DocumentWorkerResponse) => self.postMessage(message));
+});
+```
+
+descriptor 只能包含可结构化克隆的配置，不序列化 JavaScript 函数；两端必须实现同一版本的语法契约。仅更改视图时可保留已注册的语法实例；插件名称本身不是兼容证明。
+
+Worker 作者还可单独声明经过证明的局部语法支持独立正文前缀及分包结果传输：
+
+只有证明满足下面的契约后，才将上面的 handler 构造替换为 `createDocumentWorkerHandler(registry, { independentProseExtensions: ['my-syntax/v1'] })`。
+
+可选的 `DocumentWorkerHandlerOptions` 契约按完整 registry ID 精确匹配，内置 `limr/standard` 继续受支持；只有整篇源码通过 `isIndependentProse` 扫描才生效。声明中的每个工厂及其所有受支持的 descriptor 配置，都必须保证完整段落前缀与全文解析一致、原文 UTF-16 偏移稳定，且不能在不同块或块与文档元信息之间引入需要保留同一对象身份的引用。声明前应验证前缀/全文语义和分别克隆各块后的等价性，语义改变时升级 ID。即使列出 ID，`scope: 'document'` 仍禁用这条路径；完整快照还必须不含定义、脚注、批注、批注范围或 occurrence 才能分包。未知或未声明的 ID 保留完整解析及单次快照克隆，不根据扩展名称猜测，也不允许 load 请求自行打开能力。`blocking` 模式仍不发布暂态前缀，收到并组装全部分包后才进入 ready。
+
+解析分批与提前发布前缀、结果分包是不同能力。使用已验证且未修改的内置语法时，解析器还可以在完整空行后的零列 ATX 标题或 ASCII 字母起始行处分批，因此含列表、缩进代码或单美元行内公式的正文也可能受益。全局引用定义、HTML、围栏、双美元数学语法，以及自定义语法或编译钩子等仍保留完整解析路径。每批使用原解析器，分隔符与原文位置保留，文档转换在合并整树后执行一次。
+
+上述解析优化不额外授权前缀发布或传输分包。经过证明且没有跨块语义对象的正文采用分批 source/block 消息，降低一次性克隆大结果的停顿。当前阶段仍保留完整 source 和 AST，内存随文档大小增长，不能宣称任意大文件都只占固定内存。
+
+不完整预览使用另一项独立权限 `DocumentWorkerHandlerOptions.provisionalPreviewExtensions`。发布的标准 Worker 明确允许 `limr/standard`，自定义 handler 默认不授予这项权限。审查示例 registry 的工厂后，可传入 `{ provisionalPreviewExtensions: ['limr/standard', 'my-syntax/v1'] }`；请求中的每个 descriptor ID 都必须列出，包括标准 ID。该权限不保证前缀语义稳定、不授权结果分包，也不能由加载请求自行开启。
+
+每个被授权的工厂都必须允许新的实例解析流式前缀，不对其他实例、全局状态或原始 descriptor 配置产生可观察的影响。共享底层资源必须保持只读，hooks 和范围不能越出所提供的源码。handler 在调用任何工厂前，一次性克隆整个预览 descriptor 图并保留内部别名关系。若没有发布稳定正文前缀，且源码超过 128 Ki 个 UTF-16 单元，则尝试最多 32 Ki 单元的预览，避免切断代理对或 CRLF。预览使用新的工厂实例和 `streaming: true`；可选预览失败时继续完整解析，完整解析失败仍报告错误。默认 blocking 模式不会进入这条预览路径。
+
+公共范围仍使用原文 UTF-16 偏移。UTF-8 输入保留 BOM、CRLF、非 BMP 字符和替换解码行为，`state.sourceIndex` 提供稀疏的字节/原文索引。`utf8ByteToSourceOffset(bytes, index, byteOffset)` 与 `sourceOffsetToUtf8Byte(bytes, index, sourceOffset)` 使用原字节映射；处于多字节字符或代理对内部时映射到对应起始边界。字符串输入不重新编码解码，调用者传入的字节数组也不会被 detach。公开解码器默认仍在各块之间让出主线程，保持取消响应；专用 Worker handler 使用 `decodeDocumentInput(input, signal, progress, { cooperative: false })`，避免每块定时器等待，取消会话时直接终止 Worker。分包背压仍让出接收端主线程。
+
+复测加载性能：运行 `pnpm build`，再运行 `node --expose-gc benchmarks/core/large-document.mjs 50 blocking` 或 `node --expose-gc benchmarks/core/large-document.mjs 75 progressive`。基准在真实 worker thread 中解析 50/75 MiB UTF-8 小说正文，记录加载/前缀时间、完整块数、进程内存和主线程计时间隔。实际浏览器中的阅读和滚动性能须单独测试。
+
+## 阅读窗口与渲染契约
+
+`AsyncReader` 接受 `input`、`loading` 中的会话选项、`loadingFallback(state, retry)` 以及 `onLoadStateChange`。当源码超过一百万个 UTF-16 单元、顶层块超过 128 个，或可见语法节点超过 2,048 个时，会自动尝试 DOM 窗口化。原有 `Reader` 默认行为不变，可通过 `virtualization` 显式启用；`false` 会关闭自动窗口化。`useDocument()` 始终返回完整源码、全部块、全局定义与索引。
+
+窗口保留附近块，并保留原生选择的两端、获得焦点的控件、活动注释编辑器、已打开图片预览的原图，以及已经访问的媒体 DOM。这样既保留播放与原生状态，也不会因为跨越很远的拖选而挂载中间所有段落。普通节点界面状态通过 `useNodeState` 保存，卸载后恢复仍有效。渐进加载完成时保留当前源码阅读锚点；临时前缀只读，完整文档到达后才开放源码和注释写入。
+
+未知渲染器需要先声明呈现契约，才能安全卸载其 DOM：
+
+```tsx
+import type { NodeRendererProps, RendererOverride } from '@linloir/limr';
+
+function MyParagraph({ children }: NodeRendererProps) {
+  return <p>{children}</p>;
+}
+const override: RendererOverride = {
+  type: 'paragraph', component: MyParagraph,
+  virtualization: {
+    copyText: (_node, { children }) => children,
+    searchText: (_node, { children }) => children, // 可选：搜索文字与复制文字不同
+    keepAlive: true, // 可选：编辑器、媒体等需要保留真实 DOM
+  },
+};
+```
+
+扩展也可在 `RendererExtension.virtualization` 中按组件名提供契约。覆盖渲染器必须实际匹配其 `when` 条件并使用自己的契约，不能借用另一个同名渲染器的契约。上下文中惰性读取的 `value` 已完成选区源码映射，能正确处理只选中部分代码的情况；`source` 是节点完整 Markdown，`children` 是选中且可见的子节点投影。未知渲染器，以及超过 4,096 个节点或包含超过 256 KiB 文本叶的单一语义块，目前会回退到原有完整渲染；`onVirtualizationChange({ enabled, reason })` 会说明这个边界。当前实现不承诺任意巨型段落、列表、表格、自定义插件或无限数量媒体的 DOM 都有固定上界；完整源码和 AST 的内存仍随文档规模增长。
+
+普通复制基于可见文字，遵循当前翻译语言和折叠状态，不复制 Markdown 定界符或隐藏定义。图片、数学公式和 `selection: 'atomic'` 节点仍按既有契约复制完整原始源码；显式“复制 Markdown”仍是源码操作。跨窗口选择根据逻辑源码区间补足未挂载的中间内容。在另一个 Reader、页面外文字或外部控件上操作时，旧 Reader 不会继续接管复制。
+
+窗口模式的 Ctrl+F 搜索完整文档的可见文字投影，包括图片替代文字、视频标题和数学载荷，不匹配隐藏翻译面板和源码定义。扫描约每 64 KiB 或四毫秒让出主线程，并可取消。源码中连续存在的文字返回精确 UTF-16 区间；跨行内 Markdown 格式的短语会定位到所在块。目前不合并跨块短语；数学搜索使用 LaTeX 载荷而非 KaTeX 视觉或无障碍树；不透明图表需要 `searchText`/`copyText` 适配器。因此不能把这个查找宣称为完全等同浏览器原生查找。`searchDocument()` 仍提供独立的完整源码搜索 API。自定义呈现若不通过 `useNodeState` 或 Reader 配置更新状态，应调用 `useLiMR().invalidatePresentation()`，让已打开的查找和目录更新；无需在每次滚动时重扫全文。
+
+## 阅读书签
+
+普通 `#heading-slug` 链接和引用式链接会通过全局标题索引定位未挂载的目标。精确 ID 优先于当前文档的标题别名，支持重复标题后缀和编码后的 Unicode。宿主为相对资源设置的 `<base>` 不会把纯片段链接导向阅读文档之外；旧式脚注也沿用同一文档内导航路径。
+
+宿主保存阅读书签可调用 `useLiMR().getReadingPosition()`，返回 `{ source, offset }`，内容未挂载时返回 `null`。`source` 是当前可见文本行或原子内容的 UTF-16 位置，`offset` 是其距离视口顶部的像素差。`restoreReadingPosition(position)` 先定位该源码，再恢复视觉偏移，适用于宽度变化及超大文档的压缩滚动范围；普通 Reader 也支持。宿主应同时保存文档身份，源码修改后必要时将旧偏移映射到新内容。
+
+## 准备完整打印内容
+
+`useLiMR().isDocumentComplete()` 区分完整文档与加载前缀或流式内容。`AsyncReader` 在完整加载前设置公开的 `provisional` 标记；暂态前缀不能准备打印，命令会拒绝，Ctrl+P 会提示等待加载完成。浏览器打印菜单也只显示该说明，不会把前缀当作完整内容打印；禁用 DOM 窗口时同样适用。完整的 `readOnly` 文档仍可打印。
+
+浏览器的 `beforeprint` 事件不能等待异步任务。窗口模式下 Ctrl+P/⌘P 会先分批准备完整文档，展示可取消的进度，再打开打印对话框。宿主可以调用 `useLiMR().preparePrint({ signal, onProgress })`，得到 `{ revision, blocks, print, dispose }`；放弃已准备结果时应调用 `dispose()`。准备过程中保留交互阅读窗口，并验证所有预期块均已渲染；打印使用普通排版重新分页。完整打印必然需要完整 DOM，可能占用较多内存，因此只在显式打印操作时创建。未准备时直接调用浏览器打印菜单，会显示明确说明，避免悄悄打印不完整窗口。
+
+执行 `node benchmarks/large-reading/run.mjs` 可冻结当前源码并测量生产 React、真实浏览器 Worker 和完整 Reader。`LIMR_LARGE_CASES=novels` 测量 50/75 MiB 小说，`LIMR_LARGE_CASES=papers` 测量两篇样例论文，并从 `../test-reading` 提供真实图片资源。报告分别记录加载帧间隔和长任务、ready 切换、普通/快速滚动、源码跳转与改宽，写入 `/tmp/limr-large-reading-*.json`。结果仅代表本机验证；rAF 帧间隔不等同物理输入到屏幕显示的延迟。
+
+## 输入、编辑与插件更新
+
+只有视图、批注类型、操作或源码编辑 UI 的插件保留在宿主，不需要 Worker 注册；真正的语法声明和解析 hooks 仍必须注册或明确回退。`onSourceChange` 受控回传值与当前引擎源码一致时，保留引擎，不重新加载、不重复触发 ready 通知。纯视图插件变化保留源码和 AST；解析器或 Worker 配置变化而 input 未改变时，重新加载最后接受的编辑内容，包括原始 input 为 Blob 的场景。新的 input 字符串值或 Blob 对象始终表示新文档，替换文件取消或失败以后修改配置不会恢复上一文件。
+
+搜索中混合格式或实体导致连续源码命中与可见命中无法逐一对应时，使用块范围导航，避免错误定位到同块另一个匹配。
+
+渐进加载前缀会启用公开的 `readOnly` 视图选项；普通 Reader 也可显式使用，默认行为不变。源码及批注增删改命令统一检查只读，翻译模式、折叠、图片预览和导航仍可使用。只显示声明 `SelectionAction.readOnly: true` 的选区操作，内建复制已声明；未知插件操作等完整加载以后恢复，避免显示无法提交的写入按钮。

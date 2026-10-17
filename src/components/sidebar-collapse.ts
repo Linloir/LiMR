@@ -9,31 +9,39 @@ export interface SidebarClusterPlan {
 }
 interface Box { id: string; anchorTop: number; height: number; weight?: number }
 
+/** Candidate scores need positions, not a Map and a fresh object for every
+ * regression pool. Reuse the numeric workspace throughout a folding search. */
+function packingWorkspace(capacity: number) {
+  return { offsets: new Float64Array(capacity), positions: new Float64Array(capacity),
+    starts: new Uint32Array(capacity), ends: new Uint32Array(capacity), totals: new Float64Array(capacity), weights: new Float64Array(capacity) };
+}
+function pack(items: readonly Box[], gap: number, height: number, workspace: ReturnType<typeof packingWorkspace>, focusedId?: string) {
+  const { offsets, positions, starts, ends, totals, weights } = workspace;
+  let offset = 0, size = 0, focused = -1;
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index], weight = item.weight ?? 1;
+    offsets[index] = offset; offset += item.height + gap;
+    if (focused < 0 && item.id === focusedId) focused = index;
+    starts[size] = ends[size] = index; totals[size] = (item.anchorTop - offsets[index]) * weight; weights[size] = weight; size++;
+    while (size > 1 && totals[size - 2] / weights[size - 2] > totals[size - 1] / weights[size - 1]) {
+      ends[size - 2] = ends[size - 1]; totals[size - 2] += totals[size - 1]; weights[size - 2] += weights[size - 1]; size--;
+    }
+  }
+  const room = Math.max(0, height - Math.max(0, offset - gap));
+  const minimum = focused >= 0 ? -offsets[focused] : 0;
+  const maximum = focused >= 0 ? Math.max(minimum, height - items[focused].height - offsets[focused]) : room;
+  for (let pool = 0; pool < size; pool++) {
+    const origin = Math.max(minimum, Math.min(maximum, totals[pool] / weights[pool]));
+    for (let index = starts[pool]; index <= ends[pool]; index++) positions[index] = origin + offsets[index];
+  }
+  return positions;
+}
+
 /** Weighted isotonic regression minimizes squared displacement while keeping
  * every neighboring box separated. Mild collisions can share the displacement. */
 export function fitSidebarBoxes(items: readonly Box[], gap: number, height: number, focusedId?: string): Map<string, number> {
-  const offsets: number[] = [], pools: { start: number; end: number; total: number; weight: number }[] = [];
-  let offset = 0;
-  items.forEach((item, index) => {
-    offsets.push(offset); offset += item.height + gap;
-    const weight = item.weight ?? 1;
-    pools.push({ start: index, end: index, total: (item.anchorTop - offsets[index]) * weight, weight });
-    while (pools.length > 1) {
-      const right = pools.at(-1)!, left = pools.at(-2)!;
-      if (left.total / left.weight <= right.total / right.weight) break;
-      pools.splice(-2, 2, { start: left.start, end: right.end, total: left.total + right.total, weight: left.weight + right.weight });
-    }
-  });
-  const room = Math.max(0, height - Math.max(0, offset - gap));
-  const focused = items.findIndex(item => item.id === focusedId);
-  const minimum = focused >= 0 ? -offsets[focused] : 0;
-  const maximum = focused >= 0 ? Math.max(minimum, height - items[focused].height - offsets[focused]) : room;
-  const positions = new Map<string, number>();
-  for (const pool of pools) {
-    const origin = Math.max(minimum, Math.min(maximum, pool.total / pool.weight));
-    for (let i = pool.start; i <= pool.end; i++) positions.set(items[i].id, origin + offsets[i]);
-  }
-  return positions;
+  const positions = pack(items, gap, height, packingWorkspace(items.length), focusedId);
+  return new Map(items.map((item, index) => [item.id, positions[index]]));
 }
 
 const packedHeight = (items: readonly CollapsibleSidebarItem[], gap: number) => items.reduce((sum, item) => sum + item.height, Math.max(0, items.length - 1) * gap);
@@ -59,15 +67,26 @@ export function foldWindowHeight(items: readonly { height: number }[], preferred
  * is cheaper. Only dense consecutive ranges whose savings outweigh that cost
  * become a clipped group; paragraph boundaries are deliberately irrelevant. */
 export function planSidebarCollapse(items: readonly CollapsibleSidebarItem[], railHeight: number, maxHeight = 420, gap = 14): SidebarClusterPlan[] {
+  const steps = planSidebarCollapseSteps(items, railHeight, maxHeight, gap);
+  for (;;) { const next = steps.next(); if (next.done) return next.value; }
+}
+
+/** Same deterministic search, with checkpoints between complete candidates.
+ * Readers can keep positioning the last plan while computing a replacement
+ * within a frame budget; synchronous consumers retain the identical result. */
+export function* planSidebarCollapseSteps(items: readonly CollapsibleSidebarItem[], railHeight: number, maxHeight = 420, gap = 14): Generator<void, SidebarClusterPlan[]> {
   let groups: SidebarClusterPlan[] = items.map(item => ({ id: item.id, items: [item], anchorTop: item.anchorTop, height: item.height, folded: false, hidden: 0 }));
+  const workspace = packingWorkspace(items.length);
   const foldingCost = (group: SidebarClusterPlan) => group.folded ? 18 + group.hidden * 24 + (packedHeight(group.items, gap) - group.height) / 50 : 0;
   const positionCost = (group: SidebarClusterPlan, top: number) => {
     const displacement = Math.abs(top - group.anchorTop), overflow = Math.max(0, top + group.height - railHeight);
     return (displacement / 48) ** 2 + (Math.max(0, displacement - 72) / 24) ** 2 + (overflow / 16) ** 2;
   };
   const score = (values: SidebarClusterPlan[]) => {
-    const positions = fitSidebarBoxes(values, gap, railHeight);
-    return values.reduce((sum, group) => sum + positionCost(group, positions.get(group.id)!) + foldingCost(group), 0);
+    const positions = pack(values, gap, railHeight, workspace);
+    let total = 0;
+    for (let index = 0; index < values.length; index++) total = total + positionCost(values[index], positions[index]) + foldingCost(values[index]);
+    return total;
   };
   for (let round = 0; round < items.length; round++) {
     const currentScore = score(groups);
@@ -96,6 +115,7 @@ export function planSidebarCollapse(items: readonly CollapsibleSidebarItem[], ra
           candidates.push({ start, end, group, priority: pressure - foldingCost(group) });
         }
       }
+      yield;
     }
     // Bound global packing evaluations on long bibliographies. Ranking is only
     // a shortlist: every accepted fold still reduces the full layout penalty.
@@ -104,6 +124,7 @@ export function planSidebarCollapse(items: readonly CollapsibleSidebarItem[], ra
       const candidate = [...groups.slice(0, start), group, ...groups.slice(end + 1)];
       const cost = score(candidate);
       if (cost < bestScore - .5) { bestScore = cost; best = candidate; }
+      yield;
     }
     if (!best) break;
     groups = best;
@@ -112,8 +133,9 @@ export function planSidebarCollapse(items: readonly CollapsibleSidebarItem[], ra
   // needs. Release edge cards again whenever the full penalty permits it.
   for (let round = 0; round < items.length; round++) {
     let bestScore = score(groups), best: SidebarClusterPlan[] | undefined;
-    groups.forEach((group, index) => {
-      if (!group.folded) return;
+    for (let index = 0; index < groups.length; index++) {
+      const group = groups[index];
+      if (!group.folded) continue;
       const singleton = (item: CollapsibleSidebarItem): SidebarClusterPlan => ({ id: item.id, items: [item], anchorTop: item.anchorTop, height: item.height, folded: false, hidden: 0 });
       const replacements = [group.items.map(singleton)];
       for (const first of [true, false]) {
@@ -125,10 +147,27 @@ export function planSidebarCollapse(items: readonly CollapsibleSidebarItem[], ra
       for (const replacement of replacements) {
         const candidate = [...groups.slice(0, index), ...replacement, ...groups.slice(index + 1)], cost = score(candidate);
         if (cost < bestScore - .5) { bestScore = cost; best = candidate; }
+        yield;
       }
-    });
+    }
     if (!best) break;
     groups = best;
   }
   return groups;
+}
+
+/** Preserve the current groups during a geometry transition. New or removed
+ * references remain independently addressable while the exact search runs. */
+export function reanchorSidebarPlan(plan: readonly SidebarClusterPlan[], items: readonly CollapsibleSidebarItem[], maxHeight: number, gap: number): SidebarClusterPlan[] {
+  const remaining = new Map(items.map(item => [item.id, item])), groups: SidebarClusterPlan[] = [];
+  const singleton = (item: CollapsibleSidebarItem): SidebarClusterPlan => ({ id: item.id, items: [item], anchorTop: item.anchorTop, height: item.height, folded: false, hidden: 0 });
+  for (const previous of plan) {
+    const members = previous.items.flatMap(item => { const current = remaining.get(item.id); remaining.delete(item.id); return current ? [current] : []; });
+    if (!members.length) continue;
+    if (!previous.folded || members.length < 3) { groups.push(...members.map(singleton)); continue; }
+    const height = foldWindowHeight(members, Math.min(previous.height, maxHeight), gap);
+    groups.push({ id: members[0].id, items: members, anchorTop: members[0].anchorTop, height, folded: true, hidden: hiddenCount(members, height, gap) });
+  }
+  groups.push(...[...remaining.values()].map(singleton));
+  return groups.sort((a, b) => a.anchorTop - b.anchorTop);
 }

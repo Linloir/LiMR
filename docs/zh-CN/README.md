@@ -12,6 +12,8 @@
 | 了解模块、默认包含的能力与配置方式 | [内置模块](modules.md) |
 | 编写 Markdown、Mermaid、callout、高亮、脚注与双冒号组件 | [默认语法](syntax.md) |
 | 集成到 React、选择排版模式、接收流式输出、自定义布局或 SSR | [项目集成](integration.md) |
+| 了解表格列宽、行高与省略标注的自适应计算 | [表格布局](table-layout.md) |
+| 在 Worker 中加载大文档，显示进度并支持取消 | [大文档](large-documents.md) |
 | 保存选区、高亮、引用和自定义标注，理解整体复制 | [标注与选区](annotations.md) |
 | 新增语法、卡片、选区动作、流式效果或按条件替换组件 | [扩展开发](extensions.md) |
 | 开发独立 npm 插件并在应用中引入 | [插件模块包](plugin-packages.md) |

@@ -102,3 +102,71 @@ test('KP retains rich text, Chinese, resize behavior and an active native range'
   await expect.poll(() => paragraph.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThan(5);
   expect(await paragraph.textContent()).toBe(text);
 });
+
+test('compact CJK spacing retains glyph positions and bounded paragraph DOM', async ({ page }) => {
+  await page.goto('/?fixture=streaming');
+  await page.waitForFunction(() => !!window.limrStream);
+  const source = ('中文排版应当保留完整文字与自然断行，减少浏览器维护的间距元素。English words 保持原有方式，组合字 é 和 👨‍👩‍👧‍👦 也保持完整。').repeat(12);
+  await page.evaluate(source => window.limrStream({ source, streaming: false, typography: 'knuth-plass' }), source);
+  const paragraph = page.locator('article > p');
+  await expect(paragraph.locator('[data-limr-kp-cjk]').first()).toBeAttached();
+  const geometry = await paragraph.evaluate(element => {
+    const capture = () => {
+      const origin = element.getBoundingClientRect(), walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      const chars: { text: string; x: number; y: number }[] = [];
+      for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
+        for (let i = 0; i < node.length; i++) {
+          const range = document.createRange(); range.setStart(node, i); range.setEnd(node, i + 1);
+          const box = range.getBoundingClientRect(); chars.push({ text: node.data[i], x: box.x - origin.x, y: box.y - origin.y });
+        }
+      }
+      return { chars, height: origin.height, nodes: element.querySelectorAll('*').length };
+    };
+    const compact = capture();
+    // Compare against the original representation: one zero-text inline block
+    // for each TeX inter-character glue. Read synchronously before observers run.
+    for (const run of element.querySelectorAll<HTMLElement>('[data-limr-kp-cjk]')) {
+      const base = parseFloat(getComputedStyle(run.parentElement!).letterSpacing) || 0;
+      const gap = parseFloat(run.style.letterSpacing) - base, fragment = document.createDocumentFragment();
+      for (const character of run.textContent ?? '') {
+        fragment.append(document.createTextNode(character));
+        const glue = document.createElement('span'); glue.className = 'limr-kp-glue'; glue.style.width = `${gap}px`; fragment.append(glue);
+      }
+      run.replaceWith(fragment);
+    }
+    const separate = capture();
+    return { compactNodes: compact.nodes, separateNodes: separate.nodes, sameText: compact.chars.map(c => c.text).join('') === separate.chars.map(c => c.text).join(''), heightDifference: Math.abs(compact.height - separate.height), maxX: Math.max(...compact.chars.map((c, i) => Math.abs(c.x - separate.chars[i].x))), maxY: Math.max(...compact.chars.map((c, i) => Math.abs(c.y - separate.chars[i].y))) };
+  });
+  expect(geometry.sameText).toBe(true);
+  expect(geometry.compactNodes).toBeLessThan(geometry.separateNodes * .65);
+  expect(geometry.heightDifference).toBe(0);
+  expect(geometry.maxY).toBe(0);
+  // Shaping a continuous native run rounds advances differently from isolated
+  // glyph boxes; the difference stays sub-glyph across an entire line.
+  expect(geometry.maxX).toBeLessThan(2);
+});
+
+test('CJK native selection survives resizing and restores source text after KP', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/?fixture=streaming');
+  await page.waitForFunction(() => !!window.limrStream);
+  const source = '中文段落需要保持自然的字符间距，选中、复制和改变宽度都不能丢失原文。'.repeat(20);
+  await page.evaluate(source => window.limrStream({ source, streaming: false, typography: 'knuth-plass' }), source);
+  const paragraph = page.locator('article > p');
+  await expect(paragraph.locator('[data-limr-kp-cjk]').first()).toBeAttached();
+  await paragraph.evaluate(element => {
+    const range = document.createRange(); range.selectNodeContents(element);
+    getSelection()!.removeAllRanges(); getSelection()!.addRange(range);
+  });
+  await expect.poll(() => page.locator('#stream-selection').textContent().then(text => JSON.parse(text || '{}')?.raw?.sourceText)).toBe(source);
+  await page.setViewportSize({ width: 520, height: 1000 });
+  expect(await page.evaluate(() => getSelection()?.toString())).toBe(source);
+  await page.keyboard.press('Control+c');
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(source);
+  await page.evaluate(() => getSelection()?.removeAllRanges());
+  await expect(paragraph).not.toHaveAttribute('data-limr-kp-stale');
+  await expect.poll(() => paragraph.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThan(5);
+  await page.evaluate(source => window.limrStream({ source, streaming: false, typography: 'standard' }), source);
+  await expect(paragraph).not.toHaveAttribute('data-limr-kp');
+  await expect(paragraph).toHaveText(source);
+});

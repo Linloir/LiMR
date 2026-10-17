@@ -1,7 +1,7 @@
 import { StreamingFixture } from './streaming-fixture';
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
-import { Reader, ToolIcon, chinese, english, type Annotation, type SelectionSnapshot, type TypographyMode, type TranslationMode } from '../src';
+import { AsyncReader, Reader, ToolIcon, chinese, english, useLiMR, type Annotation, type DocumentInput, type DocumentSessionState, type ReaderProps, type SelectionSnapshot, type TypographyMode, type TranslationMode } from '../src';
 import { Dropdown } from './Dropdown';
 import { Documentation, docsHref, readDocsRoute } from './Documentation';
 import { MediaAnnotationFixture, MediaFixture, TranslationDetailsFixture, TranslationSelectionFixture } from './media-fixture';
@@ -17,7 +17,7 @@ import '../src/styles.css';
 import 'katex/dist/katex.min.css';
 import './playground.css';
 import '@fontsource-variable/noto-serif-sc';
-import { useScrollSync } from './scroll-sync';
+import { useScrollSync, type ScrollSyncReader } from './scroll-sync';
 import { MarkerFixture, OverlayFixture, VideoFixture, VisualFixture } from './visual';
 import { SelectionBenchmarkFixture } from './selection-benchmark';
 import { ToolbarFixture } from './toolbar-fixture';
@@ -25,6 +25,8 @@ import { ToolbarFixture } from './toolbar-fixture';
 const HomePage = lazy(() => import('./HomePage'));
 const storageKey = 'limr-playground-document';
 const localeStorageKey = 'limr-playground-locale';
+const asyncThreshold = 64 * 1024;
+const createDocumentWorker = () => new Worker(new URL('../src/worker.ts', import.meta.url), { type: 'module' });
 type PlaygroundStatus = '' | 'saved' | 'saveFailed' | 'noSaved' | 'restored' | 'downloaded' | 'fileFailed' | 'sourceUpdated' | 'streamComplete' | 'streamStopped' | { preset: string } | { file: string };
 function readHomeRoute(): boolean {
   return location.hash === '' || location.hash === '#/' || location.hash === '#/home';
@@ -42,8 +44,16 @@ function savedDocument(): { source: string; annotations: readonly Annotation[] }
   } catch { /* A fresh document remains usable if browser storage is unavailable. */ }
   return null;
 }
+function ReaderBridge({ connect }: { connect: (reader: ScrollSyncReader | null) => void }) {
+  const reader = useLiMR();
+  useEffect(() => { connect(reader); return () => connect(null); }, [reader, connect]);
+  return null;
+}
 function App() {
   const [source, setSource] = useState(() => getPresets(savedLocale())[0].source);
+  const [asyncInput, setAsyncInput] = useState<DocumentInput | null>(null);
+  const [loadingMode, setLoadingMode] = useState<'blocking' | 'progressive'>('blocking');
+  const [documentReady, setDocumentReady] = useState(true);
   const [streaming, setStreaming] = useState(false);
   const [cursor, setCursor] = useState(0);
   const [dark, setDark] = useState(false);
@@ -71,6 +81,7 @@ function App() {
   const copy = playgroundCopy[localeName];
   const presets = getPresets(localeName);
   const previousLocale = useRef(localeName);
+  const fileRequest = useRef(0);
   const statusText = typeof status === 'string' ? (status ? copy[status] : '') : copy.loaded('file' in status ? status.file : presets.find(item => item.id === status.preset)?.label ?? status.preset);
   const fileInput = useRef<HTMLInputElement>(null);
   const loadRoot = useRef<HTMLDivElement>(null);
@@ -81,6 +92,8 @@ function App() {
   const sidebarCollapseRoot = useRef<HTMLDivElement>(null);
   const workbench = useRef<HTMLDivElement>(null);
   const editorRatio = useRef(.5);
+  const readerApi = useRef<ScrollSyncReader | null>(null);
+  const connectReader = useCallback((reader: ScrollSyncReader | null) => { readerApi.current = reader; }, []);
   const inlineNotePlugin = useMemo(() => inlineNotes(), []);
   const typographyModes = [{ value: 'knuth-plass', label: 'Knuth–Plass' }, { value: 'standard', label: copy.standard }, { value: 'justify', label: copy.justified }] as const;
   const locales = [{ value: 'zh-CN', label: '中文' }, { value: 'en', label: 'English' }] as const;
@@ -93,10 +106,12 @@ function App() {
     const translated = getPresets(localeName).find(item => item.id === preset);
     // Only replace untouched examples; user text and annotation ranges stay intact.
     if (!original || !translated || source !== original.source || annotations.length) return;
-    setSource(translated.source); setStreaming(false); setCursor(0); setSelection(null);
+    fileRequest.current++;
+    setSource(translated.source); setAsyncInput(translated.source.length >= asyncThreshold ? translated.source : null); setDocumentReady(translated.source.length < asyncThreshold);
+    setStreaming(false); setCursor(0); setSelection(null);
     setAnswerStatus(''); setDocumentVersion(value => value + 1);
   }, [localeName, preset, source, annotations]);
-  useScrollSync(textarea, preview, source, wrap);
+  useScrollSync(textarea, preview, source, wrap, readerApi);
   const plugins = useMemo(() => {
     const notes = readingNotes();
     const zh = localeName === 'zh-CN';
@@ -157,8 +172,22 @@ function App() {
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };
   }, [menu]);
   const replaceSource = (text: string, id = '') => {
+    fileRequest.current++;
+    setAsyncInput(text.length >= asyncThreshold ? text : null); setDocumentReady(text.length < asyncThreshold);
     setStreaming(false); setCursor(0); setSource(text); setPreset(id); setAnnotations([]); setSelection(null); setAnswerStatus(''); setDocumentVersion(value => value + 1); setMenu(null);
   };
+  const handleLoadState = useCallback((state: DocumentSessionState) => {
+    setDocumentReady(state.status === 'ready' && state.complete);
+    if (state.complete && state.document) {
+      const loaded = state.document.getSnapshot().source;
+      setSource(loaded); setAsyncInput(loaded);
+    }
+  }, []);
+  const handleSourceChange = useCallback((next: string) => {
+    fileRequest.current++;
+    setSource(next); setAsyncInput(current => current !== null || next.length >= asyncThreshold ? next : null);
+    setPreset(''); setStatus('sourceUpdated');
+  }, []);
   const save = () => {
     try { localStorage.setItem(storageKey, JSON.stringify({ version: 2, source, annotations })); setStatus('saved'); }
     catch { setStatus('saveFailed'); }
@@ -173,6 +202,14 @@ function App() {
     const link = document.createElement('a'); link.href = url; link.download = 'limr-notes.md'; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000); setStatus('downloaded'); setMenu(null);
   };
+  const readerProps: ReaderProps = {
+    onSourceChange: sourceEditing ? handleSourceChange : undefined,
+    theme: dark ? 'dark' : 'light', typography, parameters: { translationMode, onTranslationModeChange: setTranslationMode },
+    locale: localeName === 'zh-CN' ? chinese : english, scrollRoot: editor ? preview : null, toc: !editor, sidebar: !editor,
+    sidebarCollapse, actions: streaming ? [] : undefined, plugins, annotations, onAnnotationsChange: setAnnotations,
+    onSelectionChange: setSelection, documentId: 'demo',
+    children: <ReaderBridge connect={connectReader} />,
+  };
   return <>
     <header className="demo-header" data-limr-appearance="classic"><a className="demo-brand" href={import.meta.env.BASE_URL}>LiMR <span>Linloir’s limr Is a Markdown Renderer</span></a><div className="demo-header-end"><nav className="demo-controls demo-mode-nav" aria-label="页面 / Pages"><a href="#/home" aria-current={homeRoute ? 'page' : undefined}><span className="limr-underline">Home</span></a><a href="#/playground" aria-current={!docsRoute && !homeRoute ? 'page' : undefined}><span className="limr-underline">Playground</span></a><a href={docsHref(localeName, docsRoute?.page)} aria-current={docsRoute ? 'page' : undefined}><span className="limr-underline">Docs</span></a><a href="https://github.com/Linloir/LiMR" target="_blank" rel="noopener noreferrer"><span className="limr-underline">GitHub</span></a></nav><div className="demo-controls demo-header-settings">        <div className="demo-dropdown" ref={localeRoot}>
           <button aria-label="界面语言 / Reader language" title={copy.languageHint} aria-expanded={menu === 'locale'} aria-controls="demo-locale-menu" onClick={() => setMenu(value => value === 'locale' ? null : 'locale')}><span className="limr-underline">{locales.find(item => item.value === localeName)!.label}</span><ToolIcon name="chevron" /></button>
@@ -184,11 +221,12 @@ function App() {
     {homeRoute ? <Suspense fallback={<div role="status" style={{ padding: '80px 36px', textAlign: 'center' }}>LiMR…</div>}><HomePage locale={localeName} theme={dark ? 'dark' : 'light'} /></Suspense> : docsRoute ? <Documentation route={docsRoute} theme={dark ? 'dark' : 'light'} /> : <>
     <div className="demo-commandbar" data-limr-appearance="classic">
       <nav className="demo-controls demo-document-controls" aria-label={copy.documentActions}>
-        <button onClick={() => { setStreaming(false); setEditor(!editor); setMenu(null); if (editor) save(); }}><span className="limr-underline">{editor ? copy.save : copy.edit}</span></button>
+        <button disabled={!documentReady} onClick={() => { setStreaming(false); setEditor(!editor); setMenu(null); if (editor) save(); }}><span className="limr-underline">{editor ? copy.save : copy.edit}</span></button>
         <span className="demo-control-divider" />
         <div className="demo-dropdown" ref={loadRoot}><button aria-expanded={menu === 'load'} aria-controls="demo-load-menu" onClick={() => setMenu(value => value === 'load' ? null : 'load')}><span className="limr-underline">{copy.load}</span><ToolIcon name="chevron" /></button>
           <Dropdown open={menu === 'load'} id="demo-load-menu" className="demo-load-menu">
-            <div role="group" aria-label={copy.files}><button onClick={load}><span className="limr-underline">{copy.loadSaved}</span><small>{copy.loadSavedHint}</small></button><button onClick={() => { fileInput.current?.click(); setMenu(null); }}><span className="limr-underline">{copy.openFile}</span><small>{copy.openFileHint}</small></button><button onClick={download}><span className="limr-underline">{copy.download}</span><small>{copy.downloadHint}</small></button></div>
+            <div role="group" aria-label={copy.files}><button onClick={load}><span className="limr-underline">{copy.loadSaved}</span><small>{copy.loadSavedHint}</small></button><button onClick={() => { fileInput.current?.click(); setMenu(null); }}><span className="limr-underline">{copy.openFile}</span><small>{copy.openFileHint}</small></button><button disabled={!documentReady} onClick={download}><span className="limr-underline">{copy.download}</span><small>{copy.downloadHint}</small></button></div>
+            <div role="group" aria-label={copy.loadingMode} className="demo-dropdown-section"><p className="demo-small-label">{copy.loadingMode}</p>{(['blocking', 'progressive'] as const).map(mode => <button key={mode} aria-pressed={loadingMode === mode} onClick={() => { setLoadingMode(mode); setMenu(null); }}><span className="limr-underline">{mode === 'blocking' ? copy.blockingLoad : copy.progressiveLoad}</span><small>{mode === 'blocking' ? copy.blockingLoadHint : copy.progressiveLoadHint}</small></button>)}</div>
             <div role="group" aria-label={copy.presets} className="demo-dropdown-section"><p className="demo-small-label">{copy.presets}</p>{presets.map(item => <button key={item.id} aria-pressed={preset === item.id} onClick={() => { replaceSource(item.source, item.id); setStatus({ preset: item.id }); }}><span className="limr-underline">{item.label}</span><small>{item.description}</small></button>)}</div>
           </Dropdown>
         </div>
@@ -202,7 +240,12 @@ function App() {
         </div>
         <input hidden ref={fileInput} type="file" accept=".md,.markdown,.txt,text/plain,text/markdown" aria-label={copy.openFile} onChange={async event => {
           const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; if (!file) return;
-          try { replaceSource(await file.text()); setStatus({ file: file.name }); } catch { setStatus('fileFailed'); }
+          const request = ++fileRequest.current;
+          try {
+            if (file.size >= asyncThreshold) { replaceSource(''); setAsyncInput(file); setDocumentReady(false); setEditor(false); }
+            else { const text = await file.text(); if (request !== fileRequest.current) return; replaceSource(text); }
+            setStatus({ file: file.name });
+          } catch { if (request === fileRequest.current) setStatus('fileFailed'); }
         }} />
       </nav>
       <div className="demo-controls demo-session-controls">
@@ -222,18 +265,20 @@ function App() {
           <Dropdown open={menu === 'sidebarCollapse'} id="demo-sidebar-collapse-menu" role="group" aria-label={copy.collapseNotes}>
             {[true, false].map(enabled => <button key={String(enabled)} aria-pressed={sidebarCollapse === enabled} onClick={() => { setSidebarCollapse(enabled); setMenu(null); sidebarCollapseRoot.current?.querySelector('button')?.focus(); }}><span className="limr-underline">{enabled ? copy.on : copy.off}</span></button>)}
           </Dropdown>
-        </div><button className="demo-stream-button" disabled={!source.length} aria-pressed={streaming} onClick={() => {
+        </div><button className="demo-stream-button" disabled={!source.length || !documentReady} aria-pressed={streaming} onClick={() => {
         if (streaming) { setStreaming(false); setStatus('streamStopped'); }
-        else { setCursor(0); setStreaming(true); setEditor(false); setStatus(''); setSelection(null); setDocumentVersion(value => value + 1); }
+        else { setAsyncInput(source.length >= asyncThreshold ? source : null); setCursor(0); setStreaming(true); setEditor(false); setStatus(''); setSelection(null); setDocumentVersion(value => value + 1); }
       }}><span className="limr-underline">{streaming ? copy.stopStream : copy.stream}</span></button>
       </div>
     </div>
     <div className="demo-context-line"><span>{editor ? copy.writingHint : streaming ? copy.streamingHint : copy.readingHint}</span><output aria-live="polite">{statusText || (answerStatus ? copy[answerStatus] : '') || copy.statistics(source.length, annotations.filter(item => item.type === 'highlight').length, annotations.filter(item => item.type !== 'highlight').length)}</output></div>
     {streaming && <div className="demo-stream-progress" role="progressbar" aria-label={copy.streamProgress} aria-valuemin={0} aria-valuemax={source.length} aria-valuenow={cursor}><span style={{ width: `${cursor / Math.max(1, source.length) * 100}%` }} /></div>}
     <div ref={workbench} className={editor ? 'demo-workbench' : 'demo-reading'}>
-      {editor && <><section id="demo-editor-pane" className="demo-editor-pane"><div className="demo-pane-label"><span>Markdown</span><div className="demo-editor-tools"><span>{copy.editorHint}</span><button type="button" className="demo-wrap-toggle" aria-label={copy.wrap} aria-pressed={wrap} title={wrap ? copy.wrapOff : copy.wrapOn} onClick={() => setWrap(value => !value)}><EditorWrapIcon /></button></div></div><textarea ref={setTextarea} wrap={wrap ? 'soft' : 'off'} data-wrap={wrap || undefined} spellCheck={false} className="demo-editor" aria-label="Markdown source" value={source} onChange={event => { setStreaming(false); setSource(event.target.value); setPreset(''); setAnnotations([]); setStatus(''); }} /></section><EditorResizeHandle container={workbench} ratio={editorRatio} locale={localeName} /></>}
+      {editor && <><section id="demo-editor-pane" className="demo-editor-pane"><div className="demo-pane-label"><span>Markdown</span><div className="demo-editor-tools"><span>{copy.editorHint}</span><button type="button" className="demo-wrap-toggle" aria-label={copy.wrap} aria-pressed={wrap} title={wrap ? copy.wrapOff : copy.wrapOn} onClick={() => setWrap(value => !value)}><EditorWrapIcon /></button></div></div><textarea ref={setTextarea} wrap={wrap ? 'soft' : 'off'} data-wrap={wrap || undefined} spellCheck={false} className="demo-editor" aria-label="Markdown source" value={source} onChange={event => { fileRequest.current++; const text = event.target.value; setStreaming(false); setSource(text); setAsyncInput(text.length >= asyncThreshold ? text : null); setDocumentReady(text.length < asyncThreshold); setPreset(''); setAnnotations([]); setStatus(''); }} /></section><EditorResizeHandle container={workbench} ratio={editorRatio} locale={localeName} /></>}
       <section id="demo-preview-pane" className={editor ? 'demo-preview-pane' : undefined}>{editor && <div className="demo-pane-label">{copy.preview} <span>{copy.previewHint}</span></div>}<div ref={editor ? setPreview : undefined} className={editor ? 'demo-preview-scroll' : undefined}>
-        <div className="demo-page"><Reader key={documentVersion} source={streaming ? source.slice(0, cursor) : source} onSourceChange={sourceEditing ? next => { setSource(next); setPreset(''); setStatus('sourceUpdated'); } : undefined} streaming={streaming} theme={dark ? 'dark' : 'light'} typography={typography} parameters={{ translationMode, onTranslationModeChange: setTranslationMode }} locale={localeName === 'zh-CN' ? chinese : english} scrollRoot={editor ? preview : null} toc={!editor} sidebar={!editor} sidebarCollapse={sidebarCollapse} actions={streaming ? [] : undefined} plugins={plugins} annotations={annotations} onAnnotationsChange={setAnnotations} onSelectionChange={setSelection} documentId="demo" /></div>
+        <div className="demo-page">{asyncInput !== null && !streaming
+          ? <AsyncReader key={documentVersion} {...readerProps} input={asyncInput} loading={{ mode: loadingMode, worker: createDocumentWorker }} onLoadStateChange={handleLoadState} />
+          : <Reader key={documentVersion} {...readerProps} source={streaming ? source.slice(0, cursor) : source} streaming={streaming} />}</div>
       </div></section>
     </div>
     <output id="selection-data" hidden>{selection ? JSON.stringify(selection) : ''}</output>

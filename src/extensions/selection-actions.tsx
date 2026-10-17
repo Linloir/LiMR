@@ -16,7 +16,7 @@ export const highlightColors = [
 
 export function copyText(options: { label?: string; format?: 'text' | 'raw' | 'syntax' | 'blocks' } = {}): SelectionAction {
   return {
-    id: `copy-${options.format ?? 'text'}`, label: options.label ?? (context => context.locale.copy), icon: <ToolIcon name="copy" />,
+    id: `copy-${options.format ?? 'text'}`, readOnly: true, label: options.label ?? (context => context.locale.copy), icon: <ToolIcon name="copy" />,
     successLabel: context => context.locale.copied, successIcon: <ToolIcon name="check" />,
     run: async ({ selection }) => { const format = options.format ?? 'text'; await navigator.clipboard.writeText(format === 'text' ? selection.text : selection[format].sourceText); },
   };

@@ -1,3 +1,4 @@
+import { mathSyntax } from './math-syntax';
 import { lazy, Suspense, type ComponentType } from 'react';
 import { math as syntax } from 'micromark-extension-math';
 import { mathFromMarkdown } from 'mdast-util-math';
@@ -23,5 +24,5 @@ export function math(options: MathOptions = {}): RendererExtension {
     const content = <Suspense fallback={fallback}><Renderer value={node.value ?? ''} display={display} options={options} /></Suspense>;
     return display ? <div className="limr-math-block">{content}<CopyButton className="limr-math-copy" variant="glass" label="Copy LaTeX" value={`$$\n${node.value ?? ''}\n$$`} /></div> : content;
   }
-  return { name: 'math', directives: ['math'], literal: true, micromark: [tableLocalSyntax(syntax())], mdast: [tableLocalSyntax(mathFromMarkdown())], scope: 'local', components: { math: MathNode, inlineMath: MathNode }, transform: (root, context) => literalDirective(root, context.source, 'math') };
+  return { ...mathSyntax(), components: { math: MathNode, inlineMath: MathNode } };
 }

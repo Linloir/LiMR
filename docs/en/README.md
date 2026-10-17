@@ -12,6 +12,8 @@ These pages describe the current repository implementation, including the new st
 | Understand modules, included capabilities, and configuration | [Built-in modules](modules.md) |
 | Write Markdown, Mermaid, callouts, highlights, footnotes, and two-colon components | [Default syntax](syntax.md) |
 | Integrate React, typography modes, streaming, custom layouts, or SSR | [Application integration](integration.md) |
+| Understand adaptive table widths, row heights, and overflow annotations | [Table layout](table-layout.md) |
+| Load large documents in a worker with progress and cancellation | [Large documents](large-documents.md) |
 | Persist selections, highlights, citations, and annotations; understand atomic copying | [Annotations and selection](annotations.md) |
 | Add syntax, cards, actions, streaming effects, or conditional renderers | [Extension development](extensions.md) |
 | Build a standalone npm plugin and import it into an app | [Plugin packages](plugin-packages.md) |

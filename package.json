@@ -18,7 +18,8 @@
     "registry": "https://registry.npmjs.org/"
   },
   "sideEffects": [
-    "**/*.css"
+    "**/*.css",
+    "./dist/worker.js"
   ],
   "files": [
     "dist",
@@ -48,6 +49,8 @@
       "types": "./dist/extensions/index.d.ts",
       "import": "./dist/extensions/index.js"
     },
+    "./worker": { "types": "./dist/worker.d.ts", "import": "./dist/worker.js" },
+    "./worker-api": { "types": "./dist/worker-api.d.ts", "import": "./dist/worker-api.js" },
     "./styles.css": "./dist/styles.css",
     "./styles/base.css": "./dist/base.css",
     "./fonts.css": "./dist/fonts/maple.css",
@@ -58,7 +61,7 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "dev": "pnpm pack:skills && vite --host 127.0.0.1",
-    "build": "tsup && node scripts/build-assets.mjs",
+    "build": "node scripts/clean-build.mjs && tsup && node scripts/build-assets.mjs",
     "build:playground": "pnpm pack:skills && vite build --base=/LiMR/ && node scripts/playground-build-info.mjs",
     "preview:playground": "vite preview --host 127.0.0.1 --base=/LiMR/",
     "typecheck": "tsc --noEmit",
@@ -76,6 +79,7 @@
     "bench:kp": "NODE_ENV=production tsx benchmarks/typography/algorithm.ts",
     "bench:layout": "NODE_ENV=production tsx benchmarks/typography/browser.ts",
     "bench:selection": "NODE_ENV=production tsx benchmarks/interaction/run.ts",
+    "bench:reading": "NODE_ENV=production tsx benchmarks/reading/run.mjs",
     "bench:report": "tsx benchmarks/report.ts"
   },
   "peerDependencies": {

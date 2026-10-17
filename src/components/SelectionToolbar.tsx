@@ -91,7 +91,7 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
   } : null;
   const readOnly = highlight?.data?.readOnly === true && !runtime.commands.canEditAnnotation(highlight.id);
   const selectionHint = selection ? interaction.selectionHint : null;
-  const available = context ? readOnly ? [defaults[2]] : combined.filter(action => action.visible?.(context) ?? true) : [];
+  const available = context ? readOnly ? [defaults[2]] : combined.filter(action => (!config.readOnly || action.readOnly === true) && (action.visible?.(context) ?? true)) : [];
   const expandedAction = available.find(action => action.id === expanded && action.renderExpanded);
   const hasPanels = available.some(action => action.renderExpanded);
   const open = !!context && effectiveSelection!.settled && available.length > 0;

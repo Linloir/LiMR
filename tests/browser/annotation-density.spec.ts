@@ -156,6 +156,33 @@ for (const name of ['notes', 'scikit-learn-paper']) test(`${name} preset support
   await expect(page.locator('.limr-sidebar')).toHaveCount(0);
 });
 
+test('cached source anchors survive KP restoration, resizing and replacement while a long folding search is pending', async ({ page }) => {
+  await page.setViewportSize({ width: 1700, height: 1000 });
+  const makeSource = (prefix: string) => Array.from({ length: 72 }, (_, index) =>
+    `${prefix} ::%%limr%%{<#r${index}}**Reference ${index}** and its explanation::%%limr%%{>#r${index}}.\n\n`).join('')
+    + Array.from({ length: 72 }, (_, index) => `:::limr-annotation{#n${index} ranges="r${index}" type="footnote"}\nNote ${index}. ${'An explanation. '.repeat(5)}\n:::\n\n`).join('');
+  let source = makeSource('Before');
+  await load(page, source);
+  for (const typography of ['standard', 'knuth-plass', 'standard'] as const) {
+    await page.evaluate(({ source, typography }) => window.limrStream({ source, streaming: false, sidebar: true, sidebarCollapse: true, typography }), { source, typography });
+    await page.setViewportSize({ width: typography === 'knuth-plass' ? 1450 : 1700, height: 1000 });
+    const marker = article(page).locator('.limr-mark[data-limr-anchor]').nth(35);
+    await marker.scrollIntoViewIfNeeded(); await marker.hover();
+    const card = await cardFor(page, 35);
+    await expect(card).not.toHaveAttribute('data-folded');
+    await expect.poll(async () => Math.abs((await card.boundingBox())!.y - await marker.evaluate(element => {
+      const reference = element.closest('[data-limr-block]')!.querySelector('strong')!;
+      const text = document.createTreeWalker(reference, NodeFilter.SHOW_TEXT, {
+        acceptNode: node => node.textContent?.length ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT,
+      }).nextNode()!;
+      const range = document.createRange(); range.setStart(text, 0); range.setEnd(text, 1);
+      return range.getBoundingClientRect().top;
+    }))).toBeLessThan(1);
+    await expect(page.locator('.limr-sidebar-card')).toHaveCount(72);
+    source = makeSource('A longer changed prefix');
+  }
+});
+
 test('Playground has a global automatic sidebar folding switch across documents', async ({ page }) => {
   await page.setViewportSize({ width: 1700, height: 1100 });
   await page.goto('/#/playground');

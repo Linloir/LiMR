@@ -8,6 +8,8 @@ Reproducible production measurements of the **current source and lockfile**. Rep
 | `renderers/` | One production browser harness; LiMR, react-markdown and Markstream adapters |
 | `typography/` | Pure Knuth–Plass solver and full Playground scroll/resize measurements |
 | `interaction/` | Real pointer selection and overlay latency probe, shared with browser regressions |
+| `reading/` | Complete local papers with default features, workers, sidebars, translations, scrolling and resizing |
+| `large-reading/` | 50/75 MiB loading and windowed reading in production Chromium |
 | `shared/` | Deterministic GFM fixture, environment fingerprints and statistics |
 | `results/` | Latest complete matrix, optional mount repeat, and separately labelled historical investigation |
 | `run.ts` | Serial orchestration, builds and automatic preview-server cleanup |
@@ -35,11 +37,38 @@ After an interrupted run, `pnpm bench --from=layout` resumes at the layout stage
 | `pnpm bench:kp` | `results/kp-algorithm.json` | none |
 | `pnpm bench:layout` | `results/kp-browser.json` | production Playground at `BENCH_URL` |
 | `pnpm bench:selection` | `results/selection.json` | production Playground at `BENCH_URL` |
+| `pnpm bench:reading` | `artifacts/benchmarks/reading.json` | frozen production snapshot on an automatic free port |
 | `pnpm bench:report` | bilingual performance reports | none; requires complete results |
 
 For individual layout/selection runs, first run `pnpm build:playground`, then `pnpm preview:playground --port 4174` in another terminal. Both use `http://127.0.0.1:4174/LiMR/` by default; set `BENCH_URL` for another preview address.
 
 Renderer debugging supports `BENCH_SUITE=full|streaming|reading`, `BENCH_FILTER=static-small`, `BENCH_READING_CASE=rich-medium|rich-large|rich-mobile`, `BENCH_TRIALS`, `BENCH_READING_TRIALS`, `BENCH_RICH_SECTIONS`, and `BENCH_OUTPUT=artifacts/benchmarks/debug.json`. Use a separate output for partial runs. `BENCH_NO_BUILD=1` may reuse an unchanged comparison build; rebuild after any harness/source change. The report generator rejects incomplete result matrices.
+
+## Local papers and large documents
+
+`bench:reading` reads `1706.03762v7.limr.md` and `2305.10435v2.zh-CN.limr.md` from `../test-reading` by default, including their relative image assets. Use `BENCH_READING_SOURCE_DIR` and comma-separated `BENCH_READING_DOCUMENTS` for another local corpus. The source files are not distributed in this repository.
+
+```sh
+# Complete papers, standard/justify/KP, both sidebar layouts, three trials.
+BENCH_READING_RENDERERS=reader,async pnpm bench:reading
+# A smaller diagnostic run; this is not a complete acceptance matrix.
+BENCH_READING_RENDERERS=async BENCH_READING_MODES=knuth-plass BENCH_READING_COLLAPSE=true BENCH_READING_TRIALS=1 BENCH_OUTPUT=artifacts/benchmarks/reading-diagnostic.json pnpm bench:reading
+# Real 50 MiB blocking and 75 MiB progressive inputs, including reader windows.
+LIMR_LARGE_CASES=novels node benchmarks/large-reading/run.mjs
+# Headed/default-GPU evidence, kept separately from legacy headless output.
+BENCH_BROWSER_MODE=headed BENCH_READING_RENDERERS=async pnpm bench:reading
+BENCH_BROWSER_MODE=headed LIMR_LARGE_CASES=novels node benchmarks/large-reading/run.mjs
+```
+
+The `reader` arm preserves the synchronous full-document API; `async` uses a real parser worker with main-thread fallback disabled and automatic DOM windows. Optional `BENCH_READING_LOADING=progressive` and `BENCH_READING_VIRTUALIZATION=true|false` diagnose those paths explicitly. `BENCH_READING_SIDEBAR=true,false` compares both sidebar states at equal body width unless `BENCH_READING_RESERVE_SIDEBAR=0` is set.
+
+These suites retain default modules and animations. Ordinary reading, fast scrolling, whole-document seeks, visible paragraph translation changes, translation changes during scrolling, and resizing are separate probes. They record resource errors, worker capability, viewport coverage and source fingerprints alongside raw frames; a low frame time with missing content is not a successful sample. Resize settling includes an observation window and is reported separately from maximum frame duration. rAF intervals are scheduling measurements, not physical input-to-photon latency. Large-document fixture generation is recorded separately from loading a supplied file. These local investigations do not overwrite the published comparison reports.
+
+Only the local `reading` and `large-reading` suites accept `BENCH_BROWSER_MODE=headless|headed` (default `headless`) and optional absolute `BENCH_BROWSER_EXECUTABLE`. The default preserves the prior Playwright launch route; an explicit same full binary is required when isolating headless/headed policy from binary differences. Neither option adds a GPU/backend override or changes the existing CSS viewport, actions or timing boundaries. The independent public renderer/layout/selection matrix retains its existing launch settings.
+
+These two local suites now record actual GPU/command-line/window/page evidence outside timing, together with per-case `browserEnvironment.performanceEnvironmentVerified` and reasons for unavailable/inconsistent evidence. Headed does not imply hardware GPU; actual feature status and backend decide that classification. Hidden pages or GPU environment changes cannot silently qualify for performance acceptance. Binary metadata is collected once before the cases, with Linux procfs identity when available. No trace or periodic GPU sampler is enabled. Existing reports without these observations remain historical data with an unobserved GPU environment and must not be pooled with new headed evidence.
+
+Legacy headless output paths are unchanged. Headed defaults add `-headed` to the JSON filename; `BENCH_OUTPUT` overrides either mode in both suites. The large-document source snapshot now also includes its browser-environment helper. See [the reading harness](reading/README.md) for explicit same-binary commands and observation limits. A complete desktop-reading acceptance matrix needs verified headed/default-GPU evidence in addition to any headless CI results; neither environment is assumed universally faster.
 
 For a CPU profile and a Chrome timeline (including layout and GC), use an independent diagnostic run:
 

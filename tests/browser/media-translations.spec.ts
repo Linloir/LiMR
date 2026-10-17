@@ -50,7 +50,7 @@ test('translation markers cycle inline without cards and animate the following t
   const final = await following.evaluate(element => element.getBoundingClientRect().top);
   expect(final).not.toBe(intermediate);
   expect(await block.evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThan(originHeight + 30);
-  await expect(block.locator('[data-language="origin"] p [data-translation-switch]')).toHaveAttribute('aria-label', '当前对照，切换到原文');
+  await expect(block.locator('[data-language="origin"] p [data-translation-switch]')).toHaveAttribute('aria-label', 'Showing bilingual; switch to original');
   await expect(block.locator('[data-translation-switch] svg')).toHaveCount(1);
   await expect(block.locator('[data-translation-switch]')).toBeFocused();
   await block.locator('[data-translation-switch]').click();

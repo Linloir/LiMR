@@ -1,3 +1,4 @@
+import { transformCitation } from './syntax-transforms';
 import { useMemo, useRef } from 'react';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { rangeOf, safeUrl, textContent, walk } from '../core/tree';
@@ -53,24 +54,6 @@ export function citation(options: Partial<AnnotationType<CitationData>> = {}): R
   return {
     name: 'citation', tags: ['citation', 'ref'], scope: 'local',
     annotationTypes: [{ type: 'citation', label: locale => locale.citation ?? 'Citation', icon: CitationIcon, color: '#6366f1', highlight: 'hover', Content, ...options, sidebar: { Preview, collapseOnContentClick: false, ...options.sidebar }, overlay: { Card, expand: false, ...options.overlay } }],
-    transform(root) {
-      walk(root, node => {
-        if (node.type !== 'component' || node.incomplete) return;
-        if (node.name === 'citation') {
-          const attributes = node.attributes ?? {};
-          const id = String(attributes['cite-id'] ?? attributes.id ?? '');
-          node.type = 'annotationDefinition';
-          node.annotation = { id, type: 'citation', data: { title: attributes.title, url: attributes.url, description: attributes.desc ?? attributes.description, summary: attributes.summary } };
-        } else if (node.name === 'ref') {
-          const value = String(node.attributes?.['cite-from-ids'] ?? node.attributes?.ids ?? node.attributes?.id ?? '');
-          let ids: string[];
-          try { const parsed = JSON.parse(value); ids = Array.isArray(parsed) ? parsed.map(String) : [String(parsed)]; }
-          catch { ids = value.split(',').map(id => id.trim()).filter(Boolean); }
-          node.type = 'annotationReference'; node.annotationIds = ids;
-          const first = node.children?.[0], last = node.children?.at(-1);
-          if (first && last) node.referenceRange = { start: rangeOf(first).start, end: rangeOf(last).end };
-        }
-      });
-    },
+    transform: transformCitation,
   };
 }
