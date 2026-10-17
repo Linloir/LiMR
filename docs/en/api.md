@@ -58,7 +58,7 @@ The default locale is english. Missing partial keys fall back to English. locale
 | Component | Extra props and defaults |
 | --- | --- |
 | Reader | toc=true, sidebar=true, sidebarCollapse=false, fillHeight=true, sidebarBreakpoint=1120, actions, followOutput=false, className/style |
-| AsyncReader | Reader configuration plus input, loading, loadingFallback and onLoadStateChange; see [large documents](large-documents.md) |
+| AsyncReader | Reader configuration plus input, loading, loadingFallback (or null for host UI), and onLoadStateChange(state, controls); see [large documents](large-documents.md) |
 | Markdown | interactive=true, followOutput=false, className/style |
 | DocumentProvider | children; supplies context to composed views |
 | TableOfContents | title, maxDepth=6, followActive=true, topInset=24, updateHash=false, className/style |
@@ -84,7 +84,7 @@ Translation preferences can be supplied through `parameters.translationModeForNo
 
 Custom virtualized renderers receive `VirtualizedTextContext`: `source` is the complete node source, `children` is the selected visible descendant text, and the lazy `value` getter is the selected decoded leaf value. Literal code retains whitespace and entities. A code theme adapter can use `copyText: (_node, { value }) => value` without reimplementing source mapping or copying an entire block for a partial selection.
 
-`Image` and `ImagePreview` also work outside a reader. The preview offers fit/actual size, Escape to close, and focus return. Hosts resolve local or protected image URLs before passing them to these components; the core performs no filesystem lookup.
+`Image` and `ImagePreview` also work outside a reader. The preview animates from the originating image into a dimmed viewport, with a theme-aware bottom toolbar for fit/actual/fill modes, zoom, copying image pixels, and closing. Oversized images support dragging and scrolling; Escape closes the preview and restores focus. Reduced-motion preferences disable the transitions. Pixel copying requires browser clipboard permission and a same-origin or CORS-readable image; failures are reported on the copy button. Hosts resolve local or protected image URLs before passing them to these components; the core performs no filesystem lookup.
 
 `SidebarPositioner` receives `{ id, anchorTop, height }[]` and `{ activeId, gap, height?, prioritizeActive? }`, returning a map of IDs to top positions. anchorTop is the first line of referenced text; prioritizeActive distinguishes hovered or active items from the item selected by reading position. The default alignSidebar packs footer cards at rest and prioritizes the current item during interaction.
 

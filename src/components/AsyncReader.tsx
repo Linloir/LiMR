@@ -1,4 +1,4 @@
-import { memo, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { createDocumentSession, type DocumentInput, type DocumentSessionOptions, type DocumentSessionState, type DocumentSnapshot, type DocumentEngine, type Annotation } from '../core';
 import { standard } from '../extensions/standard';
 import { hasDocumentSyntax } from '../core/worker-registry';
@@ -6,12 +6,21 @@ import { Reader, ReaderInitialWidthContext, type ReaderProps } from './Reader';
 import { useIsomorphicLayoutEffect } from '../react/context';
 import { AsyncReaderPositionBinding, AsyncReaderPositionBoundary } from '../react/AsyncReaderPositionBoundary';
 
+export interface AsyncReaderLoadControls {
+  cancel: () => void;
+  retry: () => void;
+}
+
 export interface AsyncReaderProps extends Omit<ReaderProps, 'source' | 'document' | 'streaming'> {
   input: DocumentInput;
   /** Blocking is the default. Worker creation remains a bundler/host concern. */
   loading?: Omit<DocumentSessionOptions, 'id' | 'extensions'>;
-  loadingFallback?: (state: DocumentSessionState, retry: () => void) => ReactNode;
-  onLoadStateChange?: (state: DocumentSessionState) => void;
+  /** Replace the built-in loading/error UI, or pass null for a host-owned UI.
+   * The second argument remains the retry function for existing integrations. */
+  loadingFallback?: ((state: DocumentSessionState, retry: () => void, controls: AsyncReaderLoadControls) => ReactNode) | null;
+  /** Observe loading state and drive an external progress UI, including
+   * native host controls. Actions remain stable for the current session. */
+  onLoadStateChange?: (state: DocumentSessionState, controls: AsyncReaderLoadControls) => void;
 }
 
 function benefitsFromWindowing(snapshot: DocumentSnapshot): boolean {
@@ -63,13 +72,14 @@ export function AsyncReader({ input, loading, loadingFallback, onLoadStateChange
     // cancel permits StrictMode setup/cleanup/setup and terminates abandoned work.
     return () => session.cancel();
   }, [session, input, attempt]);
+  const retry = useCallback(() => setAttempt(value => value + 1), []);
+  const controls = useMemo<AsyncReaderLoadControls>(() => ({ cancel: session.cancel, retry }), [session, retry]);
   const loadObserver = useRef(onLoadStateChange); loadObserver.current = onLoadStateChange;
-  useEffect(() => loadObserver.current?.(state), [state]);
-  const retry = () => setAttempt(value => value + 1);
+  useEffect(() => loadObserver.current?.(state, controls), [state, controls]);
   const chinese = reader.locale?.language?.startsWith('zh');
   const labels = chinese ? { read: '读取文档', parse: '解析文档', index: '建立文档索引', ready: '文档已就绪', error: '文档加载失败', cancelled: '已取消加载', retry: '重试', cancel: '取消', background: '正在继续加载后续内容' }
     : { read: 'Reading document', parse: 'Parsing document', index: 'Indexing document', ready: 'Document ready', error: 'Unable to load document', cancelled: 'Loading cancelled', retry: 'Retry', cancel: 'Cancel', background: 'Loading the rest of the document' };
-  const progress = state.progress.total ? Math.min(1, state.progress.loaded / state.progress.total) : undefined;
+  const progress = state.overallProgress;
   const label = state.status === 'error' ? labels.error : state.status === 'cancelled' ? labels.cancelled : labels[state.phase];
   const pending = state.status !== 'ready';
   // Measure the eventual reader's own width while loading. Its first content
@@ -84,7 +94,7 @@ export function AsyncReader({ input, loading, loadingFallback, onLoadStateChange
   }, [!!state.document, reader.className, reader.style]);
   const acceptedRequest = lastLoad.current?.session === session && lastLoad.current.input === input && lastLoad.current.attempt === attempt ? lastLoad.current : undefined;
   return <AsyncReaderPositionBoundary session={session} request={acceptedRequest} revision={state.revision} document={state.document} complete={state.complete} publicAnnotations={reader.annotations} injectedAnnotations={!state.complete && reader.annotations === undefined ? emptyAnnotations : undefined}><div className="limr-async-reader" data-limr-theme={reader.theme} data-limr-appearance={reader.appearance}>
-    {pending && (loadingFallback ? loadingFallback(state, retry) : <div className="limr-document-loading" data-provisional={!!state.document || undefined} role="status" aria-live="polite">
+    {pending && (loadingFallback !== undefined ? loadingFallback?.(state, retry, controls) : <div className="limr-document-loading" data-provisional={!!state.document || undefined} role="status" aria-live="polite">
       <div className="limr-document-loading-label">{state.document ? labels.background : label}</div>
       {state.status === 'error' ? <p>{state.error?.message}</p> : state.status !== 'cancelled' && <progress max={1} value={progress} aria-label={label} />}
       <div className="limr-document-loading-footer"><span>{state.status !== 'error' && state.status !== 'cancelled' && progress !== undefined ? `${Math.round(progress * 100)}%` : ''}</span>

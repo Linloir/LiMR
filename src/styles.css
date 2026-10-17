@@ -134,7 +134,7 @@
   .limr-prose del { color: var(--limr-muted, #718096); }
   .limr-prose :where(ul,ol) { padding-inline-start: 1.5rem; margin: 0 0 1rem; }
   .limr-prose ul { list-style-type: disc; }
-  .limr-prose ol { list-style-type: decimal; }
+  .limr-prose ol { list-style-type: decimal; padding-inline-start: max(1.5rem, calc(var(--limr-list-marker-width, 2ch) + .85em)); }
   .limr-prose li { display: list-item; margin-block-end: var(--limr-list-item-gap, .375rem); }
   .limr-prose li:last-child { margin-block-end: 0; }
   .limr-prose li > p { margin-block-end: var(--limr-list-item-gap, .375rem); }
@@ -148,7 +148,7 @@
   .limr-task-item[data-editable]:has(> .limr-task-control:hover,> .limr-task-control > input:focus-visible,> .limr-task-text:hover,> p > .limr-task-text:hover) > .limr-task-text,
   .limr-task-item[data-editable]:has(> .limr-task-control:hover,> .limr-task-control > input:focus-visible,> .limr-task-text:hover,> p > .limr-task-text:hover) > p > .limr-task-text { color: var(--limr-text, #292621); background-size: 100% 1px; }
   .limr-task-item:not([data-editable]) > .limr-task-control :is(.limr-diamond-outline,.limr-diamond-fill) { transition: none; }
-  .limr-prose :where(ul,ol):has(> .limr-task-item) { padding-inline-start: max(1.5rem, 1.5em); }
+  .limr-prose :where(ul,ol):has(> .limr-task-item):not(:has(> li:not(.limr-task-item))) { padding-inline-start: max(1.5rem, 1.5em); }
   /* Match the first text baseline and font's ink cap height, independent of
      leading. An absolute marker also keeps loose and nested lists aligned. */
   .limr-task-control { position: absolute; inset-inline-end: calc(100% + .5em); inset-block-start: 0; width: .75em; width: 1cap; color: var(--limr-question-accent, #997045); white-space: nowrap; cursor: text; }

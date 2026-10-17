@@ -4,6 +4,7 @@ import { DocumentEngine, rangeOf, type Block } from '../core';
 import { RuntimeContext } from './context';
 import { BlockView } from './render';
 import { ReaderRuntime, emptyDecorations } from './runtime';
+import { orderedListStyle } from './ordered-list';
 
 export interface PreparePrintOptions {
   signal?: AbortSignal;
@@ -40,7 +41,7 @@ export async function prepareDocumentPrint(runtime: ReaderRuntime, options: Prep
       const root = createRoot(batch); roots.push(root);
       flushSync(() => root.render(<RuntimeContext.Provider value={printed}>{entries.slice(at, at + 24).map(block => {
         const view = <BlockView key={block.id} block={block} runtime={printed} components={config.components} extensions={config.extensions} rendererOverrides={config.rendererOverrides} footnoteId={block.footnoteId} decorations={printed.decorations.get().byBlock.get(block.id) ?? emptyDecorations} />;
-        return block.footnoteId ? <ol key={block.id} className="limr-footnotes" start={block.order! + 1}>{view}</ol> : view;
+        return block.footnoteId ? <ol key={block.id} className="limr-footnotes" start={block.order! + 1} style={orderedListStyle(1, source.footnoteOrder.length)}>{view}</ol> : view;
       })}</RuntimeContext.Provider>));
       options.onProgress?.({ loaded: Math.min(entries.length, at + 24), total: entries.length });
       await new Promise<void>(resolve => setTimeout(resolve, 0));

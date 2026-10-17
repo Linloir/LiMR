@@ -41,7 +41,7 @@ audit.render = ({ source, mib, input: suppliedInput, mode = 'blocking', typograp
   const input = suppliedInput ?? audit.prepare(mib) ?? source ?? '# Start\n\nSmall initial document.';
   audit.history = []; audit.started = performance.now(); audit.capability = undefined;
   root.render(<AsyncReader {...options} input={input} loading={{ worker: holdCompletion ? heldWorker : worker, mode, fallback: 'error' }} typography={typography} virtualization={options.virtualization ?? (automaticWindowing ? undefined : true)} onVirtualizationChange={capability => { audit.capability = capability; }}
-    onLoadStateChange={state => { audit.state = state; audit.history.push({ at: performance.now(), status: state.status, phase: state.phase, complete: state.complete, prefix: !state.complete && !!state.document }); }}><AuditBridge /></AsyncReader>);
+    onLoadStateChange={(state, controls) => { audit.state = state; audit.controls = controls; audit.history.push({ at: performance.now(), status: state.status, phase: state.phase, complete: state.complete, prefix: !state.complete && !!state.document }); }}><AuditBridge /></AsyncReader>);
 };
 function Lifecycle({ blob, echo }: { blob: boolean; echo: boolean }) {
   const [input, setInput] = useState<string | Blob>(() => blob ? new Blob(['# Original\n\nEditable original.']) : '# Original\n\nEditable original.');

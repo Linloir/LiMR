@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import { rangeOf, selectionFromRange, type Block, type SourceRange } from '../core';
 import { BlockHeightIndex, readingScrollGeometry } from '../core/height-index';
 import { BlockView, Footnotes } from './render';
+import { orderedListStyle } from './ordered-list';
 import { useIsomorphicLayoutEffect, useRuntime, useStoreSelector } from './context';
 import { emptyDecorations } from './runtime';
 import { sourceRangeStartRect } from './source-geometry';
@@ -455,7 +456,7 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
     {windowed && printProgress && <div className="limr-print-progress" role="status" data-limr-ignore="true"><span>{runtime.locale.language?.startsWith('zh') ? '正在准备完整文档' : 'Preparing complete document'} · {printProgress.loaded}/{printProgress.total}</span><progress value={printProgress.loaded} max={printProgress.total || 1} /><button type="button" onClick={() => printController.current?.abort()}>{runtime.locale.language?.startsWith('zh') ? '取消' : 'Cancel'}</button></div>}
     <div ref={window} style={!windowed ? {display:'contents'} : { position: displayed.printing ? undefined : 'absolute', top: displayed.printing ? undefined : displayed.top, insetInline: 0 }}>
       {slots.map(({ index }) => { const block = entries[index], parked = windowed && !displayed.printing && (replacement ? !replacement.visible.has(index) : index < displayed.start || index >= displayed.end); return block && <div key={proof?.key(block) ?? block.id} data-window-slot={windowed ? index : undefined} data-stable-slot={proof ? '' : undefined} data-window-parked={parked || undefined} style={{ position: displayed.printing ? undefined : parked ? 'absolute' : 'relative', top: parked ? -1_000_000 - displayed.top : undefined, insetInline: 0, display: windowed ? 'flow-root' : 'contents', opacity: parked ? 0 : undefined, pointerEvents: parked ? 'none' : undefined }}>
-        {block.footnoteId ? <ol className="limr-footnotes" start={block.footnoteOrder! + 1}><BlockView block={block} footnoteId={block.footnoteId} runtime={runtime} components={config.components} extensions={config.extensions} rendererOverrides={config.rendererOverrides} decorations={decorations.get(block.id) ?? emptyDecorations} /></ol> : <BlockView block={block} runtime={runtime} components={config.components} extensions={config.extensions} rendererOverrides={config.rendererOverrides} decorations={decorations.get(block.id) ?? emptyDecorations} />}
+        {block.footnoteId ? <ol className="limr-footnotes" start={block.footnoteOrder! + 1} style={orderedListStyle(1, runtime.document.getSnapshot().footnoteOrder.length)}><BlockView block={block} footnoteId={block.footnoteId} runtime={runtime} components={config.components} extensions={config.extensions} rendererOverrides={config.rendererOverrides} decorations={decorations.get(block.id) ?? emptyDecorations} /></ol> : <BlockView block={block} runtime={runtime} components={config.components} extensions={config.extensions} rendererOverrides={config.rendererOverrides} decorations={decorations.get(block.id) ?? emptyDecorations} />}
       </div>; })}
     </div>
   </div>{!windowed && <Footnotes />}</>;

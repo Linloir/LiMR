@@ -91,7 +91,11 @@ export function AnnotationOverlay({ disabled = false, portalRoot, previewWidth =
   // switched the same host to another card or to its expanded dimensions.
   const sizing = useRef({ id, expanded: shownExpanded, open });
   sizing.current = { id, expanded: shownExpanded, open };
-  const { refs, update, floatingStyles, context, isPositioned, placement, middlewareData } = useFloating({ open, elements: { reference: anchor ?? null }, onOpenChange: next => { if (!next) close(); }, strategy: 'fixed', transform: false, placement: 'bottom-start', whileElementsMounted: autoUpdate, middleware: [offset(8), flip({ padding: 12 }), shift({ padding: 12 }), size({ padding: 12, apply: ({ availableHeight, elements }) => {
+  const { refs, update, floatingStyles, context, isPositioned, placement, middlewareData } = useFloating({ open, elements: { reference: anchor ?? null }, onOpenChange: (next, event, reason) => {
+    // FloatingFocusManager's focus-out path does not consult getInsideElements.
+    // A native child dialog therefore needs the same ownership check as clicks.
+    if (!next && !(reason === 'focus-out' && isOwnedImagePreview((event as FocusEvent | undefined)?.relatedTarget ?? null, refs.floating.current))) close();
+  }, strategy: 'fixed', transform: false, placement: 'bottom-start', whileElementsMounted: autoUpdate, middleware: [offset(8), flip({ padding: 12 }), shift({ padding: 12 }), size({ padding: 12, apply: ({ availableHeight, elements }) => {
     if (!sizing.current.open || sizing.current.id !== id || sizing.current.expanded !== shownExpanded) return;
     if (!shownExpanded) {
       const viewHeight = window.visualViewport?.height ?? window.innerHeight;

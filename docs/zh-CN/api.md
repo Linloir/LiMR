@@ -58,7 +58,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 | 组件 | 额外属性及默认值 |
 | --- | --- |
 | Reader | toc=true、sidebar=true、sidebarCollapse=false、fillHeight=true、sidebarBreakpoint=1120、actions、followOutput=false、className/style |
-| AsyncReader | Reader 配置加 input、loading、loadingFallback、onLoadStateChange，见[大文档](large-documents.md) |
+| AsyncReader | Reader 配置加 input、loading、loadingFallback（null 使用宿主 UI）、onLoadStateChange(state, controls)，见[大文档](large-documents.md) |
 | Markdown | interactive=true、followOutput=false、className/style |
 | DocumentProvider | children；为下方组件提供上下文 |
 | TableOfContents | title、maxDepth=6、followActive=true、topInset=24、updateHash=false、className/style |
@@ -84,7 +84,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 
 自定义窗口渲染器收到 `VirtualizedTextContext`：`source` 是完整节点源码，`children` 是已按选区和展示状态过滤的子节点文字，惰性 `value` getter 返回选中的解码后叶节点内容。代码保留字面空白和实体。代码主题适配器可使用 `copyText: (_node, { value }) => value`，无需重新实现源码映射，也不会在局部选择时复制整块代码。
 
-`Image` 和 `ImagePreview` 也可独立于 Reader 使用。预览支持适应窗口、原始大小、Escape 关闭和焦点返回。本地或受保护图片的 URL 由宿主解析后传入，核心组件不负责文件系统查找。
+`Image` 和 `ImagePreview` 也可独立于 Reader 使用。预览从原图位置动画展开，背景变暗，底部提供适配主题的操作栏：切换适应窗口／原始大小／铺满窗口、缩放、复制图片像素和关闭。超出窗口的图片支持拖动和滚动；Escape 关闭后返回原焦点，并尊重系统的减少动态效果偏好。复制像素需要浏览器剪贴板权限，以及同源或允许 CORS 读取的图片；失败会在复制按钮中提示。本地或受保护图片的 URL 由宿主解析后传入，核心组件不负责文件系统查找。
 
 `SidebarPositioner` 接收 `{ id, anchorTop, height }[]` 与 `{ activeId, gap, height?, prioritizeActive? }`，返回 ID 到 top 的映射。anchorTop 是关联文本首行的位置；prioritizeActive 区分悬浮/激活条目与随阅读位置选择的条目。默认 alignSidebar 在静止时收拢文末卡片，交互时优先保留当前条目的对齐。
 

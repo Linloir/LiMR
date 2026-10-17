@@ -26,6 +26,40 @@ const paragraph = '原文中的文字 🪶 保留准确位置。 This paragraph 
 const prose = paragraph.repeat(2400);
 
 describe('asynchronous document sessions', () => {
+  it('keeps one overall progress across phases and result transfer, resetting only for a new request', async () => {
+    let receive!: (event: MessageEvent<DocumentWorkerResponse>) => void;
+    const session = createDocumentSession({ id: 'progress', worker: () => ({
+      postMessage() {}, terminate() {}, removeEventListener() {},
+      addEventListener(type, listener) { if (type === 'message') receive = listener as typeof receive; },
+    }) });
+    const states: DocumentSessionState[] = [];
+    session.subscribe(() => states.push(session.getSnapshot()));
+    const pending = session.load('Complete.');
+    const revision = session.getSnapshot().revision;
+    const send = (message: DocumentWorkerResponse) => receive({ data: message } as MessageEvent<DocumentWorkerResponse>);
+    for (const progress of [
+      { phase: 'read', loaded: 5, total: 10 }, { phase: 'read', loaded: 10, total: 10 },
+      { phase: 'parse', loaded: 0, total: 9 }, { phase: 'parse', loaded: 9, total: 9 },
+      // A nested parser can report a new local range without resetting the bar.
+      { phase: 'parse', loaded: 0, total: 4 }, { phase: 'index', loaded: 0, total: 1 },
+      { phase: 'index', loaded: 1, total: 1 },
+    ] as const) send({ type: 'progress', revision, progress });
+    const { source, blocks, ...metadata } = new DocumentEngine('Complete.', { id: 'progress' }).getSnapshot();
+    send({ type: 'snapshot-start', revision, metadata, sourceLength: source.length, blockCount: blocks.length, progressive: false });
+    send({ type: 'snapshot-source', revision, value: source });
+    send({ type: 'snapshot-blocks', revision, blocks: [...blocks] });
+    expect(states.every(state => state.overallProgress >= 0 && state.overallProgress < 1)).toBe(true);
+    expect(states.map(state => state.overallProgress)).toEqual([...states.map(state => state.overallProgress)].sort((a, b) => a - b));
+    expect(session.getSnapshot().overallProgress).toBeCloseTo(.99);
+    send({ type: 'snapshot-end', revision }); await pending;
+    expect(session.getSnapshot()).toMatchObject({ status: 'ready', overallProgress: 1 });
+    const next = session.load('Another request.');
+    expect(session.getSnapshot().overallProgress).toBe(0);
+    session.cancel(); await expect(next).rejects.toMatchObject({ name: 'AbortError' });
+    send({ type: 'progress', revision, progress: { phase: 'index', loaded: 1, total: 1 } });
+    expect(session.getSnapshot()).toMatchObject({ status: 'cancelled', overallProgress: 0 });
+    session.dispose();
+  });
   it('adopts complete snapshots without copying source/blocks and safely rebuilds private state on edit', () => {
     const extensions = standard(), original = new DocumentEngine('[link][ref]\n\n[ref]: /first', { id: 'shared', extensions });
     original.update('[link][ref]\n\n[ref]: /second');

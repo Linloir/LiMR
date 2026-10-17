@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocale } from '../react/context';
 
+/** Shared copy/check transition, including standalone surfaces without a Reader. */
+export function CopyGlyph() {
+  return <svg className="limr-copy-glyph" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <g className="limr-copy-sheets"><rect x="8.5" y="8" width="10.5" height="12" rx="3" /><path d="M15.5 8V6.8A2.8 2.8 0 0 0 12.7 4H7A3 3 0 0 0 4 7v6a3 3 0 0 0 3 3h1.5" /></g>
+    <path className="limr-copy-check" d="m5.5 12 4.2 4.2 8.8-9" pathLength="1" />
+  </svg>;
+}
+
 /** Shared skin primitive; glyphs are original SVG, independent of an icon font. */
 export function CopyButton({ value = '', onCopy, label, variant = 'plain', className = '' }: { value?: string; onCopy?: () => Promise<void>; label?: string; variant?: 'plain' | 'glass'; className?: string }) {
   const locale = useLocale();
@@ -20,10 +28,7 @@ export function CopyButton({ value = '', onCopy, label, variant = 'plain', class
   };
   return <button type="button" className={`limr-copy-button ${className}`} data-variant={variant} data-status={status} data-limr-ignore="true"
     aria-label={title} title={title} onClick={copy}>
-    <svg className="limr-copy-glyph" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <g className="limr-copy-sheets"><rect x="8.5" y="8" width="10.5" height="12" rx="3" /><path d="M15.5 8V6.8A2.8 2.8 0 0 0 12.7 4H7A3 3 0 0 0 4 7v6a3 3 0 0 0 3 3h1.5" /></g>
-      <path className="limr-copy-check" d="m5.5 12 4.2 4.2 8.8-9" pathLength="1" />
-    </svg>
+    <CopyGlyph />
     <span className={status === 'error' ? 'limr-copy-error' : 'limr-sr-only'} role="status">{status === 'copied' ? locale.copied : status === 'error' ? locale.copyFailed : ''}</span>
   </button>;
 }

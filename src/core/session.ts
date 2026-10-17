@@ -22,6 +22,9 @@ export interface DocumentSessionState {
   revision: number;
   phase: DocumentProgress['phase'];
   progress: { loaded: number; total?: number };
+  /** Monotonic fraction for this request, from 0 to 1. Phase weights estimate
+   * work rather than elapsed time; only an accepted complete document reaches 1. */
+  overallProgress: number;
   /** A prefix document is complete only as a prefix, never as the full input. */
   complete: boolean;
   document?: DocumentEngine;
@@ -40,7 +43,7 @@ export class DocumentSession {
   private disposed = false;
   constructor(private options: DocumentSessionOptions = {}) {
     this.id = options.id ?? `limr-session-${++sequence}`;
-    this.state = { status: 'idle', revision: 0, phase: 'read', progress: { loaded: 0 }, complete: false, capabilities: { worker: false, progressive: false } };
+    this.state = { status: 'idle', revision: 0, phase: 'read', progress: { loaded: 0 }, overallProgress: 0, complete: false, capabilities: { worker: false, progressive: false } };
   }
   getSnapshot = (): DocumentSessionState => this.state;
   subscribe = (listener: () => void): (() => void) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
@@ -61,7 +64,7 @@ export class DocumentSession {
     const compatible = descriptors.length === syntax.length && descriptors.every((descriptor): descriptor is WorkerExtensionDescriptor => !!descriptor);
     const reason = !this.options.worker ? 'No worker factory was supplied.' : !compatible ? 'Some syntax extensions have no matching worker registration.' : undefined;
     const worker = !!this.options.worker && compatible;
-    this.publish({ status: 'loading', revision, phase: 'read', progress: { loaded: 0 }, complete: false, document: undefined, sourceIndex: undefined, error: undefined, capabilities: { worker, progressive: false, reason } });
+    this.publish({ status: 'loading', revision, phase: 'read', progress: { loaded: 0 }, overallProgress: 0, complete: false, document: undefined, sourceIndex: undefined, error: undefined, capabilities: { worker, progressive: false, reason } });
     return new Promise<DocumentEngine>((resolve, reject) => {
       const abort = () => this.cancel(); signal?.addEventListener('abort', abort, { once: true });
       let port: DocumentWorkerPort | undefined;
@@ -78,14 +81,19 @@ export class DocumentSession {
       const receive = (response: DocumentWorkerResponse) => {
         if (!current() || response.revision !== revision) return;
         if (response.type === 'error') { fail(new Error(response.message)); return; }
-        if (response.type === 'snapshot-start') { transfer = { header: response, source: [], sourceLength: 0, blocks: [] }; return; }
+        if (response.type === 'snapshot-start') {
+          transfer = { header: response, source: [], sourceLength: 0, blocks: [] };
+          this.publish({ overallProgress: Math.max(this.state.overallProgress, .95) }); return;
+        }
         if (response.type === 'snapshot-source') {
           if (!transfer || transfer.sourceLength + response.value.length > transfer.header.sourceLength) { fail(new Error('Invalid worker source packet.')); return; }
-          transfer.source.push(response.value); transfer.sourceLength += response.value.length; return;
+          transfer.source.push(response.value); transfer.sourceLength += response.value.length;
+          this.publish({ overallProgress: Math.max(this.state.overallProgress, .95 + .02 * transfer.sourceLength / Math.max(1, transfer.header.sourceLength)) }); return;
         }
         if (response.type === 'snapshot-blocks') {
           if (!transfer || transfer.blocks.length + response.blocks.length > transfer.header.blockCount) { fail(new Error('Invalid worker block packet.')); return; }
-          for (const block of response.blocks) transfer.blocks.push(block); return;
+          for (const block of response.blocks) transfer.blocks.push(block);
+          this.publish({ overallProgress: Math.max(this.state.overallProgress, .97 + .02 * transfer.blocks.length / Math.max(1, transfer.header.blockCount)) }); return;
         }
         if (response.type === 'snapshot-yield') {
           // A separate task gives input/paint/timers an opportunity before the
@@ -98,14 +106,17 @@ export class DocumentSession {
           receive({ type: 'snapshot', revision, complete: true, progressive: header.progressive, sourceIndex: header.sourceIndex, snapshot: { ...header.metadata, source: source.join(''), blocks } }); return;
         }
         if (response.type === 'progress') {
-          this.publish({ phase: response.progress.phase, progress: { loaded: response.progress.loaded, total: response.progress.total } }); return;
+          const { phase, loaded, total } = response.progress;
+          const fraction = total === undefined ? 0 : total === 0 ? 1 : Math.max(0, Math.min(1, loaded / total));
+          const estimate = phase === 'read' ? fraction * .1 : phase === 'parse' ? .1 + fraction * .75 : phase === 'index' ? .85 + fraction * .1 : .99;
+          this.publish({ phase, progress: { loaded, total }, overallProgress: Math.max(this.state.overallProgress, estimate) }); return;
         }
         try {
           const document = DocumentEngine.fromSnapshot(response.snapshot, { id: this.id, extensions });
           const capabilities = { ...this.state.capabilities, progressive: response.progressive };
           if (response.complete) {
             this.active = undefined; cleanup();
-            this.publish({ status: 'ready', phase: 'ready', progress: { loaded: response.snapshot.source.length, total: response.snapshot.source.length }, document, complete: true, sourceIndex: response.sourceIndex, capabilities }); resolve(document);
+            this.publish({ status: 'ready', phase: 'ready', progress: { loaded: response.snapshot.source.length, total: response.snapshot.source.length }, overallProgress: 1, document, complete: true, sourceIndex: response.sourceIndex, capabilities }); resolve(document);
           } else this.publish({ document, complete: false, sourceIndex: response.sourceIndex, capabilities });
         } catch (error) { fail(error); }
       };

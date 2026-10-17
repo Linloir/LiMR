@@ -75,6 +75,10 @@ button:disabled { cursor: default; opacity: .45; }
 .demo-workbench + output + .demo-footer { display: none; }
 .demo-stream-progress { height: 2px; margin: 12px 36px -14px; background: var(--demo-line); }
 .demo-stream-progress span { display: block; height: 100%; background: #a3ac91; transition: width 80ms linear; }
+.demo-load-status { display: flex; align-items: baseline; justify-content: flex-end; gap: 12px; }
+.demo-load-status button { padding: 0; border: 0; background: transparent; color: var(--demo-muted); font: inherit; cursor: pointer; transition: color 160ms; }
+.demo-load-status button:hover { color: var(--demo-text); }
+.demo-load-status output { font-variant-numeric: tabular-nums; }
 .demo-field { display: flex; flex-direction: column; gap: 7px; margin: 12px 0; color: var(--limr-secondary, #7b756e); font-size: 11px; }
 .demo-field :where(textarea,select) { width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid var(--limr-border, #e5e2dc); border-radius: 4px; color: var(--limr-text, #3d3a36); background: var(--limr-surface, #f3f1ee); font: 12px/1.7 var(--limr-font-text); }
 .demo-field textarea { resize: vertical; min-height: 85px; }

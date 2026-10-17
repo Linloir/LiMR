@@ -14,7 +14,7 @@ const session = createDocumentSession({
 });
 const unsubscribe = session.subscribe(() => {
   const state = session.getSnapshot();
-  // status、phase、progress、complete、document、error、capabilities
+  // status、phase、progress、overallProgress、complete、document、error、capabilities
 });
 const file = new File(['# Chapter 1\n\nA short example.\n'], 'book.md', { type: 'text/markdown' });
 const document = await session.load(file); // string、UTF-8 Uint8Array、Blob/File
@@ -90,7 +90,27 @@ Worker 作者还可单独声明经过证明的局部语法支持独立正文前�
 
 ## 阅读窗口与渲染契约
 
-`AsyncReader` 接受 `input`、`loading` 中的会话选项、`loadingFallback(state, retry)` 以及 `onLoadStateChange`。当源码超过一百万个 UTF-16 单元、顶层块超过 128 个，或可见语法节点超过 2,048 个时，会自动尝试 DOM 窗口化。原有 `Reader` 默认行为不变，可通过 `virtualization` 显式启用；`false` 会关闭自动窗口化。`useDocument()` 始终返回完整源码、全部块、全局定义与索引。
+`AsyncReader` 接受 `input`、`loading` 中的会话选项、`loadingFallback(state, retry, controls)` 以及 `onLoadStateChange(state, controls)`。默认加载卡片由 LiMR 提供；传入 `loadingFallback={null}` 后，宿主可在任意位置展示进度。两个回调都提供当前会话内稳定的 `controls.cancel()` 和 `controls.retry()`，原有单参数观察回调、双参数 fallback 保持兼容。
+
+```tsx
+<AsyncReader
+  input={file}
+  loading={{ worker: createWorker, mode: 'progressive' }}
+  loadingFallback={null}
+  onLoadStateChange={(state, { cancel, retry }) => {
+    // hostProgress 由应用实现：可连接工具栏、状态栏或原生宿主接口。
+    hostProgress.update({
+      status: state.status, phase: state.phase,
+      fraction: state.overallProgress, error: state.error?.message,
+      cancel, retry,
+    });
+  }}
+/>
+```
+
+`state.overallProgress` 是当前加载请求内单调递增的 `[0, 1]` 总进度，与是否已经显示预览无关。读取、解析、索引和结果传递采用阶段权重估计，不代表剩余耗时；完整快照被接收前始终小于 `1`，替换输入或重试才归零。`state.progress.loaded/total` 仍提供当前阶段的原始计数：读取时为字节或源码单位，解析时为源码单位，索引时为块数，不能跨阶段直接比较。不提供中间进度的解析器会停留在上一进度，直到进入下一阶段。取消、失败通过独立状态表示，同一组 controls 可重试。Playground 使用该接口在两种加载方式中共用一条细进度条，样式也与流式演示一致。
+
+当源码超过一百万个 UTF-16 单元、顶层块超过 128 个，或可见语法节点超过 2,048 个时，`AsyncReader` 会自动尝试 DOM 窗口化。原有 `Reader` 默认行为不变，可通过 `virtualization` 显式启用；`false` 会关闭自动窗口化。`useDocument()` 始终返回完整源码、全部块、全局定义与索引。
 
 窗口保留附近块，并保留原生选择的两端、获得焦点的控件、活动注释编辑器、已打开图片预览的原图，以及已经访问的媒体 DOM。这样既保留播放与原生状态，也不会因为跨越很远的拖选而挂载中间所有段落。普通节点界面状态通过 `useNodeState` 保存，卸载后恢复仍有效。渐进加载完成时保留当前源码阅读锚点；临时前缀只读，完整文档到达后才开放源码和注释写入。
 

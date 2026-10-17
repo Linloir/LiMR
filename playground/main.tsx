@@ -1,7 +1,7 @@
 import { StreamingFixture } from './streaming-fixture';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
-import { AsyncReader, Reader, ToolIcon, chinese, english, useLiMR, type Annotation, type DocumentInput, type DocumentSessionState, type ReaderProps, type SelectionSnapshot, type TypographyMode, type TranslationMode } from '../src';
+import { AsyncReader, Reader, ToolIcon, chinese, english, useLiMR, type Annotation, type AsyncReaderLoadControls, type DocumentInput, type DocumentSessionState, type ReaderProps, type SelectionSnapshot, type TypographyMode, type TranslationMode } from '../src';
 import { Dropdown } from './Dropdown';
 import { Documentation, docsHref, readDocsRoute } from './Documentation';
 import { MediaAnnotationFixture, MediaFixture, TranslationDetailsFixture, TranslationSelectionFixture } from './media-fixture';
@@ -54,6 +54,8 @@ function App() {
   const [asyncInput, setAsyncInput] = useState<DocumentInput | null>(null);
   const [loadingMode, setLoadingMode] = useState<'blocking' | 'progressive'>('blocking');
   const [documentReady, setDocumentReady] = useState(true);
+  const [loadState, setLoadState] = useState<Pick<DocumentSessionState, 'status' | 'phase' | 'overallProgress' | 'error'>>();
+  const loadControls = useRef<AsyncReaderLoadControls | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [cursor, setCursor] = useState(0);
   const [dark, setDark] = useState(false);
@@ -176,7 +178,11 @@ function App() {
     setAsyncInput(text.length >= asyncThreshold ? text : null); setDocumentReady(text.length < asyncThreshold);
     setStreaming(false); setCursor(0); setSource(text); setPreset(id); setAnnotations([]); setSelection(null); setAnswerStatus(''); setDocumentVersion(value => value + 1); setMenu(null);
   };
-  const handleLoadState = useCallback((state: DocumentSessionState) => {
+  const handleLoadState = useCallback((state: DocumentSessionState, controls: AsyncReaderLoadControls) => {
+    // Keep only presentation data here: the session owns the potentially large
+    // engine and source index, including when a different document replaces it.
+    setLoadState({ status: state.status, phase: state.phase, overallProgress: state.overallProgress, error: state.error });
+    loadControls.current = state.status === 'ready' ? null : controls;
     setDocumentReady(state.status === 'ready' && state.complete);
     if (state.complete && state.document) {
       const loaded = state.document.getSnapshot().source;
@@ -202,14 +208,20 @@ function App() {
     const link = document.createElement('a'); link.href = url; link.download = 'limr-notes.md'; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000); setStatus('downloaded'); setMenu(null);
   };
-  const readerProps: ReaderProps = {
+  // Progress belongs to the shell. Keep Reader configuration and children
+  // stable while only its host-rendered percentage changes.
+  const readerProps = useMemo<ReaderProps>(() => ({
     onSourceChange: sourceEditing ? handleSourceChange : undefined,
     theme: dark ? 'dark' : 'light', typography, parameters: { translationMode, onTranslationModeChange: setTranslationMode },
     locale: localeName === 'zh-CN' ? chinese : english, scrollRoot: editor ? preview : null, toc: !editor, sidebar: !editor,
     sidebarCollapse, actions: streaming ? [] : undefined, plugins, annotations, onAnnotationsChange: setAnnotations,
     onSelectionChange: setSelection, documentId: 'demo',
     children: <ReaderBridge connect={connectReader} />,
-  };
+  }), [sourceEditing, handleSourceChange, dark, typography, translationMode, localeName, editor, preview, sidebarCollapse, streaming, plugins, annotations, connectReader]);
+  const loadingStatus = asyncInput !== null && !streaming && loadState?.status !== 'ready' ? loadState : undefined;
+  const loadingActive = !!loadingStatus && (loadingStatus.status === 'idle' || loadingStatus.status === 'loading');
+  const loadLabel = loadingStatus ? loadingStatus.status === 'error' ? copy.loadFailed : loadingStatus.status === 'cancelled' ? copy.loadCancelled : copy.loadPhases[loadingStatus.phase] : '';
+  const overallProgress = streaming ? cursor / Math.max(1, source.length) : loadingStatus?.overallProgress ?? 0;
   return <>
     <header className="demo-header" data-limr-appearance="classic"><a className="demo-brand" href={import.meta.env.BASE_URL}>LiMR <span>Linloir’s limr Is a Markdown Renderer</span></a><div className="demo-header-end"><nav className="demo-controls demo-mode-nav" aria-label="页面 / Pages"><a href="#/home" aria-current={homeRoute ? 'page' : undefined}><span className="limr-underline">Home</span></a><a href="#/playground" aria-current={!docsRoute && !homeRoute ? 'page' : undefined}><span className="limr-underline">Playground</span></a><a href={docsHref(localeName, docsRoute?.page)} aria-current={docsRoute ? 'page' : undefined}><span className="limr-underline">Docs</span></a><a href="https://github.com/Linloir/LiMR" target="_blank" rel="noopener noreferrer"><span className="limr-underline">GitHub</span></a></nav><div className="demo-controls demo-header-settings">        <div className="demo-dropdown" ref={localeRoot}>
           <button aria-label="界面语言 / Reader language" title={copy.languageHint} aria-expanded={menu === 'locale'} aria-controls="demo-locale-menu" onClick={() => setMenu(value => value === 'locale' ? null : 'locale')}><span className="limr-underline">{locales.find(item => item.value === localeName)!.label}</span><ToolIcon name="chevron" /></button>
@@ -271,13 +283,13 @@ function App() {
       }}><span className="limr-underline">{streaming ? copy.stopStream : copy.stream}</span></button>
       </div>
     </div>
-    <div className="demo-context-line"><span>{editor ? copy.writingHint : streaming ? copy.streamingHint : copy.readingHint}</span><output aria-live="polite">{statusText || (answerStatus ? copy[answerStatus] : '') || copy.statistics(source.length, annotations.filter(item => item.type === 'highlight').length, annotations.filter(item => item.type !== 'highlight').length)}</output></div>
-    {streaming && <div className="demo-stream-progress" role="progressbar" aria-label={copy.streamProgress} aria-valuemin={0} aria-valuemax={source.length} aria-valuenow={cursor}><span style={{ width: `${cursor / Math.max(1, source.length) * 100}%` }} /></div>}
+    <div className="demo-context-line"><span>{editor ? copy.writingHint : streaming ? copy.streamingHint : copy.readingHint}</span>{loadingStatus ? <div className="demo-load-status"><output aria-live="polite" title={loadingStatus.error?.message}>{loadLabel}{loadingActive ? ` · ${Math.floor(overallProgress * 100)}%` : ''}</output><button type="button" onClick={() => loadingActive ? loadControls.current?.cancel() : loadControls.current?.retry()}>{loadingActive ? copy.cancelLoad : copy.retryLoad}</button></div> : <output aria-live="polite">{statusText || (answerStatus ? copy[answerStatus] : '') || copy.statistics(source.length, annotations.filter(item => item.type === 'highlight').length, annotations.filter(item => item.type !== 'highlight').length)}</output>}</div>
+    {(streaming || loadingActive) && <div className="demo-stream-progress" role="progressbar" aria-label={streaming ? copy.streamProgress : copy.loadProgress} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.floor(overallProgress * 100)} aria-valuetext={streaming ? undefined : loadLabel}><span style={{ width: `${overallProgress * 100}%` }} /></div>}
     <div ref={workbench} className={editor ? 'demo-workbench' : 'demo-reading'}>
       {editor && <><section id="demo-editor-pane" className="demo-editor-pane"><div className="demo-pane-label"><span>Markdown</span><div className="demo-editor-tools"><span>{copy.editorHint}</span><button type="button" className="demo-wrap-toggle" aria-label={copy.wrap} aria-pressed={wrap} title={wrap ? copy.wrapOff : copy.wrapOn} onClick={() => setWrap(value => !value)}><EditorWrapIcon /></button></div></div><textarea ref={setTextarea} wrap={wrap ? 'soft' : 'off'} data-wrap={wrap || undefined} spellCheck={false} className="demo-editor" aria-label="Markdown source" value={source} onChange={event => { fileRequest.current++; const text = event.target.value; setStreaming(false); setSource(text); setAsyncInput(text.length >= asyncThreshold ? text : null); setDocumentReady(text.length < asyncThreshold); setPreset(''); setAnnotations([]); setStatus(''); }} /></section><EditorResizeHandle container={workbench} ratio={editorRatio} locale={localeName} /></>}
       <section id="demo-preview-pane" className={editor ? 'demo-preview-pane' : undefined}>{editor && <div className="demo-pane-label">{copy.preview} <span>{copy.previewHint}</span></div>}<div ref={editor ? setPreview : undefined} className={editor ? 'demo-preview-scroll' : undefined}>
         <div className="demo-page">{asyncInput !== null && !streaming
-          ? <AsyncReader key={documentVersion} {...readerProps} input={asyncInput} loading={{ mode: loadingMode, worker: createDocumentWorker }} onLoadStateChange={handleLoadState} />
+          ? <AsyncReader key={documentVersion} {...readerProps} input={asyncInput} loading={{ mode: loadingMode, worker: createDocumentWorker }} loadingFallback={null} onLoadStateChange={handleLoadState} />
           : <Reader key={documentVersion} {...readerProps} source={streaming ? source.slice(0, cursor) : source} streaming={streaming} />}</div>
       </div></section>
     </div>

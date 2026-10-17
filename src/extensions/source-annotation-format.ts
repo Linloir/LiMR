@@ -3,7 +3,11 @@ import type { SourceRange } from '../core';
 /** The definition range starts at its colon fence, after any container prefix.
  * List markers become indentation on continuation lines; quote markers remain. */
 export function annotationContinuationPrefix(source: string, start: number): string {
-  const line = Math.max(source.lastIndexOf('\n', start - 1), source.lastIndexOf('\r', start - 1)) + 1;
+  // Stop at the nearest newline of either kind. Searching separately for CR
+  // and LF scans the entire preceding document for every annotation when one
+  // newline kind is absent (as in an ordinary LF-only document).
+  let line = start;
+  while (line > 0 && source.charCodeAt(line - 1) !== 10 && source.charCodeAt(line - 1) !== 13) line--;
   return source.slice(line, start).replace(/(?:[*+-]|\d+[.)])(?=[ \t])/g, marker => ' '.repeat(marker.length));
 }
 

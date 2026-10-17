@@ -14,3 +14,9 @@ export function takePreparsed(context: ParseContext, input: string, extensions: 
   trees.delete(context);
   return cached.tree;
 }
+
+/** A discovery tree that cannot be reused must not remain reachable through
+ * the live parse context while a replacement tokenizer/tree is allocated. */
+export function discardPreparsed(context: ParseContext): void {
+  trees.delete(context);
+}

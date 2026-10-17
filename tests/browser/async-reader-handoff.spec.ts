@@ -89,7 +89,7 @@ test('progress preserves Reader configuration while changed props and children s
         callback: check.history.at(-1), progress: document.querySelector<HTMLProgressElement>('.limr-document-loading progress')!.value };
     })).toEqual({ sameRuntime: true, sameConfiguration: true, sameParagraph: true,
       callback: { status: 'loading', phase: step.message.progress.phase, loaded: step.message.progress.loaded, total: step.message.progress.total, complete: false, observer: 0 },
-      progress: Math.min(1, step.message.progress.loaded / step.message.progress.total) });
+      progress: .1 + .75 * Math.min(1, step.message.progress.loaded / step.message.progress.total) });
   }
   await page.getByRole('button', { name: 'Update reader props', exact: true }).click();
   await expect(page.getByTestId('progress-reader-child')).toHaveText('Updated Reader child');

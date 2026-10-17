@@ -9,7 +9,7 @@ import { hasTableLocalSyntax, incrementalTable } from './incremental-table';
 import { syntaxForSource } from './source-syntax';
 import { parseInBatches } from './batched-parse';
 import { omitSource } from './source-omissions';
-import { takePreparsed } from './preparsed';
+import { discardPreparsed, takePreparsed } from './preparsed';
 import type { Diagnostic, MarkdownNode, ParseContext, SourcePosition, SyntaxExtension } from './types';
 
 export function validateExtensions(extensions: readonly SyntaxExtension[]): void {
@@ -90,10 +90,18 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
     const attributePoint = (at: number) => sourcePoint(at, lines.length ? lines : attributeLines ??= lineStarts(context.source));
     let recoveryOffset = prepared.recoveryOffset === undefined ? undefined : offset + omitted.original(prepared.recoveryOffset, 'end');
     const canBatch = tableLocal && !prefix && prepared.value === fragment && !hasJsx && !hasDirectives;
-    const parse = (value: string) => (tableLocal ? takePreparsed(context, value, extensions) : undefined) ?? fromMarkdown(value, {
-      extensions: forSource(hasJsx ? hasDirectives ? jsxSyntax : plainJsxSyntax : activeSyntax, value),
-      mdastExtensions: hasJsx ? hasDirectives ? jsxMdast : plainJsxMdast : activeMdast,
-    }) as unknown as MarkdownNode;
+    const parse = (value: string) => {
+      const preparsed = tableLocal ? takePreparsed(context, value, extensions) : undefined;
+      if (preparsed) return preparsed;
+      // A suffix miss may still be reused by the same update's full retry when
+      // definitions change. A full-input miss or foreign grammar cannot reuse
+      // this discovery tree; release it before allocating the replacement.
+      if (!tableLocal || (offset === 0 && !prefix)) discardPreparsed(context);
+      return fromMarkdown(value, {
+        extensions: forSource(hasJsx ? hasDirectives ? jsxSyntax : plainJsxSyntax : activeSyntax, value),
+        mdastExtensions: hasJsx ? hasDirectives ? jsxMdast : plainJsxMdast : activeMdast,
+      }) as unknown as MarkdownNode;
+    };
     let root: MarkdownNode;
     try {
       root = canAppendLiteral ? { type: 'root', children: [{ ...cached.node,

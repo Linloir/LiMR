@@ -14,6 +14,7 @@ import { KnuthPlassBoundary } from './knuth-plass-boundary';
 import { SourceTaskItem, TaskText } from '../components/TaskCheckbox';
 import { Image } from '../components/Image';
 import { MarkdownTable } from '../components/Table';
+import { orderedListStyle } from './ordered-list';
 
 interface RenderContext {
   runtime: ReaderRuntime;
@@ -287,7 +288,7 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trail
       case 'code': element = <pre><code><LiteralValue node={node} context={context} /></code></pre>; break;
       case 'math': case 'inlineMath': element = <code>{node.value}</code>; break;
       case 'blockquote': element = <blockquote className="limr-note"><div className="limr-card-label" data-limr-ignore="true">{runtime.locale.note}</div><div className="limr-block-content">{children}</div></blockquote>; break;
-      case 'list': element = node.ordered ? <ol start={Number(node.start ?? 1)}>{children}</ol> : <ul>{children}</ul>; break;
+      case 'list': element = node.ordered ? <ol start={Number(node.start ?? 1)} style={orderedListStyle(Number(node.start ?? 1), node.children?.length ?? 0)}>{children}</ol> : <ul>{children}</ul>; break;
       case 'listItem': element = typeof node.checked === 'boolean' ? <SourceTaskItem node={node} source={runtime.document.getSnapshot().source.slice(rangeOf(node).start, rangeOf(node).end)}>{children}</SourceTaskItem> : <li>{children}</li>; break;
       case 'link': element = <a href={safeUrl(node.url)} title={node.title ? String(node.title) : undefined}>{children}</a>; break;
       case 'image': element = <Image src={safeUrl(node.url, true)} alt={String(node.alt ?? '')} title={node.title ? String(node.title) : undefined} />; break;
@@ -401,7 +402,7 @@ export function Footnotes() {
   const decorations = useStoreSelector(runtime.decorations, state => state.byBlock);
   const blocks = useMemo(() => new Map(doc.blocks.filter(block => block.node.type === 'footnoteDefinition').map(block => [String(block.node.identifier), block])), [doc.blocks]);
   if (!doc.footnoteOrder.length) return null;
-  return <section className="limr-footnotes" aria-label={runtime.locale.footnotes}><hr /><ol>{doc.footnoteOrder.map(id => {
+  return <section className="limr-footnotes" aria-label={runtime.locale.footnotes}><hr /><ol style={orderedListStyle(1, doc.footnoteOrder.length)}>{doc.footnoteOrder.map(id => {
     const node = doc.footnotes.get(id);
     if (!node) return null;
     const block: Block = blocks.get(id) ?? { id: `${doc.id}-fn-${id}`, range: rangeOf(node), node, pending: false };

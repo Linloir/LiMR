@@ -14,7 +14,7 @@ const session = createDocumentSession({
 });
 const unsubscribe = session.subscribe(() => {
   const state = session.getSnapshot();
-  // status, phase, progress, complete, document, error, capabilities
+  // status, phase, progress, overallProgress, complete, document, error, capabilities
 });
 const file = new File(['# Chapter 1\n\nA short example.\n'], 'book.md', { type: 'text/markdown' });
 const document = await session.load(file); // string, UTF-8 Uint8Array or Blob/File
@@ -90,7 +90,27 @@ Reproduce the large-input loading benchmark with `pnpm build` followed by `node 
 
 ## Reading windows and presentation contracts
 
-`AsyncReader` accepts `input`, the session options under `loading`, a `loadingFallback(state, retry)` renderer, and `onLoadStateChange`. It enables DOM windows when the source exceeds one million UTF-16 units, the snapshot has more than 128 top-level blocks, or visible syntax exceeds 2,048 nodes. `Reader` keeps its existing default; set `virtualization` explicitly to opt in. `false` overrides automatic windowing. Every `useDocument()` subscriber still receives the complete source, blocks, global definitions and indexes.
+`AsyncReader` accepts `input`, the session options under `loading`, a `loadingFallback(state, retry, controls)` renderer, and `onLoadStateChange(state, controls)`. The built-in loading card belongs to LiMR; pass `loadingFallback={null}` to hide it and render progress anywhere in your application. Both callbacks receive stable `controls.cancel()` and `controls.retry()` actions for the current session. Existing one-argument observers and two-argument fallback renderers remain supported.
+
+```tsx
+<AsyncReader
+  input={file}
+  loading={{ worker: createWorker, mode: 'progressive' }}
+  loadingFallback={null}
+  onLoadStateChange={(state, { cancel, retry }) => {
+    // Your app owns hostProgress: a toolbar, status bar or native host adapter.
+    hostProgress.update({
+      status: state.status, phase: state.phase,
+      fraction: state.overallProgress, error: state.error?.message,
+      cancel, retry,
+    });
+  }}
+/>
+```
+
+`state.overallProgress` is one monotonic fraction in `[0, 1]` for the current load, independent of whether a preview is visible. Reading, parsing, indexing and result transfer use estimated stage weights; this is not an elapsed-time estimate. It stays below `1` until the complete snapshot is accepted, and resets on replacement or retry. `state.progress.loaded/total` remain the raw current-phase counts (bytes or source units for reading, source units for parsing, blocks for indexing); do not compare these counts across phases. A parser without intermediate progress can keep the bar at its last value until the next stage. Cancellation and errors are explicit statuses, with retry available through the same controls. The Playground uses this API for one slim bar shared by both loading modes, and the same bar styling for its streaming demo.
+
+`AsyncReader` enables DOM windows when the source exceeds one million UTF-16 units, the snapshot has more than 128 top-level blocks, or visible syntax exceeds 2,048 nodes. `Reader` keeps its existing default; set `virtualization` explicitly to opt in. `false` overrides automatic windowing. Every `useDocument()` subscriber still receives the complete source, blocks, global definitions and indexes.
 
 A controlled `onSourceChange` echo equal to the current engine source retains the loaded engine and does not restart loading or repeat the ready notification. Pure presentation plugin changes preserve its source and AST. Changing parser/worker configuration reloads the latest accepted source when the input is unchanged, including an edited Blob; a new input value or Blob object starts a new document. Cancelled or failed replacement inputs cannot restore a previous file by changing configuration.
 
