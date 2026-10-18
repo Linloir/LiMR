@@ -106,6 +106,9 @@ export class ReaderRuntime {
   /** Visible text/state changes, separate from high-frequency geometry updates. */
   readonly presentation = new Store(0);
   readonly documentOffset = new Store(0);
+  /** Cumulative native scroll compensation from virtual block measurements.
+   * Viewport-locked UI follows these corrections, independently of user scroll. */
+  readonly layoutScrollAdjustment = new Store(0);
   readonly decorations = new Store<Decorations>({ annotations: new Map(), highlights: new Map(), occurrences: [], referenceRanges: new Map(), byBlock: new Map() });
   readonly configuration: Store<ViewConfiguration>;
   readonly resources = new ResourceCache<unknown>(128);

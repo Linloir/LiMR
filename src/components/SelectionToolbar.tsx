@@ -106,7 +106,7 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
       const top = Math.max(viewport?.offsetTop ?? 0, root?.top ?? 0);
       const bottom = Math.min((viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight), root?.bottom ?? Infinity);
       const above = Math.max(0, rects.reference.y - top - 20), below = Math.max(0, bottom - rects.reference.y - rects.reference.height - 20);
-      const row = (elements.floating.querySelector('.limr-toolbar-actions')?.getBoundingClientRect().height ?? 34) + [...elements.floating.querySelectorAll('.limr-toolbar-delete-hint,.limr-toolbar-readonly-hint,.limr-toolbar-selection-hint')].reduce((height, hint) => height + hint.getBoundingClientRect().height, 0);
+      const row = (elements.floating.querySelector('.limr-toolbar-actions')?.getBoundingClientRect().height ?? 34) + [...elements.floating.querySelectorAll('.limr-toolbar-delete-hint,.limr-toolbar-selection-hint')].reduce((height, hint) => height + hint.getBoundingClientRect().height, 0);
       const limit = Math.max(0, parseFloat(getComputedStyle(elements.floating).getPropertyValue('--limr-toolbar-panel-max-height')) || maxPanelHeight);
       const needed = row + (hasPanels ? limit : 0) + 24;
       // Reserve the same budget while closed or expanded, so hover never moves the action row.
@@ -267,7 +267,6 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
           </span>}</ToolFaces>
         </button>}
       </div>)}</div>
-      {readOnly && <p className="limr-toolbar-readonly-hint">{context.locale.inlineHighlightHint ?? 'Markdown inline highlight, editing unavailable'}</p>}
       {selectionHint && <p className="limr-toolbar-selection-hint" role="status">{selectionHint}</p>}
       {expandedAction && <div id={panelId} className="limr-toolbar-panel" key={expandedAction.id} role="group" aria-label={label(expandedAction)}><OverlayScrollArea active label={label(expandedAction)}>{expandedAction.renderExpanded!(actionContext(expandedAction))}</OverlayScrollArea></div>}
       {hint && <Collapse open={deleteHintOpen} keepMounted className="limr-toolbar-delete-warning"><p id={`${panelId}-delete`} className="limr-toolbar-delete-hint">{hint}</p></Collapse>}

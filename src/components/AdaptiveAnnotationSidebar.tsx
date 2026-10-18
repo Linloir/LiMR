@@ -8,10 +8,12 @@ import { fitSidebarBoxes, foldWindowHeight, planSidebarCollapse, planSidebarColl
 import type { AnnotationSidebarProps } from './AnnotationSidebar';
 import { isOwnedImagePreview } from './image-preview-behavior';
 import { useSidebarDocumentAlignment } from './sidebar-document-alignment';
+import { adjustSidebarLock, reflowSidebar, type SidebarBox } from './sidebar-layout';
 
 interface Geometry { anchors: Map<string, number>; height: number; viewportHeight: number; clipTop: number; clipBottom: number }
 interface Pose { top: number; height: number; offset: number }
 interface Target extends Pose { contentHeight: number; bottomFade: number; cards: { id: string; top: number; height: number }[] }
+interface CardLayoutLock { id: string; top: number; group: string; offset: number; boxes: ReadonlyMap<string, SidebarBox>; scrollAdjustment: number }
 const sameSizes = (a: Map<string, number>, b: Map<string, number>) => a.size === b.size && [...a].every(([id, value]) => Math.abs(value - (b.get(id) ?? -Infinity)) < .5);
 
 /** One clock for group placement, clipping and content translation. Geometry is
@@ -123,23 +125,48 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
   const decorations = useStoreSelector(runtime.decorations, value => value), interaction = useStoreSelector(runtime.interaction, value => value);
   const layout = useSyncExternalStore(runtime.layout.subscribe, runtime.layout.get, runtime.layout.get);
   const viewport = useSyncExternalStore(runtime.viewport.subscribe, runtime.viewport.get, runtime.viewport.get);
+  const scrollAdjustment = useStoreSelector(runtime.layoutScrollAdjustment, value => value);
   const rail = useRef<HTMLElement>(null), cards = useRef(new Map<string, HTMLDivElement>());
   const [geometry, setGeometry] = useState<Geometry>({ anchors: new Map(), height: 0, viewportHeight: 0, clipTop: 0, clipBottom: 0 });
   const [sizes, setSizes] = useState({ preview: new Map<string, number>(), actual: new Map<string, number>() });
   const measuredSizes = useRef(sizes);
+  const [pointerInRail, setPointerInRail] = useState(false);
+  const [cardLock, setCardLock] = useState<CardLayoutLock | null>(null);
+  const pinnedLock = useRef<CardLayoutLock | null>(null);
   const [alignment, setAlignment] = useState<string | null>(null), aligned = useRef(alignment), pinned = useRef<string | null>(null);
   aligned.current = alignment;
   const focused = interaction.hovered ?? interaction.active;
+  const parked = focused && runtime.anchors.get(focused)?.closest('[data-window-parked]');
+  const focusSource = parked ? null : interaction.hovered ? interaction.hoverSource : interaction.activeSource;
+  const storedLock = !interaction.hovered && interaction.active && pinnedLock.current?.id === interaction.active ? pinnedLock.current : cardLock;
+  const candidateLock = useMemo(() => adjustSidebarLock(storedLock, scrollAdjustment), [storedLock, scrollAdjustment]);
+  const locked = (focusSource === 'sidebar' && focused === candidateLock?.id || !focused && pointerInRail) ? candidateLock : null;
+  const lockCard = useCallback((id: string) => {
+    if (locked?.id === id) return locked;
+    const card = cards.current.get(id), host = rail.current, group = card?.closest<HTMLElement>('.limr-sidebar-cluster');
+    if (!card || !host || !group) return;
+    const origin = host.getBoundingClientRect().top;
+    const boxes = new Map([...host.querySelectorAll<HTMLElement>(':scope > .limr-sidebar-cluster')].map(element => {
+      const id = element.dataset.group!, box = element.getBoundingClientRect();
+      return [id, { id, top: box.top - origin, height: box.height }];
+    }));
+    const content = group.querySelector<HTMLElement>('.limr-sidebar-cluster-items')!;
+    const lock = { id, top: card.getBoundingClientRect().top - origin, group: group.dataset.group!,
+      offset: -new DOMMatrixReadOnly(getComputedStyle(content).transform).m42, boxes, scrollAdjustment: runtime.layoutScrollAdjustment.get() };
+    setCardLock(lock); return lock;
+  }, [locked, runtime]);
   useIsomorphicLayoutEffect(() => {
     if (interaction.active && (interaction.activeSource === 'marker' || interaction.active === aligned.current)) pinned.current = interaction.active;
     else if (pinned.current !== interaction.active) pinned.current = null;
     if (interaction.hovered && interaction.hoverSource === 'marker') { setAlignment(interaction.hovered); return; }
-    if (interaction.hoverSource === 'sidebar' && interaction.hovered === aligned.current) return;
+    // Keep a marker-revealed window while traversing its cards or their gaps.
+    // Repacking it under a stationary pointer would synthesize more hovers.
+    if (interaction.hoverSource === 'sidebar' || pointerInRail) return;
     if (pinned.current) { setAlignment(pinned.current); return; }
     // Allow the pointer to cross from a marker to its revealed card. Leaving
     // that card restores the original window unless a click pinned a card.
     const timer = setTimeout(() => setAlignment(null), 140); return () => clearTimeout(timer);
-  }, [interaction.hovered, interaction.hoverSource, interaction.active, interaction.activeSource]);
+  }, [interaction.hovered, interaction.hoverSource, interaction.active, interaction.activeSource, pointerInRail]);
   useIsomorphicLayoutEffect(() => {
     const element = rail.current; if (!element) return;
     const top = element.getBoundingClientRect().top + runtime.getContentOffset(), anchors = new Map<string, number>();
@@ -254,21 +281,38 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
     targets.set(plan.id, { top, height, offset, contentHeight, bottomFade, cards: cardPositions });
     return { id: plan.id, anchorTop: top, height, weight: isFocused ? 10000 : 1 };
     });
-    const positions = fitSidebarBoxes(boxes, gap, geometry.height, focusGroup);
+    let placement = boxes;
+    if (locked) {
+      const target = targets.get(locked.group), selected = target?.cards.find(card => card.id === locked.id);
+      if (target && selected) {
+        focusGroup = locked.group;
+        target.offset = locked.offset;
+        if (interaction.active === locked.id) {
+          target.height = Math.min(target.contentHeight, Math.max(target.height, Math.min(600, geometry.viewportHeight * .72, geometry.height, selected.top - target.offset + selected.height)));
+          target.offset = Math.max(target.offset, selected.top + selected.height - target.height);
+        }
+        target.offset = Math.max(0, Math.min(target.contentHeight - target.height, target.offset));
+        target.top = locked.top - selected.top + target.offset;
+        placement = reflowSidebar(boxes.map(box => ({ ...box, height: targets.get(box.id)!.height })),
+          { id: locked.group, top: target.top, boxes: locked.boxes }, gap);
+      }
+    }
+    const positions = fitSidebarBoxes(placement, gap, geometry.height, focusGroup);
     for (const [id, target] of targets) target.top = positions.get(id)!;
     return { targets, focusGroup };
-  }, [plans, sizes.actual, alignment, geometry.anchors, geometry.height, geometry.viewportHeight, gap]);
+  }, [plans, sizes.actual, alignment, geometry.anchors, geometry.height, geometry.viewportHeight, gap, locked, interaction.active]);
   useSidebarMotion(rail, targets, membership, `${alignment ?? ''}:${interaction.active ?? ''}:${membership}`, geometry, gap, focusGroup);
-  const focusSource = interaction.hovered ? interaction.hoverSource : interaction.activeSource;
   const focusTarget = focused ? [...targets.values()].find(target => target.cards.some(card => card.id === focused)) : undefined;
   const focusCard = focusTarget?.cards.find(card => card.id === focused);
   useSidebarDocumentAlignment(runtime, true,
     focusSource === 'sidebar' && focused ? geometry.anchors.get(focused) : undefined,
     focusTarget && focusCard ? focusTarget.top + focusCard.top - focusTarget.offset : undefined);
   const activate = useCallback((id: string) => {
-    const state = runtime.interaction.get(); runtime.activate(state.active === id ? null : id, 'sidebar');
+    const lock = lockCard(id), state = runtime.interaction.get();
+    pinnedLock.current = state.active === id ? null : lock ?? null;
+    runtime.activate(state.active === id ? null : id, 'sidebar');
     if (cards.current.get(id)?.matches(':hover')) runtime.hover(id, 'sidebar');
-  }, [runtime]);
+  }, [runtime, lockCard]);
   const referenceText = useMemo(() => createAnnotationReferenceReader(document), [document]);
   const annotationGroups = useMemo(() => new Map(decorations.occurrences.map(item => [item.id, item.annotationIds.flatMap(id => { const annotation = decorations.annotations.get(id); return annotation ? [annotation] : []; })])), [decorations]);
   const occurrences = useMemo(() => new Map(decorations.occurrences.map(item => [item.id, item])), [decorations.occurrences]);
@@ -284,22 +328,23 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
     } as CSSProperties;
     return <div key={id} ref={element => { if (element) cards.current.set(id, element); else cards.current.delete(id); }} className="limr-sidebar-card"
       data-occurrence={id} data-type={annotation?.type} data-default-card={!renderCard || undefined} data-citations={annotation?.type === 'citation' || undefined} data-active={focused === id || undefined} data-expanded={active || undefined} style={cardStyle}
-      onPointerEnter={event => { if (event.pointerType !== 'touch') runtime.hover(id, 'sidebar'); }}
+      onPointerEnter={event => { if (event.pointerType !== 'touch') { lockCard(id); runtime.hover(id, 'sidebar'); } }}
       onPointerLeave={() => { if (runtime.interaction.get().hovered === id && runtime.interaction.get().hoverSource === 'sidebar') runtime.hover(null); }}
-      onFocus={event => { if (!event.currentTarget.contains(event.relatedTarget)) runtime.hover(id, 'sidebar'); }}
+      onFocus={event => { if (!event.currentTarget.contains(event.relatedTarget)) { lockCard(id); runtime.hover(id, 'sidebar'); } }}
       onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget) && runtime.interaction.get().hovered === id) runtime.hover(null); }}
       onClick={event => { if ((!active || definition?.sidebar?.collapseOnContentClick) && !renderCard && !event.defaultPrevented && !(event.target as Element).closest('button,a,input,textarea,select,summary,[role="button"],[contenteditable],[data-limr-card-interactive]') && window.getSelection()?.isCollapsed !== false) activate(id); }}>
       {renderCard ? renderCard({ occurrence, active, activate: () => activate(id) }) : <SidebarCardBody occurrence={occurrence} annotation={annotation} annotations={annotationGroups.get(id)!}
         reference={referenceText(occurrence)} point={decorations.referenceRanges.get(id)?.start === decorations.referenceRanges.get(id)?.end} active={active}
         title={definition?.label ?? annotation?.type ?? locale.annotations} toggleLabel={active ? locale.collapse : locale.expand} Preview={palette?.Preview} activate={activate} />}
     </div>;
-  }, [runtime, decorations, interaction.active, focused, geometry.viewportHeight, geometry.height, renderCard, annotationGroups, referenceText, locale.annotations, locale.collapse, locale.expand, activate]);
+  }, [runtime, decorations, interaction.active, focused, geometry.viewportHeight, geometry.height, renderCard, annotationGroups, referenceText, locale.annotations, locale.collapse, locale.expand, activate, lockCard]);
   const content = useMemo(() => plans.map(plan => <section key={plan.id} className="limr-sidebar-cluster" data-group={plan.id} data-collapsible={plan.folded || undefined}>
       <div className="limr-sidebar-cluster-list"><div className="limr-sidebar-cluster-items" style={{ gap }}>
         {plan.items.map(item => renderItem(occurrences.get(item.id)!))}
       </div></div>
     </section>), [plans, gap, renderItem, occurrences]);
-  return <aside ref={rail} className={`limr-sidebar ${className}`} aria-label={locale.annotations} data-sync="document" data-collapse-overflow="true" data-limr-theme={theme} data-limr-appearance={appearance} style={style}>
+  return <aside ref={rail} className={`limr-sidebar ${className}`} aria-label={locale.annotations} data-sync="document" data-collapse-overflow="true" data-limr-theme={theme} data-limr-appearance={appearance} style={style}
+    onPointerEnter={() => setPointerInRail(true)} onPointerLeave={() => setPointerInRail(false)}>
     {content}
   </aside>;
 }

@@ -1,6 +1,6 @@
 # Built-in syntax
 
-React defaults install gfm, math, code-highlight, mermaid, callout, definition, question, extras, video, figures, citation, translations, inline-highlights, footnotes, and source-annotations. Core createDocument defaults to basic CommonMark. These references describe LiMR 1.3.3; verify the host installs the required modules.
+React defaults install gfm, math, code-highlight, mermaid, callout, definition, question, extras, video, figures, citation, translations, inline-highlights, footnotes, and source-annotations. Core createDocument defaults to basic CommonMark. These references describe LiMR 1.3.4; verify the host installs the required modules.
 
 - Standard Markdown: headings, emphasis, lists, links, images, fenced/inline code, blockquotes. GFM adds tables, tasks, strikethrough, autolinks, and named footnote parsing; the default footnotes module presents notes as comment markers and sidebar/floating cards instead of superscripts/endnotes.
 - Math uses $…$ and $$ fences; import math.css.

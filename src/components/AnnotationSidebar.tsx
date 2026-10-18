@@ -10,6 +10,7 @@ import { createSourceRangeLookup } from '../react/source-geometry';
 import { useOverflowFade } from '../react/overflow-fade';
 import { isOwnedImagePreview } from './image-preview-behavior';
 import { useSidebarDocumentAlignment } from './sidebar-document-alignment';
+import { adjustSidebarLock, reflowSidebar, type SidebarLayoutLock } from './sidebar-layout';
 
 /** anchorTop is the first referenced text line, falling back to the marker. */
 export interface SidebarItem { id: string; anchorTop: number; height: number }
@@ -58,6 +59,7 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
   const hovered = useStoreSelector(runtime.interaction, state => state.hovered);
   const hoverSource = useStoreSelector(runtime.interaction, state => state.hoverSource);
   const activeSource = useStoreSelector(runtime.interaction, state => state.activeSource);
+  const scrollAdjustment = useStoreSelector(runtime.layoutScrollAdjustment, value => value);
   useSyncExternalStore(runtime.configuration.subscribe, runtime.configuration.get, runtime.configuration.get);
   const layout = useSyncExternalStore(runtime.layout.subscribe, runtime.layout.get, runtime.layout.get);
   const viewport = useSyncExternalStore(runtime.viewport.subscribe, runtime.viewport.get, runtime.viewport.get);
@@ -69,11 +71,12 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
   const [railHeight, setRailHeight] = useState(0);
   const measured = useRef({ sizes: new Map<string, number>(), minimum: new Map<string, number>(), height: 0 });
   const resizeFrame = useRef(0);
-  const [viewportTop, setViewportTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
-  const [cardLock, setCardLock] = useState<{ id: string; top: number } | null>(null);
-  const lastFocus = useRef<{ id: string; top?: number } | null>(null);
-  const [release, setRelease] = useState<{ id: string; top?: number; progress: number } | null>(null);
+  const [pointerInRail, setPointerInRail] = useState(false);
+  const [cardLock, setCardLock] = useState<SidebarLayoutLock | null>(null);
+  const pinnedLock = useRef<SidebarLayoutLock | null>(null);
+  const lastFocus = useRef<{ id: string; lock?: SidebarLayoutLock | null } | null>(null);
+  const [release, setRelease] = useState<{ id: string; lock?: SidebarLayoutLock | null; progress: number } | null>(null);
   const occurrences = useMemo(() => {
     const values = [...decorations.occurrences].sort((a, b) => a.range.start - b.range.start || a.range.end - b.range.end || a.id.localeCompare(b.id));
     if (sync === 'none') for (const annotation of decorations.annotations.values()) if (annotation.type !== 'highlight' && runtime.supportsAnnotation(annotation) && !values.some(item => item.annotationIds.includes(annotation.id))) values.push({ id: `unanchored-${annotation.id}`, range: { start: 0, end: 0 }, annotationIds: [annotation.id] });
@@ -94,7 +97,9 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
     // Rounded clientHeight can put a bottom-aligned card outside the mask.
     const height = rail.current?.getBoundingClientRect().height ?? 0;
     const old = measured.current;
-    if (old.height === height && old.sizes.size === next.size && [...next].every(([id, size]) => size === old.sizes.get(id) && Math.abs(minimum.get(id)! - (old.minimum.get(id) ?? 0)) < .5)) return;
+    // Large absolute offsets quantize DOMRect edges independently. Ignore
+    // subpixel height jitter so measuring and repositioning cannot oscillate.
+    if (Math.abs(old.height - height) <= .5 && old.sizes.size === next.size && [...next].every(([id, size]) => Math.abs(size - (old.sizes.get(id) ?? -Infinity)) <= .5 && Math.abs(minimum.get(id)! - (old.minimum.get(id) ?? 0)) <= .5)) return;
     measured.current = { sizes: next, minimum, height };
     const update = () => { setSizes(next); setMinimumSizes(minimum); setRailHeight(height); };
     if (!beforePaint) { update(); return; }
@@ -147,7 +152,6 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
     const bounds = rail.current.getBoundingClientRect();
     const top = Math.max(bounds.top, runtime.getViewportTop() + (root?.clientTop ?? 0), window.visualViewport?.offsetTop ?? 0);
     const bottom = Math.min(bounds.bottom, root ? runtime.getViewportTop() + root.clientTop + root.clientHeight : Infinity, (window.visualViewport?.offsetTop ?? 0) + (window.visualViewport?.height ?? innerHeight));
-    setViewportTop(Math.max(0, top - bounds.top + (runtime.configuration.get().scrollOffset ?? 24)));
     setViewportHeight(Math.max(0, bottom - top));
   }, [runtime, layout, viewport, sync]);
   useEffect(() => {
@@ -180,16 +184,18 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
     if (sync !== 'none') items.sort((a, b) => (anchorTops.get(a.id) ?? 0) - (anchorTops.get(b.id) ?? 0));
     return items;
   }, [occurrences, anchorTops, sync]);
-  const readingId = items.find(item => (anchorTops.get(item.id) ?? 0) >= viewportTop)?.id ?? items.at(-1)?.id ?? null;
-  const alignmentId = hovered ?? active ?? readingId;
   const focusedId = hovered ?? active;
-  const source = hovered ? hoverSource : active ? activeSource : null;
-  const locked = source === 'sidebar' && cardLock?.id === alignmentId ? cardLock : null;
-  const lockedTop = locked?.top;
+  const parked = focusedId && runtime.anchors.get(focusedId)?.closest('[data-window-parked]');
+  const alignmentId = parked ? null : focusedId;
+  const source = parked ? null : hovered ? hoverSource : active ? activeSource : null;
+  const storedLock = !hovered && active && pinnedLock.current?.id === active ? pinnedLock.current : cardLock;
+  const candidateLock = useMemo(() => adjustSidebarLock(storedLock, scrollAdjustment), [storedLock, scrollAdjustment]);
+  const locked = (source === 'sidebar' && candidateLock?.id === alignmentId || !focusedId && pointerInRail) ? candidateLock : null;
+  const layoutFocus = parked ? undefined : focusedId ?? locked?.id;
   useIsomorphicLayoutEffect(() => {
     const previous = lastFocus.current;
-    lastFocus.current = focusedId ? { id: focusedId, top: lockedTop } : null;
-    if (focusedId || sync !== 'document' || !rail.current || matchMedia('(prefers-reduced-motion: reduce)').matches) { setRelease(null); return; }
+    lastFocus.current = layoutFocus ? { id: layoutFocus, lock: locked } : null;
+    if (layoutFocus || parked || sync !== 'document' || !rail.current || matchMedia('(prefers-reduced-motion: reduce)').matches) { setRelease(null); return; }
     if (!previous) return;
     const style = getComputedStyle(rail.current), value = style.getPropertyValue('--limr-motion-slow').trim();
     const milliseconds = parseFloat(value) * (value.endsWith('ms') ? 1 : 1000);
@@ -208,18 +214,19 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
     };
     frame = requestAnimationFrame(step);
     return () => { cancelAnimationFrame(frame); motion.cancel(); };
-  }, [focusedId, lockedTop, sync]);
+  }, [layoutFocus, locked, parked, sync]);
   const sidebarItems = useMemo(() => items.map(item => ({ id: item.id, anchorTop: anchorTops.get(item.id) ?? 0, height: sizes.get(item.id) ?? 80 })), [items, anchorTops, sizes]);
   const releasing = !focusedId && release;
   const positions = useMemo(() => {
-    const context = { activeId: alignmentId, gap, height: sync === 'document' && railHeight > 0 ? railHeight : undefined, prioritizeActive: !!(hovered || active) };
-    const positions = new Map(positioner(locked ? sidebarItems.map(item => item.id === locked.id ? { ...item, anchorTop: locked.top } : item) : sidebarItems, context));
-    if (releasing) {
-      const origin = positioner(sidebarItems.map(item => item.id === releasing.id && releasing.top !== undefined ? { ...item, anchorTop: releasing.top } : item), { ...context, activeId: releasing.id, prioritizeActive: true });
+    const context = { activeId: locked?.id ?? alignmentId, gap, height: sync === 'document' && railHeight > 0 ? railHeight : undefined, prioritizeActive: !!(locked || hovered || active) };
+    const positions = new Map(positioner(locked ? reflowSidebar(sidebarItems, locked, gap) : sidebarItems, context));
+    if (releasing && !locked) {
+      const lock = adjustSidebarLock(releasing.lock, scrollAdjustment);
+      const origin = positioner(lock ? reflowSidebar(sidebarItems, lock, gap) : sidebarItems, { ...context, activeId: releasing.id, prioritizeActive: true });
       for (const [id, top] of positions) positions.set(id, top + ((origin.get(id) ?? top) - top) * (1 - releasing.progress));
     }
     return positions;
-  }, [positioner, sidebarItems, locked, alignmentId, gap, sync, railHeight, hovered, active, releasing]);
+  }, [positioner, sidebarItems, locked, alignmentId, gap, sync, railHeight, hovered, active, releasing, scrollAdjustment]);
   useSidebarDocumentAlignment(runtime, sync === 'document',
     source === 'sidebar' && focusedId ? anchorTops.get(focusedId) : undefined,
     focusedId ? positions.get(focusedId) : undefined);
@@ -227,18 +234,22 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
     // Keep the original resting position while this card is hovered or active.
     // Relocking its boundary-raised top would prevent a collapse from moving
     // back down, then jump when pointer leave releases the new lock.
-    if (locked?.id === id) return;
+    if (locked?.id === id) return locked;
     const card = cards.current.get(id);
     if (card && rail.current) {
       const origin = rail.current.getBoundingClientRect().top;
       const top = card.getBoundingClientRect().top - origin;
-      setCardLock({ id, top });
+      const boxes = new Map([...cards.current].map(([id, element]) => {
+        const box = element.getBoundingClientRect(); return [id, { id, top: box.top - origin, height: box.height }];
+      }));
+      const lock = { id, top, boxes, scrollAdjustment: runtime.layoutScrollAdjustment.get() }; setCardLock(lock); return lock;
     }
-  }, [locked?.id]);
+  }, [locked, runtime]);
   const activateCard = useCallback((id: string) => {
     const state = runtime.interaction.get();
     const hovering = state.hovered === id || cards.current.get(id)?.matches(':hover');
-    lockCard(id);
+    const lock = lockCard(id);
+    pinnedLock.current = state.active === id ? null : lock ?? null;
     runtime.activate(state.active === id ? null : id, 'sidebar');
     if (hovering) runtime.hover(id, 'sidebar');
   }, [runtime, lockCard]);
@@ -282,7 +293,8 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
         {renderCard ? renderCard({ occurrence, active: isActive, activate }) : <SidebarCardBody occurrence={occurrence} annotation={annotation} annotations={annotationGroups.get(occurrence.id)!} reference={referenceText(occurrence)} point={decorations.referenceRanges.get(occurrence.id)?.start === decorations.referenceRanges.get(occurrence.id)?.end} active={isActive} title={definition?.label ?? annotation?.type ?? 'Reference'} toggleLabel={isActive ? locale.collapse : locale.expand} Preview={Preview} activate={activateCard} />}
       </div>;
     }), [items, runtime, runtime.annotationTypes, decorations, active, hovered, source, alignmentId, minimumSizes, railHeight, anchorTops, viewportHeight, sync, positions, gap, locked?.id, renderCard, lockCard, activateCard, annotationGroups, referenceText, locale.collapse, locale.expand]);
-  return <aside ref={rail} aria-label={locale.annotations} className={`limr-sidebar ${className ?? ''}`} data-sync={sync} data-releasing={releasing ? '' : undefined} data-limr-theme={theme} data-limr-appearance={appearance} style={style}>
+  return <aside ref={rail} aria-label={locale.annotations} className={`limr-sidebar ${className ?? ''}`} data-sync={sync} data-releasing={releasing ? '' : undefined} data-limr-theme={theme} data-limr-appearance={appearance} style={style}
+    onPointerEnter={() => setPointerInRail(true)} onPointerLeave={() => setPointerInRail(false)}>
     {content}
   </aside>;
 }

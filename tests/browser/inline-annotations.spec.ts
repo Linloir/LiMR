@@ -25,7 +25,7 @@ test('hint and answer animate on their very first expansion, including after a c
   }
 });
 
-test('embedded blue highlights hover and open a copy-only toolbar whose hint fits the action width', async ({ page, context }) => {
+test('embedded blue highlights open a copy-only toolbar without an editing explanation', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.evaluate(() => window.limrStream({ source: 'Before ==blue **bold** &amp; 😀== after.', streaming: false, chinese: true }));
   const mark = page.locator('article > p mark').first(), paint = page.locator('.limr-paint-background').first();
@@ -35,11 +35,8 @@ test('embedded blue highlights hover and open a copy-only toolbar whose hint fit
   const toolbar = page.getByRole('toolbar');
   await expect(toolbar).toHaveAttribute('data-readonly', 'true');
   await expect(toolbar.getByRole('button')).toHaveCount(1);
-  const hint = toolbar.locator('.limr-toolbar-readonly-hint');
-  await expect(hint).toHaveText('Markdown 内嵌高亮，不支持编辑');
-  await expect(hint).toHaveCSS('white-space', 'normal'); await expect(hint).toHaveCSS('text-align', 'start');
-  expect((await hint.boundingBox())!.width + 16).toBeCloseTo((await toolbar.locator('.limr-toolbar-actions').boundingBox())!.width, 1);
-  expect(await hint.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+  await expect(toolbar.locator('.limr-toolbar-readonly-hint')).toHaveCount(0);
+  await expect(toolbar).not.toContainText('不支持编辑');
   await toolbar.getByRole('button', { name: '复制', exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('blue bold & 😀');
   const before = await paint.evaluate(element => getComputedStyle(element).backgroundColor);

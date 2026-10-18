@@ -13,6 +13,9 @@ test('failed Markdown, figure, table and linked images show a localized fallback
     await atomic.scrollIntoViewIfNeeded(); await expect(fallback).toBeVisible();
     await expect(fallback).toHaveAccessibleName(`${alt}: Unable to load image. The link may be broken or the file may not exist.`);
     await expect(fallback.locator('svg')).toBeVisible(); await expect(image).toBeHidden();
+    await expect(fallback).toHaveCSS('border-top-width', '0px');
+    await expect(fallback.locator('.limr-image-fallback-icon')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(fallback).toHaveCSS('border-radius', await image.evaluate(element => getComputedStyle(element).borderRadius));
     await expect(image).not.toHaveAttribute('role', 'button');
     const box = await fallback.boundingBox();
     expect(box!.width).toBeGreaterThan(100); expect(box!.x).toBeGreaterThanOrEqual(0);

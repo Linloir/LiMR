@@ -5,7 +5,7 @@ description: Integrate @linloir/limr into React applications, author its support
 
 # Use LiMR
 
-Deliver a working integration using LiMR 1.3.3. Inspect the host's package.json and public declarations to confirm the required APIs are installed.
+Deliver a working integration using LiMR 1.3.4. Inspect the host's package.json and public declarations to confirm the required APIs are installed.
 
 - Read [integration.md](references/integration.md) for components, styles, state, streaming, table layout controls, translation selection settings, and installed plugin imports.
 - Read [loading.md](references/loading.md) for AsyncReader, host-owned progress/cancel/retry, large documents, worker integration, reading windows and image previews.

@@ -197,7 +197,7 @@ test('Playground has a global automatic sidebar folding switch across documents'
   await toggle.click(); await menu.getByRole('button', { name: '开启', exact: true }).click(); await expect(page.locator('.limr-sidebar')).toHaveAttribute('data-collapse-overflow', 'true');
 });
 
-test('wheel over a revealed card scrolls only the page without hover feedback jumps', async ({ page }) => {
+test('wheel over a revealed card preserves the sidebar layout while hover retargets the prose', async ({ page }) => {
   await page.setViewportSize({ width: 1700, height: 1000 });
   await load(page, readFileSync('playground/presets/scikit-learn-paper.md', 'utf8'));
   const rail = page.locator('.limr-sidebar'), group = rail.locator('.limr-sidebar-cluster[data-collapsible]').first();
@@ -206,13 +206,14 @@ test('wheel over a revealed card scrolls only the page without hover feedback ju
   await marker.evaluate(element => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
   await marker.hover(); await expect(rail).not.toHaveAttribute('data-moving');
   await card.locator('.limr-sidebar-card-heading').hover();
-  const initial = await page.evaluate(() => ({ top: scrollY, height: document.documentElement.scrollHeight }));
+  const initial = await page.evaluate(() => ({ top: scrollY, height: document.documentElement.scrollHeight,
+    groups: [...document.querySelectorAll('.limr-sidebar-cluster')].map(element => element.getBoundingClientRect().top - document.querySelector('.limr-sidebar')!.getBoundingClientRect().top) }));
   const sampling = page.evaluate(async () => {
     const frames = [];
     for (let i = 0; i < 45; i++) {
       await new Promise<void>(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
       frames.push({ top: scrollY, height: document.documentElement.scrollHeight,
-        translate: getComputedStyle(document.querySelector('.limr-reader-content > article')!).translate,
+        groups: [...document.querySelectorAll('.limr-sidebar-cluster')].map(element => element.getBoundingClientRect().top - document.querySelector('.limr-sidebar')!.getBoundingClientRect().top),
         scrolls: [...document.querySelectorAll('.limr-sidebar-cluster-list')].map(element => element.scrollTop) });
     }
     return frames;
@@ -221,6 +222,6 @@ test('wheel over a revealed card scrolls only the page without hover feedback ju
   const frames = await sampling;
   expect(frames.at(-1)!.top).toBeGreaterThan(initial.top);
   expect(frames.at(-1)!.top - initial.top).toBeLessThanOrEqual(241);
-  expect(frames.every(frame => frame.height === initial.height && frame.translate === 'none' && frame.scrolls.every(top => top === 0)), JSON.stringify({ initial, frames })).toBe(true);
+  expect(frames.every(frame => frame.height === initial.height && frame.groups.every((top, index) => Math.abs(top - initial.groups[index]) < 1) && frame.scrolls.every(top => top === 0)), JSON.stringify({ initial, frames })).toBe(true);
   expect(frames.slice(1).every((frame, index) => frame.top >= frames[index].top - 1)).toBe(true);
 });

@@ -92,6 +92,7 @@
   .limr-prose :where(p,.limr-paragraph,li) { text-align: var(--limr-paragraph-align); text-align-last: start; text-justify: auto; }
   .limr-prose ::selection { background: var(--limr-selection, #667eea4d); }
   .limr-prose { position: relative; isolation: isolate; transition: translate var(--limr-motion) var(--limr-ease); }
+  .limr-prose[data-source-navigation] { transition: none; }
   .limr-prose[data-limr-painted] ::selection { background: transparent; }
   .limr-prose[data-limr-painted] .limr-highlight-background,
   .limr-prose[data-limr-painted] .limr-atomic-highlight,
@@ -159,7 +160,8 @@
   .limr-task-control > input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; z-index: 1; cursor: pointer; }
   .limr-task-control > input:disabled { cursor: text; }
   .limr-prose hr { border: 0; border-top: 1px solid var(--limr-border, #e5e2dc); margin: 2rem 0; }
-  .limr-prose img { display: inline-block; max-width: 100%; height: auto; vertical-align: middle; border-radius: 4px; }
+  .limr-prose img { display: inline-block; max-width: 100%; height: auto; vertical-align: middle; }
+  .limr-prose :is(img,.limr-image-fallback) { border-radius: 4px; }
   .limr-prose figure { margin: 1.5rem 0; text-align: center; }
   .limr-prose figcaption { margin-top: .5rem; font-size: .875em; color: var(--limr-secondary, #666); }
   .limr-prose :is(.limr-figure,.limr-figures) { position: relative; padding: 36px; border: 1px solid var(--limr-border, #e8e5df); border-radius: 10px; background: var(--limr-code-bg, #f9f8f6); }
@@ -169,7 +171,8 @@
   .limr-figure-media > :is(p,.limr-paragraph) { width: 100%; margin: 0; }
   .limr-figure-media > .limr-atomic { display: block; width: 100%; max-width: 100%; }
   .limr-figure-media .limr-atomic-image { width: 100%; }
-  .limr-prose .limr-figure-media img { display: inline-block; width: 100%; height: auto; max-height: var(--limr-figure-max-height); object-fit: contain; border-radius: 6px; }
+  .limr-prose .limr-figure-media img { display: inline-block; width: 100%; height: auto; max-height: var(--limr-figure-max-height); object-fit: contain; }
+  .limr-prose .limr-figure-media :is(img,.limr-image-fallback) { border-radius: 6px; }
   .limr-prose :is(.limr-figure,.limr-figures) figcaption { --limr-paragraph-align: center; margin-block-start: .75rem; line-height: 1.65; text-align: center; text-align-last: center; }
   .limr-prose :is(.limr-figure,.limr-figures) figcaption :is(p,.limr-paragraph) { text-align: center; text-align-last: center; }
   .limr-prose .limr-figures-grid > .limr-figure > figcaption { grid-row: 2; align-self: start; margin-block-start: 0; }
@@ -466,7 +469,7 @@
   .limr-tool-icon :where(div,span,i,b,strong,em) { display: inline-flex; align-items: center; justify-content: center; font-size: inherit !important; line-height: 1 !important; }
   /* Only the actions determine toolbar width. Panels, hints and errors fill
      that width without contributing their own intrinsic text width. */
-  .limr-toolbar-panel,.limr-toolbar-delete-warning,.limr-toolbar-readonly-hint,.limr-toolbar-selection-hint,.limr-action-error { contain: inline-size; min-width: 0; align-self: stretch; overflow-wrap: anywhere; }
+  .limr-toolbar-panel,.limr-toolbar-delete-warning,.limr-toolbar-selection-hint,.limr-action-error { contain: inline-size; min-width: 0; align-self: stretch; overflow-wrap: anywhere; }
   .limr-toolbar-panel { display: flex; min-height: 0; max-height: var(--limr-toolbar-panel-height, 260px); overflow: hidden; text-align: start; margin-top: 4px; border-top: 1px solid var(--limr-toolbar-border, var(--limr-border, #e5e2dc)); animation: limr-tool-float 300ms cubic-bezier(.16,1,.3,1) both, limr-tool-fade 220ms ease 35ms both; }
   .limr-toolbar-panel .limr-overlay-content { padding: 10px 9px 4px; scroll-padding-block: 8px; }
   .limr-toolbar-panel .limr-overlay-scroll { width: 100%; min-width: 0; }
@@ -481,7 +484,7 @@
   [data-placement^='top'] .limr-toolbar-delete-warning { order: -1; }
   .limr-toolbar-delete-hint { margin: 4px 8px 5px; font-size: 11px; color: var(--limr-error, #b45858); }
   .limr-selection-toolbar[data-readonly] { width: max-content; }
-  .limr-toolbar-readonly-hint,.limr-toolbar-selection-hint { margin: 4px 8px 5px; font-size: 11px; line-height: 1.6; color: var(--limr-secondary, #7b756e); white-space: normal; text-align: start; }
+  .limr-toolbar-selection-hint { margin: 4px 8px 5px; font-size: 11px; line-height: 1.6; color: var(--limr-secondary, #7b756e); white-space: normal; text-align: start; }
   .limr-highlight-settings fieldset { border: 0; padding: 0; margin: 0 0 12px; min-width: 0; }
   .limr-highlight-settings legend { margin-bottom: 7px; padding: 0; color: var(--limr-secondary, #7b756e); font-size: 11px; }
   .limr-highlight-colors { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 9px; }

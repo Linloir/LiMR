@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { referenceTop } from './annotation-geometry';
 
 async function paper(page: Page, title = 'Feature Visualization') {
   await page.setViewportSize({ width: 1800, height: 1000 });
@@ -11,7 +12,7 @@ async function paper(page: Page, title = 'Feature Visualization') {
   await page.locator('.limr-reader-content > article > [data-limr-block]').last().scrollIntoViewIfNeeded();
 }
 
-test('footer cards pack into free space at rest and keep prose still on sidebar hover', async ({ page }) => {
+test('footer cards pack into free space and align the prose on sidebar hover', async ({ page }) => {
   await paper(page);
   const rail = page.locator('.limr-sidebar'), cards = rail.locator('.limr-sidebar-card');
   const last = cards.last(), previous = cards.nth(await cards.count() - 2);
@@ -24,7 +25,8 @@ test('footer cards pack into free space at rest and keep prose still on sidebar 
   const before = await page.evaluate(() => ({ height: document.documentElement.scrollHeight, top: scrollY }));
   await last.locator('.limr-sidebar-card-heading').hover();
   await expect(last).toHaveAttribute('data-active', 'true');
-  await expect(article).toHaveCSS('translate', 'none');
+  const id = await last.getAttribute('data-occurrence'), marker = article.locator(`[data-limr-anchor="${id}"]`);
+  await expect.poll(async () => Math.abs((await last.boundingBox())!.y - await referenceTop(marker))).toBeLessThan(1);
   await last.locator('.limr-sidebar-card-heading').click();
   await expect(last).toHaveAttribute('data-expanded', 'true');
   await expect.poll(async () => {

@@ -58,4 +58,4 @@ The use Skill should deliver working integration, stable configuration, and vali
 
 ## Loading and large-document integration
 
-The use Skill's [loading.md](../../skills/limr-use/references/loading.md) covers AsyncReader, host progress, cancel/retry, worker assets, read-only previews, bookmarks, printing and image previews. The development Skill's [contract](../../skills/limr-plugin-development/references/contract.md) covers custom worker registration, transferable results and windowed-view text/state contracts. Both target the public 1.3.3 declarations; update the whole Skill directory while preserving local customizations.
+The use Skill's [loading.md](../../skills/limr-use/references/loading.md) covers AsyncReader, host progress, cancel/retry, worker assets, read-only previews, bookmarks, printing and image previews. The development Skill's [contract](../../skills/limr-plugin-development/references/contract.md) covers custom worker registration, transferable results and windowed-view text/state contracts. Both target the public 1.3.4 declarations; update the whole Skill directory while preserving local customizations.

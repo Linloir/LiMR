@@ -61,18 +61,33 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
   useIsomorphicLayoutEffect(() => {
     if (!windowed) return;
     const element = host.current!, content = window.current!;
+    const prose = element.closest<HTMLElement>('.limr-prose');
     const scrollRoot = config.scrollRoot ?? globalThis.window;
     const viewportHeight = () => config.scrollRoot?.clientHeight ?? innerHeight;
     const physicalTop = () => config.scrollRoot?.scrollTop ?? scrollY;
     const viewportTop = () => config.scrollRoot?.getBoundingClientRect().top ?? 0;
+    const compensateScroll = (top: number) => {
+      const before = physicalTop();
+      scrollRoot.scrollTo({ top, behavior: 'instant' });
+      const delta = physicalTop() - before;
+      if (delta) runtime.layoutScrollAdjustment.set(runtime.layoutScrollAdjustment.get() + delta);
+    };
     let width = element.clientWidth || 800;
     const css = getComputedStyle(element), em = parseFloat(css.fontSize) || 16, line = parseFloat(css.lineHeight) || em * 1.8;
     const estimate = (block: Block) => Math.max(line, Math.ceil(Math.max(1, block.range.end - block.range.start) * em * .57 / width) * line) + em;
     let heights = new BlockHeightIndex(entries.map(estimate));
     const positions = new Map(entries.map((block, index) => [block.id, index]));
-    let geometry = readingScrollGeometry(heights.total, viewportHeight()), frame = 0, pendingMeasure = false, disposed = false, logical = 0, origin = 0;
+    let geometry = readingScrollGeometry(heights.total, viewportHeight()), frame = 0, pendingMeasure = false, disposed = false, logical = 0, origin = 0, translating = false;
     let measuredTypography = typographyLayoutVersion(runtime);
     let requested: { range: SourceRange; offset: number } | undefined, printing = false, touch: { x: number; y: number } | undefined;
+    let navigationFrame = 0;
+    const request = (next?: typeof requested) => {
+      requested = next; cancelAnimationFrame(navigationFrame);
+      if (next) prose?.setAttribute('data-source-navigation', '');
+      // Allow pending React alignment updates to commit before re-enabling
+      // motion. Otherwise a TOC click can chase a freshly restarted transform.
+      else navigationFrame = requestAnimationFrame(() => { if (!requested) prose?.removeAttribute('data-source-navigation'); });
+    };
     let bottomAnchor: { outside: number; top: number } | undefined;
     let logicalPosition: { physical: number; origin: number; scale: number; logical: number } | undefined;
     let readingAnchor: { position: ReadingPosition; top: number; logical: number; width: number; revision: number; presentation: number; typography: number; configuration: typeof config } | undefined;
@@ -102,8 +117,11 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
         ? { physical, origin, scale: geometry.scale, logical } : undefined;
     };
     const commit = () => {
-      let start = heights.at(Math.max(0, logical - overscan));
-      let end = Math.min(entries.length, heights.at(logical + viewportHeight() + overscan) + 2);
+      // Sidebar inspection translates only the prose. Select visible blocks
+      // in that translated viewport without changing the book's scroll origin.
+      const visible = logical - runtime.getContentOffset();
+      let start = heights.at(Math.max(0, visible - overscan));
+      let end = Math.min(entries.length, heights.at(visible + viewportHeight() + overscan) + 2);
       const pinned = new Set<number>();
       const selected = runtime.virtualSelection ? null : runtime.interaction.get().selection;
       if (selected?.raw.ranges.length) {
@@ -111,7 +129,7 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
         pinned.add(sourceIndex(selected.raw.ranges.at(-1)!.end - 1));
       }
       const interaction = runtime.interaction.get(), details = runtime.decorations.get();
-      for (const occurrence of details.occurrences) {
+      if (interaction.active || interaction.toolbarOccurrence || interaction.editing) for (const occurrence of details.occurrences) {
         if (occurrence.id === interaction.active || occurrence.id === interaction.toolbarOccurrence || interaction.editing && occurrence.annotationIds.includes(interaction.editing)) pinned.add(sourceIndex((details.referenceRanges.get(occurrence.id) ?? occurrence.range).start));
       }
       if (interaction.activeHighlight) { const highlight = details.highlights.get(interaction.activeHighlight); if (highlight) pinned.add(sourceIndex(highlight.range.start)); }
@@ -162,7 +180,7 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
       if (readingAnchor?.top === top && readingAnchor.logical === currentLogical && readingAnchor.width === width && readingAnchor.revision === revision && readingAnchor.presentation === presentation && readingAnchor.configuration === configuration && readingAnchor.typography === typography) return;
       if (Math.abs(element.clientWidth - width) > .5) return;
       const edge = viewportTop() + (config.scrollOffset ?? 24);
-      let index = heights.at(currentLogical + (config.scrollOffset ?? 24));
+      let index = heights.at(currentLogical + (config.scrollOffset ?? 24) - runtime.getContentOffset());
       // The height index includes paragraph margins. Inspect only neighbouring
       // mounted blocks when the reading edge falls in that space.
       for (; index < latest.current.end; index++) {
@@ -179,8 +197,15 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
     captureCommitted.current = rememberPosition;
     const refresh = (measure: boolean) => {
       frame = 0; if (disposed || printing) return;
+      if (translating) queue();
+      const interaction = runtime.interaction.get(), focused = interaction.hovered ?? interaction.active;
+      // Parking commits before the sidebar observes its new anchors. Release
+      // its displacement now so source navigation cannot finish at the old one.
+      if (focused && runtime.anchors.get(focused)?.closest('[data-window-parked]')) runtime.documentOffset.set(0);
       const current = physicalTop();
-      origin = element.getBoundingClientRect().top - viewportTop() + current;
+      // Transforms are visual displacement, not changes to the native scroll
+      // range. Counting one here feeds hover alignment into scroll anchoring.
+      origin = element.getBoundingClientRect().top - runtime.getContentOffset() - viewportTop() + current;
       // A native thumb/end seek reaches the current estimated bottom before
       // its last blocks are measured. Preserve that intent across the ensuing
       // React commits, including trailing reader padding. A newer scroll or
@@ -210,7 +235,7 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
           if (!requested && !bottomAnchor && anchorInReader && readingAnchor?.width === width && Math.abs(readingAnchor.top - current) <= 1
             && readingAnchor.revision === runtime.document.getSnapshot().revision && readingAnchor.presentation === runtime.presentation.get() && readingAnchor.configuration === runtime.configuration.get()) {
             const { source, offset } = readingAnchor.position;
-            requested = { range: { start: source, end: Math.min(source + 2, runtime.document.getSnapshot().source.length) }, offset };
+            request({ range: { start: source, end: Math.min(source + 2, runtime.document.getSnapshot().source.length) }, offset });
           }
           readingAnchor = undefined;
           const ratio = width / nextWidth; width = nextWidth;
@@ -229,7 +254,7 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
         const anchored = Math.min(geometry.logicalMax, Math.max(0, heights.offset(anchor) + inside));
         logical = bottomAnchor ? geometry.logicalMax : anchored;
         const wanted = origin + geometry.toPhysical(logical);
-        if (!bottomAnchor && anchorInReader && Math.abs(wanted - current) > .5) scrollRoot.scrollTo({ top: wanted, behavior: 'instant' });
+        if (!bottomAnchor && anchorInReader && Math.abs(wanted - current) > .5) compensateScroll(wanted);
         if (bottomAnchor) logicalPosition = undefined; else retainLogicalPosition();
       }
       if (bottomAnchor) logical = geometry.logicalMax;
@@ -246,7 +271,7 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
             : (element.ownerDocument.scrollingElement?.scrollHeight ?? 0) - innerHeight;
           const wanted = Math.min(Math.max(0, maximum), origin + geometry.physicalMax + bottomAnchor.outside);
           bottomAnchor = undefined;
-          if (Math.abs(wanted - current) > .5) scrollRoot.scrollTo({ top: wanted, behavior: 'instant' });
+          if (Math.abs(wanted - current) > .5) compensateScroll(wanted);
         }
       }
       if (requested && (changed || pendingCommit)) refineAfterCommit.current = true;
@@ -260,6 +285,9 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
           return;
         }
         if (node) {
+          // A sidebar can release its alignment in the same commit that parks
+          // its source. Wait for the prose style to reflect that store update.
+          if (Math.abs(runtime.getContentOffset() - runtime.documentOffset.get()) > .5) { queue(); return; }
           // The first seek uses estimates; refine once the destination exists.
           const target = (sourceRangeStartRect(runtime, requested.range)?.top ?? node.getBoundingClientRect().top) - viewportTop() - requested.offset;
           // KP may still be applying the new width in a later frame. Keep this
@@ -271,10 +299,10 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
             // move this slot again, so complete only after that commit settles.
             // A native clamp with no DOM/scroll progress is an actual boundary,
             // not a reason to schedule an endless refinement loop.
-            if (!move(logical + target, true) && !pendingTypography) { requested = undefined; rememberPosition(); }
+            if (!move(logical + target, true) && !pendingTypography) { request(); rememberPosition(); }
             return;
           }
-          if (!pendingTypography) requested = undefined;
+          if (!pendingTypography) request();
         }
       }
       if (!changed) rememberPosition();
@@ -294,7 +322,12 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
     };
     measureCommitted.current = committed;
     const viewport = {
-      reveal(range: SourceRange, offset = config.scrollOffset ?? 24) { requested = { range, offset }; refineAfterCommit.current = true; move(heights.offset(sourceIndex(range.start))); schedule(); },
+      reveal(range: SourceRange, offset = config.scrollOffset ?? 24) {
+        request({ range, offset });
+        const interaction = runtime.interaction.get();
+        if (!interaction.active && !interaction.hovered) runtime.documentOffset.set(0);
+        refineAfterCommit.current = true; move(heights.offset(sourceIndex(range.start))); schedule();
+      },
       activeHeading() {
         const headings = currentHeadings.current, cutoff = viewportTop() + runtime.getHeadingActivationInset();
         const visible = new Set(headings.map(heading => heading.id));
@@ -305,7 +338,7 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
           if (top <= cutoff && (!nearest || top > nearest.top)) nearest = { id, top };
         }
         if (nearest) return nearest.id;
-        const index = heights.at(logical + runtime.getHeadingActivationInset());
+        const index = heights.at(logical + runtime.getHeadingActivationInset() - runtime.getContentOffset());
         let active = headings[0]?.id ?? null;
         for (const heading of headings) { if (sourceIndex(heading.range.start) < index) active = heading.id; else break; }
         return active;
@@ -320,7 +353,7 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
     };
     const wheel = (event: WheelEvent) => {
       if (!event.defaultPrevented && !event.ctrlKey && !event.shiftKey && Math.abs(event.deltaY) >= Math.abs(event.deltaX) && event.deltaY && !insideScroller(event.target)) {
-        requested = undefined; bottomAnchor = undefined; readingAnchor = undefined;
+        request(); bottomAnchor = undefined; readingAnchor = undefined;
       }
       if (geometry.scale <= 1 || event.ctrlKey || event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY) || event.defaultPrevented || insideScroller(event.target) || !event.deltaY) return;
       const delta = event.deltaY * (event.deltaMode === 1 ? line : event.deltaMode === 2 ? viewportHeight() : 1);
@@ -352,7 +385,7 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
       }
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.target instanceof Element && event.target.closest('input,textarea,button,[contenteditable],[data-limr-selection-ui]')) return;
       const delta = event.key === 'ArrowDown' ? line : event.key === 'ArrowUp' ? -line : event.key === 'PageDown' || event.key === ' ' ? viewportHeight() * .9 : event.key === 'PageUp' ? -viewportHeight() * .9 : 0;
-      if (delta || event.key === 'Home' || event.key === 'End') { requested = undefined; bottomAnchor = undefined; readingAnchor = undefined; }
+      if (delta || event.key === 'Home' || event.key === 'End') { request(); bottomAnchor = undefined; readingAnchor = undefined; }
       if (geometry.scale <= 1) return;
       if (delta || event.key === 'Home' || event.key === 'End') { event.preventDefault(); flushSync(() => move(event.key === 'Home' ? 0 : event.key === 'End' ? geometry.logicalMax : logical + delta)); }
     };
@@ -362,7 +395,7 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
       const next = { x: event.touches[0].clientX, y: event.touches[0].clientY }, delta = touch.y - next.y;
       if (Math.abs(touch.x - next.x) > Math.abs(delta)) { touch = next; return; }
       touch = next;
-      requested = undefined; bottomAnchor = undefined; readingAnchor = undefined;
+      request(); bottomAnchor = undefined; readingAnchor = undefined;
       if (geometry.scale <= 1) return;
       event.preventDefault(); flushSync(() => move(logical + delta));
     };
@@ -375,7 +408,16 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
     const resize = new ResizeObserver(() => { if (!disposed) schedule(); });
     resize.observe(content); resize.observe(element);
     const unsubscribe = runtime.layout.subscribe(schedule), selectionChanged = runtime.interaction.subscribe(scroll);
-    const claim = (event: PointerEvent) => { requested = undefined; rememberReaderOwner(runtime, event.target); };
+    const translation = (event: TransitionEvent) => {
+      if (event.target !== prose || event.propertyName !== 'translate') return;
+      translating = event.type === 'transitionrun'; readingAnchor = undefined; scroll();
+    };
+    // Follow the visible window during alignment without measuring every block
+    // or treating the transform as a change to the page's scroll position.
+    prose?.addEventListener('transitionrun', translation);
+    prose?.addEventListener('transitionend', translation);
+    prose?.addEventListener('transitioncancel', translation);
+    const claim = (event: PointerEvent) => { request(); rememberReaderOwner(runtime, event.target); };
     const fontChanged = () => { readingAnchor = undefined; };
     element.ownerDocument.fonts?.addEventListener('loadingdone', fontChanged);
     element.ownerDocument.addEventListener('pointerdown', claim, true);
@@ -385,7 +427,7 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
     element.addEventListener('touchstart', touchStart, { passive: true }); element.addEventListener('touchmove', touchMove, { passive: false });
 
     if (savedAnchor.current) {
-      origin = element.getBoundingClientRect().top - viewportTop() + physicalTop();
+      origin = element.getBoundingClientRect().top - runtime.getContentOffset() - viewportTop() + physicalTop();
       move(heights.offset(sourceIndex(savedAnchor.current.source)) + savedAnchor.current.inside);
     }
     refresh(true);
@@ -395,6 +437,10 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
       element.ownerDocument.removeEventListener('pointerdown', claim, true);
       element.ownerDocument.removeEventListener('focusin', scroll);
       element.ownerDocument.fonts?.removeEventListener('loadingdone', fontChanged);
+      cancelAnimationFrame(navigationFrame); prose?.removeAttribute('data-source-navigation');
+      prose?.removeEventListener('transitionrun', translation);
+      prose?.removeEventListener('transitionend', translation);
+      prose?.removeEventListener('transitioncancel', translation);
       disposed = true; if (measureCommitted.current === committed) measureCommitted.current = null; cancelAnimationFrame(frame); resize.disconnect(); unsubscribe(); selectionChanged();
       if (captureCommitted.current === rememberPosition) captureCommitted.current = null;
       if (runtime.documentViewport === viewport) runtime.documentViewport = null;
