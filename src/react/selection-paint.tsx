@@ -106,8 +106,13 @@ function rectangles(leaves: readonly Leaf[], source: SourceRange, viewport: View
         if (!rect.width || !rect.height || rect.bottom < viewport.top || rect.top > viewport.bottom) continue;
         if (leaf.kind === 'block' || leaf.kind === 'image') raw.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height, atomic: true, image: leaf.kind === 'image', baseline: rect.bottom, flow: leaf.kind === 'image' ? element : surface, radius: getComputedStyle(surface).borderRadius });
         else {
-          const item = geometry(leaf, rect, referenceFor(index, rect));
-          raw.push({ ...item, atomic: true });
+          // Inline math remains one source atom, but TeX operator breaks can
+          // produce several visual lines. Paint each fragment, not their union.
+          for (const fragment of surface.getClientRects()) {
+            if (!fragment.width || !fragment.height || fragment.bottom < viewport.top || fragment.top > viewport.bottom) continue;
+            const item = geometry(leaf, fragment, referenceFor(index, fragment));
+            raw.push({ ...item, atomic: true });
+          }
         }
       }
     }

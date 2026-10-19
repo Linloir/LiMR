@@ -575,4 +575,6 @@
   @media print { [data-limr-kp][data-limr-kp-stale] { overflow: visible; white-space: normal; text-wrap: wrap !important; } }
   .limr-kp-glue { display: inline-block; font-size: 0; line-height: 0; white-space: pre; }
   .limr-kp-hyphen::before { content: '-'; }
+  [data-limr-kp-scroll] { overflow-x: auto; vertical-align: middle; }
+  [data-limr-kp-stale='wrap'] .limr-math-inline .katex-html > .katex-base { max-width: 100% !important; overflow-x: auto; }
 }
