@@ -32,6 +32,10 @@
 
 ## CommonMark 与 GFM
 
+LiMR 在 CommonMark 基础上放宽了 `**粗体**`（包括 `***粗斜体***`）的标点边界：`前**“中文！”**后`、`前**中文，**后`、`before**(text!)**after` 都能直接加粗，不需要补空格。这是 LiMR 的内置语法规则，适用于所有语言，也适用于纯核心 `createDocument()`。单星号斜体和下划线仍采用 CommonMark 规则；分隔符内侧不能紧贴空白，转义星号和代码内容保持字面含义。
+
+默认 GFM 自动链接能在 `前**https://example.com**后` 的结束星号前停止。只有已注册的名称会作为 directive 解析，`http:www.baidu.com`、`12:30`、`:unknown[文字]` 会保留完整可见文字。解析不插入空格或改写原文，选区与批注继续使用原始 UTF-16 坐标。
+
 ````markdown
 # 标题
 

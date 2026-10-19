@@ -1,5 +1,5 @@
 import { fromMarkdownSource as fromMarkdown } from '../core/markdown-input';
-import { directive } from 'micromark-extension-directive';
+import { registeredDirectives } from '../core/registered-directives';
 import { directiveFromMarkdown } from 'mdast-util-directive';
 import { mdxJsx } from 'micromark-extension-mdx-jsx';
 import { mdxJsxFromMarkdown } from 'mdast-util-mdx-jsx';
@@ -39,7 +39,7 @@ function setupPreparation(context: ParseContext, extensions: readonly SyntaxExte
   const tags = new Set(extensions.flatMap(extension => [...extension.tags ?? []]));
   const literals = new Set(extensions.filter(extension => extension.literal).flatMap(extension => [...extension.tags ?? [], ...extension.directives ?? []]));
   const adapted = prepareSource(candidate.value, names, tags, false, literals);
-  const syntax = [...extensions.flatMap(extension => [...extension.micromark ?? []]), directive()];
+  const syntax = [...extensions.flatMap(extension => [...extension.micromark ?? []]), registeredDirectives(names)];
   const mdast = [...extensions.flatMap(extension => [...extension.mdast ?? []]), directiveFromMarkdown()];
   const bounded = hasTableLocalSyntax(extensions.flatMap(extension => [...extension.micromark ?? [], ...extension.mdast ?? []]));
   const progress = bounded ? (loaded: number) => context.onProgress?.({ phase: 'parse', loaded, total: adapted.value.length }) : undefined;

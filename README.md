@@ -1,6 +1,6 @@
 # LiMR
 
-[![package version](https://img.shields.io/badge/version-1.3.6-blue.svg)](package.json)
+[![package version](https://img.shields.io/badge/version-1.3.7-blue.svg)](package.json)
 
 **简体中文** · [English](README.en.md)
 
@@ -113,7 +113,7 @@ export function Notice() {
 }
 ```
 
-`plugins` 追加到默认扩展；`extensions` 替换整个扩展列表，`extensions={[]}` 使用基础 CommonMark。同名扩展使用 `replaceExtension()` 显式替换。配置应保持引用稳定。
+`plugins` 追加到默认扩展；`extensions` 替换整个扩展列表，`extensions={[]}` 使用以 CommonMark 为基础的核心语法，包含 LiMR 的[多语言加粗边界规则](docs/zh-CN/syntax.md#commonmark-与-gfm)。同名扩展使用 `replaceExtension()` 显式替换。配置应保持引用稳定。
 
 只替换某类内容的呈现时，可用 `rendererOverrides` 的 `type`、`component` 和 `when`，按语言、祖先或流式状态限定范围；宿主规则优先。它是渲染范围约束，不是第三方代码安全沙箱。
 

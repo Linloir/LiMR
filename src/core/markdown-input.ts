@@ -1,12 +1,20 @@
 import type { Options } from 'mdast-util-from-markdown';
 import { fromMarkdownBounded } from './bounded-markdown';
 import { lineStarts, sourcePoint, walk } from './tree';
+import { strongSyntax } from './strong-syntax';
+import { forgetMarkdownSource, markdownSource } from './markdown-source';
 import type { MarkdownNode } from './types';
 
 /** Micromark consumes a leading BOM without counting it in offsets. Restore
  * original UTF-16 coordinates before preprocessors/transforms observe a tree. */
 export function fromMarkdownSource(source: string, options?: Options, bounded = false, onProgress?: (offset: number) => void): MarkdownNode {
-  const root = fromMarkdownBounded(source, options, { enabled: bounded, onProgress }) as unknown as MarkdownNode;
+  // Install before host extensions so an explicit custom tokenizer retains
+  // precedence. Shared by ordinary, bounded, worker and annotation parsing.
+  const root = fromMarkdownBounded(source, { ...options,
+    extensions: [strongSyntax, ...options?.extensions ?? []],
+    mdastExtensions: [markdownSource(source), ...options?.mdastExtensions ?? []],
+  }, { enabled: bounded, onProgress }) as unknown as MarkdownNode;
+  forgetMarkdownSource(root);
   return restoreSourcePositions(source, root);
 }
 

@@ -32,6 +32,10 @@ These are registered static tags in Markdown, not an arbitrary MDX/HTML executio
 
 ## CommonMark and GFM
 
+LiMR extends CommonMark's punctuation boundaries for `**strong**` (including `***strong emphasis***`): `前**“中文！”**后`, `前**中文，**后`, and `before**(text!)**after` work without added spaces. This built-in rule applies to every language and to core-only `createDocument()`. Single-star emphasis and underscores retain CommonMark rules. Whitespace immediately inside delimiters still prevents opening or closing, and escaped stars and code remain literal.
+
+Default GFM autolinks stop before the closing stars in `前**https://example.com**后`. Only registered names are parsed as directives, so `http:www.baidu.com`, `12:30`, and `:unknown[text]` retain their complete visible text. Parsing adds no spaces and does not rewrite the source; selections and annotations retain original UTF-16 coordinates.
+
 ````markdown
 # Heading
 

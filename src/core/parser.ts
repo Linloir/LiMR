@@ -1,7 +1,7 @@
 import { fromMarkdownSource as fromMarkdown } from './markdown-input';
 import { mdxJsx } from 'micromark-extension-mdx-jsx';
 import { mdxJsxFromMarkdown } from 'mdast-util-mdx-jsx';
-import { directive } from 'micromark-extension-directive';
+import { registeredDirectives } from './registered-directives';
 import { directiveFromMarkdown } from 'mdast-util-directive';
 import { lineStarts, sourcePoint, walk } from './tree';
 import { concealIncomplete, prepareSource } from './streaming';
@@ -44,7 +44,7 @@ export function createParser(extensions: readonly SyntaxExtension[]) {
   const plainSyntax = [...syntax], plainMdast = [...mdast];
   const registeredSyntax = [...syntax, ...mdast];
   let tableLocal = hasTableLocalSyntax(registeredSyntax);
-  if (directiveDefinitions.size) { syntax.push(directive()); mdast.push(directiveFromMarkdown()); }
+  if (directiveDefinitions.size) { syntax.push(registeredDirectives(names)); mdast.push(directiveFromMarkdown()); }
   // CommonMark's HTML blocks otherwise swallow same-line native tag names such
   // as <figcaption>**caption**</figcaption> before the JSX adapter can see them.
   // Unknown JSX remains inert through the whitelist below; recovery keeps HTML.

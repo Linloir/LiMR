@@ -3,7 +3,7 @@ import { standard } from '../src/extensions/standard';
 import { ReaderRuntime, Store } from '../src/react/runtime';
 import { windowedHeadings } from '../src/react/windowed-headings';
 import { windowingCapability } from '../src/react/windowing-capabilities';
-import { walk, type MarkdownNode } from '../src/core';
+import { textContent, walk, type MarkdownNode } from '../src/core';
 
 it('keeps global headings visible in their active language and bilingual visual order without DOM', () => {
   const source = '# First\n\n<translations>\n\n<origin>\n\n## Original heading\n\nOriginal paragraph.\n\n</origin>\n\n<translation>\n\n## Translated heading\n\nTranslated paragraph.\n\n</translation>\n\n</translations>\n\n# Final';
@@ -27,11 +27,13 @@ it('requires custom presentation to declare its own copy/lifetime contract', () 
   first.components = { ...first.components, replacement: component };
   expect(windowingCapability(document, { extensions, virtualization: true }).enabled).toBe(false);
 });
-it('recognizes the built-in inert directive fallback as a native presentation', () => {
-  const extensions = standard(), runtime = new ReaderRuntime('directives', 'Unknown :unregistered[label] content.\n\n::unknown[Leaf]\n\n:::unknown\nContainer.\n:::', false, { extensions });
+it('keeps unregistered directive text visible and windowable', () => {
+  const source = 'Unknown :unregistered[label] content.\n\n::unknown[Leaf]\n\n:::unknown\nContainer.\n:::';
+  const extensions = standard(), runtime = new ReaderRuntime('directives', source, false, { extensions });
   const types = new Set<string>();
   runtime.document.getSnapshot().blocks.forEach(block => walk(block.node, node => types.add(node.type)));
-  expect(types.has('textDirective')).toBe(true);
+  expect([...types].some(type => type.endsWith('Directive'))).toBe(false);
+  expect(runtime.document.getSnapshot().blocks.map(block => textContent(block.node)).join('\n\n')).toBe(source);
   expect(windowingCapability(runtime.document.getSnapshot(), { extensions, virtualization: true })).toEqual({ enabled: true });
 });
 

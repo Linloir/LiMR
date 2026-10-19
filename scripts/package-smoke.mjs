@@ -97,6 +97,17 @@ const pairedDocument = createDocument(paired, { extensions: standard() }).getSna
 if (pairedDocument.annotationRanges.size !== 1 || !pairedDocument.annotationRanges.get('range')[0].openingRange) throw new Error('Packed paired annotation parser failed');
 const pairedHtml = renderToString(createElement(Markdown, { source: paired }));
 if (pairedHtml.includes('%%limr') || !pairedHtml.includes('data-limr-marker')) throw new Error('Packed paired annotation rendering failed');
+const punctuationSource = '前**“中文！”**后 **http:www.baidu.com**与**https://example.com**后';
+const punctuationDocument = createDocument(punctuationSource, { extensions: standard() }).getSnapshot();
+const packedStrong = [];
+function inspectStrong(node) { if (node.type === 'strong') packedStrong.push(node); for (const child of node.children ?? []) inspectStrong(child); }
+punctuationDocument.blocks.forEach(block => inspectStrong(block.node));
+const packedText = node => node.value ?? (node.children ?? []).map(packedText).join('');
+if (JSON.stringify(packedStrong.map(packedText)) !== JSON.stringify(['“中文！”', 'http:www.baidu.com', 'https://example.com'])) throw new Error('Packed multilingual strong parser failed');
+const packedLink = packedStrong[2].children[0];
+if (packedLink.type !== 'link' || punctuationSource.slice(packedLink.position.start.offset, packedLink.position.end.offset) !== 'https://example.com') throw new Error('Packed bold URL mapping failed');
+const fallbackLink = packedStrong[1].children.find(node => node.type === 'link');
+if (!fallbackLink || punctuationSource.slice(fallbackLink.position.start.offset, fallbackLink.position.end.offset) !== 'www.baidu.com') throw new Error('Packed fallback URL mapping failed');
 // Exercise the bounded parser through the installed core entry, including a
 // forward definition outside every earlier batch. A repository-only dependency
 // patch would not reach this consumer.

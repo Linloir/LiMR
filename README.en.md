@@ -1,6 +1,6 @@
 # LiMR
 
-[![package version](https://img.shields.io/badge/version-1.3.6-blue.svg)](package.json)
+[![package version](https://img.shields.io/badge/version-1.3.7-blue.svg)](package.json)
 
 [简体中文](README.md) · **English**
 
@@ -113,7 +113,7 @@ export function Notice() {
 }
 ```
 
-`plugins` appends to the defaults. `extensions` replaces the entire list; `extensions={[]}` uses basic CommonMark. Replace a named extension explicitly with `replaceExtension()`. Keep configuration references stable.
+`plugins` appends to the defaults. `extensions` replaces the entire list; `extensions={[]}` uses the CommonMark-based core, including LiMR's [multilingual strong boundaries](docs/en/syntax.md#commonmark-and-gfm). Replace a named extension explicitly with `replaceExtension()`. Keep configuration references stable.
 
 To replace only a content renderer, use `rendererOverrides` with `type`, `component`, and `when` to restrict by language, ancestors, or streaming state. Host rules take precedence. This scopes rendering rules; it is not a security sandbox for third-party code.
 

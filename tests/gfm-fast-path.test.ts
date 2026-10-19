@@ -4,8 +4,12 @@ import { gfmFromMarkdown } from 'mdast-util-gfm';
 import { createDocument, walk, type SyntaxExtension, type MarkdownNode } from '../src/core';
 import { gfm } from '../src/extensions/gfm';
 import { standard } from '../src/extensions/standard';
+import { positionAutolinks } from '../src/core/autolink-positions';
 
-const original = (): SyntaxExtension => ({ ...gfm(), micromark: [rawGfm()], mdast: gfmFromMarkdown() });
+// Keep source restoration in both paths; this oracle isolates tokenizer and
+// impossible-candidate pruning from LiMR's positioned-autolink contract.
+const original = (): SyntaxExtension => ({ ...gfm(), micromark: [rawGfm()], mdast: gfmFromMarkdown().map(extension =>
+  extension.enter?.literalAutolink ? { ...extension, transforms: extension.transforms?.map(positionAutolinks) } : extension) });
 const nodes = (document: ReturnType<typeof createDocument>) => document.getSnapshot().blocks.map(block => block.node);
 const inputs = [
   'A paragraph with **strong**, *emphasis*, [a link](https://example.com) and `code`.\n\n- Item one\n- Item two',
