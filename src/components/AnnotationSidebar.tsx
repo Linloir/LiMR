@@ -187,8 +187,11 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
   const focusedId = hovered ?? active;
   const parked = focusedId && runtime.anchors.get(focusedId)?.closest('[data-window-parked]');
   const alignmentId = parked ? null : focusedId;
-  const source = parked ? null : hovered ? hoverSource : active ? activeSource : null;
-  const storedLock = !hovered && active && pinnedLock.current?.id === active ? pinnedLock.current : cardLock;
+  const hoveringActiveMarker = hovered === active && hoverSource === 'marker';
+  const source = parked ? null : hovered && !hoveringActiveMarker ? hoverSource : active ? activeSource : null;
+  const preserveDocumentOffset = source === 'marker' && !!active && activeSource === 'sidebar';
+  const markerOffset = preserveDocumentOffset ? runtime.documentOffset.get() : 0;
+  const storedLock = (!hovered || hoveringActiveMarker) && active && pinnedLock.current?.id === active ? pinnedLock.current : cardLock;
   const candidateLock = useMemo(() => adjustSidebarLock(storedLock, scrollAdjustment), [storedLock, scrollAdjustment]);
   const locked = (source === 'sidebar' && candidateLock?.id === alignmentId || !focusedId && pointerInRail) ? candidateLock : null;
   const layoutFocus = parked ? undefined : focusedId ?? locked?.id;
@@ -215,7 +218,9 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
     frame = requestAnimationFrame(step);
     return () => { cancelAnimationFrame(frame); motion.cancel(); };
   }, [layoutFocus, locked, parked, sync]);
-  const sidebarItems = useMemo(() => items.map(item => ({ id: item.id, anchorTop: anchorTops.get(item.id) ?? 0, height: sizes.get(item.id) ?? 80 })), [items, anchorTops, sizes]);
+  // Marker hovers align cards to the prose's visible position, including a
+  // sidebar pin's displacement, without moving that prose under the pointer.
+  const sidebarItems = useMemo(() => items.map(item => ({ id: item.id, anchorTop: (anchorTops.get(item.id) ?? 0) + markerOffset, height: sizes.get(item.id) ?? 80 })), [items, anchorTops, sizes, markerOffset]);
   const releasing = !focusedId && release;
   const positions = useMemo(() => {
     const context = { activeId: locked?.id ?? alignmentId, gap, height: sync === 'document' && railHeight > 0 ? railHeight : undefined, prioritizeActive: !!(locked || hovered || active) };
@@ -229,7 +234,7 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
   }, [positioner, sidebarItems, locked, alignmentId, gap, sync, railHeight, hovered, active, releasing, scrollAdjustment]);
   useSidebarDocumentAlignment(runtime, sync === 'document',
     source === 'sidebar' && focusedId ? anchorTops.get(focusedId) : undefined,
-    focusedId ? positions.get(focusedId) : undefined);
+    focusedId ? positions.get(focusedId) : undefined, preserveDocumentOffset);
   const lockCard = useCallback((id: string) => {
     // Keep the original resting position while this card is hovered or active.
     // Relocking its boundary-raised top would prevent a collapse from moving
@@ -263,7 +268,7 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
       // giving the reference/title priority over the optional summary. Expanded
       // content is bounded by the viewport and scrolls inside the card.
       const available = source === 'marker' && alignmentId === occurrence.id && !isActive
-        ? Math.max(minimumSizes.get(occurrence.id) ?? 80, railHeight - (anchorTops.get(occurrence.id) ?? 0)) : railHeight;
+        ? Math.max(minimumSizes.get(occurrence.id) ?? 80, railHeight - (anchorTops.get(occurrence.id) ?? 0) - markerOffset) : railHeight;
       const cardHeight = isActive ? Math.min(available, Math.max(minimumSizes.get(occurrence.id) ?? 80, viewportHeight || railHeight)) : available;
       const cardStyle = {
         '--limr-annotation-color': palette?.color ?? definition?.color,
@@ -282,7 +287,7 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
       const collapseOnContentClick = occurrence.annotationIds.every(id => runtime.annotationTypes.get(decorations.annotations.get(id)?.type ?? '')?.sidebar?.collapseOnContentClick);
       const activate = () => activateCard(occurrence.id);
       return <div key={occurrence.id} ref={element => { if (element) cards.current.set(occurrence.id, element); else cards.current.delete(occurrence.id); }}
-        className="limr-sidebar-card" data-type={annotation?.type} data-locked={locked?.id === occurrence.id || undefined} data-active={isActive || hovered === occurrence.id || undefined} data-expanded={isActive || undefined} data-default-card={!renderCard || undefined} data-content-toggle={collapseOnContentClick || undefined} data-citations={occurrence.annotationIds.every(id => decorations.annotations.get(id)?.type === 'citation') || undefined} data-occurrence={occurrence.id}
+        className="limr-sidebar-card" data-type={annotation?.type} data-locked={locked?.id === occurrence.id || undefined} data-pointer-locked={locked?.id === occurrence.id && hovered === occurrence.id && hoverSource === 'sidebar' || undefined} data-active={isActive || hovered === occurrence.id || undefined} data-expanded={isActive || undefined} data-default-card={!renderCard || undefined} data-content-toggle={collapseOnContentClick || undefined} data-citations={occurrence.annotationIds.every(id => decorations.annotations.get(id)?.type === 'citation') || undefined} data-occurrence={occurrence.id}
         style={cardStyle}
         onPointerEnter={event => { if (event.pointerType !== 'touch') { lockCard(occurrence.id); runtime.hover(occurrence.id, 'sidebar'); } }} onPointerLeave={() => { if (runtime.interaction.get().hovered === occurrence.id && runtime.interaction.get().hoverSource === 'sidebar') runtime.hover(null); }}
         onFocus={event => { if (!event.currentTarget.contains(event.relatedTarget)) { lockCard(occurrence.id); runtime.hover(occurrence.id, 'sidebar'); } }}
@@ -292,7 +297,7 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
         }}>
         {renderCard ? renderCard({ occurrence, active: isActive, activate }) : <SidebarCardBody occurrence={occurrence} annotation={annotation} annotations={annotationGroups.get(occurrence.id)!} reference={referenceText(occurrence)} point={decorations.referenceRanges.get(occurrence.id)?.start === decorations.referenceRanges.get(occurrence.id)?.end} active={isActive} title={definition?.label ?? annotation?.type ?? 'Reference'} toggleLabel={isActive ? locale.collapse : locale.expand} Preview={Preview} activate={activateCard} />}
       </div>;
-    }), [items, runtime, runtime.annotationTypes, decorations, active, hovered, source, alignmentId, minimumSizes, railHeight, anchorTops, viewportHeight, sync, positions, gap, locked?.id, renderCard, lockCard, activateCard, annotationGroups, referenceText, locale.collapse, locale.expand]);
+    }), [items, runtime, runtime.annotationTypes, decorations, active, hovered, hoverSource, source, alignmentId, markerOffset, minimumSizes, railHeight, anchorTops, viewportHeight, sync, positions, gap, locked?.id, renderCard, lockCard, activateCard, annotationGroups, referenceText, locale.collapse, locale.expand]);
   return <aside ref={rail} aria-label={locale.annotations} className={`limr-sidebar ${className ?? ''}`} data-sync={sync} data-releasing={releasing ? '' : undefined} data-limr-theme={theme} data-limr-appearance={appearance} style={style}
     onPointerEnter={() => setPointerInRail(true)} onPointerLeave={() => setPointerInRail(false)}>
     {content}

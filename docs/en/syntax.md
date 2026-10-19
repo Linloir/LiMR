@@ -283,6 +283,8 @@ A figure can stand alone. Supply an image through `src` / `url`, nested Markdown
 
 Dimensions accept nonnegative numbers or px. Figures inherit group limits and can override them. Factory options use camelCase, such as `figures({ maxHeight: 360, maxWidth: false })`. Images retain their aspect ratio, and captions are not cropped. A single figure copies the image URL; a group copies Markdown source. Neither copies image bytes.
 
+Failed images show an icon and a localized message when space permits. If the available width and height cannot fit the message, only the icon remains; it scales proportionally in smaller spaces. The placeholder respects figure height limits and never adds scrollbars. The full failure description remains available to assistive technology.
+
 Directive example:
 
 ```markdown

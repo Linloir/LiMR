@@ -44,6 +44,20 @@ for (const collapse of [false, true]) test(`large windowed sidebar preserves geo
     const pinnedTop = (await target.boundingBox())!.y;
     await cards.filter({ hasText: `Note ${section}-1.` }).hover(); await page.mouse.move(2, 2);
     await expect.poll(async () => Math.abs((await target.boundingBox())!.y - pinnedTop)).toBeLessThan(1);
+    const id = await target.getAttribute('data-occurrence'), marker = page.locator(`.limr-reader-content [data-limr-anchor="${id}"]`);
+    const markerBox = (await marker.boundingBox())!;
+    await page.mouse.move(markerBox.x + markerBox.width / 2, markerBox.y + markerBox.height / 2);
+    const drift = await marker.evaluate(async element => {
+      const top = element.getBoundingClientRect().top, scroll = scrollY, frames = [];
+      for (let frame = 0; frame < 35; frame++) {
+        await new Promise(requestAnimationFrame);
+        frames.push(Math.max(Math.abs(element.getBoundingClientRect().top - top), Math.abs(scrollY - scroll)));
+      }
+      return Math.max(...frames);
+    });
+    expect(drift).toBeLessThan(1);
+    await page.mouse.move(2, 2);
+    await expect(page.locator(`[data-paint="reference-${id}"]`).first()).toHaveCSS('opacity', '1');
     if (section === Math.floor(corpus.starts.length / 2)) {
       await page.mouse.click(2, 2);
       await page.evaluate(start => (window as any).reading.api.scrollToSource({ start, end: start + 1 }), corpus.starts[section]);

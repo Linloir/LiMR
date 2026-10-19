@@ -184,7 +184,6 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       const state = runtime.interaction.get(), decorations = runtime.decorations.get();
       if (occurrenceId === state.hovered) return true;
       if (occurrenceId !== state.active) return false;
-      if (decorations.occurrences.find(item => item.id === occurrenceId)?.referenceColor) return false;
       // Two occurrences can quote the same paragraph. Keep it lightly painted
       // once when a pinned reference and another hovered reference coincide.
       const hovered = decorations.highlights.get(`reference-${state.hovered}`);

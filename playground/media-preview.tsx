@@ -42,7 +42,7 @@ function Fixture() {
         typography={params.has('kp') ? 'knuth-plass' : 'standard'} onSourceChange={setText} onSelectionChange={setSelection} /></ControlledMode.Provider></PreviewPermission.Provider>
     </div>
     {!translations && !table && <div id="standalone"><Image src={photo} alt="Standalone" style={{ width: 120 }} /><Image src={photo} alt="Disabled preview" preview={false} style={{ width: 120 }} /></div>}
-    {failures && <div id="responsive-image"><Image src="/missing-image.png" srcSet={repaired ? `${photo} 1x` : '/missing-image.png 1x'} alt="Responsive image" style={{ width: 120 }}
+    {failures && <div id="responsive-image"><Image src="/missing-image.png" srcSet={repaired ? `${photo} 1x` : '/missing-image.png 1x'} alt="Responsive image" style={{ width: 'auto', height: 'auto', maxWidth: 120, maxHeight: 60 }}
       onLoad={() => setImageEvents(value => ({ ...value, load: value.load + 1 }))} onError={() => setImageEvents(value => ({ ...value, error: value.error + 1 }))} />
       <output data-testid="image-events" hidden>{JSON.stringify(imageEvents)}</output></div>}
     <output data-testid="source" hidden>{text}</output><output data-testid="selection" hidden>{JSON.stringify(selection)}</output><output data-testid="mode" hidden>{mode}</output>

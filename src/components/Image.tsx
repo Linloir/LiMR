@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useRef, useState, type ImgHTMLAttributes } from 'react';
+import { forwardRef, useCallback, useRef, useState, type CSSProperties, type ImgHTMLAttributes } from 'react';
 import { safeUrl } from '../core';
 import { useIsomorphicLayoutEffect } from '../react/context';
 import { ImagePreview, imagePreviewLabels, useImageLocale, type ImagePreviewSource } from './ImagePreview';
@@ -8,6 +8,35 @@ import { ToolIcon } from './ToolIcon';
 export interface ImageProps extends ImgHTMLAttributes<HTMLImageElement> {
   /** Loaded images open the shared LiMR preview by default. */
   preview?: boolean;
+}
+
+function ImageFallback({ alt, title, hint, style }: { alt: string; title: string; hint: string; style: CSSProperties }) {
+  const fallback = useRef<HTMLSpanElement>(null), message = useRef<HTMLSpanElement>(null);
+  useIsomorphicLayoutEffect(() => {
+    const element = fallback.current!, text = message.current!;
+    const measure = () => {
+      // Measure the same wrapped message even in icon-only mode. Hiding it
+      // must not change the fit decision and start a resize feedback loop.
+      const width = element.clientWidth, requiredHeight = text.offsetHeight + 28 + 10 + 48;
+      const preferredHeight = `${width >= 68 ? Math.max(156, requiredHeight) : 156}px`;
+      if (element.style.getPropertyValue('--limr-image-fallback-height') !== preferredHeight) element.style.setProperty('--limr-image-fallback-height', preferredHeight);
+      const height = element.clientHeight;
+      element.toggleAttribute('data-compact', width < 68 || requiredHeight > height + .5 || text.scrollWidth > width);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element); observer.observe(text);
+    return () => observer.disconnect();
+  }, [title, hint]);
+  return <span ref={fallback} className="limr-image-fallback" role="img" style={style}
+    aria-label={`${alt ? `${alt}: ` : ''}${title}. ${hint}`}
+    data-limr-image-fallback="" data-limr-selection-surface="" data-limr-ignore="">
+    <span className="limr-image-fallback-icon"><ToolIcon name="image-error" /></span>
+    <span ref={message} className="limr-image-fallback-message">
+      <span className="limr-image-fallback-title">{title}</span>
+      <span className="limr-image-fallback-hint">{hint}</span>
+    </span>
+  </span>;
 }
 
 /** Source-bound renderers keep their own Atomic wrapper; this component adds no
@@ -34,13 +63,12 @@ export const Image = forwardRef<HTMLImageElement, ImageProps>(function Image({ s
     const source = loadedImageSource(element); if (source) setPreview(source);
   };
   const interactive = enabled && ready && !failed;
-  return <>{failed && !props.hidden && <span className="limr-image-fallback" role="img"
-    aria-label={`${alt ? `${alt}: ` : ''}${labels.loadFailed}. ${labels.loadFailedHint}`}
-    data-limr-image-fallback="" data-limr-selection-surface="" data-limr-ignore="">
-    <span className="limr-image-fallback-icon"><ToolIcon name="image-error" /></span>
-    <span className="limr-image-fallback-title">{labels.loadFailed}</span>
-    <span className="limr-image-fallback-hint">{labels.loadFailedHint}</span>
-  </span>}<img {...props} ref={ref} src={url} alt={alt} loading={loading} decoding={decoding}
+  // A failed resource has no intrinsic dimensions for an explicit `auto` size.
+  const fallbackWidth = props.style?.width ?? props.width, fallbackHeight = props.style?.height ?? props.height;
+  return <>{failed && !props.hidden && <ImageFallback alt={alt} title={labels.loadFailed} hint={labels.loadFailedHint}
+    style={{ width: fallbackWidth === 'auto' ? undefined : fallbackWidth, height: fallbackHeight === 'auto' ? undefined : fallbackHeight,
+      maxWidth: props.style?.maxWidth, maxHeight: props.style?.maxHeight }} />}
+    <img {...props} ref={ref} src={url} alt={alt} loading={loading} decoding={decoding}
     hidden={failed || props.hidden} style={failed ? { ...props.style, display: 'none' } : props.style}
     className={`${className}${interactive ? ' limr-previewable-image' : ''}`.trim() || undefined}
     role={interactive ? 'button' : props.role} tabIndex={interactive ? props.tabIndex ?? 0 : props.tabIndex}

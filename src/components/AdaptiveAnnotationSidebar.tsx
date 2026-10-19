@@ -19,8 +19,8 @@ const sameSizes = (a: Map<string, number>, b: Map<string, number>) => a.size ===
 /** One clock for group placement, clipping and content translation. Geometry is
  * cached before the animation; frames only write transforms and clipping state,
  * with no scroll events, layout reads or React renders to feed back into hover. */
-function useSidebarMotion(rail: RefObject<HTMLElement | null>, targets: Map<string, Target>, membership: string, intent: string, geometry: Geometry, gap: number, focusGroup?: string) {
-  const latest = useRef({ targets, geometry, gap, focusGroup }), previousIntent = useRef(intent), frame = useRef(0), current = useRef(new Map<string, Pose>());
+function useSidebarMotion(rail: RefObject<HTMLElement | null>, targets: Map<string, Target>, membership: string, intent: string, geometry: Geometry, gap: number, focusGroup: string | undefined, mode: 'locked' | 'return' | 'align', onSettled: () => void) {
+  const latest = useRef({ targets, geometry, gap, focusGroup, onSettled }), previousIntent = useRef(intent), frame = useRef(0), current = useRef(new Map<string, Pose>());
   const nodes = useRef(new Map<string, { group: HTMLElement; viewport: HTMLElement; content: HTMLElement; cards: Map<string, HTMLElement> }>());
   const write = useCallback((poses: Map<string, Pose>) => {
     const { targets, geometry, gap, focusGroup } = latest.current;
@@ -68,12 +68,25 @@ function useSidebarMotion(rail: RefObject<HTMLElement | null>, targets: Map<stri
     nodes.current = groups;
   }, [membership, rail]);
   useIsomorphicLayoutEffect(() => {
-    latest.current = { targets, geometry, gap, focusGroup };
+    latest.current = { targets, geometry, gap, focusGroup, onSettled };
     const host = rail.current; if (!host) return;
-    if (previousIntent.current === intent) { if (!frame.current) write(targets); return; }
+    if (mode === 'locked') {
+      // Direct card hover/focus captures the displayed pose. Apply window-origin
+      // corrections immediately rather than animating from the old coordinates.
+      previousIntent.current = intent; cancelAnimationFrame(frame.current); frame.current = 0;
+      delete host.dataset.moving; delete host.dataset.returning; write(targets); return;
+    }
+    if (previousIntent.current === intent) {
+      if (mode !== 'return' || !frame.current) delete host.dataset.returning;
+      if (!frame.current) write(targets);
+      return;
+    }
+    // Start guarding pointer entry only when the destination changes back.
+    // Leaving a marker during its reveal still allows a handoff to its card.
+    host.toggleAttribute('data-returning', mode === 'return');
     previousIntent.current = intent;
     cancelAnimationFrame(frame.current); frame.current = 0;
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { delete host.dataset.moving; write(targets); return; }
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { delete host.dataset.moving; delete host.dataset.returning; write(targets); onSettled(); return; }
     const origins = current.current;
     const css = getComputedStyle(host).getPropertyValue('--limr-motion-slow').trim();
     const duration = Math.max(1, (parseFloat(css) || .46) * (css.endsWith('ms') ? 1 : 1000));
@@ -89,10 +102,10 @@ function useSidebarMotion(rail: RefObject<HTMLElement | null>, targets: Map<stri
       }
       write(poses);
       if (progress < 1) frame.current = requestAnimationFrame(step);
-      else { frame.current = 0; delete host.dataset.moving; }
+      else { frame.current = 0; delete host.dataset.moving; delete host.dataset.returning; latest.current.onSettled(); }
     };
     frame.current = requestAnimationFrame(step);
-  }, [targets, geometry, gap, focusGroup, intent, rail, write]);
+  }, [targets, geometry, gap, focusGroup, intent, rail, write, mode, onSettled]);
   useEffect(() => () => cancelAnimationFrame(frame.current), []);
 }
 
@@ -133,12 +146,16 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
   const [pointerInRail, setPointerInRail] = useState(false);
   const [cardLock, setCardLock] = useState<CardLayoutLock | null>(null);
   const pinnedLock = useRef<CardLayoutLock | null>(null);
+  const deferredPointer = useRef<{ x: number; y: number } | null>(null);
   const [alignment, setAlignment] = useState<string | null>(null), aligned = useRef(alignment), pinned = useRef<string | null>(null);
   aligned.current = alignment;
   const focused = interaction.hovered ?? interaction.active;
   const parked = focused && runtime.anchors.get(focused)?.closest('[data-window-parked]');
-  const focusSource = parked ? null : interaction.hovered ? interaction.hoverSource : interaction.activeSource;
-  const storedLock = !interaction.hovered && interaction.active && pinnedLock.current?.id === interaction.active ? pinnedLock.current : cardLock;
+  const hoveringActiveMarker = interaction.hovered === interaction.active && interaction.hoverSource === 'marker';
+  const focusSource = parked ? null : interaction.hovered && !hoveringActiveMarker ? interaction.hoverSource : interaction.activeSource;
+  const preserveDocumentOffset = focusSource === 'marker' && !!interaction.active && interaction.activeSource === 'sidebar';
+  const markerOffset = preserveDocumentOffset ? runtime.documentOffset.get() : 0;
+  const storedLock = (!interaction.hovered || hoveringActiveMarker) && interaction.active && pinnedLock.current?.id === interaction.active ? pinnedLock.current : cardLock;
   const candidateLock = useMemo(() => adjustSidebarLock(storedLock, scrollAdjustment), [storedLock, scrollAdjustment]);
   const locked = (focusSource === 'sidebar' && focused === candidateLock?.id || !focused && pointerInRail) ? candidateLock : null;
   const lockCard = useCallback((id: string) => {
@@ -155,10 +172,26 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
       offset: -new DOMMatrixReadOnly(getComputedStyle(content).transform).m42, boxes, scrollAdjustment: runtime.layoutScrollAdjustment.get() };
     setCardLock(lock); return lock;
   }, [locked, runtime]);
+  const hoverCard = useCallback((id: string, point?: { x: number; y: number }) => {
+    // Returning cards pass under a stationary pointer. Do not pin one of those
+    // transient, possibly clipped poses; re-hit-test once the return finishes.
+    if (point && rail.current?.hasAttribute('data-returning')) { deferredPointer.current = point; return; }
+    deferredPointer.current = null;
+    lockCard(id); runtime.hover(id, 'sidebar');
+  }, [lockCard, runtime]);
+  const resumePointer = useCallback(() => {
+    const point = deferredPointer.current; deferredPointer.current = null;
+    if (!point) return;
+    const card = window.document.elementFromPoint(point.x, point.y)?.closest<HTMLElement>('.limr-sidebar-card');
+    if (!card || !rail.current?.contains(card) || card.hasAttribute('inert')) return;
+    const box = card.getBoundingClientRect(), clip = card.closest('.limr-sidebar-cluster-list')!.getBoundingClientRect();
+    if (box.top < clip.top - .5 || box.bottom > clip.bottom + .5) return;
+    setPointerInRail(true); hoverCard(card.dataset.occurrence!);
+  }, [hoverCard]);
   useIsomorphicLayoutEffect(() => {
     if (interaction.active && (interaction.activeSource === 'marker' || interaction.active === aligned.current)) pinned.current = interaction.active;
     else if (pinned.current !== interaction.active) pinned.current = null;
-    if (interaction.hovered && interaction.hoverSource === 'marker') { setAlignment(interaction.hovered); return; }
+    if (interaction.hovered && interaction.hoverSource === 'marker' && !hoveringActiveMarker) { setAlignment(interaction.hovered); return; }
     // Keep a marker-revealed window while traversing its cards or their gaps.
     // Repacking it under a stationary pointer would synthesize more hovers.
     if (interaction.hoverSource === 'sidebar' || pointerInRail) return;
@@ -166,7 +199,7 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
     // Allow the pointer to cross from a marker to its revealed card. Leaving
     // that card restores the original window unless a click pinned a card.
     const timer = setTimeout(() => setAlignment(null), 140); return () => clearTimeout(timer);
-  }, [interaction.hovered, interaction.hoverSource, interaction.active, interaction.activeSource, pointerInRail]);
+  }, [interaction.hovered, interaction.hoverSource, interaction.active, interaction.activeSource, hoveringActiveMarker, pointerInRail]);
   useIsomorphicLayoutEffect(() => {
     const element = rail.current; if (!element) return;
     const top = element.getBoundingClientRect().top + runtime.getContentOffset(), anchors = new Map<string, number>();
@@ -268,11 +301,11 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
     if (plan.folded && !isFocused) height = foldWindowHeight(cardPositions, height, gap);
     let top = plan.anchorTop, offset = 0;
     if (isFocused && alignment) {
-      const anchor = geometry.anchors.get(alignment) ?? top, inset = selectedTop > 0 ? 24 : 0;
+      const anchor = (geometry.anchors.get(alignment) ?? top) + markerOffset, inset = selectedTop > 0 ? 24 : 0;
       // The tail window shrinks to real remaining content. No scroll padding
       // or empty spacer is needed to align a late card with its marker.
       height = Math.min(height, contentHeight - selectedTop + inset);
-      const desiredTop = Math.max(0, plan.anchorTop - inset, Math.min(anchor - inset, plan.items.at(-1)!.anchorTop + selectedHeight - height));
+      const desiredTop = Math.max(0, plan.anchorTop + markerOffset - inset, Math.min(anchor - inset, plan.items.at(-1)!.anchorTop + markerOffset + selectedHeight - height));
       offset = Math.max(0, Math.min(contentHeight - height, selectedTop - (anchor - desiredTop)));
       top = anchor - selectedTop + offset;
     }
@@ -300,13 +333,14 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
     const positions = fitSidebarBoxes(placement, gap, geometry.height, focusGroup);
     for (const [id, target] of targets) target.top = positions.get(id)!;
     return { targets, focusGroup };
-  }, [plans, sizes.actual, alignment, geometry.anchors, geometry.height, geometry.viewportHeight, gap, locked, interaction.active]);
-  useSidebarMotion(rail, targets, membership, `${alignment ?? ''}:${interaction.active ?? ''}:${membership}`, geometry, gap, focusGroup);
+  }, [plans, sizes.actual, alignment, geometry.anchors, geometry.height, geometry.viewportHeight, gap, locked, interaction.active, markerOffset]);
+  useSidebarMotion(rail, targets, membership, `${alignment ?? ''}:${interaction.active ?? ''}:${locked?.id ?? ''}:${membership}`, geometry, gap, focusGroup,
+    interaction.hoverSource === 'sidebar' ? 'locked' : !interaction.hovered || hoveringActiveMarker ? 'return' : 'align', resumePointer);
   const focusTarget = focused ? [...targets.values()].find(target => target.cards.some(card => card.id === focused)) : undefined;
   const focusCard = focusTarget?.cards.find(card => card.id === focused);
   useSidebarDocumentAlignment(runtime, true,
     focusSource === 'sidebar' && focused ? geometry.anchors.get(focused) : undefined,
-    focusTarget && focusCard ? focusTarget.top + focusCard.top - focusTarget.offset : undefined);
+    focusTarget && focusCard ? focusTarget.top + focusCard.top - focusTarget.offset : undefined, preserveDocumentOffset);
   const activate = useCallback((id: string) => {
     const lock = lockCard(id), state = runtime.interaction.get();
     pinnedLock.current = state.active === id ? null : lock ?? null;
@@ -328,23 +362,28 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
     } as CSSProperties;
     return <div key={id} ref={element => { if (element) cards.current.set(id, element); else cards.current.delete(id); }} className="limr-sidebar-card"
       data-occurrence={id} data-type={annotation?.type} data-default-card={!renderCard || undefined} data-citations={annotation?.type === 'citation' || undefined} data-active={focused === id || undefined} data-expanded={active || undefined} style={cardStyle}
-      onPointerEnter={event => { if (event.pointerType !== 'touch') { lockCard(id); runtime.hover(id, 'sidebar'); } }}
+      onPointerEnter={event => { if (event.pointerType !== 'touch') hoverCard(id, { x: event.clientX, y: event.clientY }); }}
       onPointerLeave={() => { if (runtime.interaction.get().hovered === id && runtime.interaction.get().hoverSource === 'sidebar') runtime.hover(null); }}
-      onFocus={event => { if (!event.currentTarget.contains(event.relatedTarget)) { lockCard(id); runtime.hover(id, 'sidebar'); } }}
+      onFocus={event => { if (!event.currentTarget.contains(event.relatedTarget)) hoverCard(id); }}
       onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget) && runtime.interaction.get().hovered === id) runtime.hover(null); }}
       onClick={event => { if ((!active || definition?.sidebar?.collapseOnContentClick) && !renderCard && !event.defaultPrevented && !(event.target as Element).closest('button,a,input,textarea,select,summary,[role="button"],[contenteditable],[data-limr-card-interactive]') && window.getSelection()?.isCollapsed !== false) activate(id); }}>
       {renderCard ? renderCard({ occurrence, active, activate: () => activate(id) }) : <SidebarCardBody occurrence={occurrence} annotation={annotation} annotations={annotationGroups.get(id)!}
         reference={referenceText(occurrence)} point={decorations.referenceRanges.get(id)?.start === decorations.referenceRanges.get(id)?.end} active={active}
         title={definition?.label ?? annotation?.type ?? locale.annotations} toggleLabel={active ? locale.collapse : locale.expand} Preview={palette?.Preview} activate={activate} />}
     </div>;
-  }, [runtime, decorations, interaction.active, focused, geometry.viewportHeight, geometry.height, renderCard, annotationGroups, referenceText, locale.annotations, locale.collapse, locale.expand, activate, lockCard]);
+  }, [runtime, decorations, interaction.active, focused, geometry.viewportHeight, geometry.height, renderCard, annotationGroups, referenceText, locale.annotations, locale.collapse, locale.expand, activate, hoverCard]);
   const content = useMemo(() => plans.map(plan => <section key={plan.id} className="limr-sidebar-cluster" data-group={plan.id} data-collapsible={plan.folded || undefined}>
       <div className="limr-sidebar-cluster-list"><div className="limr-sidebar-cluster-items" style={{ gap }}>
         {plan.items.map(item => renderItem(occurrences.get(item.id)!))}
       </div></div>
     </section>), [plans, gap, renderItem, occurrences]);
   return <aside ref={rail} className={`limr-sidebar ${className}`} aria-label={locale.annotations} data-sync="document" data-collapse-overflow="true" data-limr-theme={theme} data-limr-appearance={appearance} style={style}
-    onPointerEnter={() => setPointerInRail(true)} onPointerLeave={() => setPointerInRail(false)}>
+    onPointerEnter={event => {
+      if (rail.current?.hasAttribute('data-returning')) { if (event.pointerType !== 'touch') deferredPointer.current = { x: event.clientX, y: event.clientY }; }
+      else setPointerInRail(true);
+    }}
+    onPointerMove={event => { if (event.pointerType !== 'touch' && rail.current?.hasAttribute('data-returning')) deferredPointer.current = { x: event.clientX, y: event.clientY }; }}
+    onPointerLeave={() => { deferredPointer.current = null; setPointerInRail(false); }}>
     {content}
   </aside>;
 }

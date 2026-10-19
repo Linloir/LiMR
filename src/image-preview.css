@@ -1,13 +1,16 @@
 @layer limr {
   .limr-image-fallback {
-    box-sizing: border-box; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
-    width: 360px; max-width: 100%; min-height: 156px; padding: 24px 20px; gap: 6px; vertical-align: middle;
+    box-sizing: border-box; position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; container-type: size;
+    width: 360px; max-width: 100%; min-width: 0; height: var(--limr-image-fallback-height, 156px); max-height: 100%; min-height: 0; padding: 0; gap: 10px; vertical-align: middle; overflow: clip;
     border: 0; border-radius: 4px;
     background: color-mix(in srgb, var(--limr-secondary, #736e66) 5%, transparent); color: var(--limr-secondary, #736e66);
     font: 13px/1.6 var(--limr-font-text, system-ui, sans-serif); text-align: center; overflow-wrap: anywhere;
   }
-  .limr-image-fallback-icon { display: grid; place-items: center; width: 28px; height: 28px; margin-bottom: 4px; }
-  .limr-image-fallback-icon > svg { width: 28px; height: 28px; }
+  .limr-image-fallback-icon { display: grid; place-items: center; flex: none; width: min(28px, 100cqi, 100cqb); height: min(28px, 100cqi, 100cqb); }
+  .limr-image-fallback-icon > svg { width: 100%; height: 100%; }
+  .limr-image-fallback-message { box-sizing: border-box; display: flex; flex-direction: column; align-items: center; flex: none; width: 100%; min-width: 0; padding-inline: 20px; gap: 6px; }
+  .limr-image-fallback[data-compact] { gap: 0; }
+  .limr-image-fallback[data-compact] > .limr-image-fallback-message { position: absolute; inset: 0 0 auto; visibility: hidden; }
   .limr-image-fallback-title { color: var(--limr-text, #292621); font-size: 14px; font-weight: 500; }
   .limr-image-fallback-hint { max-width: 28em; }
   .limr-previewable-image { cursor: zoom-in; }

@@ -14,6 +14,188 @@ const positions = (page: Page) => page.locator('.limr-sidebar').evaluate(rail =>
   return [...rail.querySelectorAll<HTMLElement>('.limr-sidebar-card')].map(card => ({ id: card.dataset.occurrence!, top: card.getBoundingClientRect().top - top, height: card.getBoundingClientRect().height }));
 });
 
+async function settled(page: Page) {
+  await expect(page.locator('.limr-sidebar')).not.toHaveAttribute('data-moving');
+  await expect.poll(() => page.locator('.limr-reader').evaluate(element => element.getAnimations({ subtree: true }).filter(animation => animation.playState === 'running').length)).toBe(0);
+}
+const samplePositions = (page: Page, count = 50) => page.locator('.limr-sidebar').evaluate(async (rail, count) => {
+  const samples: number[][] = [];
+  for (let frame = 0; frame < count; frame++) {
+    await new Promise<void>(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+    const top = rail.getBoundingClientRect().top;
+    samples.push([...rail.querySelectorAll('.limr-sidebar-card')].map(card => card.getBoundingClientRect().top - top));
+  }
+  return samples;
+}, count);
+
+for (const collapse of [false, true]) {
+  test(`hovering the active marker preserves every pinned sidebar item (folding ${collapse})`, async ({ page }) => {
+    await load(page, readFileSync('playground/presets/notes.md', 'utf8'), collapse);
+    const card = page.locator('.limr-sidebar-card').nth(1), id = await card.getAttribute('data-occurrence');
+    await card.locator('.limr-sidebar-card-heading').click(); await page.mouse.move(2, 2); await settled(page);
+    const before = await positions(page), marker = page.locator(`.limr-reader-content [data-limr-anchor="${id}"]`);
+    const box = (await marker.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    const frames = await samplePositions(page);
+    expect(Math.max(...frames.flatMap(frame => frame.map((top, index) => Math.abs(top - before[index].top))))).toBeLessThan(1);
+    await page.mouse.move(2, 2);
+    const returned = await samplePositions(page);
+    expect(Math.max(...returned.flatMap(frame => frame.map((top, index) => Math.abs(top - before[index].top))))).toBeLessThan(1);
+  });
+
+  test(`leaving another marker animates back to the pinned sidebar layout (folding ${collapse})`, async ({ page }) => {
+    await load(page, readFileSync('playground/presets/notes.md', 'utf8'), collapse);
+    const card = page.locator('.limr-sidebar-card').nth(1);
+    await card.locator('.limr-sidebar-card-heading').click(); await page.mouse.move(2, 2); await settled(page);
+    const pinned = await positions(page), marker = page.locator('.limr-reader-content .limr-mark').nth(4);
+    await marker.hover(); await settled(page);
+    const hovered = await positions(page);
+    expect(Math.max(...hovered.map((card, index) => Math.abs(card.top - pinned[index].top)))).toBeGreaterThan(30);
+    const sampling = samplePositions(page);
+    await page.mouse.move(2, 2);
+    const frames = await sampling;
+    await expect.poll(async () => Math.max(...(await positions(page)).map((card, index) => Math.abs(card.top - pinned[index].top)))).toBeLessThan(1);
+    for (let index = 0; index < pinned.length; index++) {
+      const distance = Math.abs(hovered[index].top - pinned[index].top);
+      if (distance < 20) continue;
+      const intermediate = frames.filter(frame => Math.abs(frame[index] - hovered[index].top) > 2 && Math.abs(frame[index] - pinned[index].top) > 2);
+      expect(intermediate.length, `card ${index} returns through intermediate positions`).toBeGreaterThan(3);
+      const steps = [hovered[index].top, ...frames.map(frame => frame[index])];
+      expect(Math.max(...steps.slice(1).map((top, at) => Math.abs(top - steps[at]))), `card ${index} does not snap back`).toBeLessThan(distance * .55);
+    }
+  });
+}
+
+test('entering a partially visible card cannot freeze a folding window during its return', async ({ page }) => {
+  await load(page, readFileSync('playground/presets/notes.md', 'utf8'), true);
+  const rail = page.locator('.limr-sidebar');
+  await rail.evaluate(element => element.style.setProperty('--limr-motion-slow', '900ms'));
+  const before = await positions(page), marker = page.locator('.limr-reader-content .limr-mark').nth(8);
+  await marker.hover(); await settled(page);
+  await page.mouse.move(2, 2);
+  await expect(rail).toHaveAttribute('data-moving', 'true');
+  const partial = await rail.evaluate(async rail => {
+    for (let frame = 0; frame < 35; frame++) {
+      await new Promise(requestAnimationFrame);
+      for (const card of rail.querySelectorAll<HTMLElement>('.limr-sidebar-card:not([inert])')) {
+        const box = card.getBoundingClientRect(), clip = card.closest('.limr-sidebar-cluster-list')!.getBoundingClientRect();
+        const top = Math.max(box.top, clip.top, 0), bottom = Math.min(box.bottom, clip.bottom, innerHeight);
+        const fraction = (bottom - top) / box.height;
+        if (fraction < .2 || fraction > .8) continue;
+        const x = box.left + 35, y = (top + bottom) / 2;
+        if (document.elementFromPoint(x, y)?.closest('.limr-sidebar-card') === card) return { x, y };
+      }
+    }
+    return null;
+  });
+  expect(partial).not.toBeNull();
+  await page.mouse.move(partial!.x, partial!.y);
+  await settled(page);
+  await expect.poll(async () => Math.max(...(await positions(page)).map((card, index) => Math.abs(card.top - before[index].top)))).toBeLessThan(1);
+  // After the return, normal pointer interaction still works.
+  await page.mouse.move(2, 2); await rail.locator('.limr-sidebar-card').first().hover();
+  await expect(rail.locator('.limr-sidebar-card').first()).toHaveAttribute('data-active', 'true');
+});
+
+test('a marker can hand off hover to its card before the folding reveal finishes', async ({ page }) => {
+  await load(page, readFileSync('playground/presets/notes.md', 'utf8'), true);
+  const rail = page.locator('.limr-sidebar');
+  await rail.evaluate(element => element.style.setProperty('--limr-motion-slow', '900ms'));
+  const marker = page.locator('.limr-reader-content .limr-mark').nth(8), id = await marker.getAttribute('data-limr-anchor');
+  const card = rail.locator(`[data-occurrence="${id}"]`);
+  await marker.hover(); await expect(rail).toHaveAttribute('data-moving', 'true');
+  const point = await card.evaluate(async card => {
+    for (let frame = 0; frame < 40; frame++) {
+      await new Promise(requestAnimationFrame);
+      const box = card.getBoundingClientRect(), clip = card.closest('.limr-sidebar-cluster-list')!.getBoundingClientRect();
+      if (box.top < Math.max(0, clip.top) || box.bottom > Math.min(innerHeight, clip.bottom)) continue;
+      const x = box.left + 35, y = box.top + box.height / 2;
+      if (document.elementFromPoint(x, y)?.closest('.limr-sidebar-card') === card) return { x, y };
+    }
+    return null;
+  });
+  expect(point).not.toBeNull(); await expect(rail).toHaveAttribute('data-moving', 'true');
+  await page.mouse.move(point!.x, point!.y);
+  await expect.poll(() => page.evaluate(() => window.limrStreamRuntime!.interaction.get().hoverSource)).toBe('sidebar');
+  const before = (await card.boundingBox())!.y;
+  await settled(page);
+  await expect(card).toHaveAttribute('data-active', 'true');
+  expect((await card.boundingBox())!.y).toBeCloseTo(before, 0);
+});
+
+test('hover resumes on the fully visible card under the pointer after a folding return', async ({ page }) => {
+  await load(page, readFileSync('playground/presets/notes.md', 'utf8'), true);
+  const rail = page.locator('.limr-sidebar'), first = rail.locator('.limr-sidebar-card').first();
+  await rail.evaluate(element => element.style.setProperty('--limr-motion-slow', '900ms'));
+  const before = await positions(page), box = (await first.boundingBox())!, id = await first.getAttribute('data-occurrence');
+  await page.locator('.limr-reader-content .limr-mark').nth(8).hover(); await settled(page);
+  await page.mouse.move(2, 2); await expect(rail).toHaveAttribute('data-moving', 'true');
+  await page.mouse.move(box.x + 35, box.y + box.height / 2);
+  await settled(page);
+  // No extra pointer movement should be needed once the resting card is visible.
+  await expect.poll(() => page.evaluate(() => {
+    const { hovered, hoverSource } = window.limrStreamRuntime!.interaction.get();
+    return { hovered, hoverSource };
+  })).toEqual({ hovered: id, hoverSource: 'sidebar' });
+  expect(Math.max(...(await positions(page)).map((card, index) => Math.abs(card.top - before[index].top)))).toBeLessThan(1);
+});
+
+test('reduced motion restores a folded pin without retaining the hover deferral', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await load(page, readFileSync('playground/presets/notes.md', 'utf8'), true);
+  const rail = page.locator('.limr-sidebar'), card = rail.locator('.limr-sidebar-card').nth(1);
+  await card.locator('.limr-sidebar-card-heading').click(); await page.mouse.move(2, 2); await settled(page);
+  const pinned = await positions(page);
+  await page.locator('.limr-reader-content .limr-mark').nth(4).hover();
+  await page.mouse.move(2, 2); await settled(page);
+  await expect.poll(async () => Math.max(...(await positions(page)).map((card, index) => Math.abs(card.top - pinned[index].top)))).toBeLessThan(1);
+  await expect(rail).not.toHaveAttribute('data-returning');
+  await rail.locator('.limr-sidebar-card').first().hover();
+  await expect(rail.locator('.limr-sidebar-card').first()).toHaveAttribute('data-active', 'true');
+});
+
+for (const collapse of [false, true]) test(`a sidebar pin stays highlighted and stationary when entering prose markers (folding ${collapse})`, async ({ page }) => {
+  const source = '# Reading\n\nBefore ::%%limr%%{<#r}**shared reference**::%%limr%%{>#r} after.\n\n'
+    + Array.from({ length: 6 }, (_, i) => `:::limr-annotation{#n${i} ranges="r" type="footnote"}\nNote ${i}.\n:::`).join('\n\n')
+    + '\n\n' + 'Further reading. '.repeat(800);
+  await load(page, source, collapse);
+  const card = page.locator('.limr-sidebar-card').nth(2), id = await card.getAttribute('data-occurrence');
+  const marker = page.locator(`.limr-reader-content [data-limr-anchor="${id}"]`);
+  await card.locator('.limr-sidebar-card-heading').click();
+  await page.mouse.move(2, 2);
+  await expect(card).toHaveAttribute('data-expanded', 'true');
+  await expect.poll(() => page.evaluate(() => window.limrStreamRuntime!.getContentOffset())).toBeGreaterThan(50);
+  await page.waitForTimeout(650);
+  const before = await marker.boundingBox(), scroll = await page.evaluate(() => scrollY);
+  // Move the real pointer without locator auto-scrolling or stability retries.
+  // Both the active marker and another marker must leave the prose in place.
+  for (const target of [marker, page.locator('.limr-reader-content .limr-mark').first()]) {
+    const box = (await target.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    const samples = await marker.evaluate(async element => {
+      const frames = [];
+      for (let index = 0; index < 60; index++) {
+        await new Promise(requestAnimationFrame);
+        frames.push({ top: element.getBoundingClientRect().top, scroll: scrollY });
+      }
+      return frames;
+    });
+    expect(Math.max(...samples.map(frame => Math.abs(frame.top - before!.y)))).toBeLessThan(1);
+    expect(samples.every(frame => frame.scroll === scroll)).toBe(true);
+    const hoveredId = await target.getAttribute('data-limr-anchor');
+    await expect.poll(() => page.locator('.limr-reader-content strong').evaluate((element, id) => {
+      const range = document.createRange(); range.selectNodeContents(element);
+      return Math.abs(range.getBoundingClientRect().top - document.querySelector(`[data-occurrence="${id}"]`)!.getBoundingClientRect().top);
+    }, hoveredId)).toBeLessThan(1);
+    await page.mouse.move(2, 2);
+  }
+  const paint = page.locator(`[data-paint="reference-${id}"]`);
+  await expect(paint.first()).toHaveCSS('opacity', '1');
+  await page.mouse.click(2, 2);
+  await expect.poll(() => paint.evaluateAll(elements => elements.every(element => getComputedStyle(element).opacity === '0'))).toBe(true);
+  expect(await page.locator('#stream-source').textContent()).toBe(source);
+});
+
 for (const collapse of [false, true]) test(`hover and activation preserve the existing sidebar stack (folding ${collapse})`, async ({ page }) => {
   await load(page, readFileSync('playground/presets/notes.md', 'utf8'), collapse);
   const index = collapse ? 3 : 5, card = page.locator('.limr-sidebar-card').nth(index);

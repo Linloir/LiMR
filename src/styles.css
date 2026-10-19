@@ -172,6 +172,7 @@
   .limr-figure-media > .limr-atomic { display: block; width: 100%; max-width: 100%; }
   .limr-figure-media .limr-atomic-image { width: 100%; }
   .limr-prose .limr-figure-media img { display: inline-block; width: 100%; height: auto; max-height: var(--limr-figure-max-height); object-fit: contain; }
+  .limr-prose .limr-figure-media .limr-image-fallback { max-height: var(--limr-figure-max-height); }
   .limr-prose .limr-figure-media :is(img,.limr-image-fallback) { border-radius: 6px; }
   .limr-prose :is(.limr-figure,.limr-figures) figcaption { --limr-paragraph-align: center; margin-block-start: .75rem; line-height: 1.65; text-align: center; text-align-last: center; }
   .limr-prose :is(.limr-figure,.limr-figures) figcaption :is(p,.limr-paragraph) { text-align: center; text-align-last: center; }
@@ -359,7 +360,8 @@
   }
   .limr-sidebar-card { color: var(--limr-annotation-text, var(--limr-text, #1a1a1a)); min-width: 0; transition: top var(--limr-motion-slow) var(--limr-ease), border-color var(--limr-motion) var(--limr-ease), background-color var(--limr-motion) var(--limr-ease); }
   .limr-sidebar-card:not([data-default-card]),.limr-sidebar-card-body { border-inline-start: 2px solid var(--limr-annotation-border, var(--limr-annotation-color, var(--limr-border-strong, #d5d0c8))); background: var(--limr-background, #fffefa); padding: var(--limr-sidebar-padding-block, .65rem) var(--limr-sidebar-padding-inline, 10px) calc(var(--limr-sidebar-padding-block, .65rem) + 2px); }
-  .limr-sidebar-card[data-locked] { z-index: 1; transition-property: border-color, background-color; }
+  .limr-sidebar-card[data-locked] { z-index: 1; }
+  .limr-sidebar-card[data-pointer-locked] { transition-property: border-color, background-color; }
   .limr-sidebar:is([data-resizing],[data-releasing]) > .limr-sidebar-card { transition-property: border-color, background-color; }
   .limr-sidebar-card[data-default-card] { display: flex; flex-direction: column; }
   .limr-sidebar-card[data-default-card] { max-height: var(--limr-sidebar-card-height, var(--limr-sidebar-layout-height, none)); }

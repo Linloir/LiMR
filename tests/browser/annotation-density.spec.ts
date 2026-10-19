@@ -50,6 +50,10 @@ for (const width of [1500, 560]) for (const mode of ['absent', 'hidden', 'visibl
       await expect(overlay).not.toContainText(index ? 'note body' : 'question body');
     }
     await markers.nth(index).click();
+    await page.mouse.move(5, 5);
+    // Activation keeps the reference visible without pointer hover, including
+    // touch-sized overlays and annotations whose saved highlight is hidden.
+    await expect(article(page).locator('.limr-paint-rect[data-active]:not([data-muted])').first()).toHaveCSS('opacity', '1');
     if (width < 1120) {
       await expect(page.locator('.limr-annotation-overlay')).toHaveAttribute('data-pinned', 'true');
       await expect(page.getByRole('toolbar')).toBeVisible();
@@ -64,6 +68,23 @@ for (const width of [1500, 560]) for (const mode of ['absent', 'hidden', 'visibl
     await article(page).locator('mark').first().click();
     await expect(page.getByRole('toolbar')).toBeVisible();
   } else await expect.poll(async () => (await visiblePaint()).length).toBe(0);
+});
+
+test('touch activation retains reference paint until the narrow overlay is dismissed', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  const source = 'Before ::%%limr%%{<#r}shared **words**::%%limr%%{>#r} after.\n\n' + definition('note');
+  await load(page, source);
+  const marker = article(page).locator('.limr-mark[data-limr-anchor]'), paint = article(page).locator('.limr-paint-rect[data-reference]');
+  await expect(paint).toHaveCount(0);
+  await marker.tap();
+  await expect(page.locator('.limr-annotation-overlay')).toHaveAttribute('data-pinned', 'true');
+  await expect(paint.first()).toHaveCSS('opacity', '1');
+  await expect.poll(() => page.evaluate(() => window.limrStreamRuntime!.interaction.get().hovered)).toBeNull();
+  await page.touchscreen.tap(5, 5);
+  await expect.poll(() => paint.evaluateAll(elements => elements.every(element => getComputedStyle(element).opacity === '0'))).toBe(true);
+  expect(await page.locator('#stream-source').textContent()).toBe(source);
+  await context.close();
 });
 
 test('dense ranges align from markers, return after leaving, and never scroll prose or empty space', async ({ page }) => {

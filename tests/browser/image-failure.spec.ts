@@ -44,6 +44,13 @@ test('a replacement src or srcSet recovers the same native image and retains loa
   await image.evaluate(element => { (window as unknown as { originalImage: Element }).originalImage = element; });
   const responsive = page.locator('#responsive-image');
   await responsive.scrollIntoViewIfNeeded(); await expect(responsive.locator('[data-limr-image-fallback]')).toBeVisible();
+  // Auto image dimensions still give a failed resource a useful placeholder,
+  // bounded by the caller's maximum dimensions rather than collapsing to zero.
+  const responsiveFallback = responsive.locator('[data-limr-image-fallback]');
+  await expect(responsiveFallback.locator('svg')).toBeVisible();
+  await expect(responsiveFallback.locator('.limr-image-fallback-title')).toBeHidden();
+  expect((await responsiveFallback.boundingBox())!.width).toBe(120);
+  expect((await responsiveFallback.boundingBox())!.height).toBe(60);
   await expect(page.getByTestId('image-events')).toHaveText('{"load":0,"error":1}');
   await page.locator('#repair-images').click();
   await image.scrollIntoViewIfNeeded(); await expect(image).toHaveJSProperty('naturalWidth', 2400);
@@ -54,6 +61,45 @@ test('a replacement src or srcSet recovers the same native image and retains loa
   await responsive.scrollIntoViewIfNeeded(); await expect(responsive.locator('img')).toHaveJSProperty('naturalWidth', 2400);
   await expect(responsive.locator('[data-limr-image-fallback]')).toHaveCount(0);
   await expect(page.getByTestId('image-events')).toHaveText('{"load":1,"error":1}');
+});
+
+test('failed images fit their width and height limits, restoring the message when space returns', async ({ page }) => {
+  const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+  await page.setViewportSize({ width: 390, height: 850 });
+  await page.goto('/?fixture=streaming'); await page.waitForFunction(() => !!window.limrStream);
+  const source = '<figure src="/missing-image.png" alt="Constrained image" min-width="0" min-height="0" max-height="156" />';
+  await page.evaluate(source => window.limrStream({ source, streaming: false }), source);
+  const figure = page.locator('.limr-figure'), fallback = figure.locator('[data-limr-image-fallback]');
+  await expect(fallback).toBeVisible();
+  for (const chinese of [false, true]) {
+    await page.evaluate(({ source, chinese }) => window.limrStream({ source, streaming: false, chinese }), { source, chinese });
+    for (const [width, height, compact] of [[280, 180, false], [90, 60, true], [12, 48, true], [80, 10, true], [5.5, 3.5, true], [280, 180, false]] as const) {
+      await figure.evaluate((element, { width, height }) => {
+        element.style.setProperty('--limr-figure-width', `${width}px`);
+        element.style.setProperty('--limr-figure-max-height', `${height}px`);
+      }, { width, height });
+      const title = fallback.locator('.limr-image-fallback-title');
+      if (compact) await expect(title).toBeHidden(); else await expect(title).toBeVisible();
+      const metrics = await fallback.evaluate(element => {
+        const box = element.getBoundingClientRect();
+        const icons = [...element.querySelectorAll('svg')].filter(icon => getComputedStyle(icon).visibility !== 'hidden' && icon.getBoundingClientRect().width > 0);
+        const scrollbars = [element, ...element.querySelectorAll('*')].filter(node => {
+          const css = getComputedStyle(node);
+          return /auto|scroll/.test(css.overflowX) && node.scrollWidth > node.clientWidth || /auto|scroll/.test(css.overflowY) && node.scrollHeight > node.clientHeight;
+        });
+        return { box: box.toJSON(), icons: icons.map(icon => icon.getBoundingClientRect().toJSON()), scrollbars: scrollbars.length };
+      });
+      expect(metrics.box.width).toBeLessThanOrEqual(width);
+      expect(metrics.box.height).toBeLessThanOrEqual(height);
+      expect(metrics.scrollbars).toBe(0); expect(metrics.icons).toHaveLength(1);
+      const icon = metrics.icons[0];
+      expect(icon.width).toBeCloseTo(icon.height, 1); expect(icon.width).toBeGreaterThan(0);
+      expect(icon.left).toBeGreaterThanOrEqual(metrics.box.left); expect(icon.right).toBeLessThanOrEqual(metrics.box.right);
+      expect(icon.top).toBeGreaterThanOrEqual(metrics.box.top); expect(icon.bottom).toBeLessThanOrEqual(metrics.box.bottom);
+      await expect(fallback).toHaveAccessibleName(chinese ? /Constrained image: 图片无法加载/ : /Constrained image: Unable to load image/);
+    }
+  }
+  expect(errors).toEqual([]);
 });
 
 test('a failed image keeps source selection, copy and highlight geometry on the placeholder', async ({ page, context }) => {
