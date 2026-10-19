@@ -1,8 +1,8 @@
 {
-  "version": "1.3.5",
-  "sourceCommit": "0bf788f0caa5351ef3a51b79f0702914bd960d62",
+  "version": "1.3.6",
+  "sourceCommit": "cc9232877b1e5aaab746ab48932a4e007a90e592",
   "sourceDirty": false,
-  "builtAt": "2026-10-19T03:25:19.912Z",
+  "builtAt": "2026-10-19T09:24:33.151Z",
   "lockfileSHA256": "64974064cc08b2c24905f936720b99de805a67f7bbd802eb744002320d943cb5",
-  "workflowRun": "https://github.com/Linloir/LiMR/actions/runs/39194444102"
+  "workflowRun": "https://github.com/Linloir/LiMR/actions/runs/39229583970"
 }
