@@ -6,7 +6,7 @@ RendererExtension extends SyntaxExtension with components, rendererOverrides, st
 
 defineBlock({ name, component, tags?, directives?, selection?, streaming? }) registers a block with default tag/directive [name], content selection, and local scope. Paired ::name components and ::: containers support nesting. defineAnnotation<T>(type) returns an extension named annotation:<type>. defineExtension returns the supplied RendererExtension.
 
-NodeRendererProps contains node, children, pending, incomplete, source (node slice), renderChildren(nodes, {trailing?}), renderValue(tokens?), and renderAttribute(name). pending describes a growing top-level block; incomplete identifies this particular open node. Do not reparse children or replace the original source. Token offsets and node positions are UTF-16. Use atomic selection for widgets without character correspondence. A custom visual boundary can use data-limr-selection-surface. InlineMarker inserts action-only markers; it is not an annotation.
+NodeRendererProps contains node, children, pending, incomplete, source (node slice), renderChildren(nodes, {trailing?}), renderValue(tokens?, {lines?}), and renderAttribute(name). pending describes a growing top-level block; incomplete identifies this particular open node. Do not reparse children or replace the original source. Token offsets and node positions are UTF-16. Use atomic selection for widgets without character correspondence. A custom visual boundary can use data-limr-selection-surface. InlineMarker inserts action-only markers; it is not an annotation.
 
 preprocess returns source spans to omit before Markdown tokenization; its offsets still address the unmodified input. The parser maps nodes back to the original source and records sourceOmissions on affected nodes, including attribute nodes. Prefer shared renderValue/renderAttribute mapping. Custom mapText calls must pass the node's omissions; guessing positions from a raw slice can misplace selections around hidden annotation boundaries. Changing omitted spans invalidates affected parse reuse.
 
@@ -36,7 +36,7 @@ load(annotation,{signal}) returns Promise<T> on visible content. The reader dedu
 
 ## Selection actions and storage
 
-SelectionAction requires id, label, icon, and may provide run/visible/disabled/onHover/renderExpanded/render. label can resolve from ActionContext; icon can resolve from context. Custom panel operations use ToolbarActionContext.run for shared busy/error state. Expanded panels inherit the current action-row width; they cannot enlarge the toolbar. Use min-width: 0 and wrapping layouts for controls, with left-aligned whole-item wrapping.
+SelectionAction requires id, label, icon, and may provide run/visible/disabled/onHover/renderExpanded/render. label can resolve from ActionContext; icon can resolve from context. Custom panel operations use ToolbarActionContext.run for shared busy/error state. LiMR retains expanded panel content during both entrance and exit motion; plugins should not unmount content immediately on hover exit. Expanded panels inherit the current action-row width; they cannot enlarge the toolbar. Use min-width: 0 and wrapping layouts for controls, with left-aligned whole-item wrapping.
 
 ActionContext includes selection, document, annotations, highlight, locale, clearSelection, signal, and document commands. The signal aborts on reader disposal, not menu close. selection.raw/syntax/blocks contain ranges and sourceText; quality is exact/atomic/unmapped, settled is false during adjustment. Keep all selected ranges and use original source slices as quote, not rendered text.
 
@@ -69,6 +69,14 @@ Export an ordinary `RendererExtension`/`defineExtension` with `parameters: { tab
 The adapter retains measurements, bounded width-plan caching, DOM overflow checks and annotation previews. Stable function/configuration references preserve caching; replace configuration to invalidate closed-over state. Keep algorithms pure and bounded. Native mode mounts none of the measured-table machinery. Parameter-only changes do not reparse source, but switching native/measured modes remounts the table view and removes its derived annotations. Original annotations remain source-owned.
 
 Precedence: MarkdownTable.options > host parameters.tableLayout > last extension supplying tableLayout > default. Values replace, not merge: host `{}` restores the built-in algorithm, false disables, omission inherits. Use rendererOverrides for entirely different measurement/DOM. Verify defaults, disable/restore, source selection, active-preview cleanup, algorithm replacement, width-cache reuse, and real packed consumers; do not claim default-path performance from a custom algorithm benchmark.
+
+## Code presentation (1.3.8)
+
+Supply ordinary `RendererExtension.parameters.codeBlock` defaults, or configure codeHighlight(options) via standard()+replaceExtension. Exported CodeBlockOptions: autoCollapse=true, collapseAfterLines=20, collapsedLines=8, wrap=false, lineNumbers=false. Only source line counts strictly above the threshold are foldable. Host parameter objects replace plugin objects, then missing fields fall back to factory settings and built-ins. Do not register a duplicate code-highlight module. This is view configuration and belongs on the main thread, not in a Worker descriptor.
+
+Manual fold/wrap choices override defaults per block. Only modified blocks occupy the reader-local 256-entry LRU, using weak node IDs to avoid retaining AST/source. Evicted entries return to defaults after unmount; disposal or a new document key resets state. This is not reload persistence or source editing. Custom implementations should similarly bound cached view data and avoid full-document index work for height-only changes. Do not use unbounded keepAlive DOM to preserve simple switches.
+
+Built-in line numbers retain real newlines and exact source mappings, including CRLF and omissions, while CSS pseudo-elements draw the gutter. For a custom code view, `renderValue(tokens, { lines: true })` exposes the same source-bound line containers; reuse it instead of splitting rendered children or inventing offsets. Test native partial selection/highlights and complete code-button copying. Custom renderer overrides own their controls and virtualization contract. Folding expands for print; an unclosed streaming fence is not auto-folded. Declare a LiMR >=1.3.8 peer requirement when using these APIs; the starter's older compatible minimum need not change if it does not use them.
 
 ## Consumer verification
 

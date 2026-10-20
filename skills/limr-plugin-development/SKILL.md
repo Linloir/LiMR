@@ -11,6 +11,8 @@ Read [the contract](references/contract.md) for source mapping, native selection
 
 Choose the smallest public contract: defineBlock for a block; defineAnnotation for a type; defineExtension to combine capabilities. Keep React/LiMR as peers and build externals, export declarations, and expose CSS separately with sideEffects. Import no renderer internals and bundle no second React or LiMR runtime.
 
+Before creating new syntax or replacing a renderer, check built-in parameters. Code folding, wrapping and line numbers use `parameters.codeBlock` (LiMR >=1.3.8); this needs no parser or Worker registration. Read the contract for per-block overrides and bounded state lifetime.
+
 For table planning, use parameters.tableLayout with false or { algorithm } and the public TableLayoutAlgorithm contract; do not replace GFM syntax merely to change layout. Read the contract's table section for caching and host precedence.
 
 Preserve original source positions. Reuse children/renderChildren, renderValue, and renderAttribute. Store every selected range with documentId and its original quote. A transform defaults to document scope; scope:local is valid only for subtree-local, prefix-independent work.

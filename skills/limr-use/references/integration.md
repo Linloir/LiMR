@@ -1,5 +1,17 @@
 # Consumer contract
 
+## Choose by scenario
+
+| Scenario | Recommended entry |
+| --- | --- |
+| Ordinary complete text and full reading UI | Reader |
+| Large complete File/Blob/bytes/string with progress | AsyncReader + host Worker; read loading.md |
+| Growing chat answer | Markdown/Reader with accumulated source and streaming, finalized with false |
+| Static excerpt | Markdown with interactive=false |
+| Custom layout/editor preview | One DocumentProvider and one primary Markdown; host scrollRoot and persistence |
+
+Reader/Markdown source does not automatically move parsing to a Worker. Document windows reduce mounted body DOM; adaptive tables plan individual tables; code folding changes visible height. None makes source/AST storage independent of the complete input size.
+
 ## Minimal integration
 
 ```tsx
@@ -17,6 +29,14 @@ React/React DOM 18.3 or 19, Node 20+, ESM. Choose styles.css or styles/base.css;
 Markdown is body-only, with no automatic toolbar. A composed DocumentProvider contains one primary <Markdown /> plus TableOfContents, AnnotationSidebar or AnnotationOverlay, and SelectionToolbar. A Markdown with source creates another document. Synchronized body/sidebar share one scroll container and unscaled coordinates; the host/grid supplies sidebar height. Use sync="none" for a separately scrolling annotation list.
 
 For complete-file loading, worker setup, host-owned progress, cancellation, reading windows, print preparation and image preview, read [loading.md](loading.md). These APIs are separate from append streaming.
+
+## Code controls (1.3.8)
+
+Use `parameters={{ codeBlock: { autoCollapse: true, collapseAfterLines: 20, collapsedLines: 8, wrap: false, lineNumbers: false } }}` on Reader, AsyncReader, Markdown or DocumentProvider. The defaults above make only blocks longer than 20 source lines foldable, initially showing 8 rows. autoCollapse=false changes the initial view but preserves manual folding. The header orders wrap/copy/fold; short blocks omit fold. Copy includes all code, printed code expands, and unclosed streaming fences stay expanded until finalization unless manually folded.
+
+Exported CodeBlockOptions is also accepted by codeHighlight(options). The host codeBlock object replaces the last plugin's whole object; missing fields use factory options, then built-in defaults. Per-block fold/wrap clicks override only their corresponding defaults; untouched blocks follow parameter changes without parsing again. Line numbers count original lines, share a number across wrapped continuations, and never enter native selection, source ranges or copied text. Prefer these parameters to CSS hiding or a renderer override.
+
+Only manual choices enter a reader-local LRU capped at 256 modified blocks. Weak node identities avoid retaining source strings/trees; mounted state survives changes, and cached choices restore after virtual unmounts. An evicted block returns to defaults when remounted. Reader disposal/a new document key resets state; browser reloads do not persist it. Do not promise unlimited retention or source-level folding directives. Localization keys: expandCode, collapseCode, wrapCode, unwrapCode.
 
 ## State and commands
 
