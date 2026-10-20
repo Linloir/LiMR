@@ -210,10 +210,10 @@
   .limr-code-body pre > code { display: block; }
   .limr-code-block[data-unbounded] pre { max-height: var(--limr-code-full-height, none); }
   .limr-code-block[data-collapsed] pre { max-height: calc(var(--limr-code-preview-lines, 8) * 1lh + var(--limr-code-scrollbar-height, 0px)); overflow-y: hidden; }
-  .limr-code-footer { background: var(--limr-code-header, #f3f1ee); }
-  .limr-code-footer button { display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%; border: 0; padding: .45rem 1rem; background: transparent; color: var(--limr-muted, #9b9590); font: inherit; font-size: .75rem; cursor: pointer; }
-  .limr-code-footer button:hover { color: var(--limr-text, #3d3a36); }
-  .limr-code-footer svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .limr-code-footer { background: var(--limr-code-header, #f3f1ee); color: var(--limr-muted, #9b9590); font-size: .7rem; line-height: 1.5; }
+  .limr-code-footer button { display: flex; align-items: center; justify-content: center; gap: .35rem; width: 100%; min-height: 24px; border: 0; padding: .2rem 1rem; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+  .limr-code-footer button:is(:hover,:focus-visible) { color: var(--limr-text, #3d3a36); }
+  .limr-code-footer svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: color var(--limr-motion-fast) var(--limr-ease); }
   .limr-code-block[data-line-numbers] pre { padding-inline-start: 4.5em; }
   .limr-code-line { display: block; position: relative; min-height: 1lh; }
   .limr-code-line::before { content: attr(data-line); position: absolute; inset-inline-end: calc(100% + 1.25em); width: 3em; text-align: end; color: var(--limr-muted, #9b9590); user-select: none; pointer-events: none; font-variant-numeric: tabular-nums; }

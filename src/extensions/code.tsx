@@ -188,7 +188,7 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
       <div className="limr-code-body"><pre ref={layout.ref} id={id} className={tokens?.length ? 'shiki' : undefined} tabIndex={0}><code>{content}</code></pre></div>
       {foldable && <Collapse open={collapsed} keepMounted className="limr-code-footer">
         <button type="button" data-limr-ignore="true" aria-label={`${foldLabel}: ${foldedText}`} aria-controls={id} tabIndex={collapsed ? 0 : -1} onClick={() => update({ collapsed: false })}>
-          <span>{foldedText}</span><ToolIcon name="chevron" />
+          <span className="limr-underline">{foldedText}</span><ToolIcon name="chevron" />
         </button>
       </Collapse>}
     </div>;
