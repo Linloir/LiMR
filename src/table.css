@@ -12,13 +12,13 @@
   .limr-table-layout [data-cell-expanded] .limr-table-cell-window { max-height: none !important; overflow: visible; }
   .limr-table-layout [data-cell-expanded] .limr-table-cell-content { overflow-wrap: anywhere; }
   .limr-table-cell-window[data-truncated] { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; overflow: hidden; }
+  .limr-table-layout [data-cell-expanded] .limr-table-cell-window { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
   .limr-table-cell-window[data-truncated] > .limr-table-cell-content { overflow: hidden; overflow-wrap: anywhere; min-width: 0; }
   .limr-table-cell-reveal { display: inline-flex; align-items: baseline; align-self: end; white-space: nowrap; line-height: 1.55; color: var(--limr-secondary, #7b756e); }
   .limr-table-marker-measure { position: absolute; visibility: hidden; pointer-events: none; }
   .limr-table-layout > table[data-table-measuring] .limr-table-cell-window { display: block; overflow: visible; }
   .limr-table-layout > table[data-table-measuring] .limr-table-cell-content { max-height: none !important; overflow: visible; }
   .limr-table-layout > table[data-table-measuring] .limr-table-cell-reveal { display: none; }
-  .limr-table-cell-collapse { display: block; margin-block-start: .25em; padding: 0; border: 0; background: transparent; color: var(--limr-muted, #8a8178); font: inherit; font-size: .8em; cursor: pointer; }
   .limr-table-full-content { overflow-wrap: anywhere; word-break: normal; }
   .limr-table-annotation-content { min-width: 0; }
   @media print {

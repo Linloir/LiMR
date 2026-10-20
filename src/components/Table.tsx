@@ -333,8 +333,9 @@ function MeasuredMarkdownTable({ node, renderChildren, options: settings }: Omit
       <div className="limr-table-cell-window" data-truncated={cut && !isExpanded || undefined} style={{ maxHeight: maximum, maxWidth: contentMaximum }}>
         <div className="limr-table-cell-content" style={{ maxHeight: cut && !isExpanded ? maximum : undefined }}>{renderChildren(cell.children ?? [])}</div>
         {cut && !isExpanded && <span className="limr-table-cell-reveal" data-limr-ignore="true"><span aria-hidden="true">…</span><AnnotationMarker occurrence={occurrenceFor(cell, rowIndex, column)} /></span>}
+        {isExpanded && <span className="limr-table-cell-reveal" data-limr-ignore="true"><InlineMarker className="limr-table-cell-collapse" label={locale.collapse} color="#8a7865" aria-expanded={true}
+          onClick={() => setExpanded(old => { const next = new Set(old); next.delete(key); return next; })}><ToolIcon name="collapse" /></InlineMarker></span>}
       </div>
-      {isExpanded && <button type="button" className="limr-table-cell-collapse" data-limr-ignore="true" onClick={() => setExpanded(old => { const next = new Set(old); next.delete(key); return next; })}>{locale.collapse}</button>}
     </Tag>;
   })}</tr>;
   return <div ref={root} className="limr-table-scroll limr-table-layout" data-table-ready={!!plan || undefined} data-table-scroll={plan?.scroll || undefined}
