@@ -47,6 +47,10 @@ function SearchView({ controller: search, className, style, placement = 'floatin
     className={`limr-document-search ${className ?? ''}`} style={style} role="search" aria-hidden={!search.open} aria-busy={search.busy}
     data-placement={placement} data-open={visible || undefined} data-loading={search.loading || undefined} data-error={!!search.error || undefined}
     data-limr-selection-ui="true" data-limr-ignore="true" onKeyDown={event => {
+      // Preserve the input's native edit history (including selection and IME),
+      // without letting an embedding host undo the surrounding document.
+      if (event.target === input.current && (event.ctrlKey || event.metaKey) && !event.altKey
+        && ['z', 'y'].includes(event.key.toLowerCase())) event.stopPropagation();
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); search.close(); }
       if (event.key === 'Enter') { event.preventDefault(); if (event.shiftKey) search.previous(); else search.next(); }
     }}>

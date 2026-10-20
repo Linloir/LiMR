@@ -21,6 +21,8 @@ export function Article({ source }: { source: string }) {
 
 在阅读正文中选中文字后打开搜索，会自动填入选中的纯文本，不包含 Markdown 标记。Ctrl/Cmd+F 和公开的 `find()` 命令共用此行为。编辑器或搜索输入框中的选中文字不会替换查询。Playground 已启用阅读器快捷键，源码编辑器保留自身的搜索行为。
 
+默认搜索输入框支持原生 Ctrl/Cmd+Z 撤销、Ctrl+Y 或 Ctrl/Cmd+Shift+Z 重做。快捷键在搜索框内处理，不会传给宿主文档的撤销栈。
+
 在 Playground 点击工具栏的**搜索**按钮体验。Aa 切换大小写敏感，`.*` 切换正则。Playground 使用 `shortcuts={false}` 保留浏览器 Ctrl/Cmd+F；搜索框内部的 Enter 和 Escape 仍然有效。渐进加载文档须在完整加载后才能搜索。
 
 ## 脱离 Reader 独立组合

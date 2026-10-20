@@ -21,6 +21,8 @@ export function Article({ source }: { source: string }) {
 
 Opening search with selected reader text fills the query with that plain text, without Markdown delimiters. This works with Ctrl/Cmd+F and the public `find()` command. Text selected inside an editor or the search field does not replace the query. Playground enables the reader shortcut; the source editor keeps its own find behavior.
 
+The default search input supports native Ctrl/Cmd+Z undo, Ctrl+Y or Ctrl/Cmd+Shift+Z redo. These keys stay inside search and do not reach a host document undo stack.
+
 In Playground, use the **Search** toolbar button. Aa toggles case sensitivity; `.*` toggles regex. Playground sets `shortcuts={false}` to retain browser Ctrl/Cmd+F; Enter and Escape still work inside the search component. Search waits until a progressive document is complete.
 
 ## Compose without Reader
