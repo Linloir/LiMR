@@ -130,6 +130,8 @@ BENCH_BROWSER_MODE=headed BENCH_READING_RENDERERS=async BENCH_OUTPUT=benchmarks/
 
 ## Measurement contract
 
+Large code folding, wrapping and bounded rendering have a separate [production benchmark](code-blocks/README.md). Its browser regressions also combine giant code with virtual books, nested scrollers, state restoration, source navigation and complete selection/print.
+
 - **Controlled full DOM:** same GFM and neutral CSS, native code, explicit removal of deferred rendering/virtualization/animation from this profile only; five fresh pages per renderer/case, two small warmups. LiMR passes `streamEffect={false}` because CSS `animation:none` does not disable its Web Animations API effects. Synchronous commits include forced layout. A separate CDP task metric captures asynchronous work. Every final DOM is checked against react-markdown + remark-gfm, including exact fenced code.
 - **Rich reading:** default LiMR/Markstream behavior and styles; react-markdown explicitly integrates GFM, math, KaTeX and async Shiki. Three cold contexts per renderer at 24/240 sections on desktop and 24 sections at 390px. Check visible code/math/images, content at middle/end/top, final marker, errors, frames, long tasks, layout shifts, transfers and post-GC heap. Failed reading is recorded and excluded from usability rankings.
 - **Rich streaming:** eight heterogeneous sections, 256 UTF-16 characters per update, defaults intact, three warmed resource contexts per renderer. Includes a final nonstreaming commit and checks stable output.

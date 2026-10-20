@@ -1,0 +1,382 @@
+{
+  "date": "2026-10-20T04:38:36.574Z",
+  "browser": "156.0.8078.4",
+  "node": "v20.19.5",
+  "platform": "linux",
+  "cpu": "13th Gen Intel(R) Core(TM) i7-13700",
+  "viewport": {
+    "width": 900,
+    "height": 900
+  },
+  "build": "frozen production source",
+  "throttle": "none",
+  "sourceSHA256": "e7aa4d94d7867012ff53fcf45ed8fb50b1c6e197de2251fdf823a377e42a1c6f",
+  "harnessSHA256": "4397371e3079a4876c135513c4b7d4cd2d95a3b95f2ec451c0f403c902abc2af",
+  "lockSHA256": "0c72c8b8eee725c7c53cfad5c912a1f099c8bef8a844ead53b1780e4a9fce47e",
+  "version": "1.3.9",
+  "runs": [
+    {
+      "name": "million-character-line",
+      "trial": 0,
+      "characters": 1000010,
+      "mount": {
+        "layout": 77.39999999850988,
+        "firstPaint": 368.2999999988824
+      },
+      "actions": [
+        {
+          "action": "wrap",
+          "dispatch": 9.599999999627471,
+          "firstPaint": 14.800000000745058,
+          "maxFrame": 17.399999998509884,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 952,
+          "scrollHeight": 301887
+        }
+      ],
+      "dom": {
+        "nodes": 518,
+        "lineDecorations": 0,
+        "completeText": true
+      },
+      "errors": []
+    },
+    {
+      "name": "50000-lines",
+      "trial": 0,
+      "characters": 1588889,
+      "mount": {
+        "layout": 324.09999999962747,
+        "firstPaint": 332.40000000037253
+      },
+      "actions": [
+        {
+          "action": "fold",
+          "dispatch": 1.699999999254942,
+          "firstPaint": 17,
+          "maxFrame": 16.90000000037253,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 952,
+          "scrollHeight": 1189844
+        },
+        {
+          "action": "wrap",
+          "dispatch": 7.199999999254942,
+          "firstPaint": 31.5,
+          "maxFrame": 16.90000000037253,
+          "framesOver50": 0,
+          "heightSteps": 1,
+          "height": 952,
+          "scrollHeight": 1189844
+        },
+        {
+          "action": "fold",
+          "dispatch": 1.599999999627471,
+          "firstPaint": 31.300000000745058,
+          "maxFrame": 16.90000000037253,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 190,
+          "scrollHeight": 1189844
+        }
+      ],
+      "dom": {
+        "nodes": 1591,
+        "lineDecorations": 0,
+        "completeText": true
+      },
+      "errors": []
+    },
+    {
+      "name": "50000-numbered-lines",
+      "trial": 0,
+      "characters": 1588889,
+      "mount": {
+        "layout": 307.40000000037253,
+        "firstPaint": 316
+      },
+      "actions": [
+        {
+          "action": "fold",
+          "dispatch": 1.799999998882413,
+          "firstPaint": 6.199999999254942,
+          "maxFrame": 17,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 952,
+          "scrollHeight": 1189844
+        },
+        {
+          "action": "wrap",
+          "dispatch": 8.599999999627471,
+          "firstPaint": 31.699999999254942,
+          "maxFrame": 16.90000000037253,
+          "framesOver50": 0,
+          "heightSteps": 1,
+          "height": 952,
+          "scrollHeight": 1189844
+        },
+        {
+          "action": "fold",
+          "dispatch": 2,
+          "firstPaint": 30.300000000745058,
+          "maxFrame": 17.199999999254942,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 190,
+          "scrollHeight": 1189844
+        }
+      ],
+      "dom": {
+        "nodes": 1718,
+        "lineDecorations": 64,
+        "completeText": true
+      },
+      "errors": []
+    },
+    {
+      "name": "50000-lines",
+      "trial": 1,
+      "characters": 1588889,
+      "mount": {
+        "layout": 295.59999999962747,
+        "firstPaint": 309.5
+      },
+      "actions": [
+        {
+          "action": "fold",
+          "dispatch": 1.799999998882413,
+          "firstPaint": 9,
+          "maxFrame": 17,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 952,
+          "scrollHeight": 1189844
+        },
+        {
+          "action": "wrap",
+          "dispatch": 8,
+          "firstPaint": 30.699999999254942,
+          "maxFrame": 16.899999998509884,
+          "framesOver50": 0,
+          "heightSteps": 1,
+          "height": 952,
+          "scrollHeight": 1189844
+        },
+        {
+          "action": "fold",
+          "dispatch": 1.699999999254942,
+          "firstPaint": 30.800000000745058,
+          "maxFrame": 16.90000000037253,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 190,
+          "scrollHeight": 1189844
+        }
+      ],
+      "dom": {
+        "nodes": 1591,
+        "lineDecorations": 0,
+        "completeText": true
+      },
+      "errors": []
+    },
+    {
+      "name": "50000-numbered-lines",
+      "trial": 1,
+      "characters": 1588889,
+      "mount": {
+        "layout": 306.80000000074506,
+        "firstPaint": 315.69999999925494
+      },
+      "actions": [
+        {
+          "action": "fold",
+          "dispatch": 1.900000000372529,
+          "firstPaint": 17.200000001117587,
+          "maxFrame": 16.90000000037253,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 952,
+          "scrollHeight": 1189844
+        },
+        {
+          "action": "wrap",
+          "dispatch": 8.300000000745058,
+          "firstPaint": 31.90000000037253,
+          "maxFrame": 17,
+          "framesOver50": 0,
+          "heightSteps": 1,
+          "height": 952,
+          "scrollHeight": 1189844
+        },
+        {
+          "action": "fold",
+          "dispatch": 2.800000000745058,
+          "firstPaint": 29.800000000745058,
+          "maxFrame": 17,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 190,
+          "scrollHeight": 1189844
+        }
+      ],
+      "dom": {
+        "nodes": 1718,
+        "lineDecorations": 64,
+        "completeText": true
+      },
+      "errors": []
+    },
+    {
+      "name": "million-character-line",
+      "trial": 1,
+      "characters": 1000010,
+      "mount": {
+        "layout": 60.59999999962747,
+        "firstPaint": 342.19999999925494
+      },
+      "actions": [
+        {
+          "action": "wrap",
+          "dispatch": 7.899999998509884,
+          "firstPaint": 12.899999998509884,
+          "maxFrame": 16.90000000037253,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 952,
+          "scrollHeight": 301887
+        }
+      ],
+      "dom": {
+        "nodes": 518,
+        "lineDecorations": 0,
+        "completeText": true
+      },
+      "errors": []
+    },
+    {
+      "name": "50000-numbered-lines",
+      "trial": 2,
+      "characters": 1588889,
+      "mount": {
+        "layout": 298.09999999962747,
+        "firstPaint": 306.59999999962747
+      },
+      "actions": [
+        {
+          "action": "fold",
+          "dispatch": 3.299999998882413,
+          "firstPaint": 15.099999999627471,
+          "maxFrame": 17.300000000745058,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 952,
+          "scrollHeight": 1189844
+        },
+        {
+          "action": "wrap",
+          "dispatch": 8.5,
+          "firstPaint": 31.40000000037253,
+          "maxFrame": 17,
+          "framesOver50": 0,
+          "heightSteps": 1,
+          "height": 952,
+          "scrollHeight": 1189844
+        },
+        {
+          "action": "fold",
+          "dispatch": 3.600000001490116,
+          "firstPaint": 30.40000000037253,
+          "maxFrame": 16.899999998509884,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 190,
+          "scrollHeight": 1189844
+        }
+      ],
+      "dom": {
+        "nodes": 1718,
+        "lineDecorations": 64,
+        "completeText": true
+      },
+      "errors": []
+    },
+    {
+      "name": "million-character-line",
+      "trial": 2,
+      "characters": 1000010,
+      "mount": {
+        "layout": 61,
+        "firstPaint": 350.2999999988824
+      },
+      "actions": [
+        {
+          "action": "wrap",
+          "dispatch": 7.799999998882413,
+          "firstPaint": 12.699999999254942,
+          "maxFrame": 17.100000001490116,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 952,
+          "scrollHeight": 301887
+        }
+      ],
+      "dom": {
+        "nodes": 518,
+        "lineDecorations": 0,
+        "completeText": true
+      },
+      "errors": []
+    },
+    {
+      "name": "50000-lines",
+      "trial": 2,
+      "characters": 1588889,
+      "mount": {
+        "layout": 310.2000000011176,
+        "firstPaint": 318.40000000037253
+      },
+      "actions": [
+        {
+          "action": "fold",
+          "dispatch": 2.400000000372529,
+          "firstPaint": 7.200000001117587,
+          "maxFrame": 16.90000000037253,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 952,
+          "scrollHeight": 1189844
+        },
+        {
+          "action": "wrap",
+          "dispatch": 7.700000001117587,
+          "firstPaint": 30.800000000745058,
+          "maxFrame": 16.899999998509884,
+          "framesOver50": 0,
+          "heightSteps": 1,
+          "height": 952,
+          "scrollHeight": 1189844
+        },
+        {
+          "action": "fold",
+          "dispatch": 1.6000000014901161,
+          "firstPaint": 29.800000000745058,
+          "maxFrame": 17.09999999962747,
+          "framesOver50": 0,
+          "heightSteps": 19,
+          "height": 190,
+          "scrollHeight": 1189844
+        }
+      ],
+      "dom": {
+        "nodes": 1591,
+        "lineDecorations": 0,
+        "completeText": true
+      },
+      "errors": []
+    }
+  ]
+}
