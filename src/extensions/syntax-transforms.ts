@@ -63,7 +63,11 @@ export const transformFigures: NonNullable<SyntaxExtension['transform']> = (root
       const image = node.attributeNodes?.[node.attributes.src ? 'src' : 'url'];
       node.children = [{ type: 'image', url: node.attributes.src ?? node.attributes.url, alt: node.attributes.alt ?? '', position: image?.position ?? node.position }, ...(node.children ?? [])];
     }
-    if (node.children) node.children = node.children.map(child => visit(child, inFigure || node.name === 'figure', inText || ['paragraph', 'heading', 'tableCell'].includes(node.type)));
+    if (node.children) {
+      const childInFigure = inFigure || node.name === 'figure';
+      const childInText = inText || node.type === 'paragraph' || node.type === 'heading' || node.type === 'tableCell';
+      node.children.forEach((child, index, children) => { children[index] = visit(child, childInFigure, childInText); });
+    }
     return node;
   };
   visit(root);
