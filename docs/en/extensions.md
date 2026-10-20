@@ -65,12 +65,12 @@ This supports `<notice title="Tip">…</notice>`, paired `::notice{title="Tip"}`
 | pending | Whether its tail block is still streaming |
 | incomplete | Whether this particular syntax node is unclosed |
 | renderChildren(nodes, { trailing? }) | Rearrange an existing subtree or append an action-only marker |
-| renderValue(tokens?, { lines? }) | Render literals/tokens while preserving selection and annotation insertion |
+| renderValue(tokens?, { lines?, chunked? }) | Render literals/tokens while preserving selection and annotation insertion |
 | renderAttribute(name) | Render attribute text with original source coordinates |
 
 Do not stringify/reparse children or render only node.value when source mapping is required. Use selection: atomic for charts/media without character correspondence, and data-limr-selection-surface for a visual boundary. Public InlineMarker supports action-only markers without creating annotations.
 
-Use `parameters.codeBlock` for built-in folding, wrapping and line numbers; see [code controls](syntax.md#code-block-controls). A custom code renderer can call `renderValue(tokens, { lines: true })` for source-bound line containers. They retain actual newlines; CSS draws gutter numbers without adding them to copied text.
+Use `parameters.codeBlock` for built-in folding, wrapping and line numbers; see [code controls](syntax.md#code-block-controls). A custom code renderer can call `renderValue(tokens, { lines: true })` for source-bound line containers. They retain actual newlines; CSS draws gutter numbers without adding them to copied text. Add `{ chunked: true }` for large literal values: source text stays mounted, while distant layout and line decorations are deferred. The custom renderer still owns its viewport, controls and virtualization contract; the built-in giant-code capability proof is not inherited by an override.
 
 ## Plugins own card presentation
 
@@ -316,4 +316,4 @@ The repository also includes packable [reading-tools](../../examples/packages/re
 
 Plugins relying on 1.3.0 loading controls or windowing capabilities should declare that minimum peer version and validate workers, provisional/readOnly behavior, copy/search and offscreen state in a real package consumer. Simple examples using older APIs can retain their compatible peer range. CSS themes should also check light/dark image-preview portals and uniformly sized toolbar buttons. See [workers and windowed views](extensions.md#workers-and-windowed-views) and [large-document integration](large-documents.md).
 
-Plugins using `CodeBlockOptions`, `parameters.codeBlock` or the line-grouping argument of `renderValue` require LiMR 1.3.8 or later as their minimum peer. Templates using older APIs can retain their compatible minimum; verify numbered copy, per-block overrides and windowed state in a real 1.3.8 package consumer.
+The original code controls and `renderValue` line grouping require LiMR >=1.3.8; `maxExpandedLines`, `foldedCode` and `chunked` require >=1.3.9. Keep older peer minima only when using older APIs. Validate source selection, numbered copy, per-block overrides and windowed state against the actual packaged version.

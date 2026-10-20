@@ -115,10 +115,11 @@ export function ConfiguredReader({ source }: { source: string }) {
 | 自定义表格算法 | `tableLayout: { algorithm }`，保留测量、缓存和预览，见[算法契约](table-layout.md) |
 | 长代码默认展开 | `codeBlock.autoCollapse: false`；长块仍保留手动折叠按钮 |
 | 代码默认自动换行 | `codeBlock.wrap: true`；默认 false，每块均可切换 |
+| 调整展开代码的高度 | `codeBlock.maxExpandedLines: 40`；`false` 表示不限高度 |
 | 显示代码行号 | `codeBlock.lineNumbers: true`；默认 false，行号不进入选区或复制 |
 | 论文段落优化 / 浏览器两端对齐 | `typography="knuth-plass"` / `"justify"`；默认 `"standard"` |
 
-代码超过 20 行默认折叠至 8 行。用户的折叠和换行选择仅保存在当前阅读器，最多缓存 256 个已修改的块，支持离屏卸载后恢复，不写 Markdown；打印展开完整内容。超宽且不可拆分的行内公式局部滚动。参数和插件默认值的优先级见[代码块控制](syntax.md#代码块控制)；表格、段落排版和代码选项彼此独立。
+代码超过 20 行源码或换行后的可见行时，默认折叠至 8 行，底栏显示折叠行数与总行数并配合展开/收起动画。展开默认最多显示 40 个可见行；巨型代码采用分段延迟排版及局部滚动，单个大代码块不会再关闭整篇书的窗口化。用户的折叠和换行选择仅保存在当前阅读器，最多缓存 256 个已修改的块，支持离屏卸载后恢复，不写 Markdown；打印展开完整内容。超宽且不可拆分的行内公式局部滚动。参数和插件默认值的优先级见[代码块控制](syntax.md#代码块控制)；表格、段落排版和代码选项彼此独立。
 
 ## 选样式与保存方式
 

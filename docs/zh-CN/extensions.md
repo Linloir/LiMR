@@ -65,12 +65,12 @@ export const notice = defineBlock({
 | pending | 所属尾块是否仍在流式生成 |
 | incomplete | 当前语法节点是否尚未闭合 |
 | renderChildren(nodes, { trailing? }) | 重排已有子树，可在末尾注入纯操作角标 |
-| renderValue(tokens?, { lines? }) | 渲染字面量及高亮 token，保留原文选择和标注插入 |
+| renderValue(tokens?, { lines?, chunked? }) | 渲染字面量及高亮 token，保留原文选择和标注插入 |
 | renderAttribute(name) | 显示属性文本并保留原文坐标 |
 
 不要把 children 转字符串再解析，也不要仅输出 node.value 导致源码映射丢失。无法逐字对应的图表/媒体用 selection: atomic；需要指定可视边界时使用 data-limr-selection-surface。纯操作角标可以使用公开 InlineMarker，不必建立 Annotation。
 
-内置代码块的折叠、换行和行号优先使用 `parameters.codeBlock`，无需重写渲染器；见[代码块控制](syntax.md#代码块控制)。自定义代码渲染器可用 `renderValue(tokens, { lines: true })` 输出保留源码映射的逐行容器；容器保留真实换行，行号由 CSS 绘制，不进入复制文本。
+内置代码块的折叠、换行和行号优先使用 `parameters.codeBlock`，无需重写渲染器；见[代码块控制](syntax.md#代码块控制)。自定义代码渲染器可用 `renderValue(tokens, { lines: true })` 输出保留源码映射的逐行容器；容器保留真实换行，行号由 CSS 绘制，不进入复制文本。超大字面量可另传 `{ chunked: true }`：保留源码文字 DOM，延迟屏外排版与逐行装饰。自定义渲染器仍负责容器、控件与窗口化契约；替换组件不会继承内置巨型代码的能力证明。
 
 ## 标注卡片由插件拥有
 
@@ -318,4 +318,4 @@ LiMR 仓库的 [reading-tools](../../examples/packages/reading-tools/index.js) �
 
 依赖 1.3.0 加载控制或窗口化能力的插件应在 peerDependencies 声明对应最低版本，并在真实包消费者中验证 Worker、provisional/readOnly、复制/搜索和离屏状态。保留旧 API 的简单示例可继续使用其兼容版本范围。CSS 主题也应检查图片预览 portal 的浅色/深色工具栏和等宽按钮。扩展契约见[Worker 与窗口化视图](extensions.md#worker-与窗口化视图)，接入示例见[大文档](large-documents.md)。
 
-使用 `CodeBlockOptions`、`parameters.codeBlock` 或 `renderValue` 的逐行参数时，插件最低 peer 版本须为 LiMR 1.3.8。仅使用旧接口的模板不必提高最低版本；发布前以真实 1.3.8 包消费者验证行号复制、逐块覆盖与窗口化状态。
+原有代码控制与 `renderValue` 逐行参数要求 LiMR >=1.3.8；`maxExpandedLines`、`foldedCode` 与 `chunked` 要求 >=1.3.9。只使用旧 API 时可保留较低 peer 版本；发布前以实际打包版本验证源码选区、行号复制、逐块覆盖和窗口化状态。

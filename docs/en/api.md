@@ -37,7 +37,7 @@ Reader, Markdown, and DocumentProvider accept:
 | plugins | Appended to the default or explicit list |
 | parameters | Document-wide module parameter overrides |
 | parameters.tableLayout | Built-in adaptive layout; `false` selects native layout; `TableLayoutConfig` accepts numeric limits and `algorithm: TableLayoutAlgorithm`; see [table layout](table-layout.md) |
-| parameters.codeBlock | `CodeBlockOptions`: `autoCollapse=true`, `collapseAfterLines=20`, `collapsedLines=8`, `wrap=false`, `lineNumbers=false`; see [code controls](syntax.md#code-block-controls) |
+| parameters.codeBlock | `CodeBlockOptions`: `autoCollapse=true`, `collapseAfterLines=20`, `collapsedLines=8`, `maxExpandedLines=40`, `wrap=false`, `lineNumbers=false`; see [code controls](syntax.md#code-block-controls) |
 | components | NodeRenderer overrides by AST type/custom tag |
 | annotationTypes | Add/override presentation by type |
 | annotations | Internal state if omitted; controlled if supplied |
@@ -68,12 +68,13 @@ The default locale is english. Missing partial keys fall back to English. locale
 | Field | Default | Meaning |
 | --- | --- | --- |
 | autoCollapse | true | Start long blocks folded; false still permits manual folding |
-| collapseAfterLines | 20 | Source line count must strictly exceed this threshold |
+| collapseAfterLines | 20 | Fold when source lines, or measured wrapped rows, exceed this threshold |
 | collapsedLines | 8 | Visible folded rows, capped by the threshold |
+| maxExpandedLines | 40 | Expanded visual-row limit; overflow scrolls inside code. `false` removes the limit; numeric values are at least collapsedLines |
 | wrap | false | Initial soft wrapping, independently switchable per block |
 | lineNumbers | false | Source line numbers excluded from copy/selection; wrapped continuations keep one number |
 
-Line counts use the integer part of valid positive values; invalid values fall back to defaults. The host replaces the plugin's whole `parameters.codeBlock` object; missing fields fall back to factory options, then built-in values. Manual fold/wrap choices override their corresponding defaults; see the [syntax manual](syntax.md#code-block-controls) for cache lifetime. Parameter updates do not reparse, and unclosed streaming code does not auto-fold before completion. Locale keys expandCode, collapseCode, wrapCode and unwrapCode customize button labels with English fallbacks.
+Line counts use the integer part of valid positive values; invalid values fall back to defaults. The host replaces the plugin's whole `parameters.codeBlock` object; missing fields fall back to factory options, then built-in values. Manual fold/wrap choices override their corresponding defaults; see the [syntax manual](syntax.md#code-block-controls) for cache lifetime. Parameter updates do not reparse, and unclosed streaming code does not auto-fold before completion. Locale keys expandCode, collapseCode, wrapCode and unwrapCode customize button labels. foldedCode is a footer template with `{hidden}` and `{total}` source-line counts; a partially hidden wrapped line counts as hidden. Missing keys use English fallbacks.
 
 ## Components
 

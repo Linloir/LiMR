@@ -119,3 +119,5 @@ Callout 使用与注释、释义、提问一致的小字号标签和正文排版
 `.limr-code-actions` 内依次为 `.limr-code-wrap`、`.limr-code-copy`、可折叠时出现的 `.limr-code-fold`。三者复用圆角按钮、描边和 hover/按压动效；折叠箭头旋转，换行按钮用 aria-pressed 表示状态。头部上/右内边距相等；自定义主题应保留等尺寸点击区域、键盘焦点和 reduced-motion 规则。局部样式仍以 `[data-limr-appearance]` 约束。
 
 数字行号由 `.limr-code-line::before` 绘制，换行后的续行仍属于同一个源码行。打印样式展开折叠的完整代码。普通行内公式的不可拆分片段超宽时获得局部横滚；不要把 `.limr-math-inline` 一律强制成 nowrap 或固定宽度。图像的 width/height 也受容器和 figure 限值约束，避免使用全局 img 宽度覆盖这些限制。
+
+`.limr-code-footer` 与标题栏共用 `--limr-code-header` 和 `--limr-muted`。`.limr-code-body pre` 管理有界滚动区域及 max-height 过渡，由 `--limr-motion` / `--limr-ease` 控制时序；实测的 `--limr-code-full-height` 和 `--limr-code-scrollbar-height` 是内部值，会为占据布局空间的横向滚动条额外预留高度，保留完整可见行数。高度策略应使用 maxExpandedLines。`.limr-code-chunk` / `.limr-code-part` 承载延迟排版文字，应保留其 containment 与源码换行边界。打印 CSS 取消高度和 containment 限制并隐藏底栏。

@@ -157,14 +157,17 @@ const reader = <Reader source={'```js\nconst answer = 42;\n```'}
     autoCollapse: true,
     collapseAfterLines: 20,
     collapsedLines: 8,
+    maxExpandedLines: 40,
     wrap: false,
     lineNumbers: true,
   } }} />;
 ```
 
-`parameters.codeBlock` 可用于 Reader、Markdown、DocumentProvider 和 AsyncReader。宿主参数对象优先于最后一个插件的参数对象，缺失字段再使用 `codeHighlight()` 工厂选项及内置默认值。`codeHighlight(options)` 也接受这五个字段。自动换行和行号默认关闭；折叠阈值按源码行数计算，折行后的多行共享原行号，行号不会进入复制文本。`collapsedLines` 不超过 `collapseAfterLines`。
+`parameters.codeBlock` 可用于 Reader、Markdown、DocumentProvider 和 AsyncReader。宿主参数对象优先于最后一个插件的参数对象，缺失字段再使用 `codeHighlight()` 工厂选项及内置默认值。`codeHighlight(options)` 也接受这六个字段。自动换行和行号默认关闭；源码行数或换行后的可见行数超过阈值时均可折叠；折行后的多行共享原行号，行号不会进入复制文本。`collapsedLines` 不超过 `collapseAfterLines`。
 
 折叠和换行按钮只改变当前代码块的视图状态，不修改 Markdown；用户手动选择优先于默认值。每个 Reader 最多记住最近使用的 256 个已修改代码块，离开视口被卸载后可恢复；未修改的代码块不占缓存条目，缓存也不持有源码字符串或语法树。被淘汰的块重新挂载时使用默认值。Reader 销毁或为新文档更换 React key 后重置，不跨浏览器刷新保存。参数变化不重新解析文档。
+
+折叠底栏显示已折叠行数与总源码行数，只显示了一部分的换行源码行也计入折叠行数，点击底栏可展开。正文高度与底栏显隐都有动画，可在中途反向切换；系统减少动态效果设置会去掉动画。展开后默认最多显示 40 个可见行，其余内容在代码块内滚动；宿主确实希望不限高度时再设 `maxExpandedLines: false`。超长单行开启换行后也受此上限约束。分段排版、选区与长文协作边界见[超大代码块](large-documents.md#超大代码块)。
 
 ## 双冒号组件写法
 

@@ -37,7 +37,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 | plugins | 追加到默认或显式清单 |
 | parameters | 文档级模块参数覆盖 |
 | parameters.tableLayout | 内置自适应布局；`false` 使用原生布局，`TableLayoutConfig` 可设置宽高限制和 `algorithm: TableLayoutAlgorithm`，见[表格布局](table-layout.md) |
-| parameters.codeBlock | `CodeBlockOptions`：`autoCollapse=true`、`collapseAfterLines=20`、`collapsedLines=8`、`wrap=false`、`lineNumbers=false`，见[代码块控制](syntax.md#代码块控制) |
+| parameters.codeBlock | `CodeBlockOptions`：`autoCollapse=true`、`collapseAfterLines=20`、`collapsedLines=8`、`maxExpandedLines=40`、`wrap=false`、`lineNumbers=false`，见[代码块控制](syntax.md#代码块控制) |
 | components | 按 AST 类型/特殊标签覆盖 NodeRenderer |
 | annotationTypes | 按 type 追加/覆盖标注呈现 |
 | annotations | 不传则内部管理；传入则受控 |
@@ -68,12 +68,13 @@ Reader、Markdown 与 DocumentProvider 接受：
 | 字段 | 默认值 | 语义 |
 | --- | --- | --- |
 | autoCollapse | true | 长块初始折叠；false 时长块仍可手动折叠 |
-| collapseAfterLines | 20 | 源码行数严格超过此值才可折叠 |
+| collapseAfterLines | 20 | 源码行数或换行后的实测可见行数超过此值时可折叠 |
 | collapsedLines | 8 | 折叠时的可见行数，不超过阈值 |
+| maxExpandedLines | 40 | 展开后的可见行上限，超过后在代码内滚动；`false` 取消上限，数值不小于 collapsedLines |
 | wrap | false | 初始软换行，每块可单独切换 |
 | lineNumbers | false | 源码行号，不进入复制/选区；换行续行不新增编号 |
 
-行数取有效正数的整数部分，无效值回退默认值。`parameters.codeBlock` 的整个对象由宿主覆盖插件；缺失字段回退工厂选项再到内置值。块内手动折叠/换行覆盖对应默认字段；缓存与生命周期见[语法手册](syntax.md#代码块控制)。配置参数不重解析，未关闭的流式代码在完成前不自动折叠。locale 的 expandCode、collapseCode、wrapCode、unwrapCode 定制按钮标签，缺失时使用英文回退。
+行数取有效正数的整数部分，无效值回退默认值。`parameters.codeBlock` 的整个对象由宿主覆盖插件；缺失字段回退工厂选项再到内置值。块内手动折叠/换行覆盖对应默认字段；缓存与生命周期见[语法手册](syntax.md#代码块控制)。配置参数不重解析，未关闭的流式代码在完成前不自动折叠。locale 的 expandCode、collapseCode、wrapCode、unwrapCode 定制按钮标签；foldedCode 是底栏模板，接受 `{hidden}` 和 `{total}` 源码行数。换行后只显示了一部分的源码行也计入折叠行数；缺失键使用英文回退。
 
 ## 组件
 

@@ -157,14 +157,17 @@ const reader = <Reader source={'```js\nconst answer = 42;\n```'}
     autoCollapse: true,
     collapseAfterLines: 20,
     collapsedLines: 8,
+    maxExpandedLines: 40,
     wrap: false,
     lineNumbers: true,
   } }} />;
 ```
 
-`parameters.codeBlock` works with Reader, Markdown, DocumentProvider and AsyncReader. The host's object overrides the last plugin's object; missing fields fall back to `codeHighlight()` options, then built-in defaults. The same five fields are accepted by `codeHighlight(options)`. Soft wrapping and line numbers default to false. Folding thresholds count source lines; wrapped continuations share one line number, which never enters copied text. `collapsedLines` is clamped to `collapseAfterLines`.
+`parameters.codeBlock` works with Reader, Markdown, DocumentProvider and AsyncReader. The host's object overrides the last plugin's object; missing fields fall back to `codeHighlight()` options, then built-in defaults. The same six fields are accepted by `codeHighlight(options)`. Soft wrapping and line numbers default to false. Folding also becomes available when wrapping makes a short source block exceed the visual-row threshold; wrapped continuations share one line number, which never enters copied text. `collapsedLines` is clamped to `collapseAfterLines`.
 
 Fold/wrap clicks change only that block's view state, not Markdown. Explicit choices take priority over defaults. Each Reader remembers the 256 most recently used modified blocks across virtual unmounts; unchanged blocks allocate no cache entry, and the cache does not retain source strings/trees. Evicted blocks return to defaults when remounted. Disposing the Reader or giving a new document a new React key resets this temporary state; it is not persisted across browser reloads. Parameter changes do not reparse the document.
+
+The folded footer shows hidden and total source lines, including a partially clipped wrapped line in the hidden count. Click it to expand. Both body height and footer visibility animate, including interrupted/reversed toggles; reduced-motion preferences remove motion. Expanded code defaults to at most 40 visual rows and scrolls locally. Set `maxExpandedLines: false` only when the host deliberately wants unlimited height. Very long single lines also stay inside this viewport after wrapping. See [large-code behavior](large-documents.md#large-code-blocks) for deferred layout, selection and long-document interaction.
 
 ## Two-colon components
 
