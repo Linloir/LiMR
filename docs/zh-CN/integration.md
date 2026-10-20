@@ -18,6 +18,8 @@
 
 用 `Reader` 获取完整阅读体验；用 `Markdown` 渲染独立正文；自己设计布局时让一个 `DocumentProvider` 管理一个主 `Markdown` 及其目录、卡片和工具栏。Provider 内再次传入 `source` 的 Markdown 会创建独立文档，不再共享父文档状态。
 
+阅读搜索是可选的界面组件，与语法模块分开。使用 `Reader search`、传入 `search={<YourSearch />}`，或在 DocumentProvider 内独立组合 `DocumentSearch` / `useDocumentSearch`，无需加入 `plugins` 或 `extensions`。[阅读搜索](search.md)说明控制器归属、布局、宿主命令与独立搜索 Worker。
+
 ## 模块与配置
 
 ### 模块是什么

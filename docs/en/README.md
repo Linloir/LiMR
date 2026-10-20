@@ -12,6 +12,7 @@ LiMR brings Markdown parsing, reading layout, selection and annotations into one
 | --- | --- | --- |
 | Render my first React article | [Getting started](getting-started.md) | [Integration and module configuration](integration.md) |
 | Open large files, show progress, restore position | [Quick-start large-file example](getting-started.md#load-large-documents) | [Loading, windows and printing](large-documents.md) |
+| Search reading text, including unmounted content | [Reading search](search.md) | [Custom UI and commands](search.md#replace-the-interface), [styles](styles.md#search-styles) |
 | Read dense or very wide tables | [Quick-start reading policies](getting-started.md#adjust-reading-policies) | [Adaptive tables, full content and native mode](table-layout.md) |
 | Author math, code, images, citations or translations | [Syntax manual](syntax.md) | [Annotations and selection](annotations.md) |
 | Integrate chat streams, editors or local files | [Scenario guide](integration.md#choose-a-component) | [Source editing](integration.md#source-editing-and-local-files) |

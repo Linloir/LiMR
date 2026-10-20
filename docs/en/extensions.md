@@ -16,6 +16,7 @@ Start with [built-in modules](integration.md#modules-and-configuration) for modu
 | A different view for existing nodes or a matching subset | components / rendererOverrides |
 | Disable or replace table layout calculation | parameters.tableLayout: false or { algorithm }; see [table layout](table-layout.md) |
 | Code folding, wrapping and line-number defaults | parameters.codeBlock / codeHighlight(options); see [code controls](syntax.md#code-block-controls) |
+| A reusable search interface or search theme | DocumentSearch / useDocumentSearch + Reader.search; see [reading search](search.md) |
 | New parsing rules | micromark + mdast, with transform when needed |
 | Visual changes only | CSS theme package + appearance |
 

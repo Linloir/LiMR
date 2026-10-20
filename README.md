@@ -1,6 +1,6 @@
 # LiMR
 
-[![package version](https://img.shields.io/badge/version-1.3.10-blue.svg)](package.json)
+[![package version](https://img.shields.io/badge/version-1.3.11-blue.svg)](package.json)
 
 **简体中文** · [English](README.en.md)
 
@@ -42,6 +42,8 @@ export function Answer({ text, generating }: { text: string; generating: boolean
 ```
 
 `source` 是累计的完整字符串，生成结束时把 `streaming` 设为 `false`。`followOutput` 默认关闭；开启后在读者向上滚动时暂停跟随。`Markdown` 不自带目录、侧栏或选区工具栏。
+
+阅读搜索按需启用：给 Reader/AsyncReader 添加 `search` 即可使用正则、大小写开关和命中高亮，也可独立组合 `DocumentSearch` / `useDocumentSearch`。默认不启用。Playground 的**搜索**按钮可体验此功能，同时保留浏览器 Ctrl/Cmd+F。自定义界面、宿主命令与样式见[阅读搜索](docs/zh-CN/search.md)。
 
 ## 完整文件与加载进度
 

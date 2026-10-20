@@ -1,6 +1,6 @@
 # Loading, host progress and large-document reading
 
-Use the installed LiMR 1.3.10 declarations. `AsyncReader` loads a complete string, UTF-8 `Uint8Array`, or Blob/File; `Reader`/`Markdown` with accumulated `source` and `streaming` handle ongoing text generation. Progressive file loading is not append streaming.
+Use the installed LiMR 1.3.11 declarations. `AsyncReader` loads a complete string, UTF-8 `Uint8Array`, or Blob/File; `Reader`/`Markdown` with accumulated `source` and `streaming` handle ongoing text generation. Progressive file loading is not append streaming.
 
 ## Pick presentation and ownership
 
@@ -50,3 +50,7 @@ Internal built-in parsing uses grammar-confirmed root boundaries, shared source 
 ## Image preview
 
 Use public `Image` for click-to-preview, or controlled `ImagePreview` for a host-owned trigger. Pass the original element when hero motion should start at its on-screen rectangle; supply intrinsic width/height and a resolvable URL. Fit/actual/fill modes, zoom, pixel copy and close use equal square buttons in a theme-aware bottom toolbar. Preserve reduced motion, Escape, focus return and light/dark appearance. Pixel copying needs a secure clipboard context and same-origin/CORS-readable pixels; URL resolution/permissions belong to the host. Avoid overriding button padding or SVG dimensions independently, which breaks equal spacing.
+
+## Optional reading search (1.3.11)
+
+Reader/AsyncReader default search=false. Enable search=true or pass a custom search component; browser find only sees mounted DOM. DocumentSearch and useDocumentSearch compose inside DocumentProvider. The hook owns cancellable regex/case search and transient paint; mount one controller per document. Use useLiMR().find(open/next/previous/close) for host commands. Playground exposes a Search button without taking browser Ctrl+F. Larger documents scan nearby first; counts ending in + are incomplete, and explicit navigation extends the scan. Read [search.md](search.md) for the controller contract, worker/CSP, limits and CSS customization; the search and document-loading Workers have different protocols.

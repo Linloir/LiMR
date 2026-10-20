@@ -80,7 +80,7 @@ Line counts use the integer part of valid positive values; invalid values fall b
 
 | Component | Extra props and defaults |
 | --- | --- |
-| Reader | toc=true, sidebar=true, sidebarCollapse=false, fillHeight=true, sidebarBreakpoint=1120, actions, followOutput=false, className/style |
+| Reader | toc=true, sidebar=true, search=false (true or ReactNode), sidebarCollapse=false, fillHeight=true, sidebarBreakpoint=1120, actions, followOutput=false, className/style |
 | AsyncReader | Reader configuration plus input, loading, loadingFallback (or null for host UI), and onLoadStateChange(state, controls); see [large documents](large-documents.md) |
 | Markdown | interactive=true, followOutput=false, className/style |
 | DocumentProvider | children; supplies context to composed views |
@@ -88,6 +88,7 @@ Line counts use the integer part of valid positive values; invalid values fall b
 | AnnotationSidebar | sync='document' / 'none', collapseOverflow=false, gap=14, positioner=alignSidebar, renderCard, className/style |
 | AnnotationOverlay | disabled=false, portalRoot, previewWidth=340, maxHeight='80dvh' |
 | SelectionToolbar | actions, portalRoot, maxPanelHeight=260, render, className/style |
+| DocumentSearch | controller, shortcuts=true, defaultOpen=false, placement="floating" / "inline", worker, className/style |
 | AnnotationCard | AnnotationOverlayCardProps plus required title and optional bodyLabel |
 | AnnotationEditor | Required value/onChange, onSubmit/onCancel and label; optional onBlur, placeholder, submitLabel, cancelLabel; submitDisabled=false, autoFocus=true |
 | AnnotationContent | annotationId, presentation, expanded=true, enabled=true |
@@ -111,6 +112,35 @@ Custom virtualized renderers receive `VirtualizedTextContext`: `source` is the c
 
 `SidebarPositioner` receives `{ id, anchorTop, height }[]` and `{ activeId, gap, height?, prioritizeActive? }`, returning a map of IDs to top positions. anchorTop is the first line of referenced text; prioritizeActive distinguishes hovered or active items from the item selected by reading position. The default alignSidebar packs footer cards at rest and prioritizes the current item during interaction.
 
+## Composable search
+
+Full options/controller tables, independent composition, custom controls and static Worker examples are in [reading search](search.md).
+
+Search is opt-in: `<Reader source={source} search />` enables the standard UI, as does `AsyncReader search`. Without it, Ctrl/Cmd+F remains browser find, which only sees mounted DOM. Playground provides a **Search** button and keeps browser Ctrl+F available.
+
+`DocumentSearch` and `useDocumentSearch()` work inside `DocumentProvider`, independently of Reader. Mount one controller per document. A component supplied as `search={<MySearch />}` can move the default view, place it in a toolbar, or replace all its markup. A React portal preserves the provider when the host needs another destination. The hook defaults to `shortcuts: false`; the default component defaults to true. `useLiMR().find('open' | 'next' | 'previous' | 'close')` routes host commands to whichever controller is mounted.
+
+```tsx
+import { Reader, DocumentSearch, useDocumentSearch } from '@linloir/limr';
+
+function MySearch() {
+  const search = useDocumentSearch({ shortcuts: false });
+  return <div className="my-search-toolbar">
+    <button onClick={search.show}>Search</button>
+    <DocumentSearch controller={search} placement="inline" className="my-search" />
+  </div>;
+}
+export function SearchableReader({ source }: { source: string }) {
+  return <Reader source={source} search={<MySearch />} />;
+}
+```
+
+For a fully custom view, render your own input from `query`/`setQuery`, toggles from `regex`/`setRegex` and `caseSensitive`/`setCaseSensitive`, and buttons from `next`, `previous`, and `close`. `current` is zero-based, or -1; `partial` means the count is incomplete. The controller still owns scanning, source navigation, and transient highlighting. Search never edits Markdown or annotations.
+
+The standard view accepts `className`/`style`, `.limr-search-field`, `.limr-search-count`, and button classes. Override `--limr-search-width` for its width and `--limr-search-accent` for the loading ring. Set `--limr-search-match`, `--limr-search-match-border`, `--limr-search-current`, and `--limr-search-current-border` on the reading surface to theme matches. Selected toggles follow the page's heading/secondary colors without borders. The input has no focus border; keyboard button focus remains visible.
+
+The frame expands leftward over 440 ms and fades in; contents retain their final positions and enter after 85 ms. Closing takes 340 ms with an earlier content fade. Loading appears after 180 ms of active scanning and remains shown for at least one second, expanding a single icon slot on the left. It reuses LoadingRing. Reduced motion disables transitions. See [search limits and performance](large-documents.md).
+
 ## Hooks
 
 | Hook | Result |
@@ -124,7 +154,8 @@ Custom virtualized renderers receive `VirtualizedTextContext`: `source` is the c
 | useAnnotationState() | Active/hovered occurrence IDs plus activate/hover |
 | useAnchor(occurrenceId) | Element, viewport rect, contentRect; null until mounted |
 | useRendererParameter(name) | Host override or last registered default |
-| useLiMR() | Engine, commands, signal, clearSelection, scrollToHeading, scrollToAnnotation, invalidateAnnotation |
+| useLiMR() | Engine, commands, signal, clearSelection, scrollToHeading, scrollToAnnotation, invalidateAnnotation, find |
+| useDocumentSearch(options?) | open, query, regex, caseSensitive, busy, loading, matches, current, partial, error, show/close, next/previous, setQuery/setRegex/setCaseSensitive |
 
 `useLiMR()` and action contexts expose `updateAnnotation(id, partial): boolean`, `commitAnnotationEdit(id?): void` and `cancelAnnotationEdit(id?): boolean`. Call commit only after the update is accepted; it finishes editing without writing data again. Cancel removes an uncommitted creation and its otherwise unused temporary highlights, while preserving existing annotations and shared highlights. Plugins reset their draft to saved content before canceling, restoring the unfinished draft and editor if the host declines cancellation. The supplied note editors also cancel empty new drafts on outside clicks; the active editor hides its selection toolbar.
 

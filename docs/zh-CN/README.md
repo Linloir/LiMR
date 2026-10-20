@@ -12,6 +12,7 @@ LiMR 把 Markdown 解析、正文排版、选区和标注组织在同一个阅�
 | --- | --- | --- |
 | 第一次在 React 中展示文章 | [快速开始](getting-started.md) | [接入与模块配置](integration.md) |
 | 打开大文件、展示进度、恢复阅读位置 | [快速开始的大文档示例](getting-started.md#加载大文档) | [加载、窗口化与打印](large-documents.md) |
+| 搜索阅读文字，包括尚未挂载的内容 | [阅读搜索](search.md) | [自定义界面与命令](search.md#完全替换界面)、[样式](styles.md#搜索样式) |
 | 展示密集或超宽表格 | [快速开始的阅读策略](getting-started.md#调整阅读策略) | [自适应表格、完整内容与原生模式](table-layout.md) |
 | 编写公式、代码、图片、引用和译文 | [语法手册](syntax.md) | [标注与选区](annotations.md) |
 | 接入聊天流、编辑器或本地文件 | [按场景接入](integration.md#选择组件) | [原文编辑](integration.md#原文编辑与本地文件) |

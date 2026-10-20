@@ -112,6 +112,33 @@ Callout 使用与注释、释义、提问一致的小字号标签和正文排版
 
 有序列表按起始序号、条目数量及显式序号计算标记所需的左侧空间，支持多位数字与嵌套；宿主样式应保留这部分内边距，避免固定窄 gutter 或祖先裁切重新遮挡数字。
 
+## 搜索样式
+
+可选的 `DocumentSearch` 接受 `className` 和 `style`；`placement="inline"` 参与宿主工具栏布局，floating 默认固定在右上角。导入正常的 LiMR 样式即可，规则位于 `limr` 层，普通未分层应用 CSS 可以覆盖。
+
+```css
+.article-search {
+  --limr-search-width: min(30rem, calc(100vw - 4rem));
+  --limr-search-accent: var(--limr-secondary);
+  border-radius: 12px;
+}
+.article-search .limr-search-count {
+  color: var(--limr-muted);
+}
+.article-reader {
+  --limr-search-match: #d9ae403d;
+  --limr-search-match-border: #b38b2466;
+  --limr-search-current: #e99b3e80;
+  --limr-search-current-border: #b67524;
+}
+```
+
+将 `article-search` 放在 DocumentSearch 上，将 `article-reader` 放在 Reader 或 Markdown 的公共 DOM 祖先上。高亮变量必须传到正文，只在搜索框上设置无法改变其他位置的文字高亮。Portal 保留 React 上下文，但目标容器仍需主题 CSS。
+
+可用选择器包括 `.limr-document-search`、`.limr-search-field`、`.limr-search-count`、`.limr-search-loading`、`.limr-search-error`、`.limr-search-regex`、`.limr-search-previous`、`.limr-search-next` 和 `.limr-search-close`。用 `[aria-pressed="true"]` 表示选中选项，用 `[data-open]` / `[data-loading]` 区分框体状态。默认选中态无边框，使用标题色与次要色；计数和静态图标使用柔和文字色。输入框不额外添加聚焦轮廓，请保留按钮的键盘焦点提示。
+
+默认框体从右向左展示固定位置的内容，框体本身淡入，内容略晚淡入。Loading 在左侧扩展 2rem 空间，18px 圆环缩放、淡入淡出，输入框保持位置。定制动画时保留内部宽度、右对齐和裁切；使用 `--limr-search-width`，不要只覆盖框体展开宽度。保留减少动态效果规则。组件/控制器接口和延迟时序见[阅读搜索](search.md)。
+
 ## 代码块与溢出样式
 
 代码折叠、换行和行号是视图参数：用 `parameters.codeBlock` 控制行为，见[代码块控制](syntax.md#代码块控制)。不要靠隐藏行号 DOM 或覆盖 pre 的 overflow 来代替参数，否则容易让显示状态与按钮失配。折叠状态和换行状态不写入 Markdown。

@@ -58,7 +58,7 @@ The use Skill should deliver working integration, stable configuration, and vali
 
 ## Loading and large-document integration
 
-The use Skill's [loading.md](../../skills/limr-use/references/loading.md) covers AsyncReader, host progress, cancel/retry, worker assets, read-only previews, bookmarks, printing and image previews. The development Skill's [contract](../../skills/limr-plugin-development/references/contract.md) covers custom worker registration, transferable results and windowed-view text/state contracts. Both target the public 1.3.10 declarations; update the whole Skill directory while preserving local customizations.
+The use Skill's [loading.md](../../skills/limr-use/references/loading.md) covers AsyncReader, host progress, cancel/retry, worker assets, read-only previews, bookmarks, printing and image previews. The development Skill's [contract](../../skills/limr-plugin-development/references/contract.md) covers custom worker registration, transferable results and windowed-view text/state contracts. Both target the public 1.3.11 declarations; update the whole Skill directory while preserving local customizations.
 
 ## Route tasks to the right Skill and reference
 
@@ -66,6 +66,7 @@ The use Skill's [loading.md](../../skills/limr-use/references/loading.md) covers
 | --- | --- |
 | First integration, components and reading policies | limr-use → integration.md, with [getting started](getting-started.md) |
 | Large documents, Workers, host progress and printing | limr-use → loading.md, with [large documents](large-documents.md) |
+| Reading search, custom controls and host find commands | limr-use → [search.md](../../skills/limr-use/references/search.md); reusable UI packages → limr-plugin-development → [search.md](../../skills/limr-plugin-development/references/search.md) |
 | Adaptive tables and code defaults | limr-use → integration.md; no replacement renderer needed |
 | Static images, formulas, components and source annotations | limr-use → syntax.md, with the [syntax manual](syntax.md) |
 | New modules and reusable plugin packages | limr-plugin-development → contract.md and template, with [extension development](extensions.md) |

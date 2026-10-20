@@ -16,6 +16,7 @@
 | 改写已有节点外观或只替换满足条件的节点 | components / rendererOverrides |
 | 关闭或替换表格布局计算 | parameters.tableLayout：false 或 { algorithm }，见[表格布局](table-layout.md) |
 | 代码块折叠、换行和行号默认值 | parameters.codeBlock / codeHighlight(options)，见[代码块控制](syntax.md#代码块控制) |
+| 可复用搜索界面或搜索主题 | DocumentSearch / useDocumentSearch + Reader.search，见[阅读搜索](search.md) |
 | 新的解析规则 | micromark + mdast 扩展，必要时 transform |
 | 仅修改视觉 | CSS 主题包 + appearance |
 

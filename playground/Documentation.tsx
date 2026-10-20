@@ -22,11 +22,12 @@ const entries = [
   ['knuth-plass-performance', 'KP 算法性能报告', 'Knuth–Plass performance'],
   ['table-layout', '表格布局', 'Table layout'],
   ['large-documents', '大文档', 'Large documents'],
+  ['search', '阅读搜索', 'Reading search'],
   ['ai-skills', 'AI Skills', 'AI Skills'],
 ] as const;
 const groups = [
   { zh: '入门与写作', en: 'Start and author', pages: ['README', 'getting-started', 'syntax'] },
-  { zh: '应用接入', en: 'Integrate', pages: ['integration', 'large-documents', 'table-layout', 'annotations'] },
+  { zh: '应用接入', en: 'Integrate', pages: ['integration', 'large-documents', 'search', 'table-layout', 'annotations'] },
   { zh: '二次开发', en: 'Extend', pages: ['extensions', 'styles', 'ai-skills'] },
   { zh: '参考与验证', en: 'Reference and verification', pages: ['api', 'architecture', 'performance', 'loading-performance', 'knuth-plass-performance'] },
 ] as const;

@@ -17,8 +17,10 @@ const contents = new Set(run('tar', ['-tzf', join(temporary, archive)], process.
 for (const path of ['README.md', 'README.en.md', 'docs/zh-CN/modules.md', 'docs/en/modules.md', 'docs/assets/source.svg',
   'dist/worker.js', 'dist/worker.d.ts', 'dist/worker-api.js', 'dist/worker-api.d.ts', 'dist/THIRD_PARTY_LICENSES.txt', 'docs/en/large-documents.md', 'docs/zh-CN/large-documents.md',
   'docs/zh-CN/performance.md', 'docs/en/performance.md', 'docs/zh-CN/knuth-plass-performance.md', 'docs/en/knuth-plass-performance.md',
+  'docs/en/search.md', 'docs/zh-CN/search.md', 'benchmarks/search/README.md', 'benchmarks/results/search-1.3.11.json',
   'docs/assets/performance/limr-midpoint.png', 'docs/assets/performance/markstream-midpoint.png', 'benchmarks/README.md', 'benchmarks/results/renderers.json',
-  'skills/limr-use/SKILL.md', 'skills/limr-plugin-development/SKILL.md', 'skills/limr-plugin-development/assets/plugin-template/package.json']) {
+  'skills/limr-use/SKILL.md', 'skills/limr-use/references/search.md', 'skills/limr-plugin-development/SKILL.md',
+  'skills/limr-plugin-development/references/search.md', 'skills/limr-plugin-development/assets/plugin-template/package.json']) {
   if (!contents.has(`package/${path}`)) throw new Error(`Missing package resource: ${path}`);
 }
 // Build the distributed template from the archive, independent of repository aliases.
@@ -51,7 +53,7 @@ for (const version of ['18.3.1', '19']) {
   }
   await writeFile(join(directory, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, skipLibCheck: false, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', jsx: 'react-jsx', noEmit: true }, include: ['consumer.tsx'] }));
   await writeFile(join(directory, 'consumer.tsx'), `
-import { AsyncReader, Reader, Markdown, DocumentProvider, standard, codeHighlight, defineAnnotation, AnnotationCard, AnnotationMarkdown, ToolIcon, InlineMarker, useLiMR, useLocale, useRendererParameter, type RendererExtension, type SelectionAction, type ReadingPosition, type CodeBlockOptions } from '@linloir/limr';
+import { AsyncReader, Reader, Markdown, DocumentProvider, DocumentSearch, useDocumentSearch, standard, codeHighlight, defineAnnotation, AnnotationCard, AnnotationMarkdown, ToolIcon, InlineMarker, useLiMR, useLocale, useRendererParameter, type RendererExtension, type SelectionAction, type ReadingPosition, type CodeBlockOptions } from '@linloir/limr';
 import { createDocument, prepareKnuthPlass, layoutTable, type TableLayoutAlgorithm } from '@linloir/limr/core';
 import { MarkdownTable, type TableLayoutConfig } from '@linloir/limr/react';
 import { createDocumentWorkerHandler, standardWorkerRegistry, type DocumentWorkerRequest } from '@linloir/limr/worker-api';
@@ -59,6 +61,8 @@ import { readingTools } from '@limr-example/reading-tools';
 import { readingTools as templateTools } from '@example/limr-reading-tools';
 import { inlineNotes } from './inline-notes.js';
 const localFileApp = <Reader source="Editable" plugins={[inlineNotes()]} onSourceChange={(source, change) => { const revision: number = change.document.revision; return source.length > revision; }} />;
+function SearchModule() { const controller = useDocumentSearch({ shortcuts: false }); return <DocumentSearch controller={controller} placement="inline" />; }
+const searchApp = <Reader source="Searchable" search={<SearchModule />} />;
 const templateApp = <Reader source="Template" plugins={[templateTools()]} />;
 const localized = defineAnnotation({ type: 'localized', label: locale => locale.citation ?? 'Citation', overlay: { Card: props => <AnnotationCard {...props} title={useLocale().citation} /> } });
 const extension = defineAnnotation<{text: string}>({ type: 'custom', label: 'Custom', overlay: { Card: props => <AnnotationCard {...props} title={props.annotation.data?.text ?? 'Custom card'} />, expand: { placement: 'center', width: 640 } }, Content: ({data}) => <AnnotationMarkdown source={data?.text ?? ''} streaming /> });
@@ -146,11 +150,12 @@ console.log('SSR, extension entry and local math/Maple assets passed');
   // This side-effect import is deliberately bundled in production: the worker
   // entry must register its listener rather than being removed by tree shaking.
   await writeFile(join(directory, 'worker.js'), "import '@linloir/limr/worker';\n");
+  run('node', ['--input-type=module', '-e', `import {mkdir, writeFile} from 'node:fs/promises'; import {searchWorkerSource} from '@linloir/limr/core'; await mkdir('public'); await writeFile('public/search-worker.js', searchWorkerSource);`], directory);
   await writeFile(join(directory, 'index.html'), '<!doctype html><html><meta charset="utf-8"><div id="root"></div><script type="module" src="/browser.js"></script></html>');
   await writeFile(join(directory, 'browser.js'), `
 import { createElement as h, Fragment } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AsyncReader, Reader, chinese, useLiMR, layoutTable } from '@linloir/limr';
+import { AsyncReader, Reader, DocumentSearch, chinese, useLiMR, layoutTable } from '@linloir/limr';
 import { readingTools } from '@limr-example/reading-tools';
 import { readingTools as templateTools } from '@example/limr-reading-tools';
 import '@linloir/limr/styles.css';
@@ -158,10 +163,13 @@ import '@linloir/limr/math.css';
 import '@limr-example/paper-theme';
 import '@example/limr-reading-tools/styles.css';
 const plugins = [readingTools()];
+const searchWorker = () => new Worker('/search-worker.js');
 const workerSource = '# Worker &amp; reader\\n\\n' + Array.from({ length: 200 }, (_, index) => 'Loaded paragraph ' + index + '.').join('\\n\\n');
 function WorkerIntegration() {
   const reader = useLiMR();
-  return h('button', { onClick: () => { const start = workerSource.indexOf('Loaded paragraph 199.'); reader.scrollToSource({ start, end: start + 1 }); } }, 'Read the loaded ending');
+  return h(Fragment, null,
+    h('button', { onClick: () => { const start = workerSource.indexOf('Loaded paragraph 199.'); reader.scrollToSource({ start, end: start + 1 }); } }, 'Read the loaded ending'),
+    h('button', { onClick: () => reader.find() }, 'Search loaded book'));
 }
 createRoot(document.getElementById('root')).render(h(Fragment, null,
   h(Reader, { source: '# Package consumer\\n\\nChoose **this passage** with $x^2$.\\n\\n<reading-tip>\\n\\nA plugin **tip**.\\n\\n</reading-tip>', plugins, appearance: 'paper', toc: false, sidebar: false }),
@@ -170,7 +178,7 @@ createRoot(document.getElementById('root')).render(h(Fragment, null,
   h(Reader, { documentId: 'modules', source: '> [!tip] Tip\\n> Built in.\\n\\n==Standalone== and ==Marked==[^n]\\n\\n[^n]: Packed footnote.\\n\\n::mermaid\\nflowchart LR\\nA-->B\\n::', typography: 'knuth-plass', locale: chinese, toc: false, sidebar: false }),
   h(Reader, { documentId: 'editable-highlight', source: 'Before ::%%limr%%{<#r}**Editable highlight**::%%limr%%{>#r} after.\\n\\n:::limr-annotation{#paint ranges="r" type="highlight"}\\n:::', onSourceChange: () => {}, locale: chinese, toc: false, sidebar: false }),
   h(Reader, { documentId: 'failed-image', source: '![Missing image](/missing-image.png)', locale: chinese, toc: false, sidebar: false }),
-  h(AsyncReader, { documentId: 'worker', input: workerSource, loading: { fallback: 'error', worker: () => new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }) }, onLoadStateChange: state => { window.workerState = state; }, toc: false, sidebar: false }, h(WorkerIntegration))
+  h(AsyncReader, { documentId: 'worker', search: h(DocumentSearch, { worker: searchWorker }), input: workerSource, loading: { fallback: 'error', worker: () => new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }) }, onLoadStateChange: state => { window.workerState = state; }, toc: false, sidebar: false }, h(WorkerIntegration))
 ));
 const tableHost = document.createElement('div'); tableHost.id = 'packed-table'; document.body.append(tableHost);
 const tableRoot = createRoot(tableHost);
@@ -290,8 +298,18 @@ window.renderPackedCode({ lineNumbers: true, maxExpandedLines: 12 });
     await expect(code).toHaveAttribute('data-unbounded', 'true');
     await expect(code.locator('pre')).toHaveCSS('overflow-y', 'hidden');
     await expect.poll(() => code.locator('pre').evaluate(pre => pre.scrollHeight - pre.clientHeight)).toBeLessThan(2);
+    await page.getByRole('button', { name: 'Search loaded book', exact: true }).click();
+    const search = page.locator('.limr-document-search');
+    await search.locator('input').fill('Loaded paragraph 19[89]');
+    await search.getByRole('button', { name: 'Use regular expression' }).click();
+    await expect(search.locator('.limr-search-count')).toHaveText('1/2');
+    await expect(page.locator('[data-search-current]').first()).toBeInViewport();
+    await search.locator('input').press('Enter');
+    await expect(search.locator('.limr-search-count')).toHaveText('2/2');
+    await search.locator('input').press('Escape');
+    await expect(page.locator('[data-search]')).toHaveCount(0);
     if (errors.length) throw new Error(errors.join('\n'));
-    console.log(`React ${version}: packed plugins, code/table controls, scoped CSS, skill template, KP, Mermaid, callout, highlight and footnote modules passed in Chromium`);
+    console.log(`React ${version}: packed search/navigation/highlights, plugins, code/table controls, scoped CSS, skill template, KP, Mermaid, callout and footnote modules passed in Chromium`);
   } finally { await browser?.close(); server.kill('SIGTERM'); }
 }
 await mkdir('artifacts', { recursive: true });

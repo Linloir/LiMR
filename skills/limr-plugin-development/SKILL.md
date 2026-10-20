@@ -1,15 +1,17 @@
 ---
 name: limr-plugin-development
-description: Develop, package, and integrate new @linloir/limr extension modules with custom syntax, annotation cards, selection actions, parameters, or CSS themes. Use for reusable LiMR plugin packages; ordinary application integration belongs to limr-use.
+description: Develop, package, and integrate new @linloir/limr extension modules with custom syntax, annotation cards, selection actions, parameters, search interfaces, or CSS themes. Use for reusable LiMR plugin packages; ordinary application integration belongs to limr-use.
 ---
 
 # Develop a LiMR plugin
 
-Deliver the requested extension as a package plus a working host import using LiMR 1.3.10. Inspect the installed version and public declarations before choosing APIs.
+Deliver the requested extension as a package plus a working host import using LiMR 1.3.11. Inspect the installed version and public declarations before choosing APIs.
 
 Read [the contract](references/contract.md) for source mapping, native selection boundaries, annotation presentation, actions, resources, and localization. Start from [plugin-template](assets/plugin-template/README.md) when a standalone TypeScript/ESM package is useful. Copy the complete template to the requested project destination, rename its example package and IDs, and remove capabilities not needed by the task. Do not edit the installed skill as the project implementation.
 
 Choose the smallest public contract: defineBlock for a block; defineAnnotation for a type; defineExtension to combine capabilities. Keep React/LiMR as peers and build externals, export declarations, and expose CSS separately with sideEffects. Import no renderer internals and bundle no second React or LiMR runtime.
+
+For reusable search controls or themes, read [search.md](references/search.md). Export a React component for Reader.search or independent composition; this UI needs no syntax extension.
 
 Before creating new syntax or replacing a renderer, check built-in parameters. Code folding, wrapping and line numbers use `parameters.codeBlock` (LiMR >=1.3.8); this needs no parser or Worker registration. Read the contract for per-block overrides and bounded state lifetime.
 

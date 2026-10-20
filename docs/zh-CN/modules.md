@@ -18,6 +18,8 @@
 
 请参阅[随 LiMR 提供的默认模块](syntax.md#模块清单).
 
+可独立组合的搜索界面见[阅读搜索](search.md)。`DocumentSearch` / `useDocumentSearch` 是 React 接口，不通过 `plugins` 注册为语法模块。
+
 ## 按需要组合
 
 请参阅[按需要组合](integration.md#按需要组合).

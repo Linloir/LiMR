@@ -1,6 +1,6 @@
 # LiMR
 
-[![package version](https://img.shields.io/badge/version-1.3.10-blue.svg)](package.json)
+[![package version](https://img.shields.io/badge/version-1.3.11-blue.svg)](package.json)
 
 [简体中文](README.md) · **English**
 
@@ -42,6 +42,8 @@ export function Answer({ text, generating }: { text: string; generating: boolean
 ```
 
 `source` is the complete accumulated string. Set `streaming` to `false` when generation ends. `followOutput` is off by default and pauses when the reader scrolls up. `Markdown` does not include navigation, a sidebar, or a selection toolbar.
+
+Reading search is optional: add `search` to Reader/AsyncReader for regex, case sensitivity and highlighted results, or compose `DocumentSearch` / `useDocumentSearch` in your own layout. It is disabled by default. Playground’s **Search** button enables it without taking over browser Ctrl/Cmd+F. See [reading search](docs/en/search.md) for custom UI, host commands and styling.
 
 ## Complete files and loading progress
 

@@ -18,6 +18,8 @@ Start with the working [quick start](getting-started.md), then choose modules an
 
 Use `Reader` for the complete experience and `Markdown` for standalone content. For a custom layout, one DocumentProvider manages one primary Markdown plus its navigation, cards, and toolbar. Passing source to Markdown inside a provider creates an independent document instead of sharing the parent state.
 
+Reading search is an optional UI component, separate from syntax modules. Enable `Reader search`, supply `search={<YourSearch />}`, or compose `DocumentSearch` / `useDocumentSearch` inside DocumentProvider. Do not add it to `plugins` or `extensions`. [Reading search](search.md) explains controller ownership, placement, host commands and the separate search Worker.
+
 ## Modules and configuration
 
 ### What is a module?

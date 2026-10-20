@@ -1,14 +1,15 @@
 ---
 name: limr-use
-description: Integrate @linloir/limr into React applications, author its supported Markdown, configure large-document workers, adaptive tables, code folding/wrapping/line numbers, host progress, streaming, annotations, locales and themes, or import existing LiMR plugins. Use for LiMR consumers; new reusable plugin packages belong to limr-plugin-development.
+description: Integrate @linloir/limr into React applications, author its supported Markdown, configure large-document workers, adaptive tables, optional reading search, code folding/wrapping/line numbers, host progress, streaming, annotations, locales and themes, or import existing LiMR plugins. Use for LiMR consumers; new reusable plugin packages belong to limr-plugin-development.
 ---
 
 # Use LiMR
 
-Deliver a working integration using LiMR 1.3.10. Inspect the host's package.json and public declarations to confirm the required APIs are installed.
+Deliver a working integration using LiMR 1.3.11. Inspect the host's package.json and public declarations to confirm the required APIs are installed.
 
 - Read [integration.md](references/integration.md) for components, styles, state, streaming, adaptive table layout and code controls, translation selection settings, and installed plugin imports.
 - Read [loading.md](references/loading.md) for AsyncReader, host-owned progress/cancel/retry, large documents, worker integration, reading windows and image previews.
+- Read [search.md](references/search.md) for optional regex/case search, independent or replaced UI, styles, host find commands and search Worker/CSP.
 - Read [syntax.md](references/syntax.md) when authoring or converting content. Preserve original source and do not invent tag/attribute support.
 
 Start with the input scenario, then choose existing presentation parameters before writing a custom renderer.

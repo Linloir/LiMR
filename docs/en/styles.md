@@ -112,6 +112,33 @@ When overriding styles, keep button slots and icon boxes uniform; avoid extra pa
 
 Ordered lists reserve marker space from their start, item count and explicit ordinals, including multiple digits and nested lists. Host CSS should preserve that inset rather than imposing a narrow gutter or an ancestor clip that hides the numbers again.
 
+## Search styles
+
+The optional `DocumentSearch` accepts `className` and `style`; `placement="inline"` participates in a host toolbar, while floating placement defaults to the top right. Import the normal LiMR stylesheet. Its rules live in the `limr` layer, so ordinary unlayered application CSS can override them.
+
+```css
+.article-search {
+  --limr-search-width: min(30rem, calc(100vw - 4rem));
+  --limr-search-accent: var(--limr-secondary);
+  border-radius: 12px;
+}
+.article-search .limr-search-count {
+  color: var(--limr-muted);
+}
+.article-reader {
+  --limr-search-match: #d9ae403d;
+  --limr-search-match-border: #b38b2466;
+  --limr-search-current: #e99b3e80;
+  --limr-search-current-border: #b67524;
+}
+```
+
+Apply `article-search` to DocumentSearch and `article-reader` to Reader or the shared DOM ancestor of Markdown. Highlight variables must reach the reading surface; setting them only on the search box cannot color text elsewhere. Portals retain React context but need theme CSS on their destination.
+
+Available selectors include `.limr-document-search`, `.limr-search-field`, `.limr-search-count`, `.limr-search-loading`, `.limr-search-error`, `.limr-search-regex`, `.limr-search-previous`, `.limr-search-next`, and `.limr-search-close`. Use `[aria-pressed="true"]` for selected options and `[data-open]` / `[data-loading]` for frame state. The default selected state is borderless and uses heading/secondary colors; counts and resting icons use muted text. The input has no added focus outline; keep keyboard button focus visible.
+
+The default frame reveals fixed-position contents from right to left, with its own opacity transition and delayed content fade. Loading expands a 2rem slot on the left; its 18px ring scales/fades in and out without shifting the input. Preserve inner width/right alignment and clipping if changing motion. Use `--limr-search-width` instead of setting the frame's open width alone, and preserve the reduced-motion override. Component/controller APIs and delay timing are in [reading search](search.md).
+
 ## Code and overflow styling
 
 Use `parameters.codeBlock` to control folding, wrapping and line numbers; see [code controls](syntax.md#code-block-controls). Hiding gutter DOM or overriding pre overflow can leave buttons out of sync with presentation. Fold/wrap state never changes Markdown.

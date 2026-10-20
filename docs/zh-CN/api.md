@@ -80,7 +80,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 
 | 组件 | 额外属性及默认值 |
 | --- | --- |
-| Reader | toc=true、sidebar=true、sidebarCollapse=false、fillHeight=true、sidebarBreakpoint=1120、actions、followOutput=false、className/style |
+| Reader | toc=true、sidebar=true、search=false（true 或 ReactNode）、sidebarCollapse=false、fillHeight=true、sidebarBreakpoint=1120、actions、followOutput=false、className/style |
 | AsyncReader | Reader 配置加 input、loading、loadingFallback（null 使用宿主 UI）、onLoadStateChange(state, controls)，见[大文档](large-documents.md) |
 | Markdown | interactive=true、followOutput=false、className/style |
 | DocumentProvider | children；为下方组件提供上下文 |
@@ -88,6 +88,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 | AnnotationSidebar | sync='document' / 'none'、collapseOverflow=false、gap=14、positioner=alignSidebar、renderCard、className/style |
 | AnnotationOverlay | disabled=false、portalRoot、previewWidth=340、maxHeight='80dvh' |
 | SelectionToolbar | actions、portalRoot、maxPanelHeight=260、render、className/style |
+| DocumentSearch | controller, shortcuts=true, defaultOpen=false, placement="floating" / "inline", worker, className/style |
 | AnnotationCard | AnnotationOverlayCardProps 加必填 title 和可选 bodyLabel |
 | AnnotationEditor | value/onChange、onSubmit/onCancel、label 必填；onBlur、placeholder、submitLabel、cancelLabel 可选；submitDisabled=false、autoFocus=true |
 | AnnotationContent | annotationId、presentation、expanded=true、enabled=true |
@@ -111,6 +112,35 @@ Reader、Markdown 与 DocumentProvider 接受：
 
 `SidebarPositioner` 接收 `{ id, anchorTop, height }[]` 与 `{ activeId, gap, height?, prioritizeActive? }`，返回 ID 到 top 的映射。anchorTop 是关联文本首行的位置；prioritizeActive 区分悬浮/激活条目与随阅读位置选择的条目。默认 alignSidebar 在静止时收拢文末卡片，交互时优先保留当前条目的对齐。
 
+## 可组合搜索
+
+完整选项与控制器字段表、独立组合、替换控件和静态 Worker 示例见[阅读搜索](search.md)。
+
+搜索默认关闭：`<Reader source={source} search />` 启用默认界面，`AsyncReader search` 同样适用。未启用时 Ctrl/Cmd+F 保留浏览器搜索，它只能看到已经挂载的 DOM。Playground 提供**搜索**按钮，同时保留浏览器 Ctrl+F。
+
+`DocumentSearch` 和 `useDocumentSearch()` 可在 `DocumentProvider` 内独立于 Reader 使用。每份文档挂载一个控制器。`search={<MySearch />}` 可移动默认界面、放入工具栏或完全替换界面。通过 React portal 挂载到其他位置时仍保留 Provider。Hook 的 `shortcuts` 默认 false，默认组件则为 true。宿主通过 `useLiMR().find('open' | 'next' | 'previous' | 'close')` 向当前控制器发送命令。
+
+```tsx
+import { Reader, DocumentSearch, useDocumentSearch } from '@linloir/limr';
+
+function MySearch() {
+  const search = useDocumentSearch({ shortcuts: false });
+  return <div className="my-search-toolbar">
+    <button onClick={search.show}>搜索</button>
+    <DocumentSearch controller={search} placement="inline" className="my-search" />
+  </div>;
+}
+export function SearchableReader({ source }: { source: string }) {
+  return <Reader source={source} search={<MySearch />} />;
+}
+```
+
+完全自定义界面时，使用 `query`/`setQuery` 绘制输入框、`regex`/`setRegex` 和 `caseSensitive`/`setCaseSensitive` 绘制开关，以及 `next`、`previous`、`close` 绘制按钮。`current` 从零开始，无结果时为 -1；`partial` 表示总数尚未完整。控制器仍负责扫描、源码导航和临时高亮，不会修改 Markdown 或标注。
+
+默认组件支持 `className`/`style`、`.limr-search-field`、`.limr-search-count` 和按钮类名。可覆盖 `--limr-search-width` 调整宽度、`--limr-search-accent` 调整 loading 圆环。正文容器上的 `--limr-search-match`、`--limr-search-match-border`、`--limr-search-current`、`--limr-search-current-border` 控制命中配色。选中开关使用页面标题与次要文字配色，无边框；输入框没有聚焦边框，按钮仍保留键盘焦点提示。
+
+框体向左展开约 440 ms 并淡入，内容始终按最终位置布局，延迟 85 ms 淡入。收起约 340 ms，内容提前淡出。实际扫描持续 180 ms 后显示 loading，显示后至少保留一秒；框体向左扩展一个图标位置，复用 LoadingRing。减少动态效果设置会关闭过渡。扫描范围和性能边界见[大文档](large-documents.md)。
+
 ## Hooks
 
 | Hook | 返回 |
@@ -124,7 +154,8 @@ Reader、Markdown 与 DocumentProvider 接受：
 | useAnnotationState() | active / hovered occurrence ID 与 activate / hover |
 | useAnchor(occurrenceId) | element、视口 rect、contentRect，未挂载时为 null |
 | useRendererParameter(name) | 宿主参数覆盖或最后注册的默认值 |
-| useLiMR() | 文档引擎、命令、signal、clearSelection、scrollToHeading、scrollToAnnotation、invalidateAnnotation |
+| useLiMR() | 文档引擎、命令、signal、clearSelection、scrollToHeading、scrollToAnnotation、invalidateAnnotation、find |
+| useDocumentSearch(options?) | open, query, regex, caseSensitive, busy, loading, matches, current, partial, error, show/close, next/previous, setQuery/setRegex/setCaseSensitive |
 
 `useLiMR()` 与动作上下文提供 `updateAnnotation(id, partial): boolean`、`commitAnnotationEdit(id?): void` 和 `cancelAnnotationEdit(id?): boolean`。仅在 update 被接受后调用 commit，它结束编辑而不重复写入数据。cancel 删除尚未确认的新建标注及没有其他引用的临时高亮，保留已有标注和共享高亮。插件取消前将草稿还原到已保存的内容；宿主拒绝取消时恢复未完成草稿并保持编辑。配套笔记编辑器也会在点击外部时取消空白新草稿；当前编辑器激活时隐藏选区工具栏。
 

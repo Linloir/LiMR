@@ -18,6 +18,8 @@ See [Functions, module names, and tag names](integration.md#functions-module-nam
 
 See [Default modules included with LiMR](syntax.md#module-catalog).
 
+For the independently composable search UI, see [reading search](search.md). `DocumentSearch` / `useDocumentSearch` are React interfaces, not syntax modules registered through `plugins`.
+
 ## Choosing a configuration
 
 See [Choosing a configuration](integration.md#choosing-a-configuration).

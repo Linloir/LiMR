@@ -58,7 +58,7 @@ $limr-plugin-development 创建术语解释插件包，包含术语块、选区�
 
 ## 加载与大文档接入
 
-`limr-use` 的 [loading.md](../../skills/limr-use/references/loading.md) 覆盖 AsyncReader、宿主进度、取消/重试、Worker 资源、只读预览、书签、打印与图片预览。`limr-plugin-development` 的[契约](../../skills/limr-plugin-development/references/contract.md) 补充自定义 Worker 注册、可转移结果与窗口化视图的文本/状态契约。两者以 1.3.10 的公开声明为准；升级时复制整个 Skill 文件夹，保留本地定制。
+`limr-use` 的 [loading.md](../../skills/limr-use/references/loading.md) 覆盖 AsyncReader、宿主进度、取消/重试、Worker 资源、只读预览、书签、打印与图片预览。`limr-plugin-development` 的[契约](../../skills/limr-plugin-development/references/contract.md) 补充自定义 Worker 注册、可转移结果与窗口化视图的文本/状态契约。两者以 1.3.11 的公开声明为准；升级时复制整个 Skill 文件夹，保留本地定制。
 
 ## 按任务选择 Skill 和参考
 
@@ -67,6 +67,7 @@ $limr-plugin-development 创建术语解释插件包，包含术语块、选区�
 | 第一次接入、选组件和阅读参数 | limr-use → integration.md，配合[快速开始](getting-started.md) |
 | 大文档、Worker、宿主进度与打印 | limr-use → loading.md，配合[大文档](large-documents.md) |
 | 自适应表格、代码块默认值 | limr-use → integration.md；无需另写渲染器 |
+| 阅读搜索、定制控件和宿主查找命令 | limr-use → [search.md](../../skills/limr-use/references/search.md)；复用界面包 → limr-plugin-development → [search.md](../../skills/limr-plugin-development/references/search.md) |
 | 编写静态图片、公式、组件与源码标注 | limr-use → syntax.md，配合[语法手册](syntax.md) |
 | 新模块或复用插件包 | limr-plugin-development → contract.md 与模板，配合[扩展开发](extensions.md) |
 

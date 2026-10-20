@@ -39,6 +39,8 @@ Wide readers show contents, body and an annotation sidebar. Below `sidebarBreakp
 
 **The table above already uses adaptive layout**: columns and rows respond to content and available width, with annotation previews for clipped cells. This works independently of paragraph typography. Long code blocks start folded and offer per-block expansion, wrapping and copying. See the [syntax manual](syntax.md) for content forms and [table layout](table-layout.md) for policies.
 
+For optional regex/case-sensitive reading search, add `search` to Reader or AsyncReader. Search is disabled by default; Playground’s **Search** button lets you try it while retaining native browser Ctrl/Cmd+F. See [reading search](search.md) for an independent component, custom controls and highlighting.
+
 ## Choose an entry point
 
 | Input / scenario | Use |

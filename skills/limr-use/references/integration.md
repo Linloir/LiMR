@@ -30,6 +30,8 @@ Markdown is body-only, with no automatic toolbar. A composed DocumentProvider co
 
 For complete-file loading, worker setup, host-owned progress, cancellation, reading windows, print preparation and image preview, read [loading.md](loading.md). These APIs are separate from append streaming.
 
+For optional reading search, independent composition, host commands and custom controls, read [search.md](search.md). Reader/AsyncReader search defaults false; it is not a syntax module.
+
 ## Code controls (1.3.10)
 
 Use `parameters={{ codeBlock: { autoCollapse: true, collapseAfterLines: 20, collapsedLines: 8, maxExpandedLines: false, wrap: false, lineNumbers: false } }}` on Reader, AsyncReader, Markdown or DocumentProvider. The defaults above make blocks exceeding 20 source lines or wrapped visual rows foldable, initially showing 8 rows. autoCollapse=false changes the initial view but preserves manual folding. The header orders wrap/copy/fold; short blocks omit fold. Copy includes all code, printed code expands, and unclosed streaming fences stay expanded until finalization unless manually folded.
