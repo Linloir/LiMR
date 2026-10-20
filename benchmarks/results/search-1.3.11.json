@@ -1,0 +1,100 @@
+{
+  "version": "1.3.11",
+  "measuredAt": "2026-10-20T07:25:57.851Z",
+  "fingerprint": {
+    "bundle": "42ae7e1721decf68387f330746b372fc5abc4bb472318abeadb918b5f779e04a",
+    "harness": "53974a57f246a7f73cb26d428b453570e727ade8ec719ea37e7b80c19eb0ab73"
+  },
+  "machine": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13700",
+    "platform": "linux",
+    "node": "v20.19.5"
+  },
+  "browser": "156.0.8078.4",
+  "runs": [
+    {
+      "mib": 50,
+      "bytes": 52428800,
+      "loadMs": 1200.6000000014901,
+      "nearbyRegex": {
+        "ms": 189.40000000223517,
+        "tasks": [],
+        "maxLongTaskMs": 0,
+        "highlights": 1,
+        "mountedBlocks": 10
+      },
+      "next": {
+        "ms": 99.5,
+        "tasks": [],
+        "maxLongTaskMs": 0,
+        "highlights": 1,
+        "mountedBlocks": 14
+      },
+      "previous": {
+        "ms": 25.800000000745058,
+        "tasks": [],
+        "maxLongTaskMs": 0,
+        "highlights": 1,
+        "mountedBlocks": 10
+      },
+      "tail": {
+        "ms": 85.60000000149012,
+        "tasks": [],
+        "maxLongTaskMs": 0,
+        "highlights": 1,
+        "mountedBlocks": 8
+      },
+      "literal": {
+        "ms": 220.5,
+        "tasks": [],
+        "maxLongTaskMs": 0,
+        "highlights": 1,
+        "mountedBlocks": 8
+      },
+      "sourceUnchanged": true,
+      "errors": []
+    },
+    {
+      "mib": 75,
+      "bytes": 78643200,
+      "loadMs": 1653,
+      "nearbyRegex": {
+        "ms": 185.59999999776483,
+        "tasks": [],
+        "maxLongTaskMs": 0,
+        "highlights": 1,
+        "mountedBlocks": 10
+      },
+      "next": {
+        "ms": 186.90000000223517,
+        "tasks": [],
+        "maxLongTaskMs": 0,
+        "highlights": 1,
+        "mountedBlocks": 14
+      },
+      "previous": {
+        "ms": 16.5,
+        "tasks": [],
+        "maxLongTaskMs": 0,
+        "highlights": 1,
+        "mountedBlocks": 10
+      },
+      "tail": {
+        "ms": 85.60000000149012,
+        "tasks": [],
+        "maxLongTaskMs": 0,
+        "highlights": 1,
+        "mountedBlocks": 8
+      },
+      "literal": {
+        "ms": 219.10000000149012,
+        "tasks": [],
+        "maxLongTaskMs": 0,
+        "highlights": 1,
+        "mountedBlocks": 8
+      },
+      "sourceUnchanged": true,
+      "errors": []
+    }
+  ]
+}

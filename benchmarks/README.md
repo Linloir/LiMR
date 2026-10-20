@@ -12,6 +12,7 @@ Reproducible production measurements of the **current source and lockfile**. Rep
 | `large-reading/` | Shared production AsyncReader browser fixture and focused diagnostic runner |
 | `large-comparison/` | 50/75 MiB shared-syntax LiMR/react-markdown/Markstream comparison, including guarded failures |
 | `loading/` | Complete 50/75 MiB inputs, 10 MiB unique complex content, real Worker/Reader and external RSS sampling |
+| `search/` | [Opt-in reading search](search/README.md): 50/75 MiB nearby regex, continued scans and cached navigation |
 | `shared/` | Deterministic GFM fixture, environment fingerprints and statistics |
 | `results/` | Latest complete matrix, optional mount repeat, and separately labelled historical investigation |
 | `run.ts` | Serial orchestration, builds and automatic preview-server cleanup |
