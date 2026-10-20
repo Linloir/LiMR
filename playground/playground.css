@@ -83,7 +83,8 @@ button:disabled { cursor: default; opacity: .45; }
 .demo-field :where(textarea,select) { width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid var(--limr-border, #e5e2dc); border-radius: 4px; color: var(--limr-text, #3d3a36); background: var(--limr-surface, #f3f1ee); font: 12px/1.7 var(--limr-font-text); }
 .demo-field textarea { resize: vertical; min-height: 85px; }
 .limr-sidebar-card:is([data-type='margin-note'],[data-type='reading-note'],[data-type='reader-question'],[data-type='reader-footnote'],[data-type='inline-note']) { --limr-sidebar-padding-block: 6px; --limr-sidebar-padding-inline: 12px; }
-.limr-sidebar-card:has(.demo-note-content) .limr-sidebar-card-heading { font-size: 13px; line-height: 1.4; }
+.limr-sidebar-card:has(.demo-note-content) { --limr-annotation-label-size: 13px; }
+.limr-sidebar-card:has(.demo-note-content) .limr-sidebar-card-heading { font-size: var(--limr-annotation-label-size); line-height: 1.4; }
 .limr-sidebar-card:has(.demo-note-content) .limr-sidebar-card-content { padding-top: 3px; }
 .demo-note-content { font-size: 14px; line-height: 1.6; text-align: start; user-select: text; }
 .demo-note-content .limr-annotation-markdown { line-height: 1.6; }

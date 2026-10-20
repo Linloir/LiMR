@@ -373,7 +373,7 @@
   .limr-toc a[aria-current] { color: var(--limr-heading, #3d3a36); border-inline-start-color: var(--limr-accent, #8a7865); font-weight: 600; }
   .limr-reader-mobile-toc .limr-toc { max-height: 50dvh; padding-bottom: 1rem; }
 
-  .limr-sidebar { position: relative; min-width: 0; width: 100%; align-self: start; font-size: .8125rem; }
+  .limr-sidebar { --limr-annotation-label-size: .8125rem; position: relative; min-width: 0; width: 100%; align-self: start; font-size: var(--limr-annotation-label-size); }
   /* The document/grid row supplies the rail height. Card motion cannot change
      page overflow, scroll anchoring or the rail's own origin. overflow: clip
      also prevents wheel, touch and focus from independently scrolling it. */
@@ -402,8 +402,8 @@
   .limr-sidebar-card-body > .limr-collapse > .limr-collapse-inner > * { opacity: 1; transform: none; transition: none; }
   .limr-sidebar-card[data-active]:not([data-default-card]),.limr-sidebar-card[data-active] > .limr-sidebar-card-body { border-color: var(--limr-annotation-color, var(--limr-accent, #8a7865)); background: color-mix(in srgb, var(--limr-annotation-color, var(--limr-accent, #8a7865)) 6%, var(--limr-background, #fffefa)); }
   .limr-sidebar-card[data-default-card]:not([data-expanded]),.limr-sidebar-card[data-default-card][data-content-toggle] { cursor: pointer; }
-  .limr-sidebar-card-heading { display: flex; flex: none; justify-content: space-between; gap: .5rem; border: 0; padding: 0; background: transparent; color: var(--limr-annotation-title, var(--limr-annotation-color, var(--limr-heading, #3d3a36))); width: 100%; text-align: start; font-weight: 600 !important; }
-  .limr-sidebar-toggle { flex: none; font-size: .85em; font-weight: 400; color: var(--limr-secondary, #7b756e); padding: 0; transition: color var(--limr-motion-fast) var(--limr-ease); }
+  .limr-sidebar-card-heading { display: flex; flex: none; align-items: baseline; justify-content: space-between; gap: .5rem; border: 0; padding: 0; background: transparent; color: var(--limr-annotation-title, var(--limr-annotation-color, var(--limr-heading, #3d3a36))); width: 100%; text-align: start; font-size: var(--limr-annotation-label-size); font-weight: 600 !important; }
+  .limr-sidebar-toggle { flex: none; font-size: inherit; font-weight: 400; color: var(--limr-secondary, #7b756e); padding: 0; transition: color var(--limr-motion-fast) var(--limr-ease); }
   .limr-sidebar-toggle:hover,.limr-sidebar-card-heading:focus-visible .limr-sidebar-toggle { color: var(--limr-heading, #3d3a36); }
   .limr-sidebar-card-heading .limr-underline { background-size: 0% 1px; }
   .limr-sidebar-toggle:hover .limr-underline,.limr-sidebar-card-heading:focus-visible .limr-underline,.limr-overlay-header button:hover .limr-underline { background-size: 100% 1px; }
@@ -434,11 +434,13 @@
   .limr-annotation-editor-input { display: block; width: 100%; min-height: 1.6em; padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; color: var(--limr-text, #3d3a36); font: inherit; line-height: 1.6; resize: none; overflow: hidden; }
   .limr-annotation-editor-input:focus,.limr-annotation-editor-input:focus-visible { outline: none; box-shadow: none; }
   .limr-annotation-editor-input::placeholder { color: var(--limr-muted, #9b9590); opacity: .6; }
-  .limr-annotation-actions { display: flex; justify-content: flex-end; gap: 16px; align-items: center; margin-top: 8px; padding: 0 2px 2px 0; }
-  .limr-annotation-actions button { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; border-radius: 2px; background: transparent; color: var(--limr-muted, #9b9590); font-size: 13px; line-height: 1.5; transition: color 250ms var(--limr-ease); }
+  /* Set the shared metrics on the action row as well as its controls: host
+     button resets using font: inherit must inherit the label, not body text. */
+  .limr-annotation-actions { display: flex; justify-content: flex-end; gap: 16px; align-items: center; margin-top: 8px; padding: 0 2px 2px 0; font-size: var(--limr-annotation-label-size, 13px); line-height: 1.5; }
+  .limr-annotation-actions button { display: inline-flex; align-items: center; gap: .3em; padding: 0; border: 0; border-radius: 2px; background: transparent; color: var(--limr-muted, #9b9590); font: inherit; transition: color 250ms var(--limr-ease); }
   .limr-annotation-actions button:hover { color: var(--limr-text, #3d3a36); }
   .limr-annotation-actions button > .limr-underline { padding-bottom: 1px; }
-  .limr-annotation-actions svg { flex: none; width: 13px; height: 13px; }
+  .limr-annotation-actions svg { flex: none; width: 1.15em; height: 1.15em; }
   .limr-annotation-actions .limr-annotation-submit { color: var(--limr-accent, #8a7865); font-weight: 600; }
   .limr-annotation-actions .limr-annotation-delete:hover { color: var(--limr-error, #b45858); }
   .limr-annotation-entry > :first-child { margin-block-start: 0; }
@@ -456,12 +458,12 @@
   .limr-citation-content .limr-annotation-markdown { margin-top: .15rem; font-size: .875em; line-height: 1.6; color: var(--limr-secondary, #7b756e); }
   .limr-overlay-positioner { display: flex; flex-direction: column; min-height: 0; z-index: var(--limr-overlay-z, 1000); }
   .limr-overlay-positioner:focus { outline: none; }
-  .limr-annotation-overlay { position: relative; min-height: 0; flex: 1 1 auto; width: 100%; transform-origin: top left; display: flex; flex-direction: column; z-index: var(--limr-overlay-z, 1000); border: 0; border-radius: 8px; font-size: .875rem; }
+  .limr-annotation-overlay { --limr-annotation-label-size: .8rem; position: relative; min-height: 0; flex: 1 1 auto; width: 100%; transform-origin: top left; display: flex; flex-direction: column; z-index: var(--limr-overlay-z, 1000); border: 0; border-radius: 8px; font-size: .875rem; }
   .limr-overlay-surface { position: absolute; inset: 0; pointer-events: none; transform-origin: top left; border-radius: inherit; background: var(--limr-background, #fffefa); box-shadow: 0 8px 36px var(--limr-shadow, #40392d1f); }
   .limr-overlay-card { position: relative; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; border-radius: inherit; overflow: hidden; }
-  .limr-overlay-header { display: flex; justify-content: space-between; align-items: center; height: 2.6rem; padding: .4rem .9rem; flex: none; color: var(--limr-secondary, #5a5650); font-size: .8rem; }
+  .limr-overlay-header { display: flex; justify-content: space-between; align-items: center; height: 2.6rem; padding: .4rem .9rem; flex: none; color: var(--limr-secondary, #5a5650); font-size: var(--limr-annotation-label-size); }
   .limr-overlay-header > span { color: var(--limr-annotation-color, inherit); }
-  .limr-overlay-header button { border: 0; background: transparent; padding: .25rem .4rem; }
+  .limr-overlay-header button { display: inline-flex; align-items: center; border: 0; background: transparent; padding: .25rem .4rem; font: inherit; }
   .limr-overlay-header .limr-overlay-close { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; padding: 0; border-radius: 6px; transition: background-color var(--limr-motion-fast) var(--limr-ease), color var(--limr-motion-fast) var(--limr-ease); }
   .limr-overlay-close:hover { background: #87837822; }
   .limr-overlay-close:active { background: #87837840; }
@@ -476,7 +478,7 @@
   .limr-overlay-scroll[data-overflow][data-scrolling] > .limr-overlay-scrollbar,
   .limr-toolbar-panel .limr-overlay-scroll[data-overflow]:is(:hover,:focus-within) > .limr-overlay-scrollbar { opacity: 1; pointer-events: auto; }
   .limr-annotation-overlay[data-motion] .limr-overlay-scrollbar { opacity: 0; pointer-events: none; transition: none; }
-  .limr-overlay-controls { display: flex; align-items: center; gap: .25rem; }
+  .limr-overlay-controls { display: flex; align-items: center; gap: .25rem; font: inherit; }
   .limr-backdrop { z-index: var(--limr-overlay-z, 1000); background: transparent; transition: background-color var(--limr-motion, 360ms) var(--limr-ease, cubic-bezier(.16,1,.3,1)); }
   .limr-backdrop[data-expanded] { background: #17141133; }
   .limr-annotation-overlay .limr-annotation-entry + .limr-annotation-entry { border: 0; }
