@@ -115,11 +115,11 @@ export function ConfiguredReader({ source }: { source: string }) {
 | A custom table algorithm | `tableLayout: { algorithm }`; retain measurements, caches and previews; see the [contract](table-layout.md) |
 | Start long code expanded | `codeBlock.autoCollapse: false`; manual folding stays available |
 | Wrap code by default | `codeBlock.wrap: true`; defaults to false, every block can toggle it |
-| Change expanded code height | `codeBlock.maxExpandedLines: 40`; use `false` for unlimited height |
+| Explicitly limit expanded code height | `codeBlock.maxExpandedLines: 40`; the default `false` fully expands with document scrolling |
 | Show code line numbers | `codeBlock.lineNumbers: true`; defaults to false, numbers stay out of selection/copy |
 | Optimize paragraph breaks / use browser justification | `typography="knuth-plass"` / `"justify"`; default is `"standard"` |
 
-Code exceeding 20 source lines (or wrapped visual rows) starts folded to 8 rows, with hidden/total counts in an animated footer. Expanded code is limited to 40 visible rows by default; huge blocks use deferred segment layout and local scrolling, so one giant fence does not turn off book windowing. Fold/wrap choices belong to the current reader, with up to 256 modified blocks cached across offscreen unmounts; Markdown stays unchanged and printing expands content. Indivisible oversized inline formulas scroll locally. See [code controls](syntax.md#code-block-controls) for parameter/plugin precedence. Table layout, paragraph typography and code options are independent.
+Code exceeding 20 source lines (or wrapped visual rows) starts folded to 8 rows, with hidden/total counts in an animated footer. Expanded code follows the page without an inner vertical scrollbar; huge blocks retain deferred segment layout, so one giant fence does not turn off book windowing. Fold/wrap choices belong to the current reader, with up to 256 modified blocks cached across offscreen unmounts; Markdown stays unchanged and printing expands content. Indivisible oversized inline formulas scroll locally. See [code controls](syntax.md#code-block-controls) for parameter/plugin precedence. Table layout, paragraph typography and code options are independent.
 
 ## Choose styles and persistence
 

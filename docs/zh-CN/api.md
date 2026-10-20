@@ -37,7 +37,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 | plugins | 追加到默认或显式清单 |
 | parameters | 文档级模块参数覆盖 |
 | parameters.tableLayout | 内置自适应布局；`false` 使用原生布局，`TableLayoutConfig` 可设置宽高限制和 `algorithm: TableLayoutAlgorithm`，见[表格布局](table-layout.md) |
-| parameters.codeBlock | `CodeBlockOptions`：`autoCollapse=true`、`collapseAfterLines=20`、`collapsedLines=8`、`maxExpandedLines=40`、`wrap=false`、`lineNumbers=false`，见[代码块控制](syntax.md#代码块控制) |
+| parameters.codeBlock | `CodeBlockOptions`：`autoCollapse=true`、`collapseAfterLines=20`、`collapsedLines=8`、`maxExpandedLines=false`、`wrap=false`、`lineNumbers=false`，见[代码块控制](syntax.md#代码块控制) |
 | components | 按 AST 类型/特殊标签覆盖 NodeRenderer |
 | annotationTypes | 按 type 追加/覆盖标注呈现 |
 | annotations | 不传则内部管理；传入则受控 |
@@ -70,7 +70,7 @@ Reader、Markdown 与 DocumentProvider 接受：
 | autoCollapse | true | 长块初始折叠；false 时长块仍可手动折叠 |
 | collapseAfterLines | 20 | 源码行数或换行后的实测可见行数超过此值时可折叠 |
 | collapsedLines | 8 | 折叠时的可见行数，不超过阈值 |
-| maxExpandedLines | 40 | 展开后的可见行上限，超过后在代码内滚动；`false` 取消上限，数值不小于 collapsedLines |
+| maxExpandedLines | false | 从 1.3.10 起默认完整展开、跟随文档滚动；主动传入正数时才限制可见行并在块内滚动，数值不小于 collapsedLines |
 | wrap | false | 初始软换行，每块可单独切换 |
 | lineNumbers | false | 源码行号，不进入复制/选区；换行续行不新增编号 |
 

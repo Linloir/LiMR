@@ -37,7 +37,7 @@ Reader, Markdown, and DocumentProvider accept:
 | plugins | Appended to the default or explicit list |
 | parameters | Document-wide module parameter overrides |
 | parameters.tableLayout | Built-in adaptive layout; `false` selects native layout; `TableLayoutConfig` accepts numeric limits and `algorithm: TableLayoutAlgorithm`; see [table layout](table-layout.md) |
-| parameters.codeBlock | `CodeBlockOptions`: `autoCollapse=true`, `collapseAfterLines=20`, `collapsedLines=8`, `maxExpandedLines=40`, `wrap=false`, `lineNumbers=false`; see [code controls](syntax.md#code-block-controls) |
+| parameters.codeBlock | `CodeBlockOptions`: `autoCollapse=true`, `collapseAfterLines=20`, `collapsedLines=8`, `maxExpandedLines=false`, `wrap=false`, `lineNumbers=false`; see [code controls](syntax.md#code-block-controls) |
 | components | NodeRenderer overrides by AST type/custom tag |
 | annotationTypes | Add/override presentation by type |
 | annotations | Internal state if omitted; controlled if supplied |
@@ -70,7 +70,7 @@ The default locale is english. Missing partial keys fall back to English. locale
 | autoCollapse | true | Start long blocks folded; false still permits manual folding |
 | collapseAfterLines | 20 | Fold when source lines, or measured wrapped rows, exceed this threshold |
 | collapsedLines | 8 | Visible folded rows, capped by the threshold |
-| maxExpandedLines | 40 | Expanded visual-row limit; overflow scrolls inside code. `false` removes the limit; numeric values are at least collapsedLines |
+| maxExpandedLines | false | Fully expand with the document by default (since 1.3.10). A positive number opts into a local scrolling viewport of at least collapsedLines rows |
 | wrap | false | Initial soft wrapping, independently switchable per block |
 | lineNumbers | false | Source line numbers excluded from copy/selection; wrapped continuations keep one number |
 

@@ -120,4 +120,6 @@ Callout 使用与注释、释义、提问一致的小字号标签和正文排版
 
 数字行号由 `.limr-code-line::before` 绘制，换行后的续行仍属于同一个源码行。打印样式展开折叠的完整代码。普通行内公式的不可拆分片段超宽时获得局部横滚；不要把 `.limr-math-inline` 一律强制成 nowrap 或固定宽度。图像的 width/height 也受容器和 figure 限值约束，避免使用全局 img 宽度覆盖这些限制。
 
-`.limr-code-footer` 与标题栏共用 `--limr-code-header` 和 `--limr-muted`。`.limr-code-body pre` 管理有界滚动区域及 max-height 过渡，由 `--limr-motion` / `--limr-ease` 控制时序；实测的 `--limr-code-full-height` 和 `--limr-code-scrollbar-height` 是内部值，会为占据布局空间的横向滚动条额外预留高度，保留完整可见行数。高度策略应使用 maxExpandedLines。`.limr-code-chunk` / `.limr-code-part` 承载延迟排版文字，应保留其 containment 与源码换行边界。打印 CSS 取消高度和 containment 限制并隐藏底栏。
+`.limr-code-footer` 与标题栏共用 `--limr-code-header` 和 `--limr-muted`。底栏容器设置与标题标签相同的 .7rem 字号，宿主重置按钮字体时仍可继承小字号；常规根字号下高度为 24px，并复用 `.limr-underline` 的悬停/聚焦文字颜色与下划线动画。
+
+`.limr-code-body pre` 管理 max-height 过渡，由 `--limr-motion` / `--limr-ease` 控制时序。默认展开不显示竖向滚动条，主动传入正数 maxExpandedLines 才启用块内滚动。实测的 `--limr-code-full-height` 和 `--limr-code-scrollbar-height` 是内部值，会为占据布局空间的横向滚动条额外预留高度，保留完整可见行数。高度策略应使用 maxExpandedLines。`.limr-code-chunk` / `.limr-code-part` 承载延迟排版文字，应保留其 containment 与源码换行边界。打印 CSS 取消高度和 containment 限制并隐藏底栏。

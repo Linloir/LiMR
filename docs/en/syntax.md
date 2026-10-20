@@ -157,7 +157,7 @@ const reader = <Reader source={'```js\nconst answer = 42;\n```'}
     autoCollapse: true,
     collapseAfterLines: 20,
     collapsedLines: 8,
-    maxExpandedLines: 40,
+    maxExpandedLines: false,
     wrap: false,
     lineNumbers: true,
   } }} />;
@@ -167,7 +167,7 @@ const reader = <Reader source={'```js\nconst answer = 42;\n```'}
 
 Fold/wrap clicks change only that block's view state, not Markdown. Explicit choices take priority over defaults. Each Reader remembers the 256 most recently used modified blocks across virtual unmounts; unchanged blocks allocate no cache entry, and the cache does not retain source strings/trees. Evicted blocks return to defaults when remounted. Disposing the Reader or giving a new document a new React key resets this temporary state; it is not persisted across browser reloads. Parameter changes do not reparse the document.
 
-The folded footer shows hidden and total source lines, including a partially clipped wrapped line in the hidden count. Click it to expand. Both body height and footer visibility animate, including interrupted/reversed toggles; reduced-motion preferences remove motion. Expanded code defaults to at most 40 visual rows and scrolls locally. Set `maxExpandedLines: false` only when the host deliberately wants unlimited height. Very long single lines also stay inside this viewport after wrapping. See [large-code behavior](large-documents.md#large-code-blocks) for deferred layout, selection and long-document interaction.
+The folded footer shows hidden and total source lines, including a partially clipped wrapped line in the hidden count. Click it to expand. Both body height and footer visibility animate, including interrupted/reversed toggles; reduced-motion preferences remove motion. Expanded code follows document scrolling, with no inner vertical scrollbar even during the transition. Since 1.3.10, `maxExpandedLines` defaults to `false`; a positive number such as 40 explicitly enables a local scrolling viewport. Very long single lines also expand to their full wrapped height. The compact footer uses the header label font size, with animated text color and underline on hover or keyboard focus. See [large-code behavior](large-documents.md#large-code-blocks) for deferred layout, selection and long-document interaction.
 
 ## Two-colon components
 
