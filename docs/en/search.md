@@ -4,7 +4,7 @@
 
 [Documentation](README.md) · [简体中文](../zh-CN/search.md)
 
-LiMR 1.3.11 provides optional reading search with literal/regular-expression matching, case sensitivity, source navigation and persistent visual highlights. It searches the reading text, including unmounted blocks. It does not edit Markdown, native selections or saved annotations.
+LiMR has provided optional reading search since 1.3.11 with literal/regular-expression matching, case sensitivity, source navigation and persistent visual highlights. It searches the reading text, including unmounted blocks. It does not edit Markdown, native selections or saved annotations.
 
 ## Enable and try it
 
