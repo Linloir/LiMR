@@ -206,10 +206,10 @@
   .limr-code-wrap[aria-pressed='true'] svg { transform: translateX(-1px); }
   .limr-code-block[data-wrap] pre { white-space: pre-wrap; overflow-wrap: anywhere; }
   .limr-code-body { padding-block: 1rem; background: var(--limr-code-bg, #f9f8f6); }
-  .limr-code-body pre { padding-block: 0; max-height: min(var(--limr-code-full-height, 1000000px), calc(var(--limr-code-max-lines, 40) * 1lh)); overflow-y: auto; transition: max-height var(--limr-motion) var(--limr-ease); }
+  .limr-code-body pre { padding-block: 0; max-height: min(var(--limr-code-full-height, 1000000px), calc(var(--limr-code-max-lines, 40) * 1lh + var(--limr-code-scrollbar-height, 0px))); overflow-y: auto; transition: max-height var(--limr-motion) var(--limr-ease); }
   .limr-code-body pre > code { display: block; }
   .limr-code-block[data-unbounded] pre { max-height: var(--limr-code-full-height, none); }
-  .limr-code-block[data-collapsed] pre { max-height: calc(var(--limr-code-preview-lines, 8) * 1lh); overflow-y: hidden; }
+  .limr-code-block[data-collapsed] pre { max-height: calc(var(--limr-code-preview-lines, 8) * 1lh + var(--limr-code-scrollbar-height, 0px)); overflow-y: hidden; }
   .limr-code-footer { background: var(--limr-code-header, #f3f1ee); }
   .limr-code-footer button { display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%; border: 0; padding: .45rem 1rem; background: transparent; color: var(--limr-muted, #9b9590); font: inherit; font-size: .75rem; cursor: pointer; }
   .limr-code-footer button:hover { color: var(--limr-text, #3d3a36); }

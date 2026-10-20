@@ -17,9 +17,13 @@ export function useCodeLayout({ code, total, preview, threshold, wrap, collapsed
     let frame = 0;
     const measure = () => {
       frame = 0;
-      const lineHeight = parseFloat(getComputedStyle(pre).lineHeight);
+      const style = getComputedStyle(pre), lineHeight = parseFloat(style.lineHeight);
       const height = content.getBoundingClientRect().height;
-      pre.style.setProperty('--limr-code-full-height', `${height}px`);
+      // Classic horizontal scrollbars occupy layout space. Preserve the full
+      // row budget on those platforms as well as with overlay scrollbars.
+      const scrollbar = Math.max(0, pre.offsetHeight - pre.clientHeight - parseFloat(style.borderTopWidth) - parseFloat(style.borderBottomWidth));
+      pre.style.setProperty('--limr-code-scrollbar-height', `${scrollbar}px`);
+      pre.style.setProperty('--limr-code-full-height', `${height + scrollbar}px`);
       setVisualFoldable(wrap && height > (threshold + .5) * lineHeight);
       let complete = Math.min(total, preview);
       if (wrap) {
@@ -27,7 +31,7 @@ export function useCodeLayout({ code, total, preview, threshold, wrap, collapsed
         // counts source lines with hidden text, including a partial last row.
         // Hit-test only the end of the preview, rather than measuring a huge
         // source line (or requesting rects for every character).
-        const rect = pre.getBoundingClientRect(), style = getComputedStyle(pre);
+        const rect = pre.getBoundingClientRect();
         const x = rect.right - parseFloat(style.paddingRight) - 1;
         const y = rect.top + preview * lineHeight - lineHeight / 2;
         const doc = pre.ownerDocument;
