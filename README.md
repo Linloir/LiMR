@@ -1,6 +1,6 @@
 # LiMR
 
-[![package version](https://img.shields.io/badge/version-1.3.7-blue.svg)](package.json)
+[![package version](https://img.shields.io/badge/version-1.3.8-blue.svg)](package.json)
 
 **简体中文** · [English](README.en.md)
 

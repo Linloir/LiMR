@@ -1,6 +1,6 @@
 # Built-in syntax
 
-React defaults install gfm, math, code-highlight, mermaid, callout, definition, question, extras, video, figures, citation, translations, inline-highlights, footnotes, and source-annotations. Core createDocument defaults to basic CommonMark. These references describe LiMR 1.3.7; verify the host installs the required modules.
+React defaults install gfm, math, code-highlight, mermaid, callout, definition, question, extras, video, figures, citation, translations, inline-highlights, footnotes, and source-annotations. Core createDocument defaults to basic CommonMark. These references describe LiMR 1.3.8; verify the host installs the required modules.
 
 - Standard Markdown: headings, emphasis, lists, links, images, fenced/inline code, blockquotes. GFM adds adaptive tables (alignment via delimiter colons, escape literal pipes even in inline code), tasks, strikethrough, autolinks, and named footnote parsing; the default footnotes module presents notes as comment markers and sidebar/floating cards instead of superscripts/endnotes.
 - Math uses $…$ and $$ fences; import math.css. KaTeX retains legal outer-operator breaks. An indivisible segment wider than its container scrolls locally in standard/justified prose and headings as well as KP. Do not insert arbitrary breaks into fractions/groups or rewrite the LaTeX to fit.

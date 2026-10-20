@@ -1,6 +1,6 @@
 {
   "name": "@linloir/limr",
-  "version": "1.3.7",
+  "version": "1.3.8",
   "description": "Linloir's limr Is a Markdown Renderer — extensible reading and streaming components for React",
   "type": "module",
   "license": "MIT",
