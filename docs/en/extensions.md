@@ -4,7 +4,7 @@
 
 [Documentation](README.md) · [简体中文](../zh-CN/extensions.md)
 
-Start with [built-in modules](modules.md) for module objects, factories, names, Markdown tags, and the difference between `extensions` and `plugins`.
+Start with [built-in modules](integration.md#modules-and-configuration) for module objects, factories, names, Markdown tags, and the difference between `extensions` and `plugins`.
 
 ## Choose an interface
 
@@ -15,10 +15,13 @@ Start with [built-in modules](modules.md) for module objects, factories, names, 
 | Combined syntax, annotations, actions, and parameters | defineExtension / RendererExtension |
 | A different view for existing nodes or a matching subset | components / rendererOverrides |
 | Disable or replace table layout calculation | parameters.tableLayout: false or { algorithm }; see [table layout](table-layout.md) |
+| Code folding, wrapping and line-number defaults | parameters.codeBlock / codeHighlight(options); see [code controls](syntax.md#code-block-controls) |
 | New parsing rules | micromark + mdast, with transform when needed |
 | Visual changes only | CSS theme package + appearance |
 
-These APIs are publicly exported from @linloir/limr. Third-party packages must not import src/dist internals or non-public helpers such as useRuntime. See [plugin packages](plugin-packages.md) for a complete standalone starter.
+These APIs are publicly exported from @linloir/limr. Third-party packages must not import src/dist internals or non-public helpers such as useRuntime. See [plugin packages](extensions.md#package-and-integrate) for a complete standalone starter.
+
+Check existing parameters and CSS variables first; use components / rendererOverrides when the view must change. Add a plugin for new content forms, reusable cards or actions. Export reusable capabilities as factories while keeping files, services and persistence in the host. A plugin supplying only `parameters.codeBlock` is still a RendererExtension and needs neither a new parser nor Worker registration.
 
 ## Append, remove, and replace defaults
 
@@ -62,10 +65,12 @@ This supports `<notice title="Tip">…</notice>`, paired `::notice{title="Tip"}`
 | pending | Whether its tail block is still streaming |
 | incomplete | Whether this particular syntax node is unclosed |
 | renderChildren(nodes, { trailing? }) | Rearrange an existing subtree or append an action-only marker |
-| renderValue(tokens?) | Render literals/tokens while preserving selection and annotation insertion |
+| renderValue(tokens?, { lines? }) | Render literals/tokens while preserving selection and annotation insertion |
 | renderAttribute(name) | Render attribute text with original source coordinates |
 
 Do not stringify/reparse children or render only node.value when source mapping is required. Use selection: atomic for charts/media without character correspondence, and data-limr-selection-surface for a visual boundary. Public InlineMarker supports action-only markers without creating annotations.
+
+Use `parameters.codeBlock` for built-in folding, wrapping and line numbers; see [code controls](syntax.md#code-block-controls). A custom code renderer can call `renderValue(tokens, { lines: true })` for source-bound line containers. They retain actual newlines; CSS draws gutter numbers without adding them to copied text.
 
 ## Plugins own card presentation
 
@@ -180,7 +185,7 @@ SyntaxExtension supports micromark, mdast, tags, directives, display, selection,
 
 Unknown custom tags display their complete original text, including Markdown inside. Unknown directives in the default configuration render their inner Markdown without outer directive markers; with no directive extension installed, basic Markdown parsing applies. Removing a module reparses the unchanged source with the remaining syntax capabilities. Unregistered annotation types keep their data but have no markers, cards, or editing UI; reinstalling the module restores them. See [annotations](annotations.md#missing-plugins) for selection and persistence behavior. Registered incomplete tags and containers carry node.incomplete and are retried on append; unfinished headers stay hidden or use the module loading view. Invalid JSX can still fall back with diagnostics. Finish with finish() or streaming=false. Transform exceptions become diagnostics. Client renderer boundaries can fall back to source, but React error boundaries do not catch server-rendering exceptions.
 
-Validate tags/directives, Chinese/emoji, offsets, equivalence between finalized streams and one-shot parsing, SSR, and browser behavior for new interactions. For distribution, test actual packed consumption as described in [plugin packages](plugin-packages.md).
+Validate tags/directives, Chinese/emoji, offsets, equivalence between finalized streams and one-shot parsing, SSR, and browser behavior for new interactions. For distribution, test actual packed consumption as described in [plugin packages](extensions.md#package-and-integrate).
 
 ## Plugin localization
 
@@ -241,3 +246,74 @@ Syntax and presentation are independent capabilities. Components, annotation typ
 Custom views can declare `virtualization: { copyText, searchText?, keepAlive? }` for selection/search projections and DOM retention. A contract belongs to the actual matching renderer override. Prefer `useNodeState` across offscreen unmounts and reserve keepAlive for opaque editors or media. If outside state changes visible text, call `invalidatePresentation()` to refresh TOC/search. Unknown views and oversized indivisible blocks cause an explicit fallback reported by `onVirtualizationChange`.
 
 During progressive loading, the preview sets `readOnly` to prevent writes and `provisional` to block operations requiring complete content. Mark an action `readOnly: true` only when it really avoids mutations. Use public navigation and print commands rather than assuming the entire DOM is mounted. See [large documents](large-documents.md) for worker examples, progress APIs and limits.
+
+## Package and integrate
+
+A plugin exports a factory returning RendererExtension. Consumers append it through plugins. One package can provide syntax, annotations, actions, and parameters, with a separate CSS export, without editing LiMR itself.
+
+### Copyable starter
+
+The complete [plugin-template](../../skills/limr-plugin-development/assets/plugin-template/README.md) includes TypeScript, declaration output, CSS, package.json, and tsup configuration. It demonstrates a reading-tip block, an example:note card, and a save-selection action.
+
+After installing LiMR, run from your application:
+
+```sh
+mkdir -p packages/limr-reading-tools
+cp -R node_modules/@linloir/limr/skills/limr-plugin-development/assets/plugin-template/. packages/limr-reading-tools/
+cd packages/limr-reading-tools
+npm install
+npm run typecheck
+npm run build
+npm pack
+```
+
+In a source checkout, use skills/limr-plugin-development/assets/plugin-template. Replace the @example name, extension/type/action IDs, and implement your data/UI. The starter's private: true prevents accidental publication under an example name and still permits local packing.
+
+### Package contract
+
+| Field | Requirement |
+| --- | --- |
+| type | module |
+| exports["."] | import points to ESM; types points to .d.ts |
+| exports["./styles.css"] | Explicit export when the plugin needs CSS |
+| files | Built output and usage instructions |
+| sideEffects | ["**/*.css"] to retain imported styles |
+| peerDependencies | @linloir/limr and react; add react-dom when directly using it |
+| Build external | LiMR, React, react/jsx-runtime, and any React DOM entry used |
+
+Bundling another copy of LiMR or React breaks shared contexts/hooks. Externalize host dependencies and avoid internal deep imports. Ship parameter declaration merging with exported types.
+
+### Import into an application
+
+The @example package below is the starter, not a published npm package. Install the generated local archive; use the actual filename printed by npm pack:
+
+```sh
+npm install ./packages/limr-reading-tools/example-limr-reading-tools-0.1.0.tgz
+```
+
+```tsx
+import { Reader } from '@linloir/limr';
+import { readingTools } from '@example/limr-reading-tools';
+import '@linloir/limr/styles.css';
+import '@example/limr-reading-tools/styles.css';
+
+const plugins = [readingTools({ label: 'Reading note' })];
+
+export function Article({ source }: { source: string }) {
+  return <Reader source={source} plugins={plugins} />;
+}
+```
+
+Use the real name and peer version requirements for a third-party package. Replace default modules through extensions + replaceExtension; do not register the same tag twice. Hosts still configure fonts, math CSS, persistence, and application services.
+
+### Validate distribution
+
+After type checking, install the actual tgz into an independent consumer. Check public imports, SSR, CSS resources, preserved defaults, and new interactions. Packages supporting React 18/19 should verify both. Syntax plugins should compare finalized streams with one-shot parsing. Interactive plugins should cover desktop sidebars, narrow overlays, keyboard behavior, cancellation, and both themes.
+
+The repository also includes packable [reading-tools](../../examples/packages/reading-tools/index.js) and [paper-theme](../../examples/packages/paper-theme/index.css) examples. The [plugin development Skill](ai-skills.md) includes a portable template and references that do not require this repository.
+
+### Loading and large-document compatibility
+
+Plugins relying on 1.3.0 loading controls or windowing capabilities should declare that minimum peer version and validate workers, provisional/readOnly behavior, copy/search and offscreen state in a real package consumer. Simple examples using older APIs can retain their compatible peer range. CSS themes should also check light/dark image-preview portals and uniformly sized toolbar buttons. See [workers and windowed views](extensions.md#workers-and-windowed-views) and [large-document integration](large-documents.md).
+
+Plugins using `CodeBlockOptions`, `parameters.codeBlock` or the line-grouping argument of `renderValue` require LiMR 1.3.8 or later as their minimum peer. Templates using older APIs can retain their compatible minimum; verify numbered copy, per-block overrides and windowed state in a real 1.3.8 package consumer.

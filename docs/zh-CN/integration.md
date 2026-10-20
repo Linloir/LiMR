@@ -6,7 +6,71 @@
 
 ## 选择组件
 
+| 场景 | 推荐入口 | 宿主负责什么 |
+| --- | --- | --- |
+| 文章、论文、知识库阅读 | `Reader` | 提供源码与文档 ID，选择主题和持久化方式 |
+| 完整的大文件或本地文件预览 | `AsyncReader` + Worker | 获取文件、提供 Worker URL、处理取消/失败和编辑保存 |
+| 聊天消息、流式回答 | `Markdown` 或 `Reader` + `streaming` | 累积生成文本，结束时设为 false；传输和停止生成由应用负责 |
+| 现有编辑器或复杂布局 | `DocumentProvider` + 一个主 `Markdown` | 组合导航、工具栏、侧栏/浮层，传入实际滚动容器 |
+| 只解析、SSR 数据处理 | `createDocument`，从 core 入口导入 | 显式配置语法扩展；不依赖 React 或 DOM |
+
+先完成[快速开始](getting-started.md)中的可运行接入，再按下方选择模块与显示策略。大文档默认窗口化、表格自适应布局、代码块折叠是三种不同能力：分别控制正文 DOM 数量、单表布局和单块展示，不会相互替代。
+
 用 `Reader` 获取完整阅读体验；用 `Markdown` 渲染独立正文；自己设计布局时让一个 `DocumentProvider` 管理一个主 `Markdown` 及其目录、卡片和工具栏。Provider 内再次传入 `source` 的 Markdown 会创建独立文档，不再共享父文档状态。
+
+## 模块与配置
+
+### 模块是什么
+
+LiMR 的基础解析器认识 CommonMark：标题、段落、列表、链接、图片和代码围栏等。**模块**是在这个基础上增加一组能力的配置对象，例如识别公式、渲染视频、显示引用卡片。开发时这个对象的公开类型叫 `RendererExtension`，所以 API 中也称它为“扩展”。
+
+模块可以同时包含语法规则、React 渲染组件、标注类型、工具栏动作和默认参数；并非每个模块都必须有这些部分。例如 `math` 增加公式语法和渲染，`code-highlight` 为现有代码围栏添加高亮，`citation` 同时提供引用语法和标注卡片。
+
+**插件**通常指应用自行添加的模块，或第三方包提供的模块。它与内置模块使用相同的接口；npm 包只是分发代码的方式，一个包可以导出多个模块。把模块放进 `plugins` 后，就会追加到已有配置中。
+
+### 函数、模块名和标签名的区别
+
+以视频为例：
+
+```tsx
+import { Reader, standard, replaceExtension, video } from '@linloir/limr';
+
+const videoModule = video({ loading: 'click' });
+// videoModule.name === 'video'
+const extensions = replaceExtension(standard(), videoModule);
+
+export function Article() {
+  return <Reader extensions={extensions} source={'<video src="/lesson.mp4" />'} />;
+}
+```
+
+| 写法 | 在哪里使用 | 含义 |
+| --- | --- | --- |
+| `video` / `video(...)` | 应用的 JavaScript / TypeScript | 导入的函数 / 调用这个函数，创建一个模块配置对象 |
+| `videoModule` | 应用代码 | 自己给对象起的变量名，可以改成其他名字 |
+| `'video'` | 模块对象的 `name` 字段 | LiMR 区分、替换和移除模块时使用的稳定标识 |
+| `<video … />` / `<md-video … />` | Markdown 正文 | 模块注册的两种标签，触发同一个视频渲染器 |
+| `::video{…}` | Markdown 正文 | 模块注册的指令写法，也可以使用 `:::video` 容器 |
+
+这些名称不要求一致。例如创建代码高亮模块的函数是 `codeHighlight()`，对象的模块名却是 `'code-highlight'`，正文只需要普通代码围栏，不需要 `<code-highlight>` 标签。不要把 `video()` 或字符串 `'video'` 直接写进 Markdown 来启用模块，也不要把字符串放进 `plugins`；传入的是函数返回的对象。
+
+`video({ loading: 'click' })` 的参数设置这个 Reader 中视频模块的默认行为；正文的 `<video loading="eager" … />` 则可以覆盖某一个视频的设置。不同模块支持不同参数，见[默认语法](syntax.md)。
+
+默认模块的完整清单和可复制写法统一维护在[语法手册](syntax.md#模块清单)。默认 Reader 已包含公式、代码高亮、图组、引用、译文、Mermaid、Callout、脚注和源码标注；无需逐个安装。Playground 的阅读笔记、旁注和模拟助手属于示例插件，并非默认能力。
+
+### 按需要组合
+
+默认配置足够时不必写 `standard()`。需要定制时，记住这三个操作：
+
+| 目的 | 写法 | 结果 |
+| --- | --- | --- |
+| 加自己的功能 | `plugins={[myPlugin]}` | 保留默认模块，追加插件对象 |
+| 只保留指定能力 | `extensions={[gfm(), math()]}` | 替换完整默认模块清单；CommonMark 仍可用 |
+| 调整一个内置模块 | `extensions={replaceExtension(standard(), video({ loading: 'click' }))}` | 按模块 `name` 替换视频，保留其他模块 |
+
+移除一个模块也可以过滤数组：`standard().filter(module => module.name !== 'video')`。不需要扩展语法时传 `extensions={[]}`。
+
+不要通过 `plugins={[video()]}` 再次追加已默认存在的视频模块：重复模块名、标签或指令会报错。模块没有启用时，未知标签按文本显示；未知指令可能仅留下内部 Markdown；已有的未知标注数据继续保留，但不显示专用角标、卡片或交互；重新注册类型后恢复显示。完整边界见[架构与行为](architecture.md)。
 
 ## 完整文件加载与外部进度
 
@@ -134,15 +198,9 @@ export function LocalMarkdown({ initialSource, queueSave }: {
 
 宿主的 queueSave 负责按顺序保存、合并频繁写入、处理磁盘冲突和失败提示。回调同步返回 void/true 表示接受内存修改，返回 false 或抛错则不更新文档；不要返回文件写入的 Promise。保存失败不等于已经回滚内存，宿主应保留未保存状态并重试。事务第二参数的 document 是修改前快照，可用于撤销栈和文件版本检查。组件不访问文件系统。
 
-新增时，普通 `addAnnotation(annotation)` 仍写入 annotations；模块调用 `addAnnotation(annotation, { target: 'source' })` 选择原文存储。默认 highlightSelection 动作在原文可编辑时主动选择 source，否则创建外部高亮。修改/删除已有 annotation 根据其来源选择通路；侧栏、浮层和工具栏共用这些命令。类型模块管理编辑 UI 与草稿，提交时调用 updateAnnotation，接受保存后再调用 commitAnnotationEdit；源内数据经过默认或自定义的 sourceEditing.annotations 序列化，再触发 onSourceChange，外部数据则触发 onAnnotationsChange。原文事务被同步接受后，LiMR 立即更新内部文档；受控外部标注则等待宿主回传新的 annotations 数组后更新展示。
+新增时，普通 `addAnnotation` 默认写外部标注；`{ target: 'source' }` 选择 Markdown 存储。启用原文编辑后，默认高亮动作写入源码；更新和删除遵循标注原来的存储位置。类型插件仍负责卡片和编辑器。源码坐标、拒绝写入、草稿取消和序列化规则见[标注与选区](annotations.md)及[模块修改原文](extensions.md#模块写回原文)。
 
-[内联笔记插件](../../examples/inline-notes.tsx)是 Playground 示例，**不在 standard() 中**。它提供标注类型、卡片和添加、修改、删除控件，复用默认序列化器；[阅读笔记示例](../../examples/notes.tsx)提供 type="question" 的提问卡片。Playground 的「允许修改 Markdown」开关控制 onSourceChange；开启后，高亮、任务以及已安装模块的源内编辑同步到编辑框。类型模块的安装与编辑权限彼此独立，常规笔记仍保存为外部 annotations。
-
-默认序列化器在首次修改样式时，将普通 `==高亮==` 转换为命名范围；删除最后一条注释会移除该范围的标记，保留正文。checkbox 只替换方括号内的字符，保留列表、缩进和换行。源内正文编辑器在离开编辑状态时保存已修改的内容，调整窗口造成侧栏/浮层切换会保留草稿。空白新草稿失焦时改为调用 cancelAnnotationEdit，删除新建标注及本次同时创建、没有其他引用的临时高亮。普通阅读笔记示例也会在点击外部时取消空白新草稿，非空草稿则保留到提交。已有标注、原有或共享高亮保留。当前编辑器激活时隐藏选区工具栏；可编辑卡片在靠右操作区提供单条删除。
-
-公开的 editSourceAnnotations 序列化工具用 `::%%limr%%{<#id}` / `::%%limr%%{>#id}` 边界与 `:::limr-annotation` 定义保存文本、跨段、代码和零长度选区，支持嵌套、交错以及多条注释复用同一范围。格式标记可以在选区内开始或结束；切开实体、转义序列或 Unicode 代理对的边界仍会拒绝，不会改坏原文。添加定义前须闭合文末的代码/HTML 块；需要其他存储格式时由模块提供序列化处理器。已有普通 Markdown 脚注/引用继续按各自模块的编辑能力处理，不会被隐式转成另一种语法。源内定义与外部受控 annotations 可以并存，但应使用不同 ID；已存在的外部数据仍通过 onAnnotationsChange 更新。
-
-流式输出期间禁用原文编辑。异步模块应记录 document.revision，在提交 editSource 时传入该 revision，避免把旧偏移写入新文本。更新完毕后从新的快照读取位置，不缓存 Annotation.source 中的旧坐标。完整接口见[API](api.md)和[扩展开发](extensions.md#模块写回原文)。
+[行内笔记](../../examples/inline-notes.tsx)与[阅读笔记](../../examples/notes.tsx)是可参考的应用插件。源码编辑在流式和不完整预览期间关闭；异步操作保留 revision，编辑后重新读取坐标。
 
 ## 全局译文模式
 
@@ -187,7 +245,7 @@ export async function renderArticle(source: string) {
 
 ## 已有插件与主题
 
-从真实插件包导入工厂，在模块外或 useMemo 中创建稳定 plugins 数组，再传给 Reader。CSS 需要按插件说明显式导入；主题通过 appearance 选择，不是通过 plugins 传入。具体安装与本地 tgz 流程见[插件模块包](plugin-packages.md)。
+从真实插件包导入工厂，在模块外或 useMemo 中创建稳定 plugins 数组，再传给 Reader。CSS 需要按插件说明显式导入；主题通过 appearance 选择，不是通过 plugins 传入。具体安装与本地 tgz 流程见[插件模块包](extensions.md#打包与接入)。
 
 ## 常见问题
 

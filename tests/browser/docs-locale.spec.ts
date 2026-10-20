@@ -38,11 +38,19 @@ test('Docs navigation keeps the draft, switches language, and offers downloadabl
   await expect(navigation.getByRole('link')).toHaveText(['Home', 'Playground', 'Docs', 'GitHub']);
   await navigation.getByRole('link', { name: 'Docs', exact: true }).click();
   await expect(page).toHaveURL(/#\/docs\/en\/README$/);
-  await page.locator('.demo-docs-links').getByRole('link', { name: 'Built-in modules', exact: true }).click();
+  const docsNavigation = page.locator('.demo-docs-links');
+  await expect(docsNavigation.getByRole('heading')).toHaveText(['Start and author', 'Integrate', 'Extend', 'Reference and verification']);
+  await docsNavigation.getByRole('link', { name: 'Getting started', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Load large documents', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Adjust reading policies', exact: true })).toBeVisible();
+  await page.locator('.demo-docs-article').getByRole('link', { name: 'table layout', exact: true }).first().click();
+  await expect(page).toHaveURL(/#\/docs\/en\/table-layout$/);
+  await expect(page.getByRole('heading', { name: 'Choose a reading policy first' })).toBeVisible();
+  await docsNavigation.getByRole('link', { name: 'Application integration', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Functions, module names, and tag names' })).toBeVisible();
   await page.getByRole('button', { name: '界面语言 / Reader language' }).click();
   await page.getByRole('button', { name: '中文', exact: true }).click();
-  await expect(page).toHaveURL(/#\/docs\/zh-CN\/modules$/);
+  await expect(page).toHaveURL(/#\/docs\/zh-CN\/integration$/);
   await expect(page.getByRole('heading', { name: '函数、模块名和标签名的区别' })).toBeVisible();
   await page.locator('.demo-docs-links').getByRole('link', { name: 'AI Skills', exact: true }).click();
   const download = page.waitForEvent('download');
@@ -110,8 +118,8 @@ for (const width of [320, 390, 1280]) test(`expanded tools fit their action row 
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   if (width < 760) {
     await page.getByRole('button', { name: /Documentation ·/ }).click();
-    await page.locator('.demo-docs-links').getByRole('link', { name: 'Built-in modules', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Built-in modules', exact: true })).toBeVisible();
+    await page.locator('.demo-docs-links').getByRole('link', { name: 'Large documents', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Large documents: loading and reading', exact: true })).toBeVisible();
   }
 });
 

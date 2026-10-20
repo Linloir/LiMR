@@ -111,3 +111,11 @@ Callouts share the small label and body typography of notes, definitions and que
 When overriding styles, keep button slots and icon boxes uniform; avoid extra padding or separators around the final buttons. Closing restores trigger focus; Escape and keyboard behavior remain available. Copying uses image pixels and requires clipboard capability and a readable image origin. See [API](api.md).
 
 Ordered lists reserve marker space from their start, item count and explicit ordinals, including multiple digits and nested lists. Host CSS should preserve that inset rather than imposing a narrow gutter or an ancestor clip that hides the numbers again.
+
+## Code and overflow styling
+
+Use `parameters.codeBlock` to control folding, wrapping and line numbers; see [code controls](syntax.md#code-block-controls). Hiding gutter DOM or overriding pre overflow can leave buttons out of sync with presentation. Fold/wrap state never changes Markdown.
+
+Inside `.limr-code-actions`, controls are `.limr-code-wrap`, `.limr-code-copy` and, for long blocks, `.limr-code-fold`. They share rounded buttons, strokes and hover/press motion. The fold arrow rotates; wrapping uses aria-pressed. Header top/right padding is equal. Custom themes should retain equal hit areas, keyboard focus and reduced-motion rules, scoped by `[data-limr-appearance]`.
+
+`.limr-code-line::before` draws numbers; wrapped continuations belong to their original source line. Print styles expand complete code. Indivisible oversized inline formulas scroll locally; avoid forcing all `.limr-math-inline` elements to nowrap or a fixed width. Image width/height also obey container and figure bounds, so avoid global img widths that override these limits.

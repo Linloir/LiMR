@@ -1,12 +1,14 @@
-# Default syntax
+# Syntax manual
 
 > Reading note: this page uses LiMR syntax and interactive examples. Some content cannot be fully displayed by ordinary Markdown viewers such as GitHub; visit the [GitHub Pages documentation](https://linloir.github.io/LiMR/#/docs/en/syntax) for the best reading experience.
 
 [Documentation](README.md) · [简体中文](../zh-CN/syntax.md)
 
-**Modules** are configuration objects that add capabilities such as formulas, videos, or citations. A factory is called in application code to return an object; the module name is its `name` property, used for replacement and removal; tags and directives are the syntax written in Markdown. See [built-in modules](modules.md) for concepts and configuration.
+**Modules** are configuration objects that add capabilities such as formulas, videos, or citations. A factory is called in application code to return an object; the module name is its `name` property, used for replacement and removal; tags and directives are the syntax written in Markdown. See [built-in modules](integration.md#modules-and-configuration) for concepts and configuration.
 
 The default modules below ship with `@linloir/limr`. `Reader`, standalone `Markdown`, and `DocumentProvider` enable all of them through `standard()` by default; core-only `createDocument()` starts with CommonMark. The following sections include source and rendered examples, using LiMR itself.
+
+Jump to [basic Markdown](#commonmark-and-gfm), [tables](#writing-and-reading-tables), [math and code](#math-and-code), [images](#images-figures-and-captions), [bilingual text](#translations) or [source annotations](#annotations-stored-in-markdown). Ordinary Markdown and registered components can coexist; examples below show source, interaction and attribute boundaries.
 
 ## Module catalog
 
@@ -31,6 +33,22 @@ The default modules below ship with `@linloir/limr`. `Reader`, standalone `Markd
 These are registered static tags in Markdown, not an arbitrary MDX/HTML execution environment. Use string attributes such as `multi="true"` and `answer="[0,2]"`. Do not use `answer={[0,2]}`, event functions, or spread attributes. Unregistered HTML is displayed as text; expressions are not executed and may produce diagnostics. Keep blank lines between block tags and their Markdown content.
 
 ## CommonMark and GFM
+
+### Basic forms at a glance
+
+| Content | Source form and rule |
+| --- | --- |
+| Headings | `# Level one` through `###### Level six`, with a space after the marker; feed contents and document anchors |
+| Paragraphs and line breaks | Blank lines separate paragraphs; a single newline is soft; two trailing spaces or a backslash make a hard break |
+| Emphasis | `**bold**`, `*italic*`, `~~deleted~~`; backslash-escape punctuation for literal spelling |
+| Lists | `- item`, `1. item`; indent nested items to their content; tasks use `- [ ]` / `- [x]` |
+| Links | `[label](https://example.com)`; `[label][id]` with `[id]: URL` for references; `#fragment` for document navigation |
+| Images | `![alternative text](URL)`; see [figures](#images-figures-and-captions) for captions, groups and dimensions |
+| Inline code | Backtick delimiters; use longer delimiters when the content includes backticks; wrapping adds no hyphen |
+| Code blocks | Fences of at least three backticks or tildes followed by a language; the closing fence cannot be shorter |
+| Quotes and rules | `> quote`; standalone `---` separates sections; Callouts add `[!type]` on the first quote line |
+
+Tasks use reader-local interaction state unless `onSourceChange` enables Markdown writes. Links and media pass through URL filtering; the host resolves local relative addresses. HTML spelling does not create arbitrary DOM: only registered tags enable components.
 
 LiMR extends CommonMark's punctuation boundaries for `**strong**` (including `***strong emphasis***`): `前**“中文！”**后`, `前**中文，**后`, and `before**(text!)**after` work without added spaces. This built-in rule applies to every language and to core-only `createDocument()`. Single-star emphasis and underscores retain CommonMark rules. Whitespace immediately inside delimiters still prevents opening or closing, and escaped stars and code remain literal.
 
@@ -86,6 +104,19 @@ A standard footnote[^syntax-note].
 
 Default `[^note]` footnotes use markers and cards. Remove the `footnotes` module to restore traditional GFM endnotes. Ordinary Markdown supports `![Description](/image.png)`. Raw HTML is not passed through to the DOM. Register an extension or override `components` to customize rendering.
 
+## Writing and reading tables
+
+GFM tables require a header and delimiter row. Colons in the delimiter select left, centered or right alignment. Escape a literal pipe inside a cell, including inside inline code. Cells accept inline emphasis, code, links, math and references; do not spread multi-paragraph content across physical GFM table rows.
+
+```markdown
+| Name | Expression | Count |
+| :--- | :---: | ---: |
+| **Alpha** | $x^2$ | 2 |
+| Pipe | `a\|b` | 1 |
+```
+
+Default layout allocates widths and heights from content, using wrapping, scrolling or an annotation after `…` to reveal full content. Selection/copy still map to the original source. This is a renderer capability and requires no extra Markdown switch. Hosts choose native mode, limits or a custom algorithm through `parameters.tableLayout`; see [table layout](table-layout.md).
+
 ## Math and code
 
 ```markdown
@@ -133,7 +164,158 @@ const reader = <Reader source={'```js\nconst answer = 42;\n```'}
 
 `parameters.codeBlock` works with Reader, Markdown, DocumentProvider and AsyncReader. The host's object overrides the last plugin's object; missing fields fall back to `codeHighlight()` options, then built-in defaults. The same five fields are accepted by `codeHighlight(options)`. Soft wrapping and line numbers default to false. Folding thresholds count source lines; wrapped continuations share one line number, which never enters copied text. `collapsedLines` is clamped to `collapseAfterLines`.
 
-Fold/wrap clicks change only that block's view state, not Markdown. Explicit choices take priority over defaults. Each Reader remembers the 256 most recently used modified blocks across virtual unmounts; unchanged blocks allocate no cache entry, and the cache does not retain source strings/trees. Evicted blocks return to defaults when remounted. Reader disposal or a new document resets this temporary state; it is not persisted across browser reloads. Parameter changes do not reparse the document.
+Fold/wrap clicks change only that block's view state, not Markdown. Explicit choices take priority over defaults. Each Reader remembers the 256 most recently used modified blocks across virtual unmounts; unchanged blocks allocate no cache entry, and the cache does not retain source strings/trees. Evicted blocks return to defaults when remounted. Disposing the Reader or giving a new document a new React key resets this temporary state; it is not persisted across browser reloads. Parameter changes do not reparse the document.
+
+## Two-colon components
+
+The default body components listed below accept the [CoMark component form](https://comark.dev/syntax/components), including nesting, scalar attributes, and Markdown children:
+
+```md
+::definition{title="A definition"}
+**Rich** Markdown content.
+::
+
+::question{title="A question"}
+::question-content
+The prompt.
+::
+::question-answer
+The answer.
+::
+::
+```
+
+Names: `gfm`, `definition`, `title`, `content`, `question` and its existing child tags, `extras`, `extra`, `video`, `md-video`, `figures`, `figure`, `figcaption`, `caption`, `img`, `citation`, `ref`, `translations`, `origin`, `translation`, `code` (alias `code-highlight`), `math`, `mermaid`, `callout`, `highlight`, `footnote`, and `footnote-ref`. Named annotation definitions use `:::limr-annotation` blocks, described below. `::code{lang="typescript"}` and `::math` preserve their bodies literally. Standard Markdown fences, JSX, single-colon inline directives and existing triple-colon containers remain supported. An unpaired two-colon line in a finished document keeps its legacy leaf-directive meaning. This is component-syntax compatibility, not support for CoMark's YAML props, named slots or frontmatter.
+
+During streaming, partial headers, links, inline code/emphasis/math delimiters and table headers are withheld until usable. Registered open components carry `incomplete`; the module chooses a loading view or progressive content. Code fences and display math can render before their closing delimiter. Set `streaming={false}` or call `finish()` to restore normal final Markdown interpretation. Source ranges always refer to the unmodified original input.
+
+## Callouts and nested quotes
+
+```markdown
+> [!tip]+ Custom title
+> A useful hint.
+>
+> > An ordinary nested quote.
+> >
+> > > [!warning]- Collapsible reminder
+> > > With **Markdown** content.
+```
+
+Default types are `note`, `abstract`, `info`, `todo`, `tip`, `success`, `question`, `warning`, `failure`, `danger`, `bug`, `example`, and `quote`. Obsidian aliases are supported: summary/tldr, hint/important, check/done, help/faq, caution/attention, fail/missing, error, and cite. Types are case-insensitive; unknown names use note styling. `+` starts expanded, `-` starts collapsed, and no sign creates a regular block. The equivalent component is `::callout{type="tip" title="Title" fold="-"}`.
+
+Rendered result; expand the nested reminder:
+
+> [!tip]+ Custom title
+> A useful hint.
+>
+> > An ordinary nested quote.
+> >
+> > > [!warning]- Collapsible reminder
+> > > With **Markdown** content.
+
+## Mermaid diagrams
+
+````markdown
+```mermaid
+flowchart LR
+  A[Start] --> B{Ready}
+  B --> C[Read on]
+```
+````
+
+`::mermaid` is also supported. Open streaming blocks show a loading ring; completed diagrams load asynchronously and fade into view. The math-style surface has one rounded toolbar for copying source, zooming in/out, and switching source/image views. Selection, highlights and markers treat the whole diagram atomically in both views. Mermaid uses strict mode without diagram interaction callbacks.
+
+Rendered result:
+
+```mermaid
+flowchart LR
+  A[Start] --> B{Ready}
+  B --> C[Read on]
+```
+
+Drag to pan, or use arrow keys, Page Up/Down, Home/End and the wheel; Shift+wheel moves horizontally. Click or Enter selects the whole block with its selection toolbar below. Zoomed content scrolls within `--limr-mermaid-max-height`, defaulting to `min(70vh, 36rem)`. The diagram's own copy button copies its body; selection-toolbar and browser copying preserve the full fence or directive. See [styles](styles.md) and [atomic copying](annotations.md).
+
+## Images, figures, and captions
+
+```markdown
+<figures columns="2" min-width="220" max-width="560" max-height="480">
+
+<figure src="/figures/a.png" alt="Experiment A" caption="(a) Experiment A" />
+
+<figure id="experiment-b">
+
+![Experiment B](/figures/b.png)
+
+<figcaption>**(b)** A Markdown caption.</figcaption>
+
+</figure>
+
+<figcaption>Figure 1 · Two experiments.</figcaption>
+
+</figures>
+```
+
+Rendered result (interactive where applicable):
+
+<figures columns="2" min-width="220" max-width="560" max-height="480">
+
+<figure src="../assets/source.svg" alt="Experiment A" caption="(a) Experiment A" />
+
+<figure id="experiment-b">
+
+![Experiment B](../assets/rendered.svg)
+
+<figcaption>**(b)** A Markdown caption.</figcaption>
+
+</figure>
+
+<figcaption>Figure 1 · Two experiments.</figcaption>
+
+</figures>
+
+A figure can stand alone. Supply an image through `src` / `url`, nested Markdown, or `<img src="…" alt="…" />`. Use one image per figure and figures for groups. Captions can use an attribute or figcaption / caption child tags; use children for rich text. `id` provides an in-page link target.
+
+A standalone `<img src="media/limr-icon.png" alt="LiMR" width="96" />` also uses the single-figure presentation, including URL copy, preview, source selection and annotations. Numeric or `px` width/height limits preserve aspect ratio and remain bounded by the container. Images inside prose or an existing figure keep that layout without another figure wrapper.
+
+| Attribute | Default | Meaning |
+| --- | --- | --- |
+| `min-width` / `min-height` | 220 / 120 | Determines when another column fits; narrow containers take priority |
+| `max-width` / `max-height` | 560 / 480 | Image bounds preserving aspect ratio; none / false removes a bound |
+| `columns` / `cols` | Automatic | Requested columns, capped at 24 |
+| `rows` | Automatic | Derives columns from image count when columns are omitted |
+| `responsive` | true | Reduces explicit columns when space is insufficient; false keeps them |
+| `gap` | 16 | Group gap in pixels |
+
+Dimensions accept nonnegative numbers or px. Figures inherit group limits and can override them. Factory options use camelCase, such as `figures({ maxHeight: 360, maxWidth: false })`. Images retain their aspect ratio, and captions are not cropped. A single figure copies the image URL; a group copies Markdown source. Neither copies image bytes.
+
+Failed images show an icon and a localized message when space permits. If the available width and height cannot fit the message, only the icon remains; it scales proportionally in smaller spaces. The placeholder respects figure height limits and never adds scrollbars. The full failure description remains available to assistive technology.
+
+Directive example:
+
+```markdown
+:::figures{columns="2"}
+::figure{src="/a.png" caption="A"}
+::figure{src="/b.png" caption="B"}
+:::
+```
+
+## Video
+
+```markdown
+<video src="/demo.mp4" provider="native" title="Demo" />
+
+<md-video url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" loading="click" />
+
+<video url="https://www.bilibili.com/video/BV1xx411c7mD/?p=2" />
+```
+
+`url` takes precedence over `src`. `provider` defaults to auto and also accepts native, youtube, and bilibili. YouTube supports watch, short, embed, shorts, and live URLs with start times. Bilibili supports BV/av IDs and parts. Other attributes are title and loading.
+
+**The default is `loading="visible"`**: the player mounts within 200px of the viewport without autoplay. click waits for a click; eager mounts immediately. Set a module default with `video({ loading: 'click' })`. Actual playback depends on the platform, network, and embedding permissions; local iframe tests do not guarantee remote playback. Use `video({ resolveUrl })` for a custom provider.
+
+Click-to-load example (no player is created before clicking):
+
+<video url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" loading="click" title="Video example" />
 
 ## Definitions
 
@@ -233,7 +415,7 @@ Rendered result (interactive where applicable):
 
 <extras>
 
-<extra title="Built-in modules" url="https://linloir.github.io/LiMR/#/docs/en/modules" desc="Background material." />
+<extra title="Built-in modules" url="https://linloir.github.io/LiMR/#/docs/en/integration" desc="Background material." />
 
 </extras>
 
@@ -264,88 +446,6 @@ One source<ref id="a" />, or several<ref ids='["a","b"]' />.
 Citation IDs use `cite-id`, then `id`. Descriptions use `desc`, then `description`. References use `cite-from-ids`, `ids`, then `id`, accepting JSON arrays or comma-separated strings. Definitions do not occupy body space, and multiple markers can reference one definition.
 
 Citations do not expand into large cards by default; clicking pins the preview. Collapsed summaries fall back through `summary → description → safe URL → title`, with Markdown stripped. Card content uses description, then summary. `<ref id="a">text</ref>` temporarily highlights its explicit content when hovered or activated, without saving a highlight. A self-closing `<ref id="a" />` is a zero-length reference at the marker position and does not paint its paragraph. External range annotations use their bound range. See [annotations and selection](annotations.md).
-
-## Images, figures, and captions
-
-```markdown
-<figures columns="2" min-width="220" max-width="560" max-height="480">
-
-<figure src="/figures/a.png" alt="Experiment A" caption="(a) Experiment A" />
-
-<figure id="experiment-b">
-
-![Experiment B](/figures/b.png)
-
-<figcaption>**(b)** A Markdown caption.</figcaption>
-
-</figure>
-
-<figcaption>Figure 1 · Two experiments.</figcaption>
-
-</figures>
-```
-
-Rendered result (interactive where applicable):
-
-<figures columns="2" min-width="220" max-width="560" max-height="480">
-
-<figure src="../assets/source.svg" alt="Experiment A" caption="(a) Experiment A" />
-
-<figure id="experiment-b">
-
-![Experiment B](../assets/rendered.svg)
-
-<figcaption>**(b)** A Markdown caption.</figcaption>
-
-</figure>
-
-<figcaption>Figure 1 · Two experiments.</figcaption>
-
-</figures>
-
-A figure can stand alone. Supply an image through `src` / `url`, nested Markdown, or `<img src="…" alt="…" />`. Use one image per figure and figures for groups. Captions can use an attribute or figcaption / caption child tags; use children for rich text. `id` provides an in-page link target.
-
-A standalone `<img src="media/limr-icon.png" alt="LiMR" width="96" />` also uses the single-figure presentation, including URL copy, preview, source selection and annotations. Numeric or `px` width/height limits preserve aspect ratio and remain bounded by the container. Images inside prose or an existing figure keep that layout without another figure wrapper.
-
-| Attribute | Default | Meaning |
-| --- | --- | --- |
-| `min-width` / `min-height` | 220 / 120 | Determines when another column fits; narrow containers take priority |
-| `max-width` / `max-height` | 560 / 480 | Image bounds preserving aspect ratio; none / false removes a bound |
-| `columns` / `cols` | Automatic | Requested columns, capped at 24 |
-| `rows` | Automatic | Derives columns from image count when columns are omitted |
-| `responsive` | true | Reduces explicit columns when space is insufficient; false keeps them |
-| `gap` | 16 | Group gap in pixels |
-
-Dimensions accept nonnegative numbers or px. Figures inherit group limits and can override them. Factory options use camelCase, such as `figures({ maxHeight: 360, maxWidth: false })`. Images retain their aspect ratio, and captions are not cropped. A single figure copies the image URL; a group copies Markdown source. Neither copies image bytes.
-
-Failed images show an icon and a localized message when space permits. If the available width and height cannot fit the message, only the icon remains; it scales proportionally in smaller spaces. The placeholder respects figure height limits and never adds scrollbars. The full failure description remains available to assistive technology.
-
-Directive example:
-
-```markdown
-:::figures{columns="2"}
-::figure{src="/a.png" caption="A"}
-::figure{src="/b.png" caption="B"}
-:::
-```
-
-## Video
-
-```markdown
-<video src="/demo.mp4" provider="native" title="Demo" />
-
-<md-video url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" loading="click" />
-
-<video url="https://www.bilibili.com/video/BV1xx411c7mD/?p=2" />
-```
-
-`url` takes precedence over `src`. `provider` defaults to auto and also accepts native, youtube, and bilibili. YouTube supports watch, short, embed, shorts, and live URLs with start times. Bilibili supports BV/av IDs and parts. Other attributes are title and loading.
-
-**The default is `loading="visible"`**: the player mounts within 200px of the viewport without autoplay. click waits for a click; eager mounts immediately. Set a module default with `video({ loading: 'click' })`. Actual playback depends on the platform, network, and embedding permissions; local iframe tests do not guarantee remote playback. Use `video({ resolveUrl })` for a custom provider.
-
-Click-to-load example (no player is created before clicking):
-
-<video url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" loading="click" title="Video example" />
 
 ## Translations
 
@@ -391,79 +491,6 @@ Global `parameters.translationMode` overrides individual blocks. Pass onTranslat
 
 By default, native selections stay inside the starting `<origin>` or `<translation>` region; multiple paragraphs within that region remain selectable together. Drags starting outside stop before entering the translation block, even when dragged past it. Crossing from inside shows a toolbar hint; an outside drag shows the hint only when released inside a translation block. Existing annotations and annotations added through the API may still cross these boundaries. Set `parameters.translationSelectionBoundary` to `false` to restore the previous native selection behavior; see [application integration](integration.md#global-translation-mode).
 
-## Selection and replacement
-
-Toolbar-authored highlights are annotations; source-authored `==highlights==` default to a copy-only toolbar. Supplying `onSourceChange` makes the default toolbar’s highlight creation/edits and task toggles update Markdown; modules can also add source annotations with target: source. Ordinary addAnnotation stays external; see [application integration](integration.md). Registered default body-component tags also support their matching `::` directive. Named annotation definitions use `:::limr-annotation` blocks. Register plugins for custom tags. See [extension development](extensions.md) to select or replace default modules.
-
-## Two-colon components
-
-The default body components listed below accept the [CoMark component form](https://comark.dev/syntax/components), including nesting, scalar attributes, and Markdown children:
-
-```md
-::definition{title="A definition"}
-**Rich** Markdown content.
-::
-
-::question{title="A question"}
-::question-content
-The prompt.
-::
-::question-answer
-The answer.
-::
-::
-```
-
-Names: `gfm`, `definition`, `title`, `content`, `question` and its existing child tags, `extras`, `extra`, `video`, `md-video`, `figures`, `figure`, `figcaption`, `caption`, `img`, `citation`, `ref`, `translations`, `origin`, `translation`, `code` (alias `code-highlight`), `math`, `mermaid`, `callout`, `highlight`, `footnote`, and `footnote-ref`. Named annotation definitions use `:::limr-annotation` blocks, described below. `::code{lang="typescript"}` and `::math` preserve their bodies literally. Standard Markdown fences, JSX, single-colon inline directives and existing triple-colon containers remain supported. An unpaired two-colon line in a finished document keeps its legacy leaf-directive meaning. This is component-syntax compatibility, not support for CoMark's YAML props, named slots or frontmatter.
-
-During streaming, partial headers, links, inline code/emphasis/math delimiters and table headers are withheld until usable. Registered open components carry `incomplete`; the module chooses a loading view or progressive content. Code fences and display math can render before their closing delimiter. Set `streaming={false}` or call `finish()` to restore normal final Markdown interpretation. Source ranges always refer to the unmodified original input.
-
-## Mermaid diagrams
-
-````markdown
-```mermaid
-flowchart LR
-  A[Start] --> B{Ready}
-  B --> C[Read on]
-```
-````
-
-`::mermaid` is also supported. Open streaming blocks show a loading ring; completed diagrams load asynchronously and fade into view. The math-style surface has one rounded toolbar for copying source, zooming in/out, and switching source/image views. Selection, highlights and markers treat the whole diagram atomically in both views. Mermaid uses strict mode without diagram interaction callbacks.
-
-Rendered result:
-
-```mermaid
-flowchart LR
-  A[Start] --> B{Ready}
-  B --> C[Read on]
-```
-
-Drag to pan, or use arrow keys, Page Up/Down, Home/End and the wheel; Shift+wheel moves horizontally. Click or Enter selects the whole block with its selection toolbar below. Zoomed content scrolls within `--limr-mermaid-max-height`, defaulting to `min(70vh, 36rem)`. The diagram's own copy button copies its body; selection-toolbar and browser copying preserve the full fence or directive. See [styles](styles.md) and [atomic copying](annotations.md).
-
-## Callouts and nested quotes
-
-```markdown
-> [!tip]+ Custom title
-> A useful hint.
->
-> > An ordinary nested quote.
-> >
-> > > [!warning]- Collapsible reminder
-> > > With **Markdown** content.
-```
-
-Default types are `note`, `abstract`, `info`, `todo`, `tip`, `success`, `question`, `warning`, `failure`, `danger`, `bug`, `example`, and `quote`. Obsidian aliases are supported: summary/tldr, hint/important, check/done, help/faq, caution/attention, fail/missing, error, and cite. Types are case-insensitive; unknown names use note styling. `+` starts expanded, `-` starts collapsed, and no sign creates a regular block. The equivalent component is `::callout{type="tip" title="Title" fold="-"}`.
-
-Rendered result; expand the nested reminder:
-
-> [!tip]+ Custom title
-> A useful hint.
->
-> > An ordinary nested quote.
-> >
-> > > [!warning]- Collapsible reminder
-> > > With **Markdown** content.
-
 ## Source highlights and footnotes
 
 ```markdown
@@ -493,7 +520,6 @@ Rendered result; click a highlight or comment marker:
 [^syntax-source-highlight]: Footnote content.
 
     A second paragraph.
-
 
 ## Annotations stored in Markdown
 
@@ -548,3 +574,7 @@ The first range crosses paragraphs.
 ```
 
 Definitions may precede or follow their ranges. Streaming keeps incomplete definition headers and bodies hidden. Markers remain literal until their complete pair and definition are available, then the affected content is parsed with those boundaries removed. See [annotations and selection](annotations.md) for source metadata and editing.
+
+## Selection and replacement
+
+Toolbar-authored highlights are annotations; source-authored `==highlights==` default to a copy-only toolbar. Supplying `onSourceChange` makes the default toolbar’s highlight creation/edits and task toggles update Markdown; modules can also add source annotations with target: source. Ordinary addAnnotation stays external; see [application integration](integration.md). Registered default body-component tags also support their matching `::` directive. Named annotation definitions use `:::limr-annotation` blocks. Register plugins for custom tags. See [extension development](extensions.md) to select or replace default modules.

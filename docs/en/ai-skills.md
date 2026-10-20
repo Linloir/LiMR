@@ -59,3 +59,15 @@ The use Skill should deliver working integration, stable configuration, and vali
 ## Loading and large-document integration
 
 The use Skill's [loading.md](../../skills/limr-use/references/loading.md) covers AsyncReader, host progress, cancel/retry, worker assets, read-only previews, bookmarks, printing and image previews. The development Skill's [contract](../../skills/limr-plugin-development/references/contract.md) covers custom worker registration, transferable results and windowed-view text/state contracts. Both target the public 1.3.7 declarations; update the whole Skill directory while preserving local customizations.
+
+## Route tasks to the right Skill and reference
+
+| Task | Skill / reference |
+| --- | --- |
+| First integration, components and reading policies | limr-use → integration.md, with [getting started](getting-started.md) |
+| Large documents, Workers, host progress and printing | limr-use → loading.md, with [large documents](large-documents.md) |
+| Adaptive tables and code defaults | limr-use → integration.md; no replacement renderer needed |
+| Static images, formulas, components and source annotations | limr-use → syntax.md, with the [syntax manual](syntax.md) |
+| New modules and reusable plugin packages | limr-plugin-development → contract.md and template, with [extension development](extensions.md) |
+
+The references cover code parameters, the 256-entry view cache, HTML image dimensions, formula overflow and real Worker/package-consumer validation. Configuration tasks should use existing APIs first; reusable plugin tasks can start from the template. Example packages remain local examples, not assumed npm releases.

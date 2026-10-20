@@ -7,7 +7,11 @@
 Documentation is organized around writing content, integrating LiMR, and developing extensions. Both languages use the same file structure, with a language switch on each page.
 
 - [中文入门](zh-CN/getting-started.md) / [Getting started](en/getting-started.md)
-- [默认语法](zh-CN/syntax.md) / [Default syntax](en/syntax.md)
+- [语法手册](zh-CN/syntax.md) / [Syntax manual](en/syntax.md)
+- [按场景接入](zh-CN/integration.md) / [Scenario-based integration](en/integration.md)
+- [大文档与 Worker](zh-CN/large-documents.md) / [Large documents and Workers](en/large-documents.md)
+- [自适应表格](zh-CN/table-layout.md) / [Adaptive tables](en/table-layout.md)
+- [扩展开发与打包](zh-CN/extensions.md) / [Extension development and packaging](en/extensions.md)
 - [渲染器性能报告](zh-CN/performance.md) / [Renderer performance](en/performance.md)
 - [加载与内存性能](zh-CN/loading-performance.md) / [Loading and memory performance](en/loading-performance.md)
 - [KP 算法性能报告](zh-CN/knuth-plass-performance.md) / [Knuth–Plass performance](en/knuth-plass-performance.md)

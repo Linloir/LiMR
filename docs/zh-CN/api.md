@@ -59,7 +59,21 @@ Reader、Markdown 与 DocumentProvider 接受：
 | onAnnotationHover | occurrence 或 null |
 | onHighlightClick / onHighlightHover | 高亮 Annotation；hover 离开为 null |
 
-默认 locale 是 english，Partial 未指定键回退到英文。locale 影响采用 LiMRLocale 的内置控件，不翻译正文；第三方插件通过 useLocale 自行提供文案。当前部分辅助文字（例如公式 Copy LaTeX、译文切换提示）仍是模块固定文案。Playground 的界面语言按钮可试用中文/英文切换，选择会独立保存到浏览器。
+默认 locale 是 english，Partial 未指定键回退到英文。locale 影响采用 LiMRLocale 的内置控件，不翻译正文；第三方插件通过 useLocale 自行提供文案。当前部分辅助文字（例如公式 Copy LaTeX）仍是模块固定文案。Playground 的界面语言按钮可试用中文/英文切换，选择会独立保存到浏览器。
+
+## 代码块参数
+
+`CodeBlockOptions` 与 `CodeHighlightOptions` 从根入口和 extensions 入口导出；后者在显示参数之外提供 languages、lightTheme、darkTheme、eager、maxLength 等高亮设置。
+
+| 字段 | 默认值 | 语义 |
+| --- | --- | --- |
+| autoCollapse | true | 长块初始折叠；false 时长块仍可手动折叠 |
+| collapseAfterLines | 20 | 源码行数严格超过此值才可折叠 |
+| collapsedLines | 8 | 折叠时的可见行数，不超过阈值 |
+| wrap | false | 初始软换行，每块可单独切换 |
+| lineNumbers | false | 源码行号，不进入复制/选区；换行续行不新增编号 |
+
+行数取有效正数的整数部分，无效值回退默认值。`parameters.codeBlock` 的整个对象由宿主覆盖插件；缺失字段回退工厂选项再到内置值。块内手动折叠/换行覆盖对应默认字段；缓存与生命周期见[语法手册](syntax.md#代码块控制)。配置参数不重解析，未关闭的流式代码在完成前不自动折叠。locale 的 expandCode、collapseCode、wrapCode、unwrapCode 定制按钮标签，缺失时使用英文回退。
 
 ## 组件
 

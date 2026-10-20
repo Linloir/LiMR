@@ -182,7 +182,7 @@ test('extension tabs support keyboard navigation and link to the selected API gu
   await page.keyboard.press('End');
   await expect(tabs.getByRole('tab', { name: /插件能力/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('tabpanel')).toContainText('defineExtension');
-  await expect(page.getByRole('tabpanel').getByRole('link', { name: '探索开发接口' })).toHaveAttribute('href', '#/docs/zh-CN/plugin-packages');
+  await expect(page.getByRole('tabpanel').getByRole('link', { name: '探索开发接口' })).toHaveAttribute('href', '#/docs/zh-CN/extensions');
   await page.keyboard.press('Home');
   await expect(tabs.getByRole('tab', { name: /语法扩展/ })).toBeFocused();
 });

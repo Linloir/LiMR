@@ -111,3 +111,11 @@ Callout 使用与注释、释义、提问一致的小字号标签和正文排版
 如需覆盖样式，应保持整个按钮槽位与图标盒子等大，不要对最后几个按钮单独增加 padding 或分隔空白。关闭时返回原触发点焦点，Escape 和键盘操作保留；复制的是像素，需浏览器剪贴板能力及可读取的图片来源。详见 [API](api.md)。
 
 有序列表按起始序号、条目数量及显式序号计算标记所需的左侧空间，支持多位数字与嵌套；宿主样式应保留这部分内边距，避免固定窄 gutter 或祖先裁切重新遮挡数字。
+
+## 代码块与溢出样式
+
+代码折叠、换行和行号是视图参数：用 `parameters.codeBlock` 控制行为，见[代码块控制](syntax.md#代码块控制)。不要靠隐藏行号 DOM 或覆盖 pre 的 overflow 来代替参数，否则容易让显示状态与按钮失配。折叠状态和换行状态不写入 Markdown。
+
+`.limr-code-actions` 内依次为 `.limr-code-wrap`、`.limr-code-copy`、可折叠时出现的 `.limr-code-fold`。三者复用圆角按钮、描边和 hover/按压动效；折叠箭头旋转，换行按钮用 aria-pressed 表示状态。头部上/右内边距相等；自定义主题应保留等尺寸点击区域、键盘焦点和 reduced-motion 规则。局部样式仍以 `[data-limr-appearance]` 约束。
+
+数字行号由 `.limr-code-line::before` 绘制，换行后的续行仍属于同一个源码行。打印样式展开折叠的完整代码。普通行内公式的不可拆分片段超宽时获得局部横滚；不要把 `.limr-math-inline` 一律强制成 nowrap 或固定宽度。图像的 width/height 也受容器和 figure 限值约束，避免使用全局 img 宽度覆盖这些限制。

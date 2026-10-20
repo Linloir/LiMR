@@ -4,6 +4,37 @@
 
 LiMR computes table tracks in the core, measures rendered content in the React adapter, and uses the ordinary annotation UI for overflow. The same component serves the Playground and VS Code. Table layout does not depend on paragraph alignment or KP typography.
 
+## Choose a reading policy first
+
+Default Reader / AsyncReader already include adaptive tables. The planner allocates column widths and row heights from actual fonts and content, reducing empty space caused by one very long cell. An annotation marker after `…` reveals clipped content, which can also expand in its original cell. Markdown source remains complete.
+
+| Scenario | Recommended setting | Behavior |
+| --- | --- | --- |
+| Papers, comparison tables, mixed short/long content | Keep default tableLayout | Adaptive dimensions, horizontal scrolling when needed and full-content previews |
+| Prefer browser-native dimensions without preview cards | `tableLayout: false` | Native table layout and scrolling, without measurement, clipping or derived previews |
+| Adjust only width/height protection limits | `{ maxColumnWidth, maxRowHeight }` | Keep the planner and change explicit limits |
+| Use another column/row policy | `{ algorithm }` | Replace calculation while reusing measurement, caching and previews |
+| Change DOM or measurement entirely | `rendererOverrides` | Implement the custom view contract; see [extensions](extensions.md) |
+
+Table policy is independent of typography, code wrapping and document windows. One huge table can still create substantial DOM; document windowing does not virtualize its rows. See the [quick start](getting-started.md#adjust-reading-policies) for integration. Algorithm details follow the usage sections below.
+
+## Overflow, source and configuration
+
+Truncation is decided at the full content width with the suffix temporarily excluded. Emergency wrapping stays the same before and after that decision, so an existing marker cannot create or sustain its own overflow.
+
+Clipped content retains its original source-bound DOM. A separate suffix track reserves space for `…` immediately followed by an ordinary annotation marker; no painted white overlay covers glyphs. Complete cells keep overflow visible so italic and accented glyph ink can extend past its measured advance width. The marker registers a view-only annotation in one batch per table. Wide readers use the existing sidebar and narrow readers use the existing overlay/card. Full content can be read there, copied as Markdown, or expanded in the original cell. The visual preview carries no duplicate source anchors, and derived annotations are neither editable source annotations nor exported Markdown.
+
+```tsx
+<Reader
+  source={markdown}
+  parameters={{ tableLayout: { maxColumnWidth: 720 } }}
+/>
+```
+
+`maxColumnWidth` is in CSS pixels and protects the content window; a track may exceed it when needed to fill the reader. `maxRowHeight` is an optional explicit protection limit in pixels; omit it for content-dependent row heights. `fontSize` and `cellPadding` can override adapter measurements for custom integrations. Custom renderers with changing fonts or media must expose normal DOM changes/load events; very large individual cells have a measured prefix and an estimated tail.
+
+Regression coverage includes sparse, single-column, reference/prose and 19-column tables at 500, 760 and 1100 pixels; rare phrases, compound headers, long-token wrap boundaries and nonempty per-line glyph counts, real reference markers, glyph/suffix separation, rich previews, source selection, hidden translation panels, dense rows, print styles and stable view-annotation registration. Browser tests and actual article screenshots complement the pure optimizer tests; neither establishes a universal appearance or performance guarantee for arbitrary custom cell renderers.
+
 ## Disable or replace the planner (1.3.1)
 
 This capability belongs to the default table renderer; no separate layout module is required. Omit `parameters.tableLayout` or pass `{}` to retain the 1.3.0 `layoutTable` algorithm, measurement and bounded caches. Existing numeric options remain compatible.
@@ -79,20 +110,3 @@ A complete, single long-token header also receives a bounded near-fit check. Mea
 The optimizer uses up to 40 representative rows, 18 width candidates per column, three coordinate passes, and two bounded width-exchange rounds. It compares a content-balanced full-width seed and uses at most 768 score evaluations (96 above 48 columns), plus at most 256 spare-width trials. Each row has at most 24 height candidates. Intrinsic profiling and final row decisions still inspect the table; this does **not** make a million-cell table constant-time or virtualize its DOM. Selected-row scores cache wrapping at each tested width. Width plans and short glyph-run measurements have bounded caches.
 
 This is a deterministic heuristic over candidate widths and row heights, not Knuth–Plass paragraph dynamic programming or a proof of a global optimum. [CSS 2 automatic table layout](https://www.w3.org/TR/CSS22/tables.html#auto-table-layout) and the [CSS Tables draft width-distribution model](https://drafts.csswg.org/css-tables-3/#width-distribution-algorithm) provide useful intrinsic-sizing concepts; LiMR additionally optimizes row/column whitespace, readable short tokens, and explicit overflow previews. The latter specification is a draft, not a claimed browser-conformance target.
-
-## Overflow, source and configuration
-
-Truncation is decided at the full content width with the suffix temporarily excluded. Emergency wrapping stays the same before and after that decision, so an existing marker cannot create or sustain its own overflow.
-
-Clipped content retains its original source-bound DOM. A separate suffix track reserves space for `…` immediately followed by an ordinary annotation marker; no painted white overlay covers glyphs. Complete cells keep overflow visible so italic and accented glyph ink can extend past its measured advance width. The marker registers a view-only annotation in one batch per table. Wide readers use the existing sidebar and narrow readers use the existing overlay/card. Full content can be read there, copied as Markdown, or expanded in the original cell. The visual preview carries no duplicate source anchors, and derived annotations are neither editable source annotations nor exported Markdown.
-
-```tsx
-<Reader
-  source={markdown}
-  parameters={{ tableLayout: { maxColumnWidth: 720 } }}
-/>
-```
-
-`maxColumnWidth` is in CSS pixels and protects the content window; a track may exceed it when needed to fill the reader. `maxRowHeight` is an optional explicit protection limit in pixels; omit it for content-dependent row heights. `fontSize` and `cellPadding` can override adapter measurements for custom integrations. Custom renderers with changing fonts or media must expose normal DOM changes/load events; very large individual cells have a measured prefix and an estimated tail.
-
-Regression coverage includes sparse, single-column, reference/prose and 19-column tables at 500, 760 and 1100 pixels; rare phrases, compound headers, long-token wrap boundaries and nonempty per-line glyph counts, real reference markers, glyph/suffix separation, rich previews, source selection, hidden translation panels, dense rows, print styles and stable view-annotation registration. Browser tests and actual article screenshots complement the pure optimizer tests; neither establishes a universal appearance or performance guarantee for arbitrary custom cell renderers.

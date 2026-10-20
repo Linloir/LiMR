@@ -6,7 +6,71 @@
 
 ## Choose a component
 
+| Scenario | Recommended entry | Host responsibility |
+| --- | --- | --- |
+| Articles, papers, knowledge bases | `Reader` | Supply source and document identity; choose theme and persistence |
+| Complete large files or local previews | `AsyncReader` + Worker | Obtain files, supply the Worker URL, handle cancellation/failure and save edits |
+| Chat messages and generated answers | `Markdown` or `Reader` + `streaming` | Accumulate text and set false at completion; own transport and stopping generation |
+| Editor panels or custom layouts | `DocumentProvider` + one primary `Markdown` | Compose navigation, toolbar, sidebar/overlay; supply the actual scroll container |
+| Parsing or server data processing | `createDocument` from the core entry | Configure syntax explicitly; no React or DOM dependency |
+
+Start with the working [quick start](getting-started.md), then choose modules and presentation below. Large-document windows, adaptive tables and code folding address different costs: body DOM count, individual table layout and individual code presentation. They do not replace one another.
+
 Use `Reader` for the complete experience and `Markdown` for standalone content. For a custom layout, one DocumentProvider manages one primary Markdown plus its navigation, cards, and toolbar. Passing source to Markdown inside a provider creates an independent document instead of sharing the parent state.
+
+## Modules and configuration
+
+### What is a module?
+
+LiMR's base parser understands CommonMark: headings, paragraphs, lists, links, images, and code fences. A **module** is a configuration object that adds capabilities, such as formulas, video rendering, or citation cards. Its public TypeScript type is `RendererExtension`, so the API also calls it an extension.
+
+A module can combine parsing rules, React components, annotation types, toolbar actions, and default parameters. It need not include all of them. For example, `math` adds formula syntax and rendering, `code-highlight` colors existing code fences, and `citation` provides both reference syntax and annotation cards.
+
+A **plugin** usually means a module added by your application or supplied by a third-party package. It uses the same interface as built-in modules. An npm package distributes code and can export several modules. Passing a module to `plugins` appends it to the existing configuration.
+
+### Functions, module names, and tag names
+
+Consider video:
+
+```tsx
+import { Reader, standard, replaceExtension, video } from '@linloir/limr';
+
+const videoModule = video({ loading: 'click' });
+// videoModule.name === 'video'
+const extensions = replaceExtension(standard(), videoModule);
+
+export function Article() {
+  return <Reader extensions={extensions} source={'<video src="/lesson.mp4" />'} />;
+}
+```
+
+| Form | Where it belongs | Meaning |
+| --- | --- | --- |
+| `video` / `video(...)` | Application JavaScript / TypeScript | The imported function / a call that creates a module configuration object |
+| `videoModule` | Application code | Your variable name for that object; you can rename it |
+| `'video'` | The module object's `name` property | A stable identifier used to distinguish, replace, and remove modules |
+| `<video … />` / `<md-video … />` | Markdown content | Two tags registered by the module, using the same video renderer |
+| `::video{…}` | Markdown content | A registered directive; a `:::video` container also works |
+
+The names need not match. The code-highlighting factory is `codeHighlight()`, its module name is `'code-highlight'`, and its content uses ordinary code fences without a `<code-highlight>` tag. Writing `video()` or the string `'video'` inside Markdown does not enable a module. Pass the returned object to `plugins`, not a string.
+
+`video({ loading: 'click' })` sets module defaults for that Reader. A `<video loading="eager" … />` tag overrides the setting for one video. Available options vary by module; see [default syntax](syntax.md).
+
+The complete built-in catalog and copyable content forms live in the [syntax manual](syntax.md#module-catalog). Default readers already include math, code highlighting, figures, citations, translations, Mermaid, callouts, footnotes and source annotations. Playground reading notes, margin notes and the simulated assistant are example plugins, not default capabilities.
+
+### Choosing a configuration
+
+You do not need to call `standard()` when the defaults suffice. For customization, distinguish three operations:
+
+| Goal | Configuration | Result |
+| --- | --- | --- |
+| Add your own capability | `plugins={[myPlugin]}` | Keep default modules and append your plugin object |
+| Keep only selected capabilities | `extensions={[gfm(), math()]}` | Replace the complete default module list; CommonMark remains available |
+| Configure a built-in module | `extensions={replaceExtension(standard(), video({ loading: 'click' }))}` | Replace video by module `name`, preserving the other modules |
+
+To remove one module, filter the array: `standard().filter(module => module.name !== 'video')`. Use `extensions={[]}` when extension syntax is unnecessary.
+
+Do not append `plugins={[video()]}` while the default video module is present: duplicate module names, tags, or directives throw. Without the corresponding module, unknown tags render as text, unknown directives may retain only their inner Markdown, and unknown annotation data is retained without markers, cards or interactions until its type is registered again. See [architecture and behavior](architecture.md) for the precise boundaries.
 
 ## Complete files and external progress
 
@@ -134,15 +198,9 @@ export function LocalMarkdown({ initialSource, queueSave }: {
 
 The host's queueSave owns ordered writes, debouncing, disk conflicts and failure UI. The callback synchronously returns void/true to accept the in-memory edit; false or a thrown error leaves the document unchanged. Do not return the file-write Promise. A failed save does not roll back memory automatically: keep dirty state and retry in the host. The second callback argument contains the pre-edit document for undo and version checks. LiMR does not access the filesystem.
 
-Ordinary `addAnnotation(annotation)` still writes external annotations. A module calls `addAnnotation(annotation, { target: 'source' })` to choose source storage. The default highlightSelection action chooses source when editing is enabled, and external storage otherwise. Updates/deletion follow the existing annotation's origin. Sidebar, overlay and toolbar share these commands. Type modules own editor UI and drafts, save through updateAnnotation, and call commitAnnotationEdit after an accepted save; source data uses the default or custom sourceEditing.annotations serializer and onSourceChange, while external data uses onAnnotationsChange. After a source transaction is synchronously accepted, LiMR immediately updates its internal document; controlled external annotations update their presentation when the host passes back the new annotations array.
+Ordinary `addAnnotation` writes external data; `{ target: 'source' }` chooses Markdown storage. With source editing enabled, the default highlight action writes source. Updates and deletion follow the record's origin; type plugins still own cards and editors. See [annotations and selection](annotations.md) and [modules writing source](extensions.md#modules-writing-source) for coordinates, rejected writes, draft cancellation and serialization.
 
-The [inline notes plugin](../../examples/inline-notes.tsx) is a Playground example, **not part of standard()**. It provides its annotation type, card and add/edit/delete controls, reusing the default serializer. The [reading notes example](../../examples/notes.tsx) provides type="question" cards. Playground’s “allow Markdown edits” switch controls onSourceChange; when enabled, highlights, tasks and installed modules’ source edits update the editor. Type-module installation and editing permission are independent; ordinary notes remain external annotations.
-
-The default serializer converts an ordinary `==highlight==` into a named range on its first appearance edit. Deleting its final annotation unwraps the range while preserving text. Task toggles replace only the marker character, keeping list syntax, indentation and line endings. Source body editors save changed content when leaving edit mode and preserve drafts across responsive sidebar/overlay changes. An empty new draft instead calls cancelAnnotationEdit when focus leaves, removing the new annotation and its otherwise unused temporary highlights. The ordinary reading-note example also cancels empty new drafts on outside clicks, while retaining nonempty drafts until submission. Existing annotations and previously saved or shared highlights remain. The active editor hides the selection toolbar; writable cards provide a right-aligned single-annotation Delete action.
-
-The public editSourceAnnotations serializer writes `::%%limr%%{<#id}` / `::%%limr%%{>#id}` boundaries and `:::limr-annotation` definitions for text, cross-paragraph ranges, code and zero-length positions. Ranges may nest or cross, and multiple annotations can reuse an exact range. Formatting can start or end inside the selection. Boundaries that split an entity, escape or Unicode surrogate pair are rejected without changing source. Close trailing code/HTML blocks before appending definitions. Modules can supply another serializer for other formats. Existing ordinary Markdown footnotes/citations retain their own module's editing behavior and are not implicitly converted. Source definitions and controlled external annotations can coexist with distinct IDs; existing external annotations still use onAnnotationsChange.
-
-Source editing is disabled during streaming. Async modules should retain document.revision and pass it to editSource to avoid applying stale offsets. Read coordinates from the next snapshot after edits; do not cache Annotation.source coordinates across revisions. See [API](api.md) and [extension development](extensions.md#modules-writing-source).
+[Inline notes](../../examples/inline-notes.tsx) and [reading notes](../../examples/notes.tsx) are application plugin examples. Source editing is disabled during streaming and provisional previews. Retain revision for asynchronous work and reread coordinates after edits.
 
 ## Global translation mode
 
@@ -187,7 +245,7 @@ React streaming SSR can also handle Suspense. Shiki adds highlighting on the cli
 
 ## Existing plugins and themes
 
-Import a factory from a real plugin package and create a stable plugins array outside rendering or with useMemo. Import plugin CSS explicitly as documented by its author. Themes are selected with appearance, not passed through plugins. See [plugin packages](plugin-packages.md) for installation and local tgz consumption.
+Import a factory from a real plugin package and create a stable plugins array outside rendering or with useMemo. Import plugin CSS explicitly as documented by its author. Themes are selected with appearance, not passed through plugins. See [plugin packages](extensions.md#package-and-integrate) for installation and local tgz consumption.
 
 ## Troubleshooting
 

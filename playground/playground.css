@@ -110,6 +110,9 @@ button:disabled { cursor: default; opacity: .45; }
 .demo-docs-directory { position: sticky; top: 24px; align-self: start; max-height: calc(100dvh - 48px); overflow-y: auto; }
 .demo-docs-directory-heading { padding: 6px 12px 16px; font-size: 13px; color: var(--demo-muted); }
 .demo-docs-links { display: flex; flex-direction: column; gap: 3px; }
+.demo-docs-group { display: flex; flex-direction: column; gap: 3px; }
+.demo-docs-group + .demo-docs-group { margin-top: 16px; }
+.demo-docs-group h2 { margin: 0; padding: 4px 12px; font-size: 11px; font-weight: 500; color: var(--demo-muted); }
 .demo-docs-links a { padding: 8px 12px; color: inherit; font-size: 13px; line-height: 1.6; text-decoration: none; border-radius: 4px; }
 .demo-docs-links [aria-current='page'] { background: var(--demo-soft); color: var(--limr-accent, #8a7865); }
 .demo-docs-links [aria-current='page'] .limr-underline { background-size: 100% 1px; }

@@ -1,12 +1,14 @@
-# 默认语法
+# 语法手册
 
 > 阅读提示：本文包含 LiMR 扩展语法和交互示例。部分内容在 GitHub 等普通 Markdown 阅读器中无法完整展示；前往 [GitHub Pages 文档](https://linloir.github.io/LiMR/#/docs/zh-CN/syntax) 可获得最佳阅读体验。
 
 [文档目录](README.md) · [English](../en/syntax.md)
 
-**模块**是为 LiMR 增加一组能力的配置对象，例如公式、视频或引用。下面的“创建函数”在应用代码中调用，返回模块对象；“模块名”是对象的 `name` 字段，用于替换和移除；“标签 / 指令”才是写在 Markdown 正文中的语法。完整概念和配置方式见[内置模块](modules.md)。
+**模块**是为 LiMR 增加一组能力的配置对象，例如公式、视频或引用。下面的“创建函数”在应用代码中调用，返回模块对象；“模块名”是对象的 `name` 字段，用于替换和移除；“标签 / 指令”才是写在 Markdown 正文中的语法。完整概念和配置方式见[内置模块](integration.md#模块与配置)。
 
 `@linloir/limr` 随包提供以下默认模块。`Reader`、独立 `Markdown` 和 `DocumentProvider` 默认通过 `standard()` 全部启用；纯核心 `createDocument()` 默认只有 CommonMark。下面每节给出源码和实际效果，交互示例由 LiMR 自己渲染。
+
+先选择[基础 Markdown](#commonmark-与-gfm)、[表格](#表格写法与阅读)、[公式与代码](#公式与代码)、[图片](#图片图组与图注)、[双语内容](#分段译文)或[源码标注](#保存在-markdown-中的标注)。普通 Markdown 与注册组件可以混写；下面给出源文本、可交互效果和参数边界。
 
 ## 模块清单
 
@@ -31,6 +33,22 @@
 这些是 Markdown 中允许的静态标签，不是任意 MDX/HTML 执行环境。使用字符串属性，如 `multi="true"`、`answer="[0,2]"`；不要使用 `answer={[0,2]}`、事件函数或展开属性。未注册 HTML 按文本显示；表达式不执行并可能产生诊断。嵌套块的标签和正文之间保留空行。
 
 ## CommonMark 与 GFM
+
+### 基础写法速查
+
+| 内容 | 源码写法与规则 |
+| --- | --- |
+| 标题 | `# 一级` 到 `###### 六级`；井号后留空格，生成目录和文档内锚点 |
+| 段落与换行 | 空行分段；普通单换行是软换行；行尾两个空格或反斜线产生硬换行 |
+| 强调 | `**粗体**`、`*斜体*`、`~~删除线~~`；反斜线转义标点可显示字面量 |
+| 列表 | `- 项目`、`1. 项目`，嵌套项缩进到所属内容；任务用 `- [ ]` / `- [x]` |
+| 链接 | `[标题](https://example.com)`；引用式 `[标题][id]` 配合 `[id]: URL` 定义；`#片段` 用于文内跳转 |
+| 图片 | `![替代文本](地址)`；图注、分组和尺寸限制见[图片](#图片图组与图注) |
+| 行内代码 | 用反引号包裹；内容自带反引号时使用更长的反引号定界符；不添加连字符来换行 |
+| 代码块 | 三个或更多反引号 / 波浪号围栏，后接语言名；闭合围栏不能比开头短 |
+| 引用与分隔线 | `> 引用`；独立的 `---` 分隔段落；Callout 在引用首行加 `[!type]` |
+
+任务状态默认是阅读器内的交互状态；提供 `onSourceChange` 才会写回 Markdown。链接和媒体地址经过 URL 过滤；本地相对地址如何映射由宿主负责。源码里写 HTML 并不会任意生成 DOM，只有注册的标签会启用组件。
 
 LiMR 在 CommonMark 基础上放宽了 `**粗体**`（包括 `***粗斜体***`）的标点边界：`前**“中文！”**后`、`前**中文，**后`、`before**(text!)**after` 都能直接加粗，不需要补空格。这是 LiMR 的内置语法规则，适用于所有语言，也适用于纯核心 `createDocument()`。单星号斜体和下划线仍采用 CommonMark 规则；分隔符内侧不能紧贴空白，转义星号和代码内容保持字面含义。
 
@@ -86,6 +104,19 @@ const value = 42;
 
 默认 `[^note]` 显示脚注角标和卡片；移除 `footnotes` 模块后，GFM 仍可渲染传统文末脚注。图片 `![说明](/image.png)` 由普通 Markdown 支持。原始 HTML 不透传到 DOM；需要自定义外观时注册扩展或覆盖 `components`。
 
+## 表格写法与阅读
+
+表格使用 GFM 写法，至少包含表头与分隔行。分隔行的冒号表示左、居中或右对齐；单元格中的竖线需要转义，行内代码中的竖线也一样。单元格支持强调、代码、链接、公式和引用等行内内容；不要把多段正文直接跨行写进一个 GFM 单元格。
+
+```markdown
+| Name | Expression | Count |
+| :--- | :---: | ---: |
+| **Alpha** | $x^2$ | 2 |
+| Pipe | `a\|b` | 1 |
+```
+
+默认布局按实际内容分配列宽与行高，必要时换行、横滚或通过 `…` 后的标注查看完整内容。选择/复制仍对应原始源码，不因裁剪丢失正文。这是渲染能力，不需要额外的 Markdown 开关。宿主可以通过 `parameters.tableLayout` 选择原生模式、保护限值或自定义算法，见[表格布局](table-layout.md)。
+
 ## 公式与代码
 
 ```markdown
@@ -133,7 +164,160 @@ const reader = <Reader source={'```js\nconst answer = 42;\n```'}
 
 `parameters.codeBlock` 可用于 Reader、Markdown、DocumentProvider 和 AsyncReader。宿主参数对象优先于最后一个插件的参数对象，缺失字段再使用 `codeHighlight()` 工厂选项及内置默认值。`codeHighlight(options)` 也接受这五个字段。自动换行和行号默认关闭；折叠阈值按源码行数计算，折行后的多行共享原行号，行号不会进入复制文本。`collapsedLines` 不超过 `collapseAfterLines`。
 
-折叠和换行按钮只改变当前代码块的视图状态，不修改 Markdown；用户手动选择优先于默认值。每个 Reader 最多记住最近使用的 256 个已修改代码块，离开视口被卸载后可恢复；未修改的代码块不占缓存条目，缓存也不持有源码字符串或语法树。被淘汰的块重新挂载时使用默认值。Reader 销毁或切换新文档后重置，不跨浏览器刷新保存。参数变化不重新解析文档。
+折叠和换行按钮只改变当前代码块的视图状态，不修改 Markdown；用户手动选择优先于默认值。每个 Reader 最多记住最近使用的 256 个已修改代码块，离开视口被卸载后可恢复；未修改的代码块不占缓存条目，缓存也不持有源码字符串或语法树。被淘汰的块重新挂载时使用默认值。Reader 销毁或为新文档更换 React key 后重置，不跨浏览器刷新保存。参数变化不重新解析文档。
+
+## 双冒号组件写法
+
+下列默认正文组件支持 [CoMark 的组件写法](https://comark.dev/syntax/components)，包括嵌套、标量属性和 Markdown 正文：
+
+```md
+::definition{title="定义"}
+支持 **富文本** 的正文。
+::
+
+::question{title="一道题"}
+::question-content
+题目内容。
+::
+::question-answer
+答案内容。
+::
+::
+```
+
+可用名称包括 `gfm`、`definition`、`title`、`content`、`question` 及其已有子标签、`extras`、`extra`、`video`、`md-video`、`figures`、`figure`、`figcaption`、`caption`、`img`、`citation`、`ref`、`translations`、`origin`、`translation`、`code`（别名 `code-highlight`）、`math`、`mermaid`、`callout`、`highlight`、`footnote`、`footnote-ref`。命名标注定义使用下文介绍的 `:::limr-annotation` 块。`::code{lang="typescript"}` 与 `::math` 的正文保持字面量。
+
+标准 Markdown 围栏、JSX、单冒号行内指令和原有三冒号容器继续可用。最终文档中没有配对闭合的双冒号行，保留原有 leaf directive 语义。这里兼容的是组件语法，不包含 CoMark 的 YAML 属性、命名插槽和 frontmatter。
+
+流式过程中，半截头部、链接、行内代码/强调/公式符号和表头会暂缓显示；已识别但未闭合的组件携带 `incomplete`，由模块选择 loading 或渐进内容。代码围栏和块公式可在闭合前展示。结束时设置 `streaming={false}` 或调用 `finish()`，恢复普通 Markdown 的最终解释。所有范围始终对应未改写的原始输入。
+
+## Callout 与嵌套注释
+
+```markdown
+> [!tip]+ 自定义标题
+> 提示正文。
+>
+> > 普通的嵌套注释。
+> >
+> > > [!warning]- 可折叠的提醒
+> > > 支持 **Markdown**。
+```
+
+默认类型为 `note`、`abstract`、`info`、`todo`、`tip`、`success`、`question`、`warning`、`failure`、`danger`、`bug`、`example`、`quote`，别名对齐 Obsidian：summary/tldr、hint/important、check/done、help/faq、caution/attention、fail/missing、error、cite。大小写不敏感，未知类型沿用 note 外观。`+` 初始展开，`-` 初始折叠；不写符号时为普通块。另支持 `::callout{type="tip" title="标题" fold="-"}`。
+
+实际效果，可展开内部的提醒：
+
+> [!tip]+ 自定义标题
+> 提示正文。
+>
+> > 普通的嵌套注释。
+> >
+> > > [!warning]- 可折叠的提醒
+> > > 支持 **Markdown**。
+
+## Mermaid 图表
+
+````markdown
+```mermaid
+flowchart LR
+  A[开始] --> B{准备好了吗}
+  B --> C[继续阅读]
+```
+````
+
+也可使用 `::mermaid`。流式闭合前显示 loading，完成后异步加载 Mermaid 并淡入图像。背景与公式块一致，右上角共用圆角工具栏提供复制源码、放大、缩小、源码 / 图像切换。选区、高亮和角标以整张图为单位；源码视图不改变这个原子选择约定。图表使用 Mermaid strict 模式，不执行图中的交互回调。
+
+实际效果：
+
+```mermaid
+flowchart LR
+  A[开始] --> B{准备好了吗}
+  B --> C[继续阅读]
+```
+
+图像模式支持拖动平移、方向键、Page Up/Down、Home/End 和滚轮，Shift + 滚轮横向移动；点击或 Enter 整块选择，选区工具栏位于块下方。放大后的内容在最大高度内滚动，`--limr-mermaid-max-height` 默认 `min(70vh, 36rem)`。操作栏“复制”获取图表正文，选区工具栏及浏览器复制保留完整围栏或指令。详见[样式与字体](styles.md)和[整体复制](annotations.md)。
+
+## 图片、图组与图注
+
+```markdown
+<figures columns="2" min-width="220" max-width="560" max-height="480">
+
+<figure src="/figures/a.png" alt="实验 A" caption="(a) 实验 A" />
+
+<figure id="experiment-b">
+
+![实验 B](/figures/b.png)
+
+<figcaption>**(b)** 支持 Markdown 的图注。</figcaption>
+
+</figure>
+
+<figcaption>图 1 · 两个实验。</figcaption>
+
+</figures>
+```
+
+实际效果（可交互）：
+
+<figures columns="2" min-width="220" max-width="560" max-height="480">
+
+<figure src="../assets/source.svg" alt="实验 A" caption="(a) 实验 A" />
+
+<figure id="experiment-b">
+
+![实验 B](../assets/rendered.svg)
+
+<figcaption>**(b)** 支持 Markdown 的图注。</figcaption>
+
+</figure>
+
+<figcaption>图 1 · 两个实验。</figcaption>
+
+</figures>
+
+`figure` 可独立使用。图片可以来自 `src` / `url` 属性、内部 Markdown 图片或 `<img src="…" alt="…" />`。每个 figure 放一张图；多张图用 figures。图注可用 `caption` 属性或 `figcaption` / `caption` 子标签，富文本使用子标签。`id` 可作为页内链接目标。
+
+独立的 `<img src="media/limr-icon.png" alt="LiMR" width="96" />` 也使用单图 figure 展示，支持复制图片 URL、预览、源码选区和标注。数字或 `px` 形式的 width/height 限制保留宽高比，并受容器宽度约束。正文内或已有 figure 中的图片保留原布局，不再嵌套一层 figure。
+
+| 属性 | 默认值 | 说明 |
+| --- | --- | --- |
+| `min-width` / `min-height` | 220 / 120 | 决定何时增加列，窄容器优先适应宽度 |
+| `max-width` / `max-height` | 560 / 480 | 保持比例的图片上限；`none` / `false` 取消上限 |
+| `columns` / `cols` | 自动 | 指定列数，最多 24 |
+| `rows` | 自动 | 未指定列数时由图数推导列数 |
+| `responsive` | true | 容器不足时降低显式列数；false 保留列数 |
+| `gap` | 16 | 图组间距，像素 |
+
+尺寸接受非负数字或 `px`。图组限制由子图继承，子图可以覆盖。对应工厂参数为驼峰命名，例如 `figures({ maxHeight: 360, maxWidth: false })`。图片不变形、不裁切图注。单图复制按钮复制图片 URL；图组复制按钮复制 Markdown 源码，不下载图片二进制。
+
+图片加载失败时，空间足够就显示图标和本地化提示；可用宽高放不下提示时只显示图标，空间更小时等比例缩小图标。占位遵循 figure 的高度上限，不产生滚动条；辅助技术仍可读取完整的失败说明。
+
+指令示例：
+
+```markdown
+:::figures{columns="2"}
+::figure{src="/a.png" caption="A"}
+::figure{src="/b.png" caption="B"}
+:::
+```
+
+## 视频
+
+```markdown
+<video src="/demo.mp4" provider="native" title="演示" />
+
+<md-video url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" loading="click" />
+
+<video url="https://www.bilibili.com/video/BV1xx411c7mD/?p=2" />
+```
+
+`url` 优先于 `src`；`provider` 默认 `auto`，还可以是 `native`、`youtube`、`bilibili`。YouTube 支持 watch、短链接、embed、shorts、live 和起始时间；Bilibili 支持 BV/av 与分 P。支持 `title` 和 `loading`。
+
+**默认 `loading="visible"`**：在视口附近 200px 挂载播放器，不自动播放。`click` 等待点击，`eager` 立即挂载。可以用 `video({ loading: 'click' })` 设置模块默认值。平台、网络和嵌入权限仍会影响真实播放；不能把本地 iframe 测试当作远程播放保证。自定义平台通过 `video({ resolveUrl })` 接入。
+
+点击加载的视频示例（点击前不创建播放器）：
+
+<video url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" loading="click" title="视频示例" />
 
 ## 释义
 
@@ -233,7 +417,7 @@ const reader = <Reader source={'```js\nconst answer = 42;\n```'}
 
 <extras>
 
-<extra title="内置模块" url="https://linloir.github.io/LiMR/#/docs/zh-CN/modules" desc="背景和补充材料。" />
+<extra title="内置模块" url="https://linloir.github.io/LiMR/#/docs/zh-CN/integration" desc="背景和补充材料。" />
 
 </extras>
 
@@ -264,88 +448,6 @@ const reader = <Reader source={'```js\nconst answer = 42;\n```'}
 `citation` 的 ID 读取 `cite-id`，其次 `id`；说明读取 `desc`，其次 `description`。`ref` 读取 `cite-from-ids`、`ids`、`id`，支持 JSON 数组或逗号分隔字符串。定义本身不占正文位置，同一个定义可以被多个角标引用。
 
 Citation 默认不提供展开大卡片，点击固定预览；摘要按 `summary → description → 安全 URL → title` 回退，去掉 Markdown 标记。正文显示 `description`，没有时显示 `summary`。`<ref id="a">文本</ref>` 在悬浮或激活时临时高亮其明确包裹的文本，不写入已保存高亮。自闭合的 `<ref id="a" />` 是角标位置上的零长度引用，不再高亮整个段落；外部范围标注使用绑定范围。配置与存储见[标注与选区](annotations.md)。
-
-## 图片、图组与图注
-
-```markdown
-<figures columns="2" min-width="220" max-width="560" max-height="480">
-
-<figure src="/figures/a.png" alt="实验 A" caption="(a) 实验 A" />
-
-<figure id="experiment-b">
-
-![实验 B](/figures/b.png)
-
-<figcaption>**(b)** 支持 Markdown 的图注。</figcaption>
-
-</figure>
-
-<figcaption>图 1 · 两个实验。</figcaption>
-
-</figures>
-```
-
-实际效果（可交互）：
-
-<figures columns="2" min-width="220" max-width="560" max-height="480">
-
-<figure src="../assets/source.svg" alt="实验 A" caption="(a) 实验 A" />
-
-<figure id="experiment-b">
-
-![实验 B](../assets/rendered.svg)
-
-<figcaption>**(b)** 支持 Markdown 的图注。</figcaption>
-
-</figure>
-
-<figcaption>图 1 · 两个实验。</figcaption>
-
-</figures>
-
-`figure` 可独立使用。图片可以来自 `src` / `url` 属性、内部 Markdown 图片或 `<img src="…" alt="…" />`。每个 figure 放一张图；多张图用 figures。图注可用 `caption` 属性或 `figcaption` / `caption` 子标签，富文本使用子标签。`id` 可作为页内链接目标。
-
-独立的 `<img src="media/limr-icon.png" alt="LiMR" width="96" />` 也使用单图 figure 展示，支持复制图片 URL、预览、源码选区和标注。数字或 `px` 形式的 width/height 限制保留宽高比，并受容器宽度约束。正文内或已有 figure 中的图片保留原布局，不再嵌套一层 figure。
-
-| 属性 | 默认值 | 说明 |
-| --- | --- | --- |
-| `min-width` / `min-height` | 220 / 120 | 决定何时增加列，窄容器优先适应宽度 |
-| `max-width` / `max-height` | 560 / 480 | 保持比例的图片上限；`none` / `false` 取消上限 |
-| `columns` / `cols` | 自动 | 指定列数，最多 24 |
-| `rows` | 自动 | 未指定列数时由图数推导列数 |
-| `responsive` | true | 容器不足时降低显式列数；false 保留列数 |
-| `gap` | 16 | 图组间距，像素 |
-
-尺寸接受非负数字或 `px`。图组限制由子图继承，子图可以覆盖。对应工厂参数为驼峰命名，例如 `figures({ maxHeight: 360, maxWidth: false })`。图片不变形、不裁切图注。单图复制按钮复制图片 URL；图组复制按钮复制 Markdown 源码，不下载图片二进制。
-
-图片加载失败时，空间足够就显示图标和本地化提示；可用宽高放不下提示时只显示图标，空间更小时等比例缩小图标。占位遵循 figure 的高度上限，不产生滚动条；辅助技术仍可读取完整的失败说明。
-
-指令示例：
-
-```markdown
-:::figures{columns="2"}
-::figure{src="/a.png" caption="A"}
-::figure{src="/b.png" caption="B"}
-:::
-```
-
-## 视频
-
-```markdown
-<video src="/demo.mp4" provider="native" title="演示" />
-
-<md-video url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" loading="click" />
-
-<video url="https://www.bilibili.com/video/BV1xx411c7mD/?p=2" />
-```
-
-`url` 优先于 `src`；`provider` 默认 `auto`，还可以是 `native`、`youtube`、`bilibili`。YouTube 支持 watch、短链接、embed、shorts、live 和起始时间；Bilibili 支持 BV/av 与分 P。支持 `title` 和 `loading`。
-
-**默认 `loading="visible"`**：在视口附近 200px 挂载播放器，不自动播放。`click` 等待点击，`eager` 立即挂载。可以用 `video({ loading: 'click' })` 设置模块默认值。平台、网络和嵌入权限仍会影响真实播放；不能把本地 iframe 测试当作远程播放保证。自定义平台通过 `video({ resolveUrl })` 接入。
-
-点击加载的视频示例（点击前不创建播放器）：
-
-<video url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" loading="click" title="视频示例" />
 
 ## 分段译文
 
@@ -391,81 +493,6 @@ Original **Markdown**.
 
 默认情况下，浏览器选区不能跨出起始的 `<origin>` 或 `<translation>` 区域；同一区域内的多个段落仍可连续选择。从外部拖入或拖过翻译块，选区停在靠近起点的块边界外。从内部跨界会在工具栏提示原因；从外部开始时，仅在松手位置仍在翻译块内时提示。已有或通过 API 添加的跨界 annotation 不受限制。将 `parameters.translationSelectionBoundary` 设为 `false` 可关闭此行为，恢复原有浏览器选区；配置示例见[项目集成](integration.md#全局译文模式)。
 
-## 选择与替换
-
-工具栏创建的高亮存为 annotation；`==高亮==` 由源码定义，默认只提供复制工具栏。传入 `onSourceChange` 后，默认工具栏创建或修改的高亮、任务勾选会保存到 Markdown；模块也可用 target: source 添加源内标注。常规 addAnnotation 仍保存外部数据，详见[项目集成](integration.md)。默认正文组件的已注册标签支持同名 `::` 指令；命名标注定义使用 `:::limr-annotation` 块。自定义标签需注册插件。使用完整清单配置或替换默认模块，见[扩展开发](extensions.md)。
-
-## 双冒号组件写法
-
-下列默认正文组件支持 [CoMark 的组件写法](https://comark.dev/syntax/components)，包括嵌套、标量属性和 Markdown 正文：
-
-```md
-::definition{title="定义"}
-支持 **富文本** 的正文。
-::
-
-::question{title="一道题"}
-::question-content
-题目内容。
-::
-::question-answer
-答案内容。
-::
-::
-```
-
-可用名称包括 `gfm`、`definition`、`title`、`content`、`question` 及其已有子标签、`extras`、`extra`、`video`、`md-video`、`figures`、`figure`、`figcaption`、`caption`、`img`、`citation`、`ref`、`translations`、`origin`、`translation`、`code`（别名 `code-highlight`）、`math`、`mermaid`、`callout`、`highlight`、`footnote`、`footnote-ref`。命名标注定义使用下文介绍的 `:::limr-annotation` 块。`::code{lang="typescript"}` 与 `::math` 的正文保持字面量。
-
-标准 Markdown 围栏、JSX、单冒号行内指令和原有三冒号容器继续可用。最终文档中没有配对闭合的双冒号行，保留原有 leaf directive 语义。这里兼容的是组件语法，不包含 CoMark 的 YAML 属性、命名插槽和 frontmatter。
-
-流式过程中，半截头部、链接、行内代码/强调/公式符号和表头会暂缓显示；已识别但未闭合的组件携带 `incomplete`，由模块选择 loading 或渐进内容。代码围栏和块公式可在闭合前展示。结束时设置 `streaming={false}` 或调用 `finish()`，恢复普通 Markdown 的最终解释。所有范围始终对应未改写的原始输入。
-
-## Mermaid 图表
-
-````markdown
-```mermaid
-flowchart LR
-  A[开始] --> B{准备好了吗}
-  B --> C[继续阅读]
-```
-````
-
-也可使用 `::mermaid`。流式闭合前显示 loading，完成后异步加载 Mermaid 并淡入图像。背景与公式块一致，右上角共用圆角工具栏提供复制源码、放大、缩小、源码 / 图像切换。选区、高亮和角标以整张图为单位；源码视图不改变这个原子选择约定。图表使用 Mermaid strict 模式，不执行图中的交互回调。
-
-实际效果：
-
-```mermaid
-flowchart LR
-  A[开始] --> B{准备好了吗}
-  B --> C[继续阅读]
-```
-
-图像模式支持拖动平移、方向键、Page Up/Down、Home/End 和滚轮，Shift + 滚轮横向移动；点击或 Enter 整块选择，选区工具栏位于块下方。放大后的内容在最大高度内滚动，`--limr-mermaid-max-height` 默认 `min(70vh, 36rem)`。操作栏“复制”获取图表正文，选区工具栏及浏览器复制保留完整围栏或指令。详见[样式与字体](styles.md)和[整体复制](annotations.md)。
-
-## Callout 与嵌套注释
-
-```markdown
-> [!tip]+ 自定义标题
-> 提示正文。
->
-> > 普通的嵌套注释。
-> >
-> > > [!warning]- 可折叠的提醒
-> > > 支持 **Markdown**。
-```
-
-默认类型为 `note`、`abstract`、`info`、`todo`、`tip`、`success`、`question`、`warning`、`failure`、`danger`、`bug`、`example`、`quote`，别名对齐 Obsidian：summary/tldr、hint/important、check/done、help/faq、caution/attention、fail/missing、error、cite。大小写不敏感，未知类型沿用 note 外观。`+` 初始展开，`-` 初始折叠；不写符号时为普通块。另支持 `::callout{type="tip" title="标题" fold="-"}`。
-
-实际效果，可展开内部的提醒：
-
-> [!tip]+ 自定义标题
-> 提示正文。
->
-> > 普通的嵌套注释。
-> >
-> > > [!warning]- 可折叠的提醒
-> > > 支持 **Markdown**。
-
 ## 源码高亮与脚注
 
 ```markdown
@@ -495,7 +522,6 @@ flowchart LR
 [^syntax-source-highlight]: 脚注正文。
 
     脚注的第二段。
-
 
 ## 保存在 Markdown 中的标注
 
@@ -550,3 +576,7 @@ abcd::%%limr%%{<#r1}efg::%%limr%%{>#r1}
 ```
 
 定义可在命名范围之前或之后。流式期间，不完整的定义头部和正文保持隐藏；边界在配对和定义完整之前保留为原文，条件满足后重新解析受影响内容并移除边界。源码元数据和编辑约定详见[标注与选区](annotations.md)。
+
+## 选择与替换
+
+工具栏创建的高亮存为 annotation；`==高亮==` 由源码定义，默认只提供复制工具栏。传入 `onSourceChange` 后，默认工具栏创建或修改的高亮、任务勾选会保存到 Markdown；模块也可用 target: source 添加源内标注。常规 addAnnotation 仍保存外部数据，详见[项目集成](integration.md)。默认正文组件的已注册标签支持同名 `::` 指令；命名标注定义使用 `:::limr-annotation` 块。自定义标签需注册插件。使用完整清单配置或替换默认模块，见[扩展开发](extensions.md)。

@@ -59,7 +59,21 @@ Reader, Markdown, and DocumentProvider accept:
 | onAnnotationHover | Occurrence or null |
 | onHighlightClick / onHighlightHover | Highlight Annotation; hover exit is null |
 
-The default locale is english. Missing partial keys fall back to English. locale affects built-in controls that use LiMRLocale, not document text or third-party copy. Some auxiliary labels (for example Copy LaTeX and translation switch hints) are currently fixed by their modules. The Playground reader-language control demonstrates Chinese/English switching and saves that preference separately in browser storage.
+The default locale is english. Missing partial keys fall back to English. locale affects built-in controls that use LiMRLocale, not document text or third-party copy. Some auxiliary labels (for example Copy LaTeX) are currently fixed by their modules. The Playground reader-language control demonstrates Chinese/English switching and saves that preference separately in browser storage.
+
+## Code block parameters
+
+`CodeBlockOptions` and `CodeHighlightOptions` are exported from the root and extensions entries. The latter also accepts highlighting options such as languages, lightTheme, darkTheme, eager and maxLength.
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| autoCollapse | true | Start long blocks folded; false still permits manual folding |
+| collapseAfterLines | 20 | Source line count must strictly exceed this threshold |
+| collapsedLines | 8 | Visible folded rows, capped by the threshold |
+| wrap | false | Initial soft wrapping, independently switchable per block |
+| lineNumbers | false | Source line numbers excluded from copy/selection; wrapped continuations keep one number |
+
+Line counts use the integer part of valid positive values; invalid values fall back to defaults. The host replaces the plugin's whole `parameters.codeBlock` object; missing fields fall back to factory options, then built-in values. Manual fold/wrap choices override their corresponding defaults; see the [syntax manual](syntax.md#code-block-controls) for cache lifetime. Parameter updates do not reparse, and unclosed streaming code does not auto-fold before completion. Locale keys expandCode, collapseCode, wrapCode and unwrapCode customize button labels with English fallbacks.
 
 ## Components
 

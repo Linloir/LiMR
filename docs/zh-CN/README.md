@@ -4,29 +4,29 @@
 
 [文档目录](README.md) · [English](../en/README.md)
 
-这套文档对应当前仓库实现，包含本次新增的流式、排版与模块能力；使用 npm 包时请核对安装版本的导出与类型。默认入口为中文，英文页面与本目录一一对应。
+LiMR 把 Markdown 解析、正文排版、选区和标注组织在同一个阅读器中。默认能力包括大文档 Worker 加载与窗口化阅读、自适应表格、公式、代码折叠/换行/行号、图像预览和双语内容；这些能力都属于核心库，宿主只需接入文件、服务与持久化。
 
-| 你要做什么 | 阅读文档 |
-| --- | --- |
-| 安装并显示第一篇文档 | [快速开始](getting-started.md) |
-| 了解模块、默认包含的能力与配置方式 | [内置模块](modules.md) |
-| 编写 Markdown、Mermaid、callout、高亮、脚注与双冒号组件 | [默认语法](syntax.md) |
-| 集成到 React、选择排版模式、接收流式输出、自定义布局或 SSR | [项目集成](integration.md) |
-| 了解表格列宽、行高与省略标注的自适应计算 | [表格布局](table-layout.md) |
-| 在 Worker 中加载大文档，显示进度并支持取消 | [大文档](large-documents.md) |
-| 保存选区、高亮、引用和自定义标注，理解整体复制 | [标注与选区](annotations.md) |
-| 新增语法、卡片、选区动作、流式效果或按条件替换组件 | [扩展开发](extensions.md) |
-| 开发独立 npm 插件并在应用中引入 | [插件模块包](plugin-packages.md) |
-| 调整主题、字体、KP 排版、动画与图表样式 | [样式与字体](styles.md) |
-| 查询组件 props、hooks 和核心 API | [API 参考](api.md) |
-| 理解解析、状态和资源边界 | [架构与行为](architecture.md) |
-| 对比三种渲染器、流式、内存和阅读体验 | [渲染器性能报告](performance.md) |
-| 查看完整加载、50/75 MiB 内存与真实论文阅读数据 | [加载与内存性能](loading-performance.md) |
-| 了解 KP 算法、滚动、变宽与正确性 | [KP 算法性能报告](knuth-plass-performance.md) |
-| 让 AI 使用 LiMR 或开发插件 | [AI Skills](ai-skills.md) |
+## 从你的场景开始
 
-先接入 `Reader`，需要定制布局时再拆分组件；需要应用功能时优先添加插件。Playground 中的本地保存、导入导出和模拟问答是演示应用功能，不是 Reader 自带的服务。
+| 我想做什么 | 第一步 | 继续阅读 |
+| --- | --- | --- |
+| 第一次在 React 中展示文章 | [快速开始](getting-started.md) | [接入与模块配置](integration.md) |
+| 打开大文件、展示进度、恢复阅读位置 | [快速开始的大文档示例](getting-started.md#加载大文档) | [加载、窗口化与打印](large-documents.md) |
+| 展示密集或超宽表格 | [快速开始的阅读策略](getting-started.md#调整阅读策略) | [自适应表格、完整内容与原生模式](table-layout.md) |
+| 编写公式、代码、图片、引用和译文 | [语法手册](syntax.md) | [标注与选区](annotations.md) |
+| 接入聊天流、编辑器或本地文件 | [按场景接入](integration.md#选择组件) | [原文编辑](integration.md#原文编辑与本地文件) |
+| 定制显示或开发插件 | [选择扩展接口](extensions.md#选择接口) | [主题与字体](styles.md)、[打包与接入](extensions.md#打包与接入) |
+| 让 AI 协助接入或写插件 | [AI Skills](ai-skills.md) | 选择 limr-use 或 limr-plugin-development |
 
-Playground 默认使用标准排版，可从菜单切换 Knuth–Plass 或两端对齐；流式演示已放慢。刷新会重新打开默认文档，不自动恢复上次的文章或编辑；显式保存的草稿可手动加载，语言偏好独立保留。Docs 链接支持直接打开指定页面，页内切换 Docs / Playground 保留本次会话中的编辑。
+## 按使用过程阅读
 
-[返回 README](../../README.md) · [在线 Playground](https://linloir.github.io/LiMR/)
+1. **入门与写作**：[快速开始](getting-started.md)给出可运行入口，[语法手册](syntax.md)集中维护模块清单、写法、属性和交互边界。
+2. **应用接入**：[项目集成](integration.md)解释组件和配置选择；[大文档](large-documents.md)、[表格布局](table-layout.md)、[标注](annotations.md)分别深入对应能力。
+3. **二次开发**：[扩展开发](extensions.md)从最小接口讲到分发验证；[样式](styles.md)维护 CSS、字体、排版和 portal 主题契约。
+4. **参考与验证**：[API](api.md)、[架构](architecture.md)、[渲染性能](performance.md)、[加载与内存](loading-performance.md)、[KP 性能](knuth-plass-performance.md)。性能报告说明测试条件，不代表所有输入的固定上限。
+
+模块选择已合并到接入指南，插件包说明已合并到扩展开发；原页面保留兼容入口。两种语言使用相同结构。随 npm 包分发的文档对应包版本，接入旧版本时先核对已安装声明。
+
+Playground 的本地草稿、导入导出和模拟助手由示例应用实现。刷新打开默认文章；手动保存的草稿可自行加载，语言偏好单独保存。当前会话中切换 Docs 与 Playground 会保留编辑。
+
+[返回项目说明](../../README.md) · [在线 Playground](https://linloir.github.io/LiMR/)

@@ -4,7 +4,7 @@
 
 [文档目录](README.md) · [English](../en/extensions.md)
 
-第一次接触模块时，先阅读[内置模块](modules.md)：那里解释模块对象、创建函数、模块名、Markdown 标签，以及 `extensions` 和 `plugins` 的区别。
+第一次接触模块时，先阅读[内置模块](integration.md#模块与配置)：那里解释模块对象、创建函数、模块名、Markdown 标签，以及 `extensions` 和 `plugins` 的区别。
 
 ## 选择接口
 
@@ -15,10 +15,13 @@
 | 组合语法、标注、动作和参数 | defineExtension / RendererExtension |
 | 改写已有节点外观或只替换满足条件的节点 | components / rendererOverrides |
 | 关闭或替换表格布局计算 | parameters.tableLayout：false 或 { algorithm }，见[表格布局](table-layout.md) |
+| 代码块折叠、换行和行号默认值 | parameters.codeBlock / codeHighlight(options)，见[代码块控制](syntax.md#代码块控制) |
 | 新的解析规则 | micromark + mdast 扩展，必要时 transform |
 | 仅修改视觉 | CSS 主题包 + appearance |
 
-所有接口从 `@linloir/limr` 公开导出。第三方包不要导入 src、dist 内部路径或 useRuntime 等未公开接口。完整独立模板见[插件模块包](plugin-packages.md)。
+所有接口从 `@linloir/limr` 公开导出。第三方包不要导入 src、dist 内部路径或 useRuntime 等未公开接口。完整独立模板见[插件模块包](extensions.md#打包与接入)。
+
+推荐顺序：先检查已有参数与 CSS 变量，再选择 components / rendererOverrides 改视图；只有需要新内容形式、共享业务卡片或动作时才写插件。把可复用能力导出为工厂，宿主保留文件、服务和状态持久化。一个仅提供 `parameters.codeBlock` 的插件也使用 RendererExtension，既不需要新增解析器，也不需要 Worker 注册。
 
 ## 追加、删除与替换默认模块
 
@@ -62,10 +65,12 @@ export const notice = defineBlock({
 | pending | 所属尾块是否仍在流式生成 |
 | incomplete | 当前语法节点是否尚未闭合 |
 | renderChildren(nodes, { trailing? }) | 重排已有子树，可在末尾注入纯操作角标 |
-| renderValue(tokens?) | 渲染字面量及高亮 token，保留原文选择和标注插入 |
+| renderValue(tokens?, { lines? }) | 渲染字面量及高亮 token，保留原文选择和标注插入 |
 | renderAttribute(name) | 显示属性文本并保留原文坐标 |
 
 不要把 children 转字符串再解析，也不要仅输出 node.value 导致源码映射丢失。无法逐字对应的图表/媒体用 selection: atomic；需要指定可视边界时使用 data-limr-selection-surface。纯操作角标可以使用公开 InlineMarker，不必建立 Annotation。
+
+内置代码块的折叠、换行和行号优先使用 `parameters.codeBlock`，无需重写渲染器；见[代码块控制](syntax.md#代码块控制)。自定义代码渲染器可用 `renderValue(tokens, { lines: true })` 输出保留源码映射的逐行容器；容器保留真实换行，行号由 CSS 绘制，不进入复制文本。
 
 ## 标注卡片由插件拥有
 
@@ -180,7 +185,7 @@ SyntaxExtension 支持 micromark、mdast、tags、directives、display、selecti
 
 未知特殊标签安全显示整段原文，内部 Markdown 也作为原文显示。默认配置的未知指令则渲染内部 Markdown，丢弃指令外层标记；未安装任何指令扩展时按基础 Markdown 解析。移除模块后，使用剩余语法能力重新解析未改写的原文。未注册标注类型保留数据，但不显示角标、卡片或编辑界面；重新安装模块后恢复。选区操作和持久化行为见[标注与选区](annotations.md#缺少插件时)。已注册的未闭合标签和容器携带 node.incomplete，之后追加继续恢复；半截头部暂缓显示或交由模块展示 loading；无效 JSX 仍可能回退并记录 diagnostics；结束必须 finish 或 streaming=false。扩展 transform 的异常记录为 diagnostic；客户端渲染边界可回退源码，但 React 错误边界不负责捕获服务端渲染异常。
 
-验证应覆盖标签/指令、中文与 emoji、源坐标、流式结束与一次性解析等价、SSR，以及新增交互的浏览器行为。独立分发还需验证真实打包消费，见[插件模块包](plugin-packages.md)。
+验证应覆盖标签/指令、中文与 emoji、源坐标、流式结束与一次性解析等价、SSR，以及新增交互的浏览器行为。独立分发还需验证真实打包消费，见[插件模块包](extensions.md#打包与接入)。
 
 ## 插件本地化
 
@@ -243,3 +248,74 @@ export const customCode = defineExtension({
 自定义渲染器可通过 `virtualization: { copyText, searchText?, keepAlive? }` 声明窗口化的选区/搜索投影与 DOM 保留要求；契约属于实际匹配的 renderer override。优先使用 `useNodeState` 保留离屏状态，只有不透明编辑器或媒体才需要 keepAlive。显示内容由外部状态改变时调用 `invalidatePresentation()` 更新目录和搜索。未知视图或不可拆的大块会明确回退，宿主通过 `onVirtualizationChange` 观察。
 
 渐进加载的预览通过 `readOnly` 阻止写入，`provisional` 则阻止要求完整文档的操作；动作仅在确实不修改文档时声明 `readOnly: true`。使用公开导航与打印命令，不要依赖全部 DOM 已经存在。Worker 示例、进度 API、条件与限制见[大文档](large-documents.md)。
+
+## 打包与接入
+
+一个插件包导出返回 RendererExtension 的工厂，消费者安装后通过 plugins 追加。插件可同时提供语法、标注、动作和参数，CSS 独立导出。它不需要修改 LiMR 源码。
+
+### 可复制模板
+
+完整模板位于 [plugin-template](../../skills/limr-plugin-development/assets/plugin-template/README.md)，包含 TypeScript 源码、类型构建、CSS、package.json 和 tsup 配置。它演示 reading-tip 区块、example:note 卡片和保存选区动作。
+
+安装 LiMR 后，在应用目录执行：
+
+```sh
+mkdir -p packages/limr-reading-tools
+cp -R node_modules/@linloir/limr/skills/limr-plugin-development/assets/plugin-template/. packages/limr-reading-tools/
+cd packages/limr-reading-tools
+npm install
+npm run typecheck
+npm run build
+npm pack
+```
+
+源码仓库中的对应路径为 skills/limr-plugin-development/assets/plugin-template。替换模板的 @example 包名、扩展名、类型名和动作 ID，再实现业务数据与 UI；模板的 private: true 用于防止示例名被误发布，不影响本地打包。
+
+### 包契约
+
+| 字段 | 要求 |
+| --- | --- |
+| type | module |
+| exports["."] | import 指向 ESM，types 指向 .d.ts |
+| exports["./styles.css"] | 插件需要 CSS 时显式导出 |
+| files | 包含构建输出与使用说明 |
+| sideEffects | CSS 使用 ["**/*.css"]，避免被构建工具移除 |
+| peerDependencies | @linloir/limr、react；直接依赖 react-dom API 时再声明 react-dom |
+| 构建 external | LiMR、React、react/jsx-runtime，以及使用到的 React DOM 入口 |
+
+LiMR 或 React 的第二份内置副本会破坏上下文/Hook 共享。不要打包宿主依赖，不要深度导入 LiMR 内部文件。参数声明合并必须随导出的类型分发。
+
+### 在应用中引入
+
+下方 @example 包来自模板，并未发布到 npm。先安装本地打出的归档；生成文件名以 npm pack 输出为准：
+
+```sh
+npm install ./packages/limr-reading-tools/example-limr-reading-tools-0.1.0.tgz
+```
+
+```tsx
+import { Reader } from '@linloir/limr';
+import { readingTools } from '@example/limr-reading-tools';
+import '@linloir/limr/styles.css';
+import '@example/limr-reading-tools/styles.css';
+
+const plugins = [readingTools({ label: '阅读笔记' })];
+
+export function Article({ source }: { source: string }) {
+  return <Reader source={source} plugins={plugins} />;
+}
+```
+
+真实第三方包使用它的包名和 peer 版本约束。改写已存在的默认模块使用 extensions + replaceExtension，不要重复注册同一标签。字体、公式样式、持久化和应用服务仍由宿主配置。
+
+### 验证可分发性
+
+本地类型检查通过后，还需把真实 tgz 安装到独立消费者中：检查公开导入、SSR、CSS 资源、默认模块仍可用和新增交互。支持 React 18/19 的包应分别验证两种宿主。语法插件检查流式结束与一次性解析等价；交互插件检查桌面侧栏、窄屏浮层、键盘、异步取消和两种主题。
+
+LiMR 仓库的 [reading-tools](../../examples/packages/reading-tools/index.js) 和 [paper-theme](../../examples/packages/paper-theme/index.css) 是另一组可打包示例。AI 可使用[插件开发 Skill](ai-skills.md)，其中的模板可独立复制，引用文件无需依赖本仓库路径。
+
+### 加载与大文档兼容性
+
+依赖 1.3.0 加载控制或窗口化能力的插件应在 peerDependencies 声明对应最低版本，并在真实包消费者中验证 Worker、provisional/readOnly、复制/搜索和离屏状态。保留旧 API 的简单示例可继续使用其兼容版本范围。CSS 主题也应检查图片预览 portal 的浅色/深色工具栏和等宽按钮。扩展契约见[Worker 与窗口化视图](extensions.md#worker-与窗口化视图)，接入示例见[大文档](large-documents.md)。
+
+使用 `CodeBlockOptions`、`parameters.codeBlock` 或 `renderValue` 的逐行参数时，插件最低 peer 版本须为 LiMR 1.3.8。仅使用旧接口的模板不必提高最低版本；发布前以真实 1.3.8 包消费者验证行号复制、逐块覆盖与窗口化状态。

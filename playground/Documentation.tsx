@@ -9,7 +9,7 @@ const entries = [
   ['README', '文档概览', 'Overview'],
   ['getting-started', '快速开始', 'Getting started'],
   ['modules', '内置模块', 'Built-in modules'],
-  ['syntax', '默认语法', 'Default syntax'],
+  ['syntax', '语法手册', 'Syntax manual'],
   ['integration', '项目集成', 'Application integration'],
   ['annotations', '标注与选区', 'Annotations and selection'],
   ['extensions', '扩展开发', 'Extension development'],
@@ -23,6 +23,12 @@ const entries = [
   ['table-layout', '表格布局', 'Table layout'],
   ['large-documents', '大文档', 'Large documents'],
   ['ai-skills', 'AI Skills', 'AI Skills'],
+] as const;
+const groups = [
+  { zh: '入门与写作', en: 'Start and author', pages: ['README', 'getting-started', 'syntax'] },
+  { zh: '应用接入', en: 'Integrate', pages: ['integration', 'large-documents', 'table-layout', 'annotations'] },
+  { zh: '二次开发', en: 'Extend', pages: ['extensions', 'styles', 'ai-skills'] },
+  { zh: '参考与验证', en: 'Reference and verification', pages: ['api', 'architecture', 'performance', 'loading-performance', 'knuth-plass-performance'] },
 ] as const;
 
 export function docsHref(language: DocsLanguage, page = 'README', heading?: string) {
@@ -91,7 +97,13 @@ export function Documentation({ route, theme }: { route: DocsRoute; theme: 'ligh
         <span className="limr-underline">{zh ? '文档目录' : 'Documentation'} · {entries.find(([id]) => id === route.page)?.[zh ? 1 : 2]}</span><ToolIcon name="chevron" />
       </button>
       <nav id="demo-docs-navigation" className="demo-docs-links" data-open={navigationOpen || undefined} aria-label={zh ? '文档目录' : 'Documentation'}>
-        {entries.map(([id, titleZh, titleEn]) => <a key={id} href={docsHref(route.language, id)} aria-current={route.page === id ? 'page' : undefined}><span className="limr-underline">{zh ? titleZh : titleEn}</span></a>)}
+        {groups.map((group, index) => <section className="demo-docs-group" key={group.en} aria-labelledby={`demo-docs-group-${index}`}>
+          <h2 id={`demo-docs-group-${index}`}>{zh ? group.zh : group.en}</h2>
+          {group.pages.map(page => {
+            const [id, titleZh, titleEn] = entries.find(([id]) => id === page)!;
+            return <a key={id} href={docsHref(route.language, id)} aria-current={route.page === id ? 'page' : undefined}><span className="limr-underline">{zh ? titleZh : titleEn}</span></a>;
+          })}
+        </section>)}
       </nav>
     </aside>
     <div className="demo-docs-article" ref={content} tabIndex={-1} lang={route.language}>
