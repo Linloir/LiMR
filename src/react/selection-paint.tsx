@@ -7,6 +7,36 @@ import type { ReaderRuntime } from './runtime';
 import { leavesIn, measurementRange, textRange, type Leaf, type Viewport } from './source-geometry';
 
 interface PaintRect { left: number; top: number; width: number; height: number; flow: HTMLElement; marker?: string; atomic?: boolean; image?: boolean; radius?: string }
+interface PaintTask { id: string; range: SourceRange; color?: string; style?: PaintHighlight['style']; occurrenceId?: string; selection?: boolean; search?: boolean; current?: boolean }
+
+function visibleSearchRange(leaves: readonly Leaf[], viewport: Viewport): SourceRange {
+  let first = 0, last = leaves.length, start = Infinity, end = -Infinity;
+  if (leaves.length > 80 && leaves[0].flow.tagName === 'PRE' && leaves.at(-1)?.flow === leaves[0].flow) {
+    const box = (index: number) => {
+      const leaf = leaves[index];
+      if (leaf.kind !== 'text') return (leaf.node as HTMLElement).getBoundingClientRect();
+      const range = measurementRange(leaf.node.ownerDocument!); range.selectNodeContents(leaf.node); return range.getBoundingClientRect();
+    };
+    let low = 0, high = last;
+    while (low < high) { const mid = (low + high) >>> 1; if (box(mid).bottom < viewport.top) low = mid + 1; else high = mid; }
+    first = low; high = last;
+    while (low < high) { const mid = (low + high) >>> 1; if (box(mid).top <= viewport.bottom) low = mid + 1; else high = mid; }
+    last = low;
+  }
+  for (let at = first; at < last; at++) {
+    const leaf = leaves[at];
+    if (leaf.kind === 'text') {
+      const range = textRange(leaf, leaf.range, viewport); if (!range) continue;
+      const box = range.getBoundingClientRect(); if (box.bottom < viewport.top || box.top > viewport.bottom) continue;
+      start = Math.min(start, leaf.binding!.resolve!(leaf.offset + range.startOffset, 'start'));
+      end = Math.max(end, leaf.binding!.resolve!(leaf.offset + range.endOffset, 'end'));
+    } else {
+      const box = (leaf.node as HTMLElement).getBoundingClientRect();
+      if (box.bottom >= viewport.top && box.top <= viewport.bottom) { start = Math.min(start, leaf.range.start); end = Math.max(end, leaf.range.end); }
+    }
+  }
+  return { start, end };
+}
 
 /** Separate paint from content. Every inline fragment uses its line's typography
  * instead of the (different) code, KaTeX or superscript box height. */
@@ -199,6 +229,7 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       const decorations = runtime.decorations.get();
       const focused = focusedRange();
       for (const layer of highlightLayers.values()) for (const item of layer.children as HTMLCollectionOf<HTMLElement>) {
+        if (item.hasAttribute('data-search')) continue;
         item.toggleAttribute('data-hovered', item.dataset.paint === state.hoveredHighlight);
         const highlight = decorations.highlights.get(item.dataset.paint ?? '');
         if (highlight?.occurrenceId) {
@@ -241,7 +272,8 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       frame = 0;
       const selections = runtime.interaction.get().selection?.raw.ranges ?? [];
       const decorations = runtime.decorations.get().byBlock;
-      if (!selections.length && ![...decorations.values()].some(value => value.highlights.length)) { clear(); return; }
+      const search = runtime.searchHighlights.get();
+      if (!selections.length && !search.ranges.length && ![...decorations.values()].some(value => value.highlights.length)) { clear(); return; }
       const doc = runtime.document.getSnapshot();
       if (doc !== snapshot) { snapshot = doc; blocks = undefined; }
       if (!blocks) {
@@ -271,7 +303,7 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       viewport.top = Math.max(viewport.top, origin.top);
       viewport.bottom = Math.min(viewport.bottom, origin.bottom);
       const scrollLeft = container.scrollLeft, scrollTop = container.scrollTop;
-      const output: { rect: PaintRect; task: { id: string; color?: string; style?: PaintHighlight['style']; occurrenceId?: string; selection?: boolean } }[] = [];
+      const output: { rect: PaintRect; task: PaintTask }[] = [];
       const clips = new Map<HTMLElement, { left: number; right: number; top: number; bottom: number }>();
       const clipFor = (flow: HTMLElement) => {
         const saved = clips.get(flow); if (saved) return saved;
@@ -287,10 +319,20 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
         const block = blocks[index];
         const blockBox = block.element.getBoundingClientRect();
         if (blockBox.top > viewport.bottom + 32) break;
-        const tasks: { id: string; range: SourceRange; color?: string; style?: PaintHighlight['style']; occurrenceId?: string; selection?: boolean }[] = [...decorations.get(block.id)?.highlights ?? []];
+        const tasks: PaintTask[] = [...decorations.get(block.id)?.highlights ?? []];
+        let leaves = leavesCache.get(block.element), searchRange = block.range;
+        if (search.ranges.length && blockBox.height > (viewport.bottom - viewport.top) * 3) {
+          if (!leaves) { leaves = leavesIn(block.element, runtime); leavesCache.set(block.element, leaves); }
+          searchRange = visibleSearchRange(leaves, { ...viewport, top: viewport.top - 32, bottom: viewport.bottom + 32 });
+        }
+        let low = 0, high = search.ranges.length;
+        while (low < high) { const mid = (low + high) >>> 1; if (search.ranges[mid].end <= searchRange.start) low = mid + 1; else high = mid; }
+        for (let at = low; at < search.ranges.length && search.ranges[at].start < searchRange.end; at++) {
+          const range = search.ranges[at];
+          tasks.push({ id: `search-${at}`, range, search: true, current: !!search.current && sameRange(search.current, range) });
+        }
         for (const range of selections) if (intersects(range, block.range)) tasks.push({ id: 'selection', range, selection: true });
         if (!tasks.length) continue;
-        let leaves = leavesCache.get(block.element);
         // Cache paragraph geometry in block-local coordinates. Scrolling moves
         // the block, not its shaped text. Keep exceptionally tall blocks on the
         // viewport-bounded path so selecting a book never measures it in full.
@@ -355,13 +397,16 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
           target = layer;
           left += origin.left - geometry.box.left + geometry.x;
           top += viewport.top - geometry.box.top + geometry.y - geometry.top;
-          nextHits.push({ id: task.id, rect: { left: rect.left + origin.left - scrollLeft, top: rect.top + viewport.top, width: rect.width, height: rect.height } });
+          if (!task.search) nextHits.push({ id: task.id, rect: { left: rect.left + origin.left - scrollLeft, top: rect.top + viewport.top, width: rect.width, height: rect.height } });
         }
         const index = counts.get(target) ?? 0; counts.set(target, index + 1);
         const item = target.children[index] as HTMLElement | undefined ?? document.createElement('span');
-        const className = `limr-paint-rect limr-paint-${task.selection ? 'selection' : task.style ?? 'background'}`;
+        const className = `limr-paint-rect limr-paint-${task.selection ? 'selection' : task.search ? 'search' : task.style ?? 'background'}`;
         if (item.className !== className) item.className = className;
         item.dataset.paint = task.id;
+        item.toggleAttribute('data-search', !!task.search);
+        item.toggleAttribute('data-search-current', !!task.current);
+        if (task.search) { item.removeAttribute('data-muted'); item.removeAttribute('data-active'); item.removeAttribute('data-hovered'); }
         item.toggleAttribute('data-reference', !!task.occurrenceId);
         if (rect.marker) item.dataset.marker = rect.marker; else delete item.dataset.marker;
         if (rect.atomic) item.dataset.atomic = 'true'; else delete item.dataset.atomic;
@@ -419,7 +464,8 @@ export function SelectionPaint({ runtime, interactive = true }: { runtime: Reade
       const decorations = runtime.decorations.get().byBlock;
       if (decorations === lastDecorations) return;
       lastDecorations = decorations; leavesCache = new WeakMap(); geometryCache = new WeakMap(); schedule();
-    }), runtime.layout.subscribe(invalidate), runtime.documentOffset.subscribe(schedule), runtime.configuration.subscribe(() => { geometryCache = new WeakMap(); invalidate(); })];
+    }), runtime.searchHighlights.subscribe(() => { geometryCache = new WeakMap(); schedule(); }),
+    runtime.layout.subscribe(invalidate), runtime.documentOffset.subscribe(schedule), runtime.configuration.subscribe(() => { geometryCache = new WeakMap(); invalidate(); })];
     const observer = new MutationObserver(records => {
       let changed = false;
       for (const record of records) {

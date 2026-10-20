@@ -5,6 +5,7 @@ import type { AnnotationType, DocumentCommands, LiMRLocale, NodeRenderer, Render
 import { scrollWithMotion } from './motion';
 import { prepareSourceReveal } from './source-reveal';
 import { indexBlockDecorations } from './decoration-index';
+import { sourceRangeStartRect } from './source-geometry';
 
 export const english: LiMRLocale = {
   language: 'en', citation: 'Citation',
@@ -111,6 +112,8 @@ export class ReaderRuntime {
   /** Visible text/state changes, separate from high-frequency geometry updates. */
   readonly presentation = new Store(0);
   readonly searchCommand = new Store<{ command: 'open' | 'next' | 'previous' | 'close'; sequence: number }>({ command: 'close', sequence: 0 });
+  /** Transient find feedback; never enters annotations or source serialization. */
+  readonly searchHighlights = new Store<{ ranges: readonly SourceRange[]; current: SourceRange | null }>({ ranges: [], current: null });
   readonly documentOffset = new Store(0);
   /** Cumulative native scroll compensation from virtual block measurements.
    * Viewport-locked UI follows these corrections, independently of user scroll. */
@@ -591,7 +594,11 @@ export class ReaderRuntime {
     if (this.documentViewport) { this.documentViewport.reveal(range); return; }
     const block = this.document.getSnapshot().blocks.find(block => block.range.end > range.start && block.range.start <= range.start);
     const element = block && this.blocks.get(block.id);
-    if (element) this.revealInnerSource(range, () => this.scrollToElement(element));
+    if (element) this.revealInnerSource(range, () => {
+      const rect = sourceRangeStartRect(this, range);
+      if (rect) this.scrollTo(this.getScrollTop() + rect.top - this.getViewportTop() - (this.configuration.get().scrollOffset ?? 24));
+      else this.scrollToElement(element);
+    });
   }
   private sourceRevealFrame = 0;
   private revealInnerSource(range: SourceRange, complete: () => void) {

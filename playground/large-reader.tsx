@@ -3,7 +3,7 @@ import { standard } from '../src/extensions';
 import type { Annotation, DocumentWorkerPort, RendererExtension } from '../src';
 import type { DocumentWorkerResponse } from '../src/worker-api';
 import { createRoot } from 'react-dom/client';
-import { Reader, AsyncReader, useLiMR, type AsyncReaderProps } from '../src';
+import { Reader, AsyncReader, DocumentProvider, DocumentSearch, Markdown, useDocumentSearch, useLiMR, type AsyncReaderProps } from '../src';
 import '../src/styles.css';
 import 'katex/dist/katex.min.css';
 import { useRuntime } from '../src/react/context';
@@ -29,6 +29,18 @@ const heldWorker = (): DocumentWorkerPort => {
 };
 export const audit: any = (window as any).reading = { state: undefined, api: undefined, history: [] };
 function AuditBridge() { const api = useLiMR(), runtime = useRuntime(); audit.api = api; audit.runtime = runtime; return null; }
+function ComposedSearch() {
+  const controller = useDocumentSearch({ defaultOpen: true }), [custom, setCustom] = useState(false);
+  return <header style={{ position: 'sticky', top: 0, zIndex: 2000, background: 'white', padding: 8 }}>
+    <button type="button" onClick={() => setCustom(value => !value)}>Replace search UI</button>
+    {custom ? <div data-custom-search>
+      <input aria-label="Custom query" value={controller.query} onChange={event => controller.setQuery(event.target.value)} />
+      <button type="button" onClick={controller.next}>Custom next</button>
+      <span data-custom-count>{controller.current + 1}/{controller.matches.length}</span>
+    </div> : <DocumentSearch controller={controller} placement="inline" className="custom-search-slot" style={{ '--limr-search-accent': 'rgb(120, 40, 170)' } as React.CSSProperties} />}
+  </header>;
+}
+audit.composeSearch = () => root.render(<DocumentProvider source={'# Composition\n\nFirst needle. Second needle.'}><ComposedSearch /><Markdown /><AuditBridge /></DocumentProvider>);
 audit.positionRect = (position: { source: number }) => sourceRangeStartRect(audit.runtime, { start: position.source, end: position.source + 2 })?.top;
 audit.prepare = (mib?: number): Blob | undefined => {
   if (!mib) return;

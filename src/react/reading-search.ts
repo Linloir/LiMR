@@ -65,7 +65,8 @@ export class ReadingSearch {
     const result = await this.matcher.scan(projections.map(item => item.projection.text), resultLimit - this.matches.length);
     this.check();
     const found = projections.flatMap((item, index) => result.matches[index].map(range => ({ block: item.block, range: item.projection.resolve(range) })));
-    if (direction > 0) this.matches.push(...found); else this.matches.unshift(...found);
+    if (direction > 0) for (const match of found) this.matches.push(match);
+    else this.matches.splice(0, 0, ...found);
     this.limited = result.limited; this.scanned += size;
     await yieldTask(); this.check();
   }

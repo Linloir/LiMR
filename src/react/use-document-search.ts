@@ -79,6 +79,10 @@ export function useDocumentSearch(options: UseDocumentSearchOptions = {}): Docum
     void search.move(active.current, direction).then(index => publish(search, index)).catch(error => fail(search, error));
   }, [publish, fail]);
   useEffect(() => {
+    runtime.searchHighlights.set({ ranges: open ? [...matches].sort((a, b) => a.start - b.start || a.end - b.end) : [], current: open ? matches[current] ?? null : null });
+    return () => { runtime.searchHighlights.set({ ranges: [], current: null }); };
+  }, [runtime, matches, current, open]);
+  useEffect(() => {
     const unsubscribe = runtime.searchCommand.subscribe(() => {
       const command = runtime.searchCommand.get().command;
       if (command === 'close') close();

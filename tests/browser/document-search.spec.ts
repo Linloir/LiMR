@@ -29,6 +29,32 @@ test('search expands from the right without moving its contents, and reverses on
   await panel.locator('input').fill('content');
   await expect(panel.locator('.limr-search-count')).toHaveText('1/1');
   await expect(panel).not.toHaveAttribute('data-loading');
+  await expect(panel.locator('input')).toHaveCSS('outline-style', 'none');
+  for (const name of ['Previous result', 'Next result']) {
+    const centered = await panel.getByRole('button', { name }).evaluate(element => {
+      const button = element.getBoundingClientRect(), svg = element.querySelector('svg')!, path = svg.querySelector('path')!;
+      const shape = path.getBBox(), point = new DOMPoint(shape.x + shape.width / 2, shape.y + shape.height / 2).matrixTransform(path.getScreenCTM()!);
+      return { x: Math.abs(point.x - button.left - button.width / 2), y: Math.abs(point.y - button.top - button.height / 2) };
+    });
+    expect(centered.x).toBeLessThan(.1); expect(centered.y).toBeLessThan(.1);
+  }
+});
+
+test('dense matches inside a tall code block only paint the visible text', async ({ page }) => {
+  await page.goto('/large-reader.html');
+  await page.evaluate(() => (window as any).reading.render({ source: '# Dense search\n\n```text\n' + ('needle alpha '.repeat(10) + '\n').repeat(3000) + '```', parameters: { codeBlock: { autoCollapse: false } } }));
+  await page.getByRole('heading', { name: 'Dense search' }).click();
+  await page.keyboard.press('Control+f');
+  await page.locator('.limr-document-search input').fill('needle');
+  await expect(page.locator('.limr-search-count')).toHaveText('1/30000', { timeout: 20_000 });
+  await expect(page.locator('[data-search-current]').first()).toBeVisible();
+  expect(await page.locator('[data-search]').count()).toBeLessThan(1500);
+  await page.evaluate(() => {
+    const audit = (window as any).reading, source = audit.runtime.document.getSnapshot().source;
+    audit.api.scrollToSource({ start: source.lastIndexOf('needle'), end: source.lastIndexOf('needle') + 6 });
+  });
+  await expect.poll(() => page.locator('[data-search]').count()).toBeGreaterThan(0);
+  expect(await page.locator('[data-search]').count()).toBeLessThan(1500);
 });
 
 test('regex and case icons, errors, and a timed-out expression recover without blocking input', async ({ page }) => {
@@ -105,4 +131,49 @@ test('native find remains the default, while Playground exposes an explicit sear
   await page.goto('/#/playground');
   await page.getByRole('button', { name: '搜索', exact: true }).click();
   await expect(page.locator('.limr-document-search input')).toBeFocused();
+});
+
+test('a standalone search composes with Markdown and can replace its entire UI', async ({ page }) => {
+  await page.goto('/large-reader.html');
+  await page.evaluate(() => (window as any).reading.composeSearch());
+  const panel = page.locator('.custom-search-slot');
+  await expect(panel).toHaveCSS('position', 'relative');
+  await expect(panel).toHaveCSS('--limr-search-accent', 'rgb(120, 40, 170)');
+  await panel.locator('input').fill('needle');
+  await expect(panel.locator('.limr-search-count')).toHaveText('1/2');
+  await page.getByRole('button', { name: 'Replace search UI' }).click();
+  await expect(page.locator('.limr-document-search')).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: 'Custom query' })).toHaveValue('needle');
+  await page.getByRole('button', { name: 'Custom next' }).click();
+  await expect(page.locator('[data-custom-count]')).toHaveText('2/2');
+  await expect(page.locator('[data-search-current]')).toBeVisible();
+});
+
+for (const typography of ['standard', 'knuth-plass']) test(`search paints active and other results independently of focus in ${typography}`, async ({ page }) => {
+  await page.goto('/large-reader.html');
+  await page.evaluate(typography => (window as any).reading.render({ source: '# Search highlights\n\n丰富的**内容**表达，内容可搜索。\n\n**foo**bar and foobar &amp; decoded.\n\n' + 'Other prose.\n\n'.repeat(80) + 'Final 内容.', typography, theme: 'dark', virtualization: false }), typography);
+  await page.getByRole('heading', { name: 'Search highlights' }).click();
+  await page.keyboard.press('Control+f');
+  const panel = page.locator('.limr-document-search'), input = panel.locator('input'), current = page.locator('[data-search-current]');
+  await input.fill('内容');
+  await expect(panel.locator('.limr-search-count')).toHaveText('1/3');
+  await expect(current).toBeVisible();
+  await expect(input).toBeFocused();
+  expect(await current.evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
+  await page.keyboard.press('Enter');
+  await expect(panel.locator('.limr-search-count')).toHaveText('2/3');
+  await expect(current).toBeVisible();
+  const second = await current.boundingBox();
+  await page.keyboard.press('Enter');
+  await expect(panel.locator('.limr-search-count')).toHaveText('3/3');
+  await expect(current).toBeInViewport();
+  await input.fill('foobar');
+  await expect(panel.locator('.limr-search-count')).toHaveText('1/2');
+  await expect(current.first()).toBeInViewport();
+  expect(second?.width).toBeGreaterThan(10);
+  expect(await current.evaluateAll(elements => elements.reduce((sum, element) => sum + element.getBoundingClientRect().width, 0))).toBeLessThan(150);
+  const source = await page.evaluate(() => (window as any).reading.runtime.document.getSnapshot().source);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-search]')).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).reading.runtime.document.getSnapshot().source)).toBe(source);
 });

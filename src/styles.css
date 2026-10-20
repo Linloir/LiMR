@@ -112,6 +112,9 @@
   .limr-highlight-layer .limr-paint-rect:is([data-hovered],[data-active]):not(.limr-paint-background) { background-color: color-mix(in srgb, var(--limr-highlight) 14%, transparent); }
   .limr-highlight { cursor: pointer; }
   .limr-paint-selection { background: var(--limr-selection, #667eea4d); z-index: 1; }
+  .limr-paint-search { background: var(--limr-search-match, #e5b83f59); box-shadow: inset 0 -1px 0 var(--limr-search-match-border, #b58a2a99); }
+  .limr-paint-search[data-search-current] { background: var(--limr-search-current, #ef983f99); box-shadow: inset 0 0 0 1.5px var(--limr-search-current-border, #c27419); }
+  .limr-paint-search[data-media='image'] { background: transparent; box-shadow: inset 0 0 0 3px var(--limr-search-current-border, #c27419); }
   .limr-paint-underline { border-bottom: 2px solid var(--limr-highlight); }
   .limr-paint-dotted { border-bottom: 2px dotted var(--limr-highlight); }
   .limr-paint-wavy { background: radial-gradient(ellipse at top, transparent 45%, var(--limr-highlight) 50%, var(--limr-highlight) 65%, transparent 70%) left bottom / 6px 3px repeat-x; }
