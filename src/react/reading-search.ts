@@ -6,7 +6,7 @@ import { windowedReadingProjection, type ReadingProjection } from './windowed-co
 
 const hidden = new Set(['definition', 'footnoteDefinition', 'annotationDefinition', 'streamPending']);
 const batchSize = 128 * 1024, nearbySize = 256 * 1024, resultLimit = 100_000;
-export interface ReadingSearchMatch { range: SourceRange; block: number }
+export interface ReadingSearchMatch { range: SourceRange; block: number; offset: number }
 
 /** A contiguous scanned interval in reading order. Large books start near the
  * reader; explicit navigation extends this interval. Projection caches are
@@ -64,14 +64,39 @@ export class ReadingSearch {
     if (direction < 0) projections.reverse();
     const result = await this.matcher.scan(projections.map(item => item.projection.text), resultLimit - this.matches.length);
     this.check();
-    const found = projections.flatMap((item, index) => result.matches[index].map(range => ({ block: item.block, range: item.projection.resolve(range) })));
+    const found = projections.flatMap((item, index) => result.matches[index].map(range => ({ block: item.block, offset: range.start, range: item.projection.resolve(range) })));
     if (direction > 0) for (const match of found) this.matches.push(match);
     else this.matches.splice(0, 0, ...found);
     this.limited = result.limited; this.scanned += size;
     await yieldTask(); this.check();
   }
-  async move(current: number, direction: number): Promise<number> {
+  async move(current: number, direction: number, source?: number): Promise<number> {
     this.check();
+    if (current < 0 && source !== undefined) {
+      // A source coordinate alone is not reading order (e.g. bilingual text).
+      // Resolve its position within the block's visible projection first.
+      let low = 0, high = this.snapshot.blocks.length;
+      while (low < high) { const mid = (low + high) >>> 1; if (this.snapshot.blocks[mid].range.end <= source) low = mid + 1; else high = mid; }
+      let block = Math.min(low, Math.max(0, this.entries.length - 1));
+      if (this.entries[block]?.type === 'footnoteDefinition') {
+        const note = this.entries.indexOf(this.entries[block], this.snapshot.blocks.length);
+        if (note >= 0) block = note;
+      }
+      // The reader may have scrolled since this query was initialized. Cover
+      // the new anchor before selecting an already scanned but farther match.
+      while (!this.limited && block < this.low) await this.batch(-1);
+      while (!this.limited && block >= this.high && this.high < this.entries.length) await this.batch(1);
+      const offset = this.entries[block] ? windowedReadingProjection(this.runtime, rangeOf(this.entries[block])).offsetAt(source) : 0;
+      const after = (match: ReadingSearchMatch) => match.block > block || match.block === block && match.offset >= offset;
+      if (direction > 0) {
+        const next = this.matches.findIndex(after);
+        if (next >= 0) return next;
+        current = this.matches.length - 1;
+      } else {
+        for (let index = this.matches.length - 1; index >= 0; index--) if (!after(this.matches[index])) return index;
+        current = 0;
+      }
+    }
     const next = current + direction;
     if (next >= 0 && next < this.matches.length) return next;
     const selected = this.matches[current];

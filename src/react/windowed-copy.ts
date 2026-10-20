@@ -10,7 +10,7 @@ const proseBlocks = new Set(['paragraph', 'heading', 'blockquote', 'list', 'list
 const join = (parts: readonly string[], separator: string) => parts.filter(Boolean).join(separator);
 const footnoteIndexes = new WeakMap<DocumentSnapshot, { node: MarkdownNode; order: number; span: SourceRange }[]>();
 interface ReadingFragment { text: string; resolve: (from: number, to: number) => SourceRange }
-export interface ReadingProjection { text: string; resolve: (range: SourceRange) => SourceRange }
+export interface ReadingProjection { text: string; resolve: (range: SourceRange) => SourceRange; offsetAt: (source: number) => number }
 
 /** Keep leaf mappings lazy: a long plain/code leaf needs no per-character index.
  * Synthetic renderer text has an explicit block fallback instead of guessing. */
@@ -21,11 +21,27 @@ export function windowedReadingProjection(runtime: ReaderRuntime, span: SourceRa
   let at = 0;
   for (const fragment of trace) {
     const from = text.indexOf(fragment.text, at);
-    if (from < 0 || /\S/.test(text.slice(at, from))) return { text, resolve: () => span };
+    if (from < 0 || /\S/.test(text.slice(at, from))) return { text, resolve: () => span, offsetAt: () => 0 };
     segments.push({ from, to: from + fragment.text.length, fragment }); at = from + fragment.text.length;
   }
-  if (/\S/.test(text.slice(at))) return { text, resolve: () => span };
-  return { text, resolve: range => {
+  if (/\S/.test(text.slice(at))) return { text, resolve: () => span, offsetAt: () => 0 };
+  return { text, offsetAt: source => {
+    let nearest = 0, distance = Infinity;
+    for (const segment of segments) {
+      const length = segment.to - segment.from, range = segment.fragment.resolve(0, length);
+      if (source >= range.start && source < range.end) {
+        let low = 0, high = length;
+        while (low < high) {
+          const mid = (low + high) >>> 1;
+          if (segment.fragment.resolve(mid, mid + 1).end <= source) low = mid + 1; else high = mid;
+        }
+        return segment.from + low;
+      }
+      const delta = Math.min(Math.abs(source - range.start), Math.abs(source - range.end));
+      if (delta < distance) { distance = delta; nearest = source < range.start ? segment.from : segment.to; }
+    }
+    return nearest;
+  }, resolve: range => {
     let low = 0, high = segments.length;
     while (low < high) { const mid = (low + high) >>> 1; if (segments[mid].to <= range.start) low = mid + 1; else high = mid; }
     const first = segments[low];

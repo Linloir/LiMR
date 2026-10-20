@@ -200,7 +200,9 @@ for (const typography of ['standard', 'knuth-plass']) test(`search paints active
   await expect(panel.locator('.limr-search-count')).toHaveText('3/3');
   await expect(current).toBeInViewport();
   await input.fill('foobar');
-  await expect(panel.locator('.limr-search-count')).toHaveText('1/2');
+  await expect(panel.locator('.limr-search-count')).toHaveText('?/2');
+  await page.keyboard.press('Shift+Enter');
+  await expect(panel.locator('.limr-search-count')).toHaveText('2/2');
   await expect(current.first()).toBeInViewport();
   expect(second?.width).toBeGreaterThan(10);
   expect(await current.evaluateAll(elements => elements.reduce((sum, element) => sum + element.getBoundingClientRect().width, 0))).toBeLessThan(150);

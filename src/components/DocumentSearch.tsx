@@ -40,8 +40,10 @@ function SearchView({ controller: search, className, style, placement = 'floatin
     return () => clearTimeout(timer);
   }, [search.open, mounted, search.focusRequest]);
   if (!mounted) return null;
-  const count = `${search.current < 0 ? 0 : search.current + 1}/${search.matches.length}${search.partial ? '+' : ''}`;
-  const scope = search.partial ? (chinese ? '已搜索附近文本；使用上一个或下一个继续搜索' : 'Nearby text searched; use Previous or Next to scan further') : (chinese ? '已搜索全文' : 'Complete document searched');
+  const unselected = search.current < 0 && search.matches.length > 0;
+  const count = `${search.current < 0 ? unselected ? '?' : 0 : search.current + 1}/${search.matches.length}${search.partial ? '+' : ''}`;
+  const scope = (search.partial ? (chinese ? '已搜索附近文本；使用上一个或下一个继续搜索' : 'Nearby text searched; use Previous or Next to scan further') : (chinese ? '已搜索全文' : 'Complete document searched'))
+    + (unselected ? (chinese ? '；视口内没有结果，使用上一个或下一个定位' : '; no result in view, use Previous or Next to navigate') : '');
   const canMove = !search.busy && !search.error && (!!search.matches.length || search.partial);
   return <div ref={element => { panel.current = element; element?.toggleAttribute('inert', !search.open); }}
     className={`limr-document-search ${className ?? ''}`} style={style} role="search" aria-hidden={!search.open} aria-busy={search.busy}

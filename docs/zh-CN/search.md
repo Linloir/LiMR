@@ -23,6 +23,8 @@ export function Article({ source }: { source: string }) {
 
 默认搜索输入框支持原生 Ctrl/Cmd+Z 撤销、Ctrl+Y 或 Ctrl/Cmd+Shift+Z 重做。快捷键在搜索框内处理，不会传给宿主文档的撤销栈。
 
+输入查询时不会滚动正文。搜索优先选中当前视口内的第一个结果；没有可见结果时显示 `?/N` 并保留阅读位置，临时清空、输入错误或没有匹配也不会跳转。点击上一个／下一个，或按 Shift+Enter／Enter，才会从当前阅读位置向前／向后定位最近的结果，到文档边界后循环。计数后的 `+` 仍表示只扫描了附近文本。
+
 在 Playground 点击工具栏的**搜索**按钮体验。Aa 切换大小写敏感，`.*` 切换正则。Playground 使用 `shortcuts={false}` 保留浏览器 Ctrl/Cmd+F；搜索框内部的 Enter 和 Escape 仍然有效。渐进加载文档须在完整加载后才能搜索。
 
 ## 脱离 Reader 独立组合
@@ -88,7 +90,7 @@ function CustomSearch() {
       aria-invalid={!!search.error} onChange={event => search.setQuery(event.target.value)} />
     <button aria-pressed={search.caseSensitive} onClick={() => search.setCaseSensitive(!search.caseSensitive)}>Aa</button>
     <button aria-pressed={search.regex} onClick={() => search.setRegex(!search.regex)}>.*</button>
-    <span role="status">{search.current + 1}/{search.matches.length}{search.partial ? '+' : ''}</span>
+    <span role="status">{search.current < 0 ? search.matches.length ? '?' : 0 : search.current + 1}/{search.matches.length}{search.partial ? '+' : ''}</span>
     <button disabled={search.busy} onClick={search.previous}>上一个</button>
     <button disabled={search.busy} onClick={search.next}>下一个</button>
     <button onClick={search.close}>关闭</button>

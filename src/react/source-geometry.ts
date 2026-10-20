@@ -272,3 +272,33 @@ export function sourceRangeStartRect(runtime: ReaderRuntime, source: SourceRange
   return null;
 }
 
+
+/** Bound source candidates to visible ink, including very tall code blocks. */
+export function visibleSourceRange(leaves: readonly Leaf[], viewport: Viewport): SourceRange {
+  let first = 0, last = leaves.length, start = Infinity, end = -Infinity;
+  if (leaves.length > 80 && leaves[0].flow.tagName === 'PRE' && leaves.at(-1)?.flow === leaves[0].flow) {
+    const box = (index: number) => {
+      const leaf = leaves[index];
+      if (leaf.kind !== 'text') return (leaf.node as HTMLElement).getBoundingClientRect();
+      const range = measurementRange(leaf.node.ownerDocument!); range.selectNodeContents(leaf.node); return range.getBoundingClientRect();
+    };
+    let low = 0, high = last;
+    while (low < high) { const mid = (low + high) >>> 1; if (box(mid).bottom < viewport.top) low = mid + 1; else high = mid; }
+    first = low; high = last;
+    while (low < high) { const mid = (low + high) >>> 1; if (box(mid).top <= viewport.bottom) low = mid + 1; else high = mid; }
+    last = low;
+  }
+  for (let at = first; at < last; at++) {
+    const leaf = leaves[at];
+    if (leaf.kind === 'text') {
+      const range = textRange(leaf, leaf.range, viewport); if (!range) continue;
+      const box = range.getBoundingClientRect(); if (box.bottom < viewport.top || box.top > viewport.bottom) continue;
+      start = Math.min(start, leaf.binding!.resolve!(leaf.offset + range.startOffset, 'start'));
+      end = Math.max(end, leaf.binding!.resolve!(leaf.offset + range.endOffset, 'end'));
+    } else {
+      const box = (leaf.node as HTMLElement).getBoundingClientRect();
+      if (box.bottom >= viewport.top && box.top <= viewport.bottom) { start = Math.min(start, leaf.range.start); end = Math.max(end, leaf.range.end); }
+    }
+  }
+  return { start, end };
+}

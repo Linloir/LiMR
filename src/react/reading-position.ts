@@ -3,7 +3,7 @@ import type { ReadingPosition } from './types';
 import { leavesIn, measurementRange, sourceRangeStartRect } from './source-geometry';
 
 const orderedBlocks = new WeakMap<ReaderRuntime, { revision: number; documentRevision: number; elements: HTMLElement[] }>();
-function readingBlock(runtime: ReaderRuntime, edge: number): { element: HTMLElement; rect: DOMRect } | undefined {
+function readingBlocks(runtime: ReaderRuntime): HTMLElement[] {
   let cached = orderedBlocks.get(runtime);
   const documentRevision = runtime.document.getSnapshot().revision;
   if (!cached || cached.revision !== runtime.blockRevision || cached.documentRevision !== documentRevision) {
@@ -12,12 +12,18 @@ function readingBlock(runtime: ReaderRuntime, edge: number): { element: HTMLElem
   }
   // A window has a bounded set of retained DOM leases outside the flow. The
   // ordinary reader has no parked slots and needs only logarithmic rect reads.
-  const elements = runtime.documentViewport ? cached.elements.filter(element => !element.closest('[inert],[data-window-parked]')) : cached.elements;
+  return runtime.documentViewport ? cached.elements.filter(element => !element.closest('[inert],[data-window-parked]')) : cached.elements;
+}
+
+export function* visibleReadingBlocks(runtime: ReaderRuntime, top: number, bottom = Infinity) {
+  const elements = readingBlocks(runtime);
   let lo = 0, hi = elements.length;
-  while (lo < hi) { const middle = (lo + hi) >>> 1; if (elements[middle].getBoundingClientRect().bottom <= edge) lo = middle + 1; else hi = middle; }
+  while (lo < hi) { const middle = (lo + hi) >>> 1; if (elements[middle].getBoundingClientRect().bottom <= top) lo = middle + 1; else hi = middle; }
   for (let index = lo; index < elements.length; index++) {
     const element = elements[index]; if (element.closest('[inert],[data-window-parked]')) continue;
-    const rect = element.getBoundingClientRect(); if (rect.height && rect.bottom > edge) return { element, rect };
+    const rect = element.getBoundingClientRect();
+    if (rect.top >= bottom) break;
+    if (rect.height && rect.bottom > top) yield { element, rect };
   }
 }
 
@@ -28,7 +34,7 @@ export function captureReadingPosition(runtime: ReaderRuntime, measuredBlock?: {
   const viewport = runtime.getViewportTop(), edge = viewport + (runtime.configuration.get().scrollOffset ?? 24);
   // A virtual viewport already has a height index and can supply its measured
   // reading-edge block without sorting/filtering all retained DOM leases.
-  const block = measuredBlock ?? readingBlock(runtime, edge); if (!block) return null;
+  const block = measuredBlock ?? visibleReadingBlocks(runtime, edge).next().value; if (!block) return null;
   for (const leaf of leavesIn(block.element, runtime)) {
     if (leaf.kind === 'marker') continue;
     if (leaf.kind !== 'text') {

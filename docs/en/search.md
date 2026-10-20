@@ -23,6 +23,8 @@ Opening search with selected reader text fills the query with that plain text, w
 
 The default search input supports native Ctrl/Cmd+Z undo, Ctrl+Y or Ctrl/Cmd+Shift+Z redo. These keys stay inside search and do not reach a host document undo stack.
 
+Typing a query never scrolls the reader. Search selects the first visible match when available; otherwise it shows `?/N` and leaves the reading position intact, including while a query is temporarily empty, invalid or unmatched. Previous/Next (or Shift+Enter/Enter) then finds the nearest result before/after the current reading position, wrapping at the document edges. A `+` still means only nearby text has been scanned.
+
 In Playground, use the **Search** toolbar button. Aa toggles case sensitivity; `.*` toggles regex. Playground sets `shortcuts={false}` to retain browser Ctrl/Cmd+F; Enter and Escape still work inside the search component. Search waits until a progressive document is complete.
 
 ## Compose without Reader
@@ -88,7 +90,7 @@ function CustomSearch() {
       aria-invalid={!!search.error} onChange={event => search.setQuery(event.target.value)} />
     <button aria-pressed={search.caseSensitive} onClick={() => search.setCaseSensitive(!search.caseSensitive)}>Aa</button>
     <button aria-pressed={search.regex} onClick={() => search.setRegex(!search.regex)}>.*</button>
-    <span role="status">{search.current + 1}/{search.matches.length}{search.partial ? '+' : ''}</span>
+    <span role="status">{search.current < 0 ? search.matches.length ? '?' : 0 : search.current + 1}/{search.matches.length}{search.partial ? '+' : ''}</span>
     <button disabled={search.busy} onClick={search.previous}>Previous</button>
     <button disabled={search.busy} onClick={search.next}>Next</button>
     <button onClick={search.close}>Close</button>

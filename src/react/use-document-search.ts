@@ -7,6 +7,7 @@ import { captureReadingPosition } from './reading-position';
 import { ReadingSearch } from './reading-search';
 import { useSearchLoading } from './search-loading';
 import { selectedSearchText } from './search-selection';
+import { visibleSearchMatch } from './search-viewport';
 
 export interface UseDocumentSearchOptions {
   /** Capture reader-owned Ctrl/Cmd+F and F3. Default false for custom UIs. */
@@ -50,11 +51,11 @@ export function useDocumentSearch(options: UseDocumentSearchOptions = {}): Docum
     setOpen(false);
     if (previousFocus.current instanceof HTMLElement && previousFocus.current.isConnected) previousFocus.current.focus({ preventScroll: true });
   }, []);
-  const publish = useCallback((search: ReadingSearch, index: number) => {
+  const publish = useCallback((search: ReadingSearch, index: number, navigate = false) => {
     if (session.current !== search) return;
     active.current = index; setCurrent(index); setMatches(search.matches.map(match => match.range)); setPartial(search.partial);
     pending.current = false; setBusy(false);
-    if (search.matches[index]) runtime.scrollToSource(search.matches[index].range);
+    if (navigate && search.matches[index]) runtime.scrollToSource(search.matches[index].range);
   }, [runtime]);
   const fail = useCallback((search: ReadingSearch, error: unknown) => {
     if (session.current !== search) return;
@@ -72,7 +73,7 @@ export function useDocumentSearch(options: UseDocumentSearchOptions = {}): Docum
     const timer = setTimeout(() => {
       setBusy(true);
       const anchor = captureReadingPosition(runtime)?.source ?? 0;
-      void search.initialize(anchor).then(() => publish(search, search.matches.length ? 0 : -1)).catch(error => fail(search, error));
+      void search.initialize(anchor).then(() => publish(search, visibleSearchMatch(runtime, search.matches))).catch(error => fail(search, error));
     }, 90);
     return () => { clearTimeout(timer); controller.abort(); search.dispose(); if (session.current === search) session.current = null; };
   }, [open, query, regex, caseSensitive, source, runtime, presentation, configuration, options.worker, publish, fail]);
@@ -80,8 +81,9 @@ export function useDocumentSearch(options: UseDocumentSearchOptions = {}): Docum
     const search = session.current;
     if (!search || pending.current) return;
     pending.current = true; setBusy(true); setError(null);
-    void search.move(active.current, direction).then(index => publish(search, index)).catch(error => fail(search, error));
-  }, [publish, fail]);
+    const anchor = active.current < 0 ? captureReadingPosition(runtime)?.source ?? 0 : undefined;
+    void search.move(active.current, direction, anchor).then(index => publish(search, index, true)).catch(error => fail(search, error));
+  }, [runtime, publish, fail]);
   useEffect(() => {
     runtime.searchHighlights.set({ ranges: open ? [...matches].sort((a, b) => a.start - b.start || a.end - b.end) : [], current: open ? matches[current] ?? null : null });
     return () => { runtime.searchHighlights.set({ ranges: [], current: null }); };
