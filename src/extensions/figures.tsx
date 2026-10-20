@@ -74,10 +74,10 @@ export function figures(options: FiguresOptions = {}): RendererExtension {
       measure(); element.addEventListener('load', measure, true);
       return () => element.removeEventListener('load', measure, true);
     }, [node]);
-    const maximum = figureWidths({ ratio, limits }).maximum;
+    const maximum = Math.min(figureWidths({ ratio, limits }).maximum, dimension(node.attributes?.width, Infinity), dimension(node.attributes?.height, Infinity) * ratio);
     return <figure id={identifier(node)} className="limr-figure" data-limr-selection-order="visual" style={{
       '--limr-figure-width': Number.isFinite(maximum) ? `${maximum}px` : '100%',
-      '--limr-figure-min-height': `${Math.min(limits.minHeight, limits.maxHeight)}px`,
+      '--limr-figure-min-height': `${Math.min(limits.minHeight, limits.maxHeight, maximum / ratio)}px`,
       '--limr-figure-max-height': Number.isFinite(limits.maxHeight) ? `${limits.maxHeight}px` : 'none',
     } as CSSProperties}>
       <div ref={media} className="limr-figure-media">
@@ -95,7 +95,12 @@ export function figures(options: FiguresOptions = {}): RendererExtension {
   return {
     name: 'figures', streaming: { Loading: BlockLoading }, tags: ['figures', 'figure', 'figcaption', 'caption', 'img'], directives: ['figures', 'figure', 'figcaption'], scope: 'local', display: 'block',
     components: { figures: Figures, figure: Figure, figcaption: Caption, caption: Caption,
-      img: ({ node }) => <Image src={safeUrl(node.attributes?.src, true)} alt={String(node.attributes?.alt ?? '')} title={node.attributes?.title ? String(node.attributes.title) : undefined} /> },
+      img: ({ node }) => {
+        const width = dimension(node.attributes?.width, NaN), height = dimension(node.attributes?.height, NaN);
+        return <Image src={safeUrl(node.attributes?.src, true)} alt={String(node.attributes?.alt ?? '')} title={node.attributes?.title ? String(node.attributes.title) : undefined}
+          width={Number.isFinite(width) ? width : undefined} height={Number.isFinite(height) ? height : undefined}
+          style={{ width: Number.isFinite(width) ? width : undefined, maxHeight: Number.isFinite(height) ? height : undefined, objectFit: 'contain' }} />;
+      } },
     transform: transformFigures,
   };
 }

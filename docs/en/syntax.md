@@ -276,6 +276,8 @@ Rendered result (interactive where applicable):
 
 A figure can stand alone. Supply an image through `src` / `url`, nested Markdown, or `<img src="…" alt="…" />`. Use one image per figure and figures for groups. Captions can use an attribute or figcaption / caption child tags; use children for rich text. `id` provides an in-page link target.
 
+A standalone `<img src="media/limr-icon.png" alt="LiMR" width="96" />` also uses the single-figure presentation, including URL copy, preview, source selection and annotations. Numeric or `px` width/height limits preserve aspect ratio and remain bounded by the container. Images inside prose or an existing figure keep that layout without another figure wrapper.
+
 | Attribute | Default | Meaning |
 | --- | --- | --- |
 | `min-width` / `min-height` | 220 / 120 | Determines when another column fits; narrow containers take priority |

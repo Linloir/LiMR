@@ -49,13 +49,22 @@ export const transformCitation: NonNullable<SyntaxExtension['transform']> = (roo
 
 export const transformFigures: NonNullable<SyntaxExtension['transform']> = (root) => {
   // Attribute images retain a source binding just like Markdown images.
-  const visit = (node: MarkdownNode) => {
-    if (node.type === 'component' && node.name === 'img') { node.selection = 'atomic'; node.inline = true; }
+  const visit = (node: MarkdownNode, inFigure = false, inText = false): MarkdownNode => {
+    if (node.type === 'component' && node.name === 'img') {
+      const standalone = !inText && !inFigure;
+      node.selection = 'atomic'; node.inline = true;
+      // Keep the original image's complete source binding. The presentation
+      // wrapper is not another atomic owner, and never nests an existing figure.
+      if (standalone) return { type: 'component', name: 'figure', inline: false, selection: 'content',
+        attributes: Object.fromEntries(Object.entries(node.attributes ?? {}).filter(([key]) => key === 'width' || key === 'height')),
+        position: node.position, children: [node] };
+    }
     if (node.type === 'component' && node.name === 'figure' && (node.attributes?.src || node.attributes?.url)) {
       const image = node.attributeNodes?.[node.attributes.src ? 'src' : 'url'];
       node.children = [{ type: 'image', url: node.attributes.src ?? node.attributes.url, alt: node.attributes.alt ?? '', position: image?.position ?? node.position }, ...(node.children ?? [])];
     }
-    node.children?.forEach(visit);
+    if (node.children) node.children = node.children.map(child => visit(child, inFigure || node.name === 'figure', inText || ['paragraph', 'heading', 'tableCell'].includes(node.type)));
+    return node;
   };
   visit(root);
 

@@ -276,6 +276,8 @@ Citation 默认不提供展开大卡片，点击固定预览；摘要按 `summar
 
 `figure` 可独立使用。图片可以来自 `src` / `url` 属性、内部 Markdown 图片或 `<img src="…" alt="…" />`。每个 figure 放一张图；多张图用 figures。图注可用 `caption` 属性或 `figcaption` / `caption` 子标签，富文本使用子标签。`id` 可作为页内链接目标。
 
+独立的 `<img src="media/limr-icon.png" alt="LiMR" width="96" />` 也使用单图 figure 展示，支持复制图片 URL、预览、源码选区和标注。数字或 `px` 形式的 width/height 限制保留宽高比，并受容器宽度约束。正文内或已有 figure 中的图片保留原布局，不再嵌套一层 figure。
+
 | 属性 | 默认值 | 说明 |
 | --- | --- | --- |
 | `min-width` / `min-height` | 220 / 120 | 决定何时增加列，窄容器优先适应宽度 |

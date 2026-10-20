@@ -27,6 +27,25 @@ describe('figure layout', () => {
 });
 
 describe('default media and translations modules', () => {
+  it('wraps standalone HTML images as figures while preserving their whole atomic source', () => {
+    const source = '<img src="media/limr-icon.png" alt="LiMR" width="96" />';
+    const snapshot = createDocument(source, { extensions: standard() }).getSnapshot();
+    const figure = snapshot.blocks[0].node, image = figure.children![0];
+    expect(figure.name).toBe('figure');
+    expect(image.name).toBe('img');
+    expect(image.selection).toBe('atomic');
+    expect(source.slice(rangeOf(image).start, rangeOf(image).end)).toBe(source);
+    const html = renderToString(<Markdown source={source} />);
+    expect(html).toContain('--limr-figure-width:96px');
+    expect(html).toContain('width="96"');
+    expect(html).toContain('limr-figure-copy');
+    for (const text of ['Before ' + source + ' after.', '<figure>\n\n' + source + '\n\n</figure>']) {
+      const rendered = renderToString(<Markdown source={text} />);
+      expect(rendered.match(/class="limr-figure"/g)?.length ?? 0).toBe(text.startsWith('Before') ? 0 : 1);
+      expect(rendered).toContain('width="96"');
+    }
+  });
+
   const source = '<figures columns="2">\n\n<figure src="/one.png" caption="Mapped caption" />\n\n<figure>\n\n![Two](/two.png)\n\n<figcaption>**Second** caption.</figcaption>\n\n</figure>\n\n</figures>\n\n<translations default="both">\n\n<origin>\n\nOriginal **text**.\n\n</origin>\n\n<translation>\n\n翻译 **正文**。\n\n</translation>\n\n</translations>';
   it('parses figures, captions and both language trees without losing source offsets', () => {
     const snapshot = createDocument(source, { extensions: standard() }).getSnapshot();
