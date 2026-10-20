@@ -14,8 +14,9 @@ export interface NodeRendererProps {
   renderChildren: (nodes: readonly MarkdownNode[], options?: { trailing?: ReactNode }) => ReactNode;
   /** Render a literal node value with optional syntax tokens, preserving source
    * selection, highlights and annotation insertion. Token offsets are UTF-16.
-   * `lines` adds source-line wrappers for a gutter without changing the text. */
-  renderValue: (tokens?: readonly TextToken[], options?: { lines?: boolean }) => ReactNode;
+   * `lines` adds source-line wrappers for a gutter without changing the text.
+   * `chunked` groups large values for deferred browser layout (text stays mounted). */
+  renderValue: (tokens?: readonly TextToken[], options?: { lines?: boolean; chunked?: boolean }) => ReactNode;
   /** Render a text attribute with source selection, highlights and annotations. */
   renderAttribute: (name: string) => ReactNode;
 }

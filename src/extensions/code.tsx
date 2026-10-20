@@ -125,9 +125,10 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
       return () => { disposed = true; clearTimeout(timer); release?.(); if (waiting) document.removeEventListener('selectionchange', waiting); };
     }, [code, normalized, pending, visible]);
     const tokens = result?.code === code ? result.tokens : undefined;
-    const content = useMemo(() => renderValue(tokens, { lines: lineNumbers }), [renderValue, tokens, lineNumbers]);
+    const chunked = total > 400 || code.length > 50_000;
+    const content = useMemo(() => renderValue(tokens, { lines: lineNumbers, chunked }), [renderValue, tokens, lineNumbers, chunked]);
     const foldedText = (locale.foldedCode ?? '{hidden} folded / {total} lines').replace('{hidden}', String(layout.hidden)).replace('{total}', String(total));
-    return <div className="limr-code-block" ref={ref} data-collapsed={collapsed || undefined} data-wrap={wrap || undefined} data-line-numbers={lineNumbers || undefined} data-unbounded={maxLines === false || undefined}
+    return <div className="limr-code-block" ref={ref} data-collapsed={collapsed || undefined} data-wrap={wrap || undefined} data-line-numbers={lineNumbers || undefined} data-unbounded={maxLines === false || undefined} data-chunked={chunked || undefined}
       style={{ '--limr-code-preview-lines': previewLines, '--limr-code-max-lines': maxLines || undefined } as CSSProperties}>
       <div className="limr-code-header" data-limr-ignore="true"><span>{language}</span><div className="limr-code-actions">
         <button type="button" className="limr-copy-button limr-code-wrap" aria-label={wrapLabel} title={wrapLabel} aria-pressed={wrap} aria-controls={id} onClick={() => update({ wrap: !wrap })}>

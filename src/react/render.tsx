@@ -7,6 +7,8 @@ import { emptyDecorations, emptyList, type BlockDecorations, type ReaderRuntime 
 import type { TextToken, ViewConfiguration } from './types';
 import { bindCompactText, compactTextNodes } from './text-binding';
 import { literalValue, mapLiteral } from './literal';
+import { literalChunks, literalParts, literalTokensBetween } from './literal-chunks';
+import { LiteralChunk } from './LiteralChunk';
 import { literalLines } from './literal-lines';
 import { StreamText } from './stream-text';
 import { StreamSelectionBoundary } from './stream-selection';
@@ -139,19 +141,18 @@ function Text({ node, context, mapping: literalMapping, marks: literalMarks, sty
   })}</>;
 }
 
-function LiteralValue({ node, context, tokens, lines }: { node: MarkdownNode; context: RenderContext; tokens?: readonly TextToken[]; lines?: boolean }) {
+function LiteralValue({ node, context, tokens, lines, chunked }: { node: MarkdownNode; context: RenderContext; tokens?: readonly TextToken[]; lines?: boolean; chunked?: boolean }) {
   const source = context.runtime.document.getSnapshot().source;
   const mapped = useMemo(() => { let value: TextMapping | undefined; return () => value ??= mapLiteral(source, node); }, [node]);
   const value = useMemo(() => literalValue(node), [node]);
   const marks = context.marks.get(node) ?? emptyList;
-  if (!tokens?.length && !lines) return <Text key={0} node={{ ...node, type: 'text', value }} context={context} mapping={mapped} marks={marks} />;
+  if (!tokens?.length && !lines && !chunked) return <Text key={0} node={{ ...node, type: 'text', value }} context={context} mapping={mapped} marks={marks} />;
   // Large, unhighlighted fences keep character maps lazy even with a gutter.
   // Indented/omitted/normalized source still uses the exact literal mapper.
-  const raw = lines && !tokens?.length && !node.sourceOmissions?.length ? source.slice(rangeOf(node).start, rangeOf(node).end) : '';
+  const raw = !tokens?.length && !node.sourceOmissions?.length ? source.slice(rangeOf(node).start, rangeOf(node).end) : '';
   const payload = /^[ \t]*(`{3,}|~{3,})[^\r\n]*\n/.exec(raw)?.[0].length;
   const directStart = payload !== undefined && raw.slice(payload, payload + value.length) === value ? rangeOf(node).start + payload : undefined;
   const mapping = directStart === undefined || marks.length ? mapped() : undefined;
-  const groups = lines ? literalLines(value, tokens) : [tokens!];
   const markerOffsets = marks.map(mark => {
     const offset = mapped().starts.findIndex(start => start >= mark.range.end);
     return { mark, offset: offset < 0 ? value.length : offset };
@@ -162,12 +163,37 @@ function LiteralValue({ node, context, tokens, lines }: { node: MarkdownNode; co
       : { start: directStart! + start, end: directStart! + end };
     let tokenMapping: TextMapping | undefined;
     const segmentMapping = () => {
-      if (!tokenMapping) { const mapping = mapped(); tokenMapping = { starts: mapping.starts.slice(start, end), ends: mapping.ends.slice(start, end), exact: mapping.exact }; }
+      if (!tokenMapping) {
+        if (directStart !== undefined) tokenMapping = {
+          starts: Array.from({ length: end - start }, (_, index) => directStart + start + index),
+          ends: Array.from({ length: end - start }, (_, index) => directStart + start + index + 1), exact: true,
+        };
+        else { const mapping = mapped(); tokenMapping = { starts: mapping.starts.slice(start, end), ends: mapping.ends.slice(start, end), exact: mapping.exact }; }
+      }
       return tokenMapping;
     };
     const leaf: MarkdownNode = { type: 'text', value: token.content, position: { start: { offset: range.start, line: 0, column: 0 }, end: { offset: range.end, line: 0, column: 0 } } };
-    return <Text key={index} className={token.style ? 'limr-code-token' : undefined} style={token.style} node={leaf} context={context} mapping={segmentMapping} marks={markerOffsets.filter(item => (item.offset > start || start === 0 && item.offset === 0) && item.offset <= end).map(item => item.mark)} />;
+    const decorated = mapping || context.highlights.some(highlight => intersects(highlight.range, range));
+    return <Text key={index} className={token.style ? 'limr-code-token' : undefined} style={token.style} node={leaf} context={context} mapping={decorated ? segmentMapping : undefined} marks={markerOffsets.filter(item => (item.offset > start || start === 0 && item.offset === 0) && item.offset <= end).map(item => item.mark)} />;
   };
+  if (chunked) return <>{literalChunks(value).map(chunk => {
+    const tokensInChunk = literalTokensBetween(value, tokens, chunk.start, chunk.end);
+    const content = chunk.long ? literalParts(value, chunk.start, chunk.end).map(part => <span className="limr-code-part" key={part.start}
+        style={{ '--limr-code-part-rows': Math.ceil((part.end - part.start) / 80) } as CSSProperties}>
+        {literalTokensBetween(value, tokensInChunk, part.start, part.end).map(renderToken)}
+      </span>) : tokensInChunk.map(renderToken);
+    const decorate = lines ? () => {
+      if (chunk.long) return <span className="limr-code-line" data-line={chunk.line}>{content}</span>;
+      const groups = literalLines(value.slice(chunk.start, chunk.end), tokensInChunk);
+      if (groups.length > chunk.lines) groups.pop(); // Next chunk owns the following source line.
+      return groups.map((group, index) => <span key={index} className="limr-code-line" data-line={chunk.line + index}>{group.map(renderToken)}</span>);
+    } : undefined;
+    return <LiteralChunk key={chunk.start} decorate={decorate} style={{
+      '--limr-code-chunk-rows': chunk.lines,
+      '--limr-code-chunk-wrap-rows': Math.max(chunk.lines, Math.ceil((chunk.end - chunk.start) / 80)),
+    } as CSSProperties}>{content}</LiteralChunk>;
+  })}</>;
+  const groups = lines ? literalLines(value, tokens) : [tokens!];
   return <>{groups.map((group, index) => lines ? <span key={index} className="limr-code-line" data-line={index + 1}>{group.map(renderToken)}</span> : <Fragment key={index}>{group.map(renderToken)}</Fragment>)}</>;
 }
 
@@ -285,7 +311,7 @@ function renderNode(node: MarkdownNode, context: RenderContext, index = 0, trail
       const range = rangeOf(attribute);
       return <Text node={attribute} context={context} marks={context.occurrences.filter(item => item.range.end > range.start && item.range.end <= range.end)} />;
     };
-    element = <ExtensionBoundary key={key} fallback={runtime.document.getSnapshot().source.slice(range.start, range.end)}><Renderer node={node} children={children} pending={context.block.pending} incomplete={!!node.incomplete} source={runtime.document.getSnapshot().source.slice(range.start, range.end)} renderChildren={renderChildren} renderValue={(tokens, options) => <LiteralValue node={node} context={context} tokens={tokens} lines={options?.lines} />} renderAttribute={renderAttribute} /></ExtensionBoundary>;
+    element = <ExtensionBoundary key={key} fallback={runtime.document.getSnapshot().source.slice(range.start, range.end)}><Renderer node={node} children={children} pending={context.block.pending} incomplete={!!node.incomplete} source={runtime.document.getSnapshot().source.slice(range.start, range.end)} renderChildren={renderChildren} renderValue={(tokens, options) => <LiteralValue node={node} context={context} tokens={tokens} lines={options?.lines} chunked={options?.chunked} />} renderAttribute={renderAttribute} /></ExtensionBoundary>;
   } else {
     switch (node.type) {
       case 'text': return <Fragment key={key}>{context.compact ? node.value ?? '' : <Text node={node} context={context} />}{trailing}</Fragment>;

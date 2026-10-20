@@ -217,6 +217,11 @@
   .limr-code-block[data-line-numbers] pre { padding-inline-start: 4.5em; }
   .limr-code-line { display: block; position: relative; min-height: 1lh; }
   .limr-code-line::before { content: attr(data-line); position: absolute; inset-inline-end: calc(100% + 1.25em); width: 3em; text-align: end; color: var(--limr-muted, #9b9590); user-select: none; pointer-events: none; font-variant-numeric: tabular-nums; }
+  .limr-code-chunk { display: block; width: max-content; min-width: 100%; min-height: 1lh; box-sizing: border-box; content-visibility: auto; contain-intrinsic-block-size: auto calc(var(--limr-code-chunk-rows) * 1lh); }
+  .limr-code-block[data-wrap] .limr-code-chunk { width: 100%; min-width: 0; contain-intrinsic-block-size: auto calc(var(--limr-code-chunk-wrap-rows) * 1lh); }
+  .limr-code-block[data-wrap] .limr-code-part { display: inline-block; vertical-align: top; width: 100%; content-visibility: auto; contain-intrinsic-block-size: auto calc(var(--limr-code-part-rows) * 1lh); }
+  .limr-code-block[data-chunked][data-line-numbers] pre { padding-inline-start: 0; }
+  .limr-code-block[data-line-numbers] .limr-code-chunk { padding-inline-start: 4.5em; }
   :where(.limr-reader,.limr-prose,.limr-annotation-overlay,.limr-selection-toolbar,.limr-sidebar) button { font: inherit; cursor: pointer; color: inherit; }
   :where(.limr-reader,.limr-prose,.limr-annotation-overlay,.limr-selection-toolbar,.limr-sidebar) button:disabled { cursor: default; opacity: .5; }
   :where(.limr-reader,.limr-prose,.limr-annotation-overlay,.limr-selection-toolbar) :focus-visible { outline: 2px solid var(--limr-focus, #8a7865); outline-offset: 3px; }
@@ -530,6 +535,9 @@
   @media print {
     .limr-code-block pre { max-height: none !important; overflow: visible !important; transition: none; }
     .limr-code-footer { display: none; }
+    .limr-code-chunk,.limr-code-block[data-wrap] .limr-code-part { content-visibility: visible; contain: none; contain-intrinsic-size: none; }
+    .limr-code-block .limr-code-chunk { width: 100%; min-width: 0; }
+    .limr-code-block[data-wrap] .limr-code-part { display: inline; }
     .limr-paint-layer,.limr-highlight-layer { display: none; }
     .limr-prose[data-limr-painted] .limr-highlight-background,.limr-prose[data-limr-painted] .limr-atomic-highlight { background: var(--limr-highlight); }
     .limr-prose[data-limr-painted] .limr-highlight-underline,.limr-prose[data-limr-painted] .limr-highlight-dotted,.limr-prose[data-limr-painted] .limr-highlight-wavy { text-decoration-line: underline; }
