@@ -19,7 +19,7 @@ describe('code block configuration', () => {
     expect(countCodeLines('one\ntwo')).toBe(2);
     expect(countCodeLines('one\ntwo\nthree')).toBe(3);
     expect(render()).toContain('16 folded / 24 lines');
-    expect(render()).toContain('--limr-code-max-lines:40');
+    expect(render()).toContain('data-unbounded="true"');
   });
   it('takes host parameters before plugin defaults and factory options', () => {
     const plugins = [{ name: 'code-preferences', parameters: { codeBlock: { autoCollapse: false, wrap: true, lineNumbers: true } } }];
@@ -37,6 +37,9 @@ describe('code block configuration', () => {
     expect(render({ codeBlock: { collapseAfterLines: 24 } })).not.toContain('limr-code-fold');
     expect(render({ codeBlock: { collapseAfterLines: 4, collapsedLines: 12 } })).toContain('--limr-code-preview-lines:4');
     expect(render({ codeBlock: { collapseAfterLines: NaN, collapsedLines: -1 } })).toContain('--limr-code-preview-lines:8');
+    expect(render({ codeBlock: { maxExpandedLines: 40 } })).toContain('--limr-code-max-lines:40');
+    expect(render({ codeBlock: { maxExpandedLines: 3 } })).toContain('--limr-code-max-lines:8');
+    expect(render({ codeBlock: { maxExpandedLines: NaN } })).toContain('data-unbounded="true"');
   });
 });
 

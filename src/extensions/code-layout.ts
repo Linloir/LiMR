@@ -2,8 +2,8 @@ import { useRef, useState } from 'react';
 import { useIsomorphicLayoutEffect } from '../react/context';
 import { countCodeLines } from './code-view-state';
 
-/** Measure the full content, never animate/re-measure every source line. The
- * scroll viewport animates between two bounded heights; its content is stable. */
+/** Measure full content after layout changes, never on every animation frame.
+ * Height transitions retain stable text while distant layout stays deferred. */
 export function useCodeLayout({ code, total, preview, threshold, wrap, collapsed }: {
   code: string; total: number; preview: number; threshold: number; wrap: boolean; collapsed: boolean;
 }) {

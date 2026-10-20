@@ -28,7 +28,7 @@ export interface CodeBlockOptions {
   /** Visible rows in a folded block. Defaults to 8. */
   collapsedLines?: number;
   /** Limit expanded height to this many visual rows, then scroll locally.
-   * Defaults to 40. Set false for an unlimited expanded height. */
+   * Defaults to false: fully expand and scroll with the document. */
   maxExpandedLines?: number | false;
   /** Initial soft wrapping. Defaults to false. */
   wrap?: boolean;
@@ -114,7 +114,8 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
       });
     }, [runtime, node, collapsed]);
     const expanded = parameters?.maxExpandedLines ?? options.maxExpandedLines;
-    const maxLines = expanded === false ? false : Math.max(previewLines, positiveLines(expanded, 40));
+    const maxLines = typeof expanded === 'number' && Number.isFinite(expanded) && expanded >= 1
+      ? Math.max(previewLines, Math.floor(expanded)) : false;
     const lineNumbers = parameters?.lineNumbers ?? options.lineNumbers ?? false;
     useIsomorphicLayoutEffect(() => { runtime.requestLayout(); }, [collapsed, wrap, lineNumbers, runtime]);
     const foldLabel = collapsed ? locale.expandCode ?? 'Expand code' : locale.collapseCode ?? 'Collapse code';

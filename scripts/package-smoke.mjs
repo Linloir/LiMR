@@ -180,7 +180,9 @@ window.renderPackedTable = parameters => tableRoot.render(h(Reader, { documentId
 window.renderPackedTable({ tableLayout: false });
 const codeHost = document.createElement('div'); codeHost.id = 'packed-code'; document.body.append(codeHost);
 const codeSource = '~~~text\\n' + Array.from({ length: 30 }, (_, i) => 'Line ' + i + ': ' + 'wide '.repeat(50)).join('\\n') + '\\n~~~';
-createRoot(codeHost).render(h(Reader, { source: codeSource, parameters: { codeBlock: { lineNumbers: true, maxExpandedLines: 12 } }, toc: false, sidebar: false }));
+const codeRoot = createRoot(codeHost);
+window.renderPackedCode = codeBlock => codeRoot.render(h(Reader, { source: codeSource, parameters: { codeBlock }, toc: false, sidebar: false }));
+window.renderPackedCode({ lineNumbers: true, maxExpandedLines: 12 });
 `);
   // Build and serve actual installed tarballs, never repository aliases or HMR.
   run('pnpm', ['exec', 'vite', 'build'], directory, { NODE_ENV: 'production' });
@@ -284,6 +286,10 @@ createRoot(codeHost).render(h(Reader, { source: codeSource, parameters: { codeBl
     await code.locator('.limr-code-wrap').click();
     await expect(code).toHaveAttribute('data-wrap', 'true');
     expect(await code.locator('pre').evaluate(pre => pre.scrollWidth - pre.clientWidth)).toBeLessThan(2);
+    await page.evaluate(() => window.renderPackedCode({ lineNumbers: true }));
+    await expect(code).toHaveAttribute('data-unbounded', 'true');
+    await expect(code.locator('pre')).toHaveCSS('overflow-y', 'hidden');
+    await expect.poll(() => code.locator('pre').evaluate(pre => pre.scrollHeight - pre.clientHeight)).toBeLessThan(2);
     if (errors.length) throw new Error(errors.join('\n'));
     console.log(`React ${version}: packed plugins, code/table controls, scoped CSS, skill template, KP, Mermaid, callout, highlight and footnote modules passed in Chromium`);
   } finally { await browser?.close(); server.kill('SIGTERM'); }

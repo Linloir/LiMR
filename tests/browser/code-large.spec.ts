@@ -1,14 +1,18 @@
 import { expect, test } from '@playwright/test';
 
-test('a giant wrapped source line stays bounded, retains exact text, and folds with a source-line count', async ({ page, context }) => {
+for (const maxExpandedLines of [false, 40] as const) test(`a giant wrapped source line retains exact text and folds with a source-line count (${maxExpandedLines || 'full'})`, async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/?fixture=streaming'); await page.waitForFunction(() => !!window.limrStream);
   const value = 'abc👨‍👩‍👧‍👦e\u0301中文 '.repeat(45_000) + 'COMPLETE-CODE-END';
-  await page.evaluate(value => window.limrStream({ source: '```text\n' + value + '\n```', streaming: false, parameters: { codeBlock: { autoCollapse: false } } }), value);
+  await page.evaluate(({ value, maxExpandedLines }) => window.limrStream({ source: '```text\n' + value + '\n```', streaming: false, parameters: { codeBlock: { autoCollapse: false, maxExpandedLines } } }), { value, maxExpandedLines });
   const block = page.locator('.limr-code-block'), pre = block.locator('pre');
   await block.locator('.limr-code-wrap').click();
   await expect(block.locator('.limr-code-fold')).toBeVisible();
-  await expect.poll(() => pre.evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(40, 1);
+  if (maxExpandedLines) await expect.poll(() => pre.evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(40, 1);
+  else {
+    await expect.poll(() => pre.evaluate(pre => pre.scrollHeight - pre.clientHeight)).toBeLessThan(2);
+    await expect(pre).toHaveCSS('overflow-y', 'hidden');
+  }
   expect(await pre.evaluate(pre => pre.scrollWidth - pre.clientWidth)).toBeLessThan(2);
   expect(await block.locator('.limr-code-part').count()).toBeGreaterThan(100);
   await block.locator('code').evaluate(code => {
@@ -19,8 +23,14 @@ test('a giant wrapped source line stays bounded, retains exact text, and folds w
   await expect.poll(async () => JSON.parse(await page.locator('#stream-selection').textContent() || 'null')?.raw.sourceText).toBe(value);
   await page.keyboard.press('ControlOrMeta+c'); expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(value);
   await page.evaluate(() => getSelection()?.removeAllRanges());
-  await pre.evaluate(pre => { pre.scrollTop = pre.scrollHeight; });
-  await expect.poll(() => pre.evaluate(pre => pre.scrollHeight - pre.scrollTop - pre.clientHeight)).toBeLessThan(2);
+  if (maxExpandedLines) {
+    await pre.evaluate(pre => { pre.scrollTop = pre.scrollHeight; });
+    await expect.poll(() => pre.evaluate(pre => pre.scrollHeight - pre.scrollTop - pre.clientHeight)).toBeLessThan(2);
+  } else {
+    await block.locator('.limr-code-part').last().scrollIntoViewIfNeeded();
+    await expect(block.locator('.limr-code-part').last()).toBeInViewport();
+    expect(await pre.evaluate(pre => pre.scrollTop)).toBe(0);
+  }
   await block.locator('.limr-code-fold').click();
   await expect(block.locator('.limr-code-footer')).toContainText('1 folded / 1 lines');
   await expect.poll(() => pre.evaluate(pre => pre.scrollTop)).toBe(0);
@@ -34,7 +44,7 @@ test('large numbered code defers distant line decorations while keeping selectio
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/?fixture=streaming'); await page.waitForFunction(() => !!window.limrStream);
   const value = Array.from({ length: 50_000 }, (_, i) => `line ${i}: &amp; literal \\* 😀`).join('\n');
-  await page.evaluate(value => window.limrStream({ source: '```text\n' + value + '\n```', streaming: false, parameters: { codeBlock: { lineNumbers: true } } }), value);
+  await page.evaluate(value => window.limrStream({ source: '```text\n' + value + '\n```', streaming: false, parameters: { codeBlock: { lineNumbers: true, maxExpandedLines: 40 } } }), value);
   const block = page.locator('.limr-code-block'), pre = block.locator('pre'), code = block.locator('code');
   await expect.poll(() => code.locator('.limr-code-line').count()).toBeGreaterThan(0);
   expect(await code.locator('.limr-code-line').count()).toBeLessThan(300);
@@ -82,19 +92,19 @@ test('large numbered code defers distant line decorations while keeping selectio
   await expect.poll(() => code.locator('.limr-code-line').count()).toBeLessThan(300);
 });
 
-for (const nested of [false, true]) test(`huge code and virtual book scrolling preserve independent state during animation (${nested ? 'nested' : 'page'})`, async ({ page }) => {
+for (const maxExpandedLines of [false, 40] as const) for (const nested of [false, true]) test(`huge code and virtual book scrolling preserve independent state during animation (${nested ? 'nested' : 'page'}, ${maxExpandedLines || 'full'})`, async ({ page }) => {
   await page.goto('/large-reader.html');
   const code = Array.from({ length: 15_000 }, (_, i) => `code ${i}: ${'long_content_'.repeat(10)}`).join('\n');
   const source = '# Beginning\n\n```text\n' + code + '\n```\n\n' +
     Array.from({ length: 1800 }, (_, i) => `Paragraph ${i}. ${'Ordinary prose. '.repeat(5)}\n\n`).join('') + '# Book end\n\nCOMPLETE-BOOK-END';
-  await page.evaluate(({ source, nested }) => {
+  await page.evaluate(({ source, nested, maxExpandedLines }) => {
     let scrollRoot: HTMLElement | undefined;
     if (nested) {
       scrollRoot = document.createElement('div'); scrollRoot.id = 'book-scroller'; scrollRoot.style.cssText = 'height:600px;overflow:auto';
       const root = document.getElementById('root')!; root.before(scrollRoot); scrollRoot.append(root);
     }
-    (window as any).reading.render({ source, scrollRoot, sidebar: false, toc: false, parameters: { codeBlock: { lineNumbers: true } } });
-  }, { source, nested });
+    (window as any).reading.render({ source, scrollRoot, sidebar: false, toc: false, parameters: { codeBlock: { lineNumbers: true, maxExpandedLines } } });
+  }, { source, nested, maxExpandedLines });
   await expect.poll(() => page.evaluate(() => (window as any).reading.state?.status)).toBe('ready');
   await expect(page.locator('[data-limr-windowed]')).toBeVisible();
   const block = page.locator('.limr-code-block');
@@ -117,7 +127,11 @@ for (const nested of [false, true]) test(`huge code and virtual book scrolling p
   await expect(block).toBeVisible();
   await expect(block).not.toHaveAttribute('data-collapsed');
   await expect(block).toHaveAttribute('data-wrap', 'true');
-  await expect.poll(() => block.locator('pre').evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(40, 1);
+  if (maxExpandedLines) await expect.poll(() => block.locator('pre').evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(40, 1);
+  else {
+    await expect.poll(() => block.locator('pre').evaluate(pre => pre.scrollHeight - pre.clientHeight)).toBeLessThan(2);
+    await expect(block.locator('pre')).toHaveCSS('overflow-y', 'hidden');
+  }
   expect(await block.locator('.limr-code-line').count()).toBeLessThan(300);
   await block.locator('.limr-code-fold').click();
   await expect.poll(() => block.locator('pre').evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(8, 1);
@@ -140,7 +154,8 @@ for (const nested of [false, true]) test(`huge code and virtual book scrolling p
   });
   await expect(block).not.toHaveAttribute('data-collapsed');
   await expect(block.locator('[data-line="12001"]')).toBeInViewport();
-  expect(await block.locator('pre').evaluate(pre => pre.scrollTop)).toBeGreaterThan(100_000);
+  if (maxExpandedLines) expect(await block.locator('pre').evaluate(pre => pre.scrollTop)).toBeGreaterThan(100_000);
+  else await expect.poll(() => block.locator('pre').evaluate(pre => pre.scrollTop)).toBe(0);
   expect(await page.evaluate(() => (window as any).reading.api.document.getSnapshot().source)).toBe(source);
 });
 
@@ -148,7 +163,7 @@ test('source navigation opens and scrolls a bounded code viewport in an ordinary
   await page.goto('/?fixture=streaming'); await page.waitForFunction(() => !!window.limrStream);
   await page.evaluate(() => {
     const source = '```text\n' + Array.from({ length: 1000 }, (_, i) => `code ${i}`).join('\n') + '\n```';
-    window.limrStream({ source, streaming: false, parameters: { codeBlock: { lineNumbers: true } } });
+    window.limrStream({ source, streaming: false, parameters: { codeBlock: { lineNumbers: true, maxExpandedLines: 40 } } });
     const start = source.indexOf('code 900');
     window.limrStreamRuntime!.scrollToSource({ start, end: start + 1 });
   });

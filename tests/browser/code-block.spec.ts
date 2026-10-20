@@ -66,7 +66,7 @@ test('folded footer and body animate in both directions and can reverse without 
   await expect.poll(() => block.locator('pre').evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(8, 1);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await block.locator('.limr-code-fold').click();
-  await expect.poll(() => block.locator('pre').evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(40, 1);
+  await expect.poll(() => block.locator('pre').evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(100, 1);
 });
 
 test('wrapped footer counts partially hidden source lines and the host can remove the expanded height limit', async ({ page }) => {

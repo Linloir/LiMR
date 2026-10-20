@@ -21,11 +21,20 @@ test('classic scrollbars preserve short, folded and expanded code row heights', 
   await page.evaluate(value => window.limrStream({ source: '```text\n' + value + '\n```', streaming: false }), value);
   await expect.poll(rows).toBeCloseTo(8, 1);
   await expect(block.locator('.limr-code-footer')).toContainText('72 folded / 80 lines');
-  await block.locator('.limr-code-fold').click();
-  await expect.poll(rows).toBeCloseTo(40, 1);
+  const scrollbars = await block.evaluate(async block => {
+    const widths: number[] = [], pre = block.querySelector('pre')!, start = performance.now();
+    (block.querySelector('.limr-code-fold') as HTMLElement).click();
+    do { await new Promise(requestAnimationFrame); widths.push(pre.offsetWidth - pre.clientWidth); } while (performance.now() - start < 500);
+    return widths;
+  });
+  expect(scrollbars.every(width => width === 0)).toBe(true);
+  await expect.poll(rows).toBeCloseTo(80, 1);
+  await expect(pre).toHaveCSS('overflow-y', 'hidden');
+  expect(await pre.evaluate(pre => (pre as HTMLElement).offsetWidth - pre.clientWidth)).toBe(0);
   await block.locator('.limr-code-wrap').click();
   await expect.poll(scrollbar).toBe(0);
-  await expect.poll(rows).toBeCloseTo(40, 1);
+  await expect.poll(() => pre.evaluate(pre => pre.scrollHeight - pre.clientHeight)).toBeLessThan(2);
+  expect(await rows()).toBeGreaterThan(80);
   await block.locator('.limr-code-fold').click();
   await expect.poll(rows).toBeCloseTo(8, 1);
   await block.locator('.limr-code-wrap').click();
