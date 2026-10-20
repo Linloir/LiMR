@@ -9,25 +9,29 @@
   .limr-document-loading button:hover { background: #87837818; }
   .limr-document-loading[data-provisional] { width: auto; margin: .5rem 1rem; padding: .65rem 1rem; }
   .limr-document-loading[data-provisional] .limr-document-loading-label { margin: 0 0 .3rem; }
-  .limr-document-search { --limr-search-width: min(28rem, calc(100vw - 4rem)); position: fixed; z-index: 1100; top: 1rem; right: 1rem; width: 0; height: 44px; overflow: clip; border-radius: 10px; background: var(--limr-background, #fffefa); color: var(--limr-text, #292621); box-shadow: 0 4px 20px #29231d20; font: 400 .8rem/1.4 system-ui,sans-serif; transition: width 240ms cubic-bezier(.55,0,.25,1); }
+  .limr-document-search { --limr-search-width: min(28rem, calc(100vw - 4rem)); position: fixed; z-index: 1100; top: 1rem; right: 1rem; width: 0; height: 44px; opacity: 0; overflow: clip; border-radius: 10px; background: var(--limr-background, #fffefa); color: var(--limr-text, #292621); box-shadow: 0 4px 20px #29231d20; font: 400 .8rem/1.4 system-ui,sans-serif; transition: width 340ms cubic-bezier(.65,0,.35,1), opacity 260ms cubic-bezier(.45,0,.8,.5); }
   .limr-document-search::before { content: ''; position: absolute; inset: 0; border: 1px solid var(--limr-border, #e8e5df); border-radius: inherit; pointer-events: none; }
-  .limr-document-search[data-open] { width: var(--limr-search-width); transition-duration: 320ms; transition-timing-function: cubic-bezier(.22,.8,.25,1); }
+  .limr-document-search[data-open] { width: var(--limr-search-width); opacity: 1; transition: width 440ms cubic-bezier(.16,.92,.22,1), opacity 300ms cubic-bezier(.2,.65,.3,1); }
   .limr-document-search[data-open][data-loading] { width: calc(var(--limr-search-width) + 2rem); }
-  .limr-search-body { box-sizing: border-box; position: absolute; right: 0; top: 0; height: 44px; width: var(--limr-search-width); display: flex; align-items: center; gap: .3rem; padding: .5rem; opacity: 0; transition: opacity 150ms cubic-bezier(.4,0,1,1); }
-  .limr-document-search[data-open] .limr-search-body { opacity: 1; transition: opacity 190ms cubic-bezier(.2,.7,.3,1) 65ms; }
+  .limr-search-body { box-sizing: border-box; position: absolute; right: 0; top: 0; height: 44px; width: var(--limr-search-width); display: flex; align-items: center; gap: .3rem; padding: .5rem; opacity: 0; transition: opacity 210ms cubic-bezier(.4,0,1,1); }
+  .limr-document-search[data-open] .limr-search-body { opacity: 1; transition: opacity 240ms cubic-bezier(.16,.8,.25,1) 85ms; }
   .limr-search-loading { position: absolute; right: var(--limr-search-width); top: 0; width: 2rem; height: 44px; display: grid; place-items: center; opacity: 0; transform: scale(.65); transition: opacity 160ms cubic-bezier(.4,0,1,1), transform 220ms cubic-bezier(.55,0,.25,1); pointer-events: none; }
   .limr-document-search[data-open][data-loading] .limr-search-loading { opacity: 1; transform: scale(1); transition: opacity 200ms cubic-bezier(.2,.7,.3,1) 45ms, transform 280ms cubic-bezier(.22,.8,.25,1) 30ms; }
   .limr-search-loading .limr-loading { width: 18px; height: 18px; color: var(--limr-search-accent, #4285df); }
-  .limr-document-search input { min-width: 2rem; flex: 1; width: 0; padding: .4rem; border: 0; outline-offset: 1px; border-radius: 4px; background: transparent; color: inherit; font: inherit; }
-  .limr-search-count { min-width: 3em; white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; }
-  .limr-document-search button { display: grid; flex: none; place-items: center; width: 26px; height: 26px; padding: 3px; border: 0; border-radius: 5px; background: transparent; color: inherit; cursor: pointer; }
-  .limr-search-previous svg { rotate: 180deg; }
-  .limr-document-search button:hover { background: #87837818; }
-  .limr-document-search button[aria-pressed="true"] { color: var(--limr-search-accent, #4285df); background: color-mix(in srgb, var(--limr-search-accent, #4285df) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--limr-search-accent, #4285df) 45%, transparent); }
+  .limr-search-field { display: flex; align-items: center; flex: 1; min-width: 0; }
+  .limr-document-search input { min-width: 2rem; flex: 1; width: 0; padding: .4rem; border: 0; outline: none; box-shadow: none; border-radius: 4px; background: transparent; color: inherit; font: inherit; }
+  .limr-document-search input:focus, .limr-document-search input:focus-visible { outline: none; box-shadow: none; }
+  .limr-search-count { flex: none; padding: 0 .4rem 0 .2rem; white-space: nowrap; color: var(--limr-muted, #8a8178); font-size: .72rem; text-align: right; font-variant-numeric: tabular-nums; }
+  .limr-document-search button { display: flex; flex: none; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 5px; line-height: 0; background: transparent; color: var(--limr-muted, #8a8178); cursor: pointer; transition: color 140ms ease, background-color 140ms ease; }
+  .limr-document-search button svg { display: block; flex: none; width: 20px; height: 20px; }
+  .limr-document-search .limr-search-regex svg { width: 17px; height: 17px; }
+  .limr-document-search .limr-search-close svg { width: 18px; height: 18px; }
+  .limr-document-search button:hover { background: #87837818; color: var(--limr-text, #292621); }
+  .limr-document-search button[aria-pressed="true"] { color: var(--limr-heading, #3d3a36); background: color-mix(in srgb, var(--limr-secondary, #8a8178) 17%, transparent); box-shadow: none; }
   .limr-document-search[data-placement="inline"] { position: relative; inset: auto; flex: none; }
   .limr-document-search[data-error] { height: 78px; }
   .limr-search-error { position: absolute; top: 44px; right: .5rem; width: calc(var(--limr-search-width) - 1rem); font-size: .75rem; color: var(--limr-error, #c74747); overflow: auto; max-height: 30px; }
-  .limr-document-search input[aria-invalid="true"] { outline: 1px solid var(--limr-error, #c74747); }
+  .limr-document-search input[aria-invalid="true"] { color: var(--limr-error, #c74747); }
   .limr-document-search button:disabled { opacity: .35; cursor: default; }
   @media (prefers-reduced-motion: reduce) {
     .limr-document-search, .limr-search-body, .limr-search-loading { transition-duration: .01ms !important; transition-delay: 0ms !important; }

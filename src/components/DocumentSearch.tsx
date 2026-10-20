@@ -32,7 +32,7 @@ function SearchView({ controller: search, className, style, placement = 'floatin
       return;
     }
     setVisible(false);
-    const timer = setTimeout(() => setMounted(false), 340);
+    const timer = setTimeout(() => setMounted(false), 460);
     return () => clearTimeout(timer);
   }, [search.open, mounted, search.focusRequest]);
   if (!mounted) return null;
@@ -48,17 +48,19 @@ function SearchView({ controller: search, className, style, placement = 'floatin
     }}>
     <span className="limr-search-loading" aria-hidden={!search.loading}><LoadingRing /></span>
     <div className="limr-search-body">
-      <input ref={input} value={search.query} onChange={event => search.setQuery(event.target.value)}
-        placeholder={chinese ? '搜索文档' : 'Search document'} aria-label={chinese ? '搜索文档' : 'Search document'}
-        aria-invalid={!!search.error} aria-describedby={search.error ? errorId : undefined} autoComplete="off" spellCheck={false} />
+      <div className="limr-search-field">
+        <input ref={input} value={search.query} onChange={event => search.setQuery(event.target.value)}
+          placeholder={chinese ? '搜索文档' : 'Search document'} aria-label={chinese ? '搜索文档' : 'Search document'}
+          aria-invalid={!!search.error} aria-describedby={search.error ? errorId : undefined} autoComplete="off" spellCheck={false} />
+        <span className="limr-search-count" role="status" title={scope} aria-label={`${count}. ${scope}`}>{search.busy ? '…' : search.error ? '!' : count}</span>
+      </div>
       <button type="button" aria-pressed={search.caseSensitive} onClick={() => search.setCaseSensitive(!search.caseSensitive)}
         aria-label={chinese ? '区分大小写' : 'Match case'} title={chinese ? '区分大小写' : 'Match case'}><ToolIcon name="match-case" /></button>
-      <button type="button" aria-pressed={search.regex} onClick={() => search.setRegex(!search.regex)}
+      <button className="limr-search-regex" type="button" aria-pressed={search.regex} onClick={() => search.setRegex(!search.regex)}
         aria-label={chinese ? '使用正则表达式' : 'Use regular expression'} title={chinese ? '使用正则表达式' : 'Use regular expression'}><ToolIcon name="regex" /></button>
-      <span className="limr-search-count" role="status" title={scope} aria-label={`${count}. ${scope}`}>{search.busy ? '…' : search.error ? '!' : count}</span>
-      <button className="limr-search-previous" type="button" onClick={search.previous} disabled={!canMove} aria-label={chinese ? '上一个结果' : 'Previous result'}><ToolIcon name="chevron" /></button>
-      <button type="button" onClick={search.next} disabled={!canMove} aria-label={chinese ? '下一个结果' : 'Next result'}><ToolIcon name="chevron" /></button>
-      <button type="button" onClick={search.close} aria-label={locale.close}><ToolIcon name="close" /></button>
+      <button className="limr-search-previous" type="button" onClick={search.previous} disabled={!canMove} aria-label={chinese ? '上一个结果' : 'Previous result'}><ToolIcon name="search-up" /></button>
+      <button className="limr-search-next" type="button" onClick={search.next} disabled={!canMove} aria-label={chinese ? '下一个结果' : 'Next result'}><ToolIcon name="search-down" /></button>
+      <button className="limr-search-close" type="button" onClick={search.close} aria-label={locale.close}><ToolIcon name="close" /></button>
     </div>
     {search.error && <span id={errorId} className="limr-search-error" role="alert">{search.error}</span>}
   </div>;
