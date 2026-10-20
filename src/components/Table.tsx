@@ -7,6 +7,7 @@ import { AnnotationMarker } from '../react/render';
 import type { AnnotationContentProps, AnnotationSidebarPreviewProps, AnnotationType } from '../react/types';
 import type { ViewAnnotation } from '../react/runtime';
 import { InlineMarker } from './InlineMarker';
+import { ToolIcon } from './ToolIcon';
 import { ImagePreview, imagePreviewLabels, type ImagePreviewSource } from './ImagePreview';
 import { canActivateImage, loadedImageSource } from './image-preview-behavior';
 import { type NodeStateOwner } from '../react/node-state-handoff';
@@ -123,7 +124,10 @@ function TableCellContent({ data }: AnnotationContentProps<CellPreview>) {
   };
   return <><div ref={setHost} className="limr-table-annotation-content limr-prose" />
     {preview && <ImagePreview image={preview} onClose={() => setPreview(null)} />}
-    <div className="limr-annotation-actions"><button type="button" onClick={copy}>{copied === 'copied' ? locale.copied : copied === 'failed' ? locale.copyFailed : chinese ? '复制 Markdown' : 'Copy Markdown'}</button><button type="button" onClick={data?.expand}>{chinese ? '在表格中展开' : 'Expand in table'}</button></div>
+    <div className="limr-annotation-actions">
+      <button type="button" onClick={copy}><ToolIcon name={copied === 'copied' ? 'check' : 'copy'} /><span className="limr-underline">{copied === 'copied' ? locale.copied : copied === 'failed' ? locale.copyFailed : chinese ? '复制 Markdown' : 'Copy Markdown'}</span></button>
+      <button type="button" onClick={data?.expand}><ToolIcon name="expand" /><span className="limr-underline">{chinese ? '在表格中展开' : 'Expand in table'}</span></button>
+    </div>
   </>;
 }
 function TableCellSummary({ data }: AnnotationSidebarPreviewProps<CellPreview>) { return <>{data?.summary}</>; }
