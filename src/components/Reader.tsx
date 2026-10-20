@@ -106,7 +106,7 @@ function ReaderLayout({ actions, toc, sidebar, sidebarCollapse, followOutput, si
     {sidebarVisible && <AnnotationSidebar collapseOverflow={sidebarCollapse} />}
     <AnnotationOverlay disabled={sidebarVisible} />
     <SelectionToolbar actions={actions} />
-    {windowed && <DocumentSearch />}
+    <DocumentSearch />
     {(provisional || streaming) && <ProvisionalPrintGuard />}
   </div>;
 }
