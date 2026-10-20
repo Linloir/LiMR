@@ -23,7 +23,7 @@ export const isChunkedCodeRenderer = (renderer: NodeRenderer | undefined): boole
 export interface CodeBlockOptions {
   /** Start long blocks folded. Defaults to true; manual folding stays available. */
   autoCollapse?: boolean;
-  /** Foldable when source line count exceeds this number. Defaults to 20. */
+  /** Foldable above this many source lines or wrapped visual rows. Defaults to 20. */
   collapseAfterLines?: number;
   /** Visible rows in a folded block. Defaults to 8. */
   collapsedLines?: number;
@@ -72,6 +72,30 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
     const layout = useCodeLayout({ code, total, preview: previewLines, threshold, wrap, collapsed: shouldCollapse });
     const foldable = total > threshold || layout.visualFoldable;
     const collapsed = foldable && shouldCollapse;
+    useEffect(() => {
+      const pre = layout.ref.current;
+      if (!collapsed || !pre) return;
+      let frame = 0;
+      const revealSelection = () => {
+        const selection = pre.ownerDocument.getSelection();
+        if (!selection?.rangeCount || selection.isCollapsed) return;
+        const range = selection.getRangeAt(0);
+        if (!pre.contains(range.startContainer) || !pre.contains(range.endContainer)) return;
+        const target = range.getBoundingClientRect(), bounds = pre.getBoundingClientRect();
+        if (target.top >= bounds.top && target.bottom <= bounds.bottom) return;
+        // Browser find can select clipped text without scrolling an
+        // overflow:hidden preview. Reveal it while retaining native endpoints.
+        setView(current => ({ ...current, collapsed: false }));
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => {
+          if (!pre.isConnected || !pre.contains(range.startContainer)) return;
+          pre.scrollTop += range.getBoundingClientRect().top - pre.getBoundingClientRect().top - 12;
+          pre.scrollIntoView({ block: 'nearest' });
+        });
+      };
+      pre.ownerDocument.addEventListener('selectionchange', revealSelection);
+      return () => { pre.ownerDocument.removeEventListener('selectionchange', revealSelection); if (frame && !pre.isConnected) cancelAnimationFrame(frame); };
+    }, [collapsed]);
     useIsomorphicLayoutEffect(() => {
       let settled = 0, previous = -1;
       return registerSourceReveal(runtime, rangeOf(node), range => {
@@ -84,7 +108,8 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
         if (target.left < bounds.left || target.right > bounds.right) pre.scrollLeft += target.left - bounds.left - 24;
         // Arrival must outlive both the height transition and the observer
         // commit that adds line decorations to the newly visible chunk.
-        if (Math.abs(top - pre.scrollTop) > .5 || Math.abs(left - pre.scrollLeft) > .5 || pre.getAnimations().some(animation => animation.playState === 'running')) settled = 0;
+        if (Math.abs(top - pre.scrollTop) > .5 || Math.abs(left - pre.scrollLeft) > .5 || pre.getAnimations().some(animation =>
+          'transitionProperty' in animation && animation.transitionProperty === 'max-height' && animation.playState === 'running')) settled = 0;
         return ++settled < 3;
       });
     }, [runtime, node, collapsed]);

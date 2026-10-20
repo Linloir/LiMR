@@ -72,7 +72,7 @@ const tableAlgorithm: TableLayoutAlgorithm = input => layoutTable(input);
 const tableConfig: TableLayoutConfig = { algorithm: tableAlgorithm, maxColumnWidth: 420 };
 const tablePlugin: RendererExtension = { name: 'consumer-table-layout', parameters: { tableLayout: tableConfig } };
 const nativeTables = <Reader source="| A | B |" plugins={[tablePlugin]} parameters={{ tableLayout: false }} />;
-const codeOptions: CodeBlockOptions = { autoCollapse: true, collapseAfterLines: 20, collapsedLines: 8, wrap: true, lineNumbers: true };
+const codeOptions: CodeBlockOptions = { autoCollapse: true, collapseAfterLines: 20, collapsedLines: 8, maxExpandedLines: 40, wrap: true, lineNumbers: true };
 const codePlugin: RendererExtension = { name: 'consumer-code-options', parameters: { codeBlock: codeOptions } };
 const codeReader = <Reader source="Code" plugins={[codePlugin]} parameters={{ codeBlock: { wrap: false } }} extensions={[codeHighlight(codeOptions)]} />;
 const customTables = <Markdown source="| A | B |" plugins={[tablePlugin]} components={{ table: props => <MarkdownTable {...props} options={tableConfig} /> }} />;
@@ -180,7 +180,7 @@ window.renderPackedTable = parameters => tableRoot.render(h(Reader, { documentId
 window.renderPackedTable({ tableLayout: false });
 const codeHost = document.createElement('div'); codeHost.id = 'packed-code'; document.body.append(codeHost);
 const codeSource = '~~~text\\n' + Array.from({ length: 30 }, (_, i) => 'Line ' + i + ': ' + 'wide '.repeat(50)).join('\\n') + '\\n~~~';
-createRoot(codeHost).render(h(Reader, { source: codeSource, parameters: { codeBlock: { lineNumbers: true } }, toc: false, sidebar: false }));
+createRoot(codeHost).render(h(Reader, { source: codeSource, parameters: { codeBlock: { lineNumbers: true, maxExpandedLines: 12 } }, toc: false, sidebar: false }));
 `);
   // Build and serve actual installed tarballs, never repository aliases or HMR.
   run('pnpm', ['exec', 'vite', 'build'], directory, { NODE_ENV: 'production' });
@@ -277,8 +277,10 @@ createRoot(codeHost).render(h(Reader, { source: codeSource, parameters: { codeBl
     await code.scrollIntoViewIfNeeded();
     await expect(code).toHaveAttribute('data-collapsed', 'true');
     await expect(code.locator('.limr-code-line')).toHaveCount(30);
+    await expect(code.locator('.limr-code-footer')).toContainText('22 folded / 30 lines');
     await code.locator('.limr-code-fold').click();
     await expect(code).not.toHaveAttribute('data-collapsed');
+    await expect.poll(() => code.locator('pre').evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(12, 1);
     await code.locator('.limr-code-wrap').click();
     await expect(code).toHaveAttribute('data-wrap', 'true');
     expect(await code.locator('pre').evaluate(pre => pre.scrollWidth - pre.clientWidth)).toBeLessThan(2);

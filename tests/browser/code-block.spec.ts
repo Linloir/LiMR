@@ -69,6 +69,41 @@ test('folded footer and body animate in both directions and can reverse without 
   await expect.poll(() => block.locator('pre').evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(40, 1);
 });
 
+test('wrapped footer counts partially hidden source lines and the host can remove the expanded height limit', async ({ page }) => {
+  await page.setViewportSize({ width: 480, height: 1000 });
+  await page.goto('/?fixture=streaming'); await page.waitForFunction(() => !!window.limrStream);
+  await page.addStyleTag({ content: '.limr-code-block { margin-top: 2000px; }' });
+  const payload = Array.from({ length: 30 }, (_, index) => `${index}: ${'long_word_'.repeat(16)}`).join('\n');
+  const source = '```text\n' + payload + '\n```';
+  await page.evaluate(source => window.limrStream({ source, streaming: false, parameters: { codeBlock: { wrap: true, maxExpandedLines: false } } }), source);
+  const block = page.locator('.limr-code-block'), pre = block.locator('pre');
+  await pre.scrollIntoViewIfNeeded();
+  const hiddenAtCurrentWidth = () => pre.evaluate(pre => {
+    const text = pre.querySelector('[data-limr-text]')!.firstChild!, value = text.textContent!;
+    const bottom = pre.getBoundingClientRect().bottom, range = document.createRange();
+    let complete = 0, at = -1;
+    while ((at = value.indexOf('\n', at + 1)) >= 0) {
+      range.setStart(text, at); range.setEnd(text, at);
+      if (range.getBoundingClientRect().bottom > bottom + 1) break;
+      complete++;
+    }
+    return 30 - complete;
+  });
+  const hidden = await hiddenAtCurrentWidth();
+  expect(hidden).toBeGreaterThan(22);
+  await expect(block.locator('.limr-code-footer')).toContainText(`${hidden} folded / 30 lines`);
+  await block.locator('.limr-code-fold').click();
+  await expect.poll(() => pre.evaluate(pre => pre.scrollHeight - pre.clientHeight)).toBeLessThan(2);
+  expect(await pre.evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeGreaterThan(40);
+  await page.evaluate(source => window.limrStream({ source, streaming: false, parameters: { codeBlock: { wrap: true, maxExpandedLines: 40 } } }), source);
+  await expect.poll(() => pre.evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(40, 1);
+  await pre.evaluate(pre => { pre.scrollTop = 500; });
+  await page.setViewportSize({ width: 390, height: 1000 });
+  await block.locator('.limr-code-fold').click();
+  await expect.poll(() => pre.evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(8, 1);
+  await expect(block.locator('.limr-code-footer')).toContainText(`${await hiddenAtCurrentWidth()} folded / 30 lines`);
+});
+
 test('line numbers align with wrapped source lines and do not enter selection, highlights or copy', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.setViewportSize({ width: 480, height: 1000 });

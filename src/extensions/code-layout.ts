@@ -13,6 +13,7 @@ export function useCodeLayout({ code, total, preview, threshold, wrap, collapsed
   useIsomorphicLayoutEffect(() => {
     const pre = ref.current, content = pre?.firstElementChild as HTMLElement | null;
     if (!pre || !content) return;
+    if (collapsed) pre.scrollTop = 0;
     let frame = 0;
     const measure = () => {
       frame = 0;
@@ -51,9 +52,15 @@ export function useCodeLayout({ code, total, preview, threshold, wrap, collapsed
     observer?.observe(content);
     // Width changes can rewrap while the viewport remains height-limited.
     observer?.observe(pre);
+    // Hit testing is unavailable outside the viewport. Recount as the preview
+    // or footer enters view, including already-mounted, non-windowed Readers.
+    const visible = wrap && typeof IntersectionObserver !== 'undefined'
+      ? new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) schedule(); }, { threshold: [0, 1] }) : undefined;
+    visible?.observe(pre);
+    const footer = pre.closest('.limr-code-block')?.querySelector('.limr-code-footer');
+    if (footer) visible?.observe(footer);
     pre.ownerDocument.fonts?.addEventListener('loadingdone', schedule);
-    return () => { observer?.disconnect(); cancelAnimationFrame(frame); pre.ownerDocument.fonts?.removeEventListener('loadingdone', schedule); };
-  }, [code, total, preview, threshold, wrap]);
-  useIsomorphicLayoutEffect(() => { if (collapsed && ref.current) ref.current.scrollTop = 0; }, [collapsed]);
+    return () => { observer?.disconnect(); visible?.disconnect(); cancelAnimationFrame(frame); pre.ownerDocument.fonts?.removeEventListener('loadingdone', schedule); };
+  }, [code, total, preview, threshold, wrap, collapsed]);
   return { ref, visualFoldable, hidden };
 }

@@ -564,6 +564,7 @@ export class ReaderRuntime {
     return translate ? parseFloat(translate.split(' ')[1] ?? '0') || 0 : 0;
   }
   scrollTo(top: number, behavior: ScrollBehavior = 'smooth') {
+    if (this.sourceRevealFrame) { cancelAnimationFrame(this.sourceRevealFrame); this.sourceRevealFrame = 0; }
     const root = this.configuration.get().scrollRoot ?? window;
     if (behavior === 'smooth') scrollWithMotion(root, top);
     else root.scrollTo({ top: Math.max(0, top), behavior });
@@ -594,9 +595,10 @@ export class ReaderRuntime {
   private sourceRevealFrame = 0;
   private revealInnerSource(range: SourceRange, complete: () => void) {
     cancelAnimationFrame(this.sourceRevealFrame);
+    const revision = this.document.getSnapshot().revision;
     const prepare = () => {
       this.sourceRevealFrame = 0;
-      if (!this.content?.isConnected || this.signal.aborted) return;
+      if (!this.content?.isConnected || this.signal.aborted || this.document.getSnapshot().revision !== revision) return;
       if (prepareSourceReveal(this, range)) this.sourceRevealFrame = requestAnimationFrame(prepare);
       else complete();
     };

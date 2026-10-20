@@ -53,9 +53,24 @@ test('large numbered code defers distant line decorations while keeping selectio
   await expect.poll(async () => JSON.parse(await page.locator('#stream-selection').textContent() || 'null')?.raw.sourceText).toBe(value);
   await page.keyboard.press('ControlOrMeta+c'); expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(value);
   await page.evaluate(() => getSelection()?.removeAllRanges());
+  await block.locator('.limr-code-fold').click();
+  await expect(block).toHaveAttribute('data-collapsed', 'true');
   // Native find reaches text whose line wrappers have never been mounted.
   expect(await page.evaluate(() => (window as any).find('line 25000:'))).toBe(true);
+  await expect(block).not.toHaveAttribute('data-collapsed');
   await expect.poll(() => pre.evaluate(pre => pre.scrollTop)).toBeGreaterThan(500_000);
+  await page.evaluate(() => getSelection()?.removeAllRanges());
+  await pre.evaluate(pre => { pre.scrollTop = 0; });
+  await pre.scrollIntoViewIfNeeded();
+  await expect(code.locator('[data-line="1"]')).toBeAttached();
+  await code.locator('[data-line="1"] [data-limr-text]').evaluate(leaf => {
+    const text = leaf.firstChild!, start = text.textContent!.indexOf('&amp;');
+    const range = document.createRange(); range.setStart(text, start); range.setEnd(text, start + 5);
+    getSelection()!.removeAllRanges(); getSelection()!.addRange(range); document.dispatchEvent(new Event('selectionchange'));
+  });
+  await expect.poll(async () => JSON.parse(await page.locator('#stream-selection').textContent() || 'null')?.raw.sourceText).toBe('&amp;');
+  await page.getByRole('button', { name: 'Add highlight', exact: true }).click();
+  await expect(code.locator('mark')).toHaveText('&amp;');
   await page.evaluate(() => getSelection()?.removeAllRanges());
   await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
   await expect(code.locator('.limr-code-line')).toHaveCount(50_000);
@@ -139,4 +154,39 @@ test('source navigation opens and scrolls a bounded code viewport in an ordinary
   });
   await expect(page.locator('.limr-code-block')).not.toHaveAttribute('data-collapsed');
   await expect(page.locator('[data-line="901"]')).toBeInViewport();
+});
+
+test('50 MiB book plus 50000 code lines keeps windowing, distant navigation and code state bounded', async ({ page }) => {
+  test.setTimeout(60_000);
+  const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/large-reader.html');
+  await page.evaluate(() => {
+    const audit = (window as any).reading, code = Array.from({ length: 50_000 }, (_, i) => `${i}: const value = 123456789;`).join('\n');
+    audit.render({ input: new Blob(['# Giant code\n\n```text\n', code, '\n```\n\n', audit.prepare(50)!]), sidebar: false,
+      parameters: { codeBlock: { lineNumbers: true } } });
+  });
+  await expect.poll(() => page.evaluate(() => (window as any).reading.state?.status), { timeout: 30_000 }).toBe('ready');
+  await expect(page.locator('[data-limr-windowed]')).toBeVisible();
+  const block = page.locator('.limr-code-block');
+  await block.locator('.limr-code-fold').click(); await block.locator('.limr-code-wrap').click();
+  await page.evaluate(() => { (document.activeElement as HTMLElement)?.blur(); });
+  await page.locator('.limr-reader-toc a').filter({ hasText: 'Final chapter' }).click();
+  await expect(page.getByText('THE-END-OF-THE-COMPLETE-BOOK')).toBeInViewport();
+  await expect(block).toHaveCount(0);
+  expect(await page.locator('[data-limr-block]').count()).toBeLessThan(120);
+  await page.evaluate(() => {
+    const api = (window as any).reading.api, start = Math.floor(api.document.getSnapshot().source.length / 2);
+    api.scrollToSource({ start, end: start + 1 });
+  });
+  await expect.poll(() => page.evaluate(() => (window as any).reading.api.getReadingPosition()?.source ?? 0)).toBeGreaterThan(1_000_000);
+  expect(await page.locator('[data-limr-block]').count()).toBeLessThan(120);
+  await page.locator('.limr-reader-toc a').filter({ hasText: 'Giant code' }).click();
+  await expect(block).toBeVisible();
+  await expect(block).not.toHaveAttribute('data-collapsed');
+  await expect(block).toHaveAttribute('data-wrap', 'true');
+  expect(await block.locator('*').count()).toBeLessThan(3000);
+  await expect(block.locator('.limr-code-footer')).toHaveAttribute('aria-hidden', 'true');
+  await block.locator('.limr-code-fold').click();
+  await expect(block.locator('.limr-code-footer')).toContainText('49992 folded / 50000 lines');
+  expect(errors).toEqual([]);
 });
