@@ -336,6 +336,10 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
       },
       activeHeading() {
         const headings = currentHeadings.current, cutoff = viewportTop() + runtime.getHeadingActivationInset();
+        // A short final section cannot reach the usual top activation inset.
+        // Use the book's end (which can precede other page content), matching
+        // the ordinary reader's end-of-scroll behavior.
+        if (geometry.physicalMax > 0 && physicalTop() >= origin + geometry.physicalMax - 2) return headings.at(-1)?.id ?? null;
         const visible = new Set(headings.map(heading => heading.id));
         let nearest: { id: string; top: number } | undefined;
         for (const [id, node] of runtime.headings) {
