@@ -41,6 +41,8 @@ function ComposedSearch() {
   </header>;
 }
 audit.composeSearch = () => root.render(<DocumentProvider source={'# Composition\n\nFirst needle. Second needle.'}><ComposedSearch /><Markdown /><AuditBridge /></DocumentProvider>);
+audit.hostSearch = () => root.render(<Reader source={'# Host search\n\nFirst needle. Second needle. Third needle.'}
+  search={<DocumentSearch shortcuts={false} />}><AuditBridge /></Reader>);
 audit.positionRect = (position: { source: number }) => sourceRangeStartRect(audit.runtime, { start: position.source, end: position.source + 2 })?.top;
 audit.prepare = (mib?: number): Blob | undefined => {
   if (!mib) return;

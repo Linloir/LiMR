@@ -120,6 +120,8 @@ Reader、Markdown 与 DocumentProvider 接受：
 
 `DocumentSearch` 和 `useDocumentSearch()` 可在 `DocumentProvider` 内独立于 Reader 使用。每份文档挂载一个控制器。`search={<MySearch />}` 可移动默认界面、放入工具栏或完全替换界面。通过 React portal 挂载到其他位置时仍保留 Provider。Hook 的 `shortcuts` 默认 false，默认组件则为 true。宿主通过 `useLiMR().find('open' | 'next' | 'previous' | 'close')` 向当前控制器发送命令。
 
+宿主已转发快捷键时使用 `search={<DocumentSearch shortcuts={false} />}`，避免一次 F3 被核心和宿主重复处理；输入框的 Enter/Shift+Enter/Escape 不受此开关影响。外部 controller 的选项由 Hook 决定，见[宿主快捷键](search.md#宿主快捷键)。
+
 ```tsx
 import { Reader, DocumentSearch, useDocumentSearch } from '@linloir/limr';
 

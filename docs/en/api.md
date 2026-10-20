@@ -120,6 +120,8 @@ Search is opt-in: `<Reader source={source} search />` enables the standard UI, a
 
 `DocumentSearch` and `useDocumentSearch()` work inside `DocumentProvider`, independently of Reader. Mount one controller per document. A component supplied as `search={<MySearch />}` can move the default view, place it in a toolbar, or replace all its markup. A React portal preserves the provider when the host needs another destination. The hook defaults to `shortcuts: false`; the default component defaults to true. `useLiMR().find('open' | 'next' | 'previous' | 'close')` routes host commands to whichever controller is mounted.
 
+When the host forwards keybindings, use `search={<DocumentSearch shortcuts={false} />}` to avoid handling one F3 twice. The input's Enter/Shift+Enter/Escape keys are unaffected. Configure an external controller on its hook; see [host keybindings](search.md#host-keybindings).
+
 ```tsx
 import { Reader, DocumentSearch, useDocumentSearch } from '@linloir/limr';
 

@@ -34,6 +34,8 @@ The hook retains scanning, navigation and transient highlight painting. Custom c
 
 `useLiMR().find()` opens the mounted controller; open/next/previous/close are explicit commands. Use the same provider and wait for the controller to mount; commands are not queued. Navigation while busy is ignored. Opening a provisional document is ignored. Default component shortcuts cover reader-owned Ctrl/Cmd+F and F3, plus input Enter/Shift+Enter/Escape. Hook shortcuts cover only Ctrl/Cmd+F and F3. Playground uses a Search button and shortcuts=false to preserve browser find.
 
+For a host that forwards native keybindings through find(), supply `search={<DocumentSearch shortcuts={false} />}`. This is a core option available since 1.3.11, not a host reimplementation. VS Code can forward defaultPrevented webview events; two active listeners can move twice for one F3. Disable the core listener while retaining its input Enter/Shift+Enter/Escape behavior. For a shared controller, set shortcuts on useDocumentSearch instead. Validate one result step per native F3/Shift+F3 press in the actual host.
+
 Use busy for current work and loading for a visual indicator: loading starts after 180 ms of work and remains for at least 1 s, even after busy becomes false. The built-in view adds a left-hand ring slot with nonlinear width/scale/opacity transitions. Closing search cancels work and clears paint; it never changes saved annotations or source.
 
 ## Matching and worker boundaries

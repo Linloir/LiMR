@@ -149,6 +149,38 @@ test('a standalone search composes with Markdown and can replace its entire UI',
   await expect(page.locator('[data-search-current]')).toBeVisible();
 });
 
+test('host-owned shortcuts navigate once through the public find API', async ({ page }) => {
+  await page.goto('/large-reader.html');
+  await page.evaluate(() => (window as any).reading.hostSearch());
+  await page.getByRole('heading', { name: 'Host search' }).click();
+  const dispatchKey = (key: string, modifiers: { ctrlKey?: boolean; shiftKey?: boolean } = {}) => page.evaluate(({ key, modifiers }) => {
+    const event = new KeyboardEvent('keydown', { key, ...modifiers, bubbles: true, cancelable: true });
+    document.activeElement!.dispatchEvent(event);
+    return event.defaultPrevented;
+  }, { key, modifiers });
+  expect(await dispatchKey('f', { ctrlKey: true })).toBe(false);
+  await expect(page.locator('.limr-document-search')).toHaveCount(0);
+  await page.evaluate(() => (window as any).reading.api.find('open'));
+  const input = page.locator('.limr-document-search input'), count = page.locator('.limr-search-count');
+  await expect(input).toBeFocused();
+  await input.fill('needle');
+  await expect(count).toHaveText('1/3');
+  expect(await dispatchKey('F3')).toBe(false);
+  await page.evaluate(() => (window as any).reading.api.find('next'));
+  await expect(count).toHaveText('2/3');
+  expect(await dispatchKey('F3', { shiftKey: true })).toBe(false);
+  await page.evaluate(() => (window as any).reading.api.find('previous'));
+  await expect(count).toHaveText('1/3');
+  // The component's own input keys remain available with host shortcuts off.
+  await page.keyboard.press('Enter');
+  await expect(count).toHaveText('2/3');
+  await page.keyboard.press('Shift+Enter');
+  await expect(count).toHaveText('1/3');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.limr-document-search')).toHaveCount(0);
+  await expect(page.locator('[data-search]')).toHaveCount(0);
+});
+
 for (const typography of ['standard', 'knuth-plass']) test(`search paints active and other results independently of focus in ${typography}`, async ({ page }) => {
   await page.goto('/large-reader.html');
   await page.evaluate(typography => (window as any).reading.render({ source: '# Search highlights\n\n丰富的**内容**表达，内容可搜索。\n\n**foo**bar and foobar &amp; decoded.\n\n' + 'Other prose.\n\n'.repeat(80) + 'Final 内容.', typography, theme: 'dark', virtualization: false }), typography);

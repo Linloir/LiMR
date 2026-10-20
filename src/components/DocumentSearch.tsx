@@ -6,6 +6,10 @@ import { ToolIcon } from './ToolIcon';
 import { LoadingRing } from './LoadingRing';
 
 export interface DocumentSearchProps extends StyledProps, UseDocumentSearchOptions {
+  /** Handle reader-owned Ctrl/Cmd+F and F3. Defaults to true for an owned
+   * controller; use false when the host forwards commands through useLiMR().find.
+   * With an external controller, configure this on useDocumentSearch instead. */
+  shortcuts?: boolean;
   /** Share a controller with a custom trigger or other search UI. */
   controller?: DocumentSearchController;
   /** Inline mode participates in a host toolbar; floating mode anchors right. */

@@ -114,7 +114,21 @@ Custom interfaces own input focus, Escape/Enter behavior, labels, disabled state
 | `error` | Error message or null; changing the query/options starts a new attempt |
 | `focusRequest` | Incrementing focus request, including when an already open search is invoked again |
 
+## Host keybindings
+
 Host commands use `useLiMR().find()` (open by default), or `.find('open' | 'next' | 'previous' | 'close')`. Call it within the same provider after the search controller mounts; it does not mount a component or persist commands for later subscribers. An open command during a provisional preview is ignored. Calling a navigation command while closed opens search; navigation resumes once results are available.
+
+`shortcuts` has been a public core option since LiMR 1.3.11. When a host such as VS Code owns keybindings and forwards commands through `find()`, configure the core component directly:
+
+```tsx
+import { DocumentSearch, Reader } from '@linloir/limr';
+
+export function HostedArticle({ source }: { source: string }) {
+  return <Reader source={source} search={<DocumentSearch shortcuts={false} />} />;
+}
+```
+
+This disables core's Ctrl/Cmd+F and F3/Shift+F3 listeners. Search buttons, public `find()` commands and the input's Enter/Shift+Enter/Escape keys still work. Keep one owner for the shortcuts: VS Code webviews may forward even `defaultPrevented` events to the host, so enabling both listeners can navigate twice for one F3 press. When supplying an external `controller`, configure its `useDocumentSearch({ shortcuts: false })` instead. No copied search implementation or private events are needed.
 
 ## Worker and CSP integration
 

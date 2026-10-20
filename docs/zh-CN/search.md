@@ -114,7 +114,21 @@ export function Article({ source }: { source: string }) {
 | `error` | 错误消息或 null；更换查询或选项会重新尝试 |
 | `focusRequest` | 递增的聚焦请求，重复唤起已打开的搜索时也会改变 |
 
+## 宿主快捷键
+
 宿主命令使用 `useLiMR().find()`（默认打开），或 `.find('open' | 'next' | 'previous' | 'close')`。在同一个 Provider 内、控制器挂载后调用；此命令不会自动挂载界面，也不为未来的订阅者保存命令。渐进预览期间忽略打开命令。关闭时调用导航命令会打开搜索；结果准备好后可以继续导航。
+
+`shortcuts` 从 LiMR 1.3.11 起就是核心公开参数。如果 VS Code 等宿主已经接管快捷键并通过 `find()` 转发命令，直接配置核心组件：
+
+```tsx
+import { DocumentSearch, Reader } from '@linloir/limr';
+
+export function HostedArticle({ source }: { source: string }) {
+  return <Reader source={source} search={<DocumentSearch shortcuts={false} />} />;
+}
+```
+
+这会关闭核心对 Ctrl/Cmd+F、F3/Shift+F3 的监听，搜索按钮、公开 `find()` 命令和输入框内部的 Enter/Shift+Enter/Escape 仍正常工作。只保留一个快捷键处理方：VS Code Webview 即使收到 `defaultPrevented` 的事件也可能转发给宿主，同时启用两边的监听会让一次 F3 跳转两次。传入外部 `controller` 时，应在创建它的 `useDocumentSearch({ shortcuts: false })` 上配置。无需复制搜索实现或注入私有事件。
 
 ## Worker 与 CSP
 
