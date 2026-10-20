@@ -159,7 +159,9 @@ export function AdaptiveAnnotationSidebar({ gap = 14, renderCard, className = ''
   const candidateLock = useMemo(() => adjustSidebarLock(storedLock, scrollAdjustment), [storedLock, scrollAdjustment]);
   const locked = (focusSource === 'sidebar' && focused === candidateLock?.id || !focused && pointerInRail) ? candidateLock : null;
   const lockCard = useCallback((id: string) => {
-    if (locked?.id === id) return locked;
+    // Hover reads cardLock, while an idle active card reads pinnedLock. Carry
+    // that pin into hover too; cardLock may still belong to a different card.
+    if (locked?.id === id) { setCardLock(locked); return locked; }
     const card = cards.current.get(id), host = rail.current, group = card?.closest<HTMLElement>('.limr-sidebar-cluster');
     if (!card || !host || !group) return;
     const origin = host.getBoundingClientRect().top;

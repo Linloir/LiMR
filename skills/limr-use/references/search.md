@@ -1,4 +1,4 @@
-# Reading search (LiMR 1.3.14)
+# Reading search (LiMR 1.3.15)
 
 Use this reference when enabling search, moving it into a toolbar, replacing its controls, or connecting host find commands. Check installed declarations first.
 

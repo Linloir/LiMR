@@ -50,7 +50,7 @@ appearance propagates to portalled controls. Do not rely only on .limr-reader an
 | --limr-sticky-top | Sticky offset |
 | --limr-reader-bottom-space / --limr-reader-min-height | Short-document height and bottom space |
 | --limr-sidebar-padding-inline / --limr-sidebar-reference-gap | Shared padding (10px) and reference separation (1px) |
-| --limr-annotation-label-size | Shared title, disclosure and action text size: .8rem on overlays, .8125rem in sidebars; action icons scale with the text |
+| --limr-annotation-label-size | Shared title and action text size: .8rem on overlays, .8125rem in sidebars; sidebar expand/collapse text uses 85% of the title size, and action icons scale with action text |
 | --limr-overlay-duration / --limr-overlay-morph-duration | Enter/exit (560ms), preview/expanded morph (480ms) |
 | --limr-overlay-z / --limr-toolbar-z | Floating control stacking |
 | --limr-overflow-fade-size | Overflow fade, default 24px; 0px disables |

@@ -50,7 +50,7 @@ appearance 会传给 portal 中的浮层/工具栏；不要只用 `.limr-reader 
 | --limr-sticky-top | 吸顶偏移 |
 | --limr-reader-bottom-space / --limr-reader-min-height | 短正文高度与底部预留 |
 | --limr-sidebar-padding-inline / --limr-sidebar-reference-gap | 侧栏内容统一留白（10px）和关联区间隔（1px） |
-| --limr-annotation-label-size | 标题、展开/收起及操作文字的共同字号；浮层默认 .8rem，侧栏默认 .8125rem，操作图标随文字缩放 |
+| --limr-annotation-label-size | 标题与操作文字的共同字号；浮层默认 .8rem，侧栏默认 .8125rem；侧栏展开/收起文字为标题字号的 85%，操作图标随操作文字缩放 |
 | --limr-overlay-duration / --limr-overlay-morph-duration | 浮层进退（560ms）和预览/展开转换（480ms） |
 | --limr-overlay-z / --limr-toolbar-z | 浮层层级 |
 | --limr-overflow-fade-size | 溢出渐隐，默认 24px，0px 关闭 |

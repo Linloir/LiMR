@@ -239,7 +239,9 @@ function AlignedAnnotationSidebar({ sync = 'document', gap = 14, positioner = al
     // Keep the original resting position while this card is hovered or active.
     // Relocking its boundary-raised top would prevent a collapse from moving
     // back down, then jump when pointer leave releases the new lock.
-    if (locked?.id === id) return locked;
+    // Reuse it for hover as well: cardLock may belong to another card visited
+    // since this active card was pinned.
+    if (locked?.id === id) { setCardLock(locked); return locked; }
     const card = cards.current.get(id);
     if (card && rail.current) {
       const origin = rail.current.getBoundingClientRect().top;

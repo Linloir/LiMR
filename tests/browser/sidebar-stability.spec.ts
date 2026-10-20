@@ -28,7 +28,58 @@ const samplePositions = (page: Page, count = 50) => page.locator('.limr-sidebar'
   return samples;
 }, count);
 
+async function expectPinnedHoverStable(page: Page, id: string) {
+  const card = page.locator(`.limr-sidebar-card[data-occurrence="${id}"]`);
+  await card.scrollIntoViewIfNeeded();
+  await settled(page);
+  const before = await card.evaluate(element => ({
+    cardTop: element.getBoundingClientRect().top,
+    proseTop: document.querySelector('.limr-reader-content .limr-prose')!.getBoundingClientRect().top,
+    scroll: scrollY,
+  }));
+  // Use actual pointer coordinates: locator hover retries can hide a card
+  // repeatedly moving out from under a stationary pointer at its bottom edge.
+  for (const edge of [false, true]) {
+    const box = (await card.boundingBox())!;
+    const x = box.x + box.width / 2, y = box.y + (edge ? box.height - 2 : box.height / 2);
+    expect(y).toBeGreaterThan(0);
+    expect(y).toBeLessThan(page.viewportSize()!.height);
+    await page.mouse.move(x, y);
+    const frames = await card.evaluate(async (element, point) => {
+      const frames = [];
+      for (let index = 0; index < 45; index++) {
+        await new Promise(requestAnimationFrame);
+        frames.push({
+          cardTop: element.getBoundingClientRect().top,
+          proseTop: document.querySelector('.limr-reader-content .limr-prose')!.getBoundingClientRect().top,
+          scroll: scrollY,
+          hit: document.elementFromPoint(point.x, point.y)?.closest('.limr-sidebar-card') === element,
+        });
+      }
+      return frames;
+    }, { x, y });
+    expect(Math.max(...frames.map(frame => Math.abs(frame.cardTop - before.cardTop)))).toBeLessThan(1);
+    expect(Math.max(...frames.map(frame => Math.abs(frame.proseTop - before.proseTop)))).toBeLessThan(1);
+    expect(frames.every(frame => frame.scroll === before.scroll && frame.hit)).toBe(true);
+    await expect(card).toHaveAttribute('data-expanded', 'true');
+    await page.mouse.move(2, 2);
+    await settled(page);
+    expect((await card.boundingBox())!.y).toBeCloseTo(before.cardTop, 0);
+  }
+}
+
 for (const collapse of [false, true]) {
+  test(`reentering a pinned card after another card preserves its pointer area and prose (folding ${collapse})`, async ({ page }) => {
+    await load(page, readFileSync('playground/presets/notes.md', 'utf8'), collapse);
+    const index = collapse ? 3 : 5, card = page.locator('.limr-sidebar-card').nth(index);
+    const id = (await card.getAttribute('data-occurrence'))!;
+    await card.locator('.limr-sidebar-card-heading').click();
+    await page.mouse.move(2, 2); await settled(page);
+    await page.locator('.limr-sidebar-card').nth(index - 1).hover();
+    await page.mouse.move(2, 2); await settled(page);
+    await expectPinnedHoverStable(page, id);
+  });
+
   test(`hovering the active marker preserves every pinned sidebar item (folding ${collapse})`, async ({ page }) => {
     await load(page, readFileSync('playground/presets/notes.md', 'utf8'), collapse);
     const card = page.locator('.limr-sidebar-card').nth(1), id = await card.getAttribute('data-occurrence');
@@ -65,6 +116,38 @@ for (const collapse of [false, true]) {
     }
   });
 }
+
+test('a saved Playground note stays still when its active card is hovered again', async ({ page }) => {
+  await page.setViewportSize({ width: 1881, height: 971 });
+  await page.goto('/#/playground');
+  await page.getByRole('button', { name: '加载', exact: true }).click();
+  await page.getByRole('button', { name: /做一点笔记/ }).click();
+  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(() => scrollTo(0, 400));
+  const paragraph = page.locator('.limr-reader-content p').filter({ hasText: '展示了覆盖规则' });
+  await paragraph.evaluate(element => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT), text = '义为准；同一范围有多个高亮';
+    while (walker.nextNode()) {
+      const node = walker.currentNode, start = node.textContent!.indexOf(text);
+      if (start < 0) continue;
+      const range = document.createRange(); range.setStart(node, start); range.setEnd(node, start + text.length);
+      getSelection()!.removeAllRanges(); getSelection()!.addRange(range);
+      document.dispatchEvent(new Event('selectionchange'));
+      return;
+    }
+    throw new Error('The note passage was not found');
+  });
+  await page.getByRole('toolbar').getByRole('button', { name: '笔记', exact: true }).click();
+  const card = page.locator('.limr-sidebar-card[data-type="reading-note"]');
+  await card.getByRole('textbox', { name: '笔记内容', exact: true }).fill('234');
+  await card.getByRole('button', { name: '提交', exact: true }).click();
+  await page.mouse.click(2, 2); await settled(page);
+  await card.locator('.limr-sidebar-card-heading').click();
+  await page.mouse.move(2, 2); await settled(page);
+  await page.locator('.limr-sidebar-card').filter({ hasText: '后来补上了成立的条件' }).hover();
+  await page.mouse.move(2, 2); await settled(page);
+  await expectPinnedHoverStable(page, (await card.getAttribute('data-occurrence'))!);
+});
 
 test('entering a partially visible card cannot freeze a folding window during its return', async ({ page }) => {
   await load(page, readFileSync('playground/presets/notes.md', 'utf8'), true);
