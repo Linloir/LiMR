@@ -194,9 +194,21 @@
   .limr-prose pre { background: var(--limr-code-bg, #f9f8f6); margin: 0; padding: 1rem 1.25rem; line-height: 1.7; overflow-x: auto; tab-size: 2; text-align: start; }
   .limr-prose pre code { font-size: inherit; color: inherit; background: none; padding: 0; }
   .limr-code-block { margin: 1rem 0; border: 1px solid var(--limr-border, #e8e5df); border-radius: 4px; overflow: hidden; }
-  .limr-code-header { display: flex; justify-content: space-between; align-items: center; padding: .3rem 1rem; background: var(--limr-code-header, #f3f1ee); color: var(--limr-muted, #9b9590); font-family: var(--limr-font-code, 'LiMR Maple Mono NF CN', 'SFMono-Regular', Consolas, monospace); font-size: .7rem; }
-  .limr-code-header .limr-copy-button { width: 24px; height: 24px; border-radius: 6px; margin-inline-end: -5px; }
-  .limr-code-header .limr-copy-glyph { width: 17px; height: 17px; }
+  .limr-code-header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: .3rem; padding-inline-start: 1rem; background: var(--limr-code-header, #f3f1ee); color: var(--limr-muted, #9b9590); font-family: var(--limr-font-code, 'LiMR Maple Mono NF CN', 'SFMono-Regular', Consolas, monospace); font-size: .7rem; }
+  .limr-code-header > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .limr-code-actions { display: flex; flex: none; gap: 2px; }
+  .limr-code-header .limr-copy-button { width: 24px; height: 24px; border-radius: 6px; }
+  .limr-code-header svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .limr-code-fold svg { transition: transform var(--limr-motion) var(--limr-ease); transform: rotate(180deg); }
+  .limr-code-block[data-collapsed] .limr-code-fold svg { transform: rotate(0deg); }
+  .limr-code-wrap svg { transition: transform var(--limr-motion) var(--limr-ease); }
+  .limr-code-wrap[aria-pressed='true'] { color: var(--limr-text, #3d3a36); background: #87837822; }
+  .limr-code-wrap[aria-pressed='true'] svg { transform: translateX(-1px); }
+  .limr-code-block[data-wrap] pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .limr-code-block[data-collapsed] pre > code { display: block; max-height: calc(var(--limr-code-preview-lines, 8) * 1lh); overflow-y: clip; }
+  .limr-code-block[data-line-numbers] pre { padding-inline-start: 4.5em; }
+  .limr-code-line { display: block; position: relative; min-height: 1lh; }
+  .limr-code-line::before { content: attr(data-line); position: absolute; inset-inline-end: calc(100% + 1.25em); width: 3em; text-align: end; color: var(--limr-muted, #9b9590); user-select: none; pointer-events: none; font-variant-numeric: tabular-nums; }
   :where(.limr-reader,.limr-prose,.limr-annotation-overlay,.limr-selection-toolbar,.limr-sidebar) button { font: inherit; cursor: pointer; color: inherit; }
   :where(.limr-reader,.limr-prose,.limr-annotation-overlay,.limr-selection-toolbar,.limr-sidebar) button:disabled { cursor: default; opacity: .5; }
   :where(.limr-reader,.limr-prose,.limr-annotation-overlay,.limr-selection-toolbar) :focus-visible { outline: 2px solid var(--limr-focus, #8a7865); outline-offset: 3px; }
@@ -508,6 +520,7 @@
   @keyframes limr-tool-fade { from { opacity: 0; } to { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { [data-limr-appearance] *, [data-limr-appearance] *::before, [data-limr-appearance] *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; transition-duration: .01ms !important; transition-delay: 0ms !important; scroll-behavior: auto !important; } }
   @media print {
+    .limr-code-block[data-collapsed] pre > code { max-height: none; overflow: visible; }
     .limr-paint-layer,.limr-highlight-layer { display: none; }
     .limr-prose[data-limr-painted] .limr-highlight-background,.limr-prose[data-limr-painted] .limr-atomic-highlight { background: var(--limr-highlight); }
     .limr-prose[data-limr-painted] .limr-highlight-underline,.limr-prose[data-limr-painted] .limr-highlight-dotted,.limr-prose[data-limr-painted] .limr-highlight-wavy { text-decoration-line: underline; }

@@ -121,7 +121,7 @@ test('question, sidebar and copy interactions keep the refined layout', async ({
   await expect(question.locator('.limr-disclosure').last()).toHaveAttribute('data-expanded', 'true');
   await question.getByRole('button', { name: '重试' }).click();
   await expect(question.locator('input:checked')).toHaveCount(0);
-  for (const selector of ['.limr-code-header .limr-copy-button', '.limr-math-copy']) {
+  for (const selector of ['.limr-code-copy', '.limr-math-copy']) {
     const button = page.locator(selector); await button.scrollIntoViewIfNeeded(); await button.hover();
     await expect(button).toHaveCSS('transform', 'none');
     await page.mouse.down(); await expect(button).toHaveCSS('transform', 'none'); await page.mouse.up();

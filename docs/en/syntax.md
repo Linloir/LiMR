@@ -108,6 +108,33 @@ Import `@linloir/limr/math.css`. Configure formulas with `math({ macros, strict 
 
 Inline math keeps KaTeX's outer-operator breakpoints. An indivisible formula segment wider than its container gets a horizontal scroll surface, including in standard/justified prose and headings; it returns to normal layout when space permits. Short formulas keep their baseline, and selection/copy still resolve to the original LaTeX. This follows [KaTeX's line-breaking rules](https://katex.org/docs/options); it does not split fractions or grouped terms arbitrarily.
 
+### Code block controls
+
+Code blocks longer than 20 source lines start folded to 8 visible rows. Short blocks have no fold button. The header contains wrap, copy, and (when applicable) fold controls, in that order. Copy always includes the complete code; printing expands folded blocks. Unclosed streaming fences remain expanded until completion unless the reader has explicitly folded them.
+
+```tsx
+import { Reader, type RendererExtension } from '@linloir/limr';
+
+const codePreferences: RendererExtension = {
+  name: 'code-preferences',
+  parameters: { codeBlock: { autoCollapse: false, wrap: true } },
+};
+
+const reader = <Reader source={'```js\nconst answer = 42;\n```'}
+  plugins={[codePreferences]}
+  parameters={{ codeBlock: {
+    autoCollapse: true,
+    collapseAfterLines: 20,
+    collapsedLines: 8,
+    wrap: false,
+    lineNumbers: true,
+  } }} />;
+```
+
+`parameters.codeBlock` works with Reader, Markdown, DocumentProvider and AsyncReader. The host's object overrides the last plugin's object; missing fields fall back to `codeHighlight()` options, then built-in defaults. The same five fields are accepted by `codeHighlight(options)`. Soft wrapping and line numbers default to false. Folding thresholds count source lines; wrapped continuations share one line number, which never enters copied text. `collapsedLines` is clamped to `collapseAfterLines`.
+
+Fold/wrap clicks change only that block's view state, not Markdown. Explicit choices take priority over defaults. Each Reader remembers the 256 most recently used modified blocks across virtual unmounts; unchanged blocks allocate no cache entry, and the cache does not retain source strings/trees. Evicted blocks return to defaults when remounted. Reader disposal or a new document resets this temporary state; it is not persisted across browser reloads. Parameter changes do not reparse the document.
+
 ## Definitions
 
 ```markdown

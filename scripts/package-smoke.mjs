@@ -51,7 +51,7 @@ for (const version of ['18.3.1', '19']) {
   }
   await writeFile(join(directory, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, skipLibCheck: false, target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', jsx: 'react-jsx', noEmit: true }, include: ['consumer.tsx'] }));
   await writeFile(join(directory, 'consumer.tsx'), `
-import { AsyncReader, Reader, Markdown, DocumentProvider, standard, defineAnnotation, AnnotationCard, AnnotationMarkdown, ToolIcon, InlineMarker, useLiMR, useLocale, useRendererParameter, type RendererExtension, type SelectionAction, type ReadingPosition } from '@linloir/limr';
+import { AsyncReader, Reader, Markdown, DocumentProvider, standard, codeHighlight, defineAnnotation, AnnotationCard, AnnotationMarkdown, ToolIcon, InlineMarker, useLiMR, useLocale, useRendererParameter, type RendererExtension, type SelectionAction, type ReadingPosition, type CodeBlockOptions } from '@linloir/limr';
 import { createDocument, prepareKnuthPlass, layoutTable, type TableLayoutAlgorithm } from '@linloir/limr/core';
 import { MarkdownTable, type TableLayoutConfig } from '@linloir/limr/react';
 import { createDocumentWorkerHandler, standardWorkerRegistry, type DocumentWorkerRequest } from '@linloir/limr/worker-api';
@@ -72,6 +72,9 @@ const tableAlgorithm: TableLayoutAlgorithm = input => layoutTable(input);
 const tableConfig: TableLayoutConfig = { algorithm: tableAlgorithm, maxColumnWidth: 420 };
 const tablePlugin: RendererExtension = { name: 'consumer-table-layout', parameters: { tableLayout: tableConfig } };
 const nativeTables = <Reader source="| A | B |" plugins={[tablePlugin]} parameters={{ tableLayout: false }} />;
+const codeOptions: CodeBlockOptions = { autoCollapse: true, collapseAfterLines: 20, collapsedLines: 8, wrap: true, lineNumbers: true };
+const codePlugin: RendererExtension = { name: 'consumer-code-options', parameters: { codeBlock: codeOptions } };
+const codeReader = <Reader source="Code" plugins={[codePlugin]} parameters={{ codeBlock: { wrap: false } }} extensions={[codeHighlight(codeOptions)]} />;
 const customTables = <Markdown source="| A | B |" plugins={[tablePlugin]} components={{ table: props => <MarkdownTable {...props} options={tableConfig} /> }} />;
 function ReaderIntegration() { const api = useLiMR(); const position: ReadingPosition | null = api.getReadingPosition(); return <button disabled={!api.isDocumentComplete()} onClick={() => position ? api.restoreReadingPosition(position) : api.scrollToSource({ start: 10, end: 20 })}>Jump</button>; }
 const asynchronous = <AsyncReader input={new Blob(['A book'])} loading={{ mode: 'blocking', worker: () => new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }) }}><ReaderIntegration /></AsyncReader>;
@@ -175,6 +178,9 @@ window.packedTableCalls = 0;
 const tablePlugins = [{ name: 'packed-table-planner', parameters: { tableLayout: { algorithm: input => { window.packedTableCalls++; return layoutTable(input); } } } }];
 window.renderPackedTable = parameters => tableRoot.render(h(Reader, { documentId: 'table-smoke', source: '| Name | Value |\\n| --- | --- |\\n| Body | 42 |', parameters, plugins: tablePlugins, toc: false, sidebar: false }));
 window.renderPackedTable({ tableLayout: false });
+const codeHost = document.createElement('div'); codeHost.id = 'packed-code'; document.body.append(codeHost);
+const codeSource = '~~~text\\n' + Array.from({ length: 30 }, (_, i) => 'Line ' + i + ': ' + 'wide '.repeat(50)).join('\\n') + '\\n~~~';
+createRoot(codeHost).render(h(Reader, { source: codeSource, parameters: { codeBlock: { lineNumbers: true } }, toc: false, sidebar: false }));
 `);
   // Build and serve actual installed tarballs, never repository aliases or HMR.
   run('pnpm', ['exec', 'vite', 'build'], directory, { NODE_ENV: 'production' });
@@ -267,8 +273,17 @@ window.renderPackedTable({ tableLayout: false });
     await page.evaluate(() => window.renderPackedTable({ tableLayout: false }));
     await expect(table.locator('colgroup,.limr-table-marker-measure')).toHaveCount(0);
     await expect(table.locator('[data-table-layout="native"]')).toHaveCount(1);
+    const code = page.locator('#packed-code .limr-code-block');
+    await code.scrollIntoViewIfNeeded();
+    await expect(code).toHaveAttribute('data-collapsed', 'true');
+    await expect(code.locator('.limr-code-line')).toHaveCount(30);
+    await code.locator('.limr-code-fold').click();
+    await expect(code).not.toHaveAttribute('data-collapsed');
+    await code.locator('.limr-code-wrap').click();
+    await expect(code).toHaveAttribute('data-wrap', 'true');
+    expect(await code.locator('pre').evaluate(pre => pre.scrollWidth - pre.clientWidth)).toBeLessThan(2);
     if (errors.length) throw new Error(errors.join('\n'));
-    console.log(`React ${version}: packed plugins, table layout controls, scoped CSS, skill template, KP, Mermaid, callout, highlight and footnote modules passed in Chromium`);
+    console.log(`React ${version}: packed plugins, code/table controls, scoped CSS, skill template, KP, Mermaid, callout, highlight and footnote modules passed in Chromium`);
   } finally { await browser?.close(); server.kill('SIGTERM'); }
 }
 await mkdir('artifacts', { recursive: true });

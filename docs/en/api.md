@@ -37,6 +37,7 @@ Reader, Markdown, and DocumentProvider accept:
 | plugins | Appended to the default or explicit list |
 | parameters | Document-wide module parameter overrides |
 | parameters.tableLayout | Built-in adaptive layout; `false` selects native layout; `TableLayoutConfig` accepts numeric limits and `algorithm: TableLayoutAlgorithm`; see [table layout](table-layout.md) |
+| parameters.codeBlock | `CodeBlockOptions`: `autoCollapse=true`, `collapseAfterLines=20`, `collapsedLines=8`, `wrap=false`, `lineNumbers=false`; see [code controls](syntax.md#code-block-controls) |
 | components | NodeRenderer overrides by AST type/custom tag |
 | annotationTypes | Add/override presentation by type |
 | annotations | Internal state if omitted; controlled if supplied |

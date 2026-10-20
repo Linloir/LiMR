@@ -13,8 +13,9 @@ export interface NodeRendererProps {
   /** Render an existing subtree without parsing strings again. */
   renderChildren: (nodes: readonly MarkdownNode[], options?: { trailing?: ReactNode }) => ReactNode;
   /** Render a literal node value with optional syntax tokens, preserving source
-   * selection, highlights and annotation insertion. Token offsets are UTF-16. */
-  renderValue: (tokens?: readonly TextToken[]) => ReactNode;
+   * selection, highlights and annotation insertion. Token offsets are UTF-16.
+   * `lines` adds source-line wrappers for a gutter without changing the text. */
+  renderValue: (tokens?: readonly TextToken[], options?: { lines?: boolean }) => ReactNode;
   /** Render a text attribute with source selection, highlights and annotations. */
   renderAttribute: (name: string) => ReactNode;
 }
@@ -254,6 +255,7 @@ export interface LiMRLocale {
   previewImage?: string; imagePreview?: string; closeImagePreview?: string; imageFit?: string; imageActualSize?: string;
   imageFill?: string; imageZoomIn?: string; imageZoomOut?: string; imageCopy?: string;
   imageLoadFailed?: string; imageLoadFailedHint?: string;
+  expandCode?: string; collapseCode?: string; wrapCode?: string; unwrapCode?: string;
   translationOriginal?: string; translationTranslated?: string; translationBoth?: string;
   /** Templates accept {mode} and {next}. */
   translationSwitchLabel?: string; translationLockedLabel?: string;

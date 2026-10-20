@@ -108,6 +108,33 @@ $$
 
 行内公式保留 KaTeX 在外层运算符处的断行点。不可再拆分的公式片段超过容器宽度时，提供局部横向滚动，标准排版、两端对齐和标题中也生效；空间恢复后回到普通布局。短公式保留原基线，选区和复制仍映射到原始 LaTeX。这遵循 [KaTeX 的断行规则](https://katex.org/docs/options)，不会任意拆开分式或分组。
 
+### 代码块控制
+
+代码块超过 20 行源码时，默认折叠为 8 行可见内容；短代码块不显示折叠按钮。顶部按钮依次为换行、复制和折叠（满足长度要求时）。复制始终包含完整代码，打印时自动展开。尚未闭合的流式代码默认保持展开，完成后应用默认折叠；用户主动折叠的选择优先。
+
+```tsx
+import { Reader, type RendererExtension } from '@linloir/limr';
+
+const codePreferences: RendererExtension = {
+  name: 'code-preferences',
+  parameters: { codeBlock: { autoCollapse: false, wrap: true } },
+};
+
+const reader = <Reader source={'```js\nconst answer = 42;\n```'}
+  plugins={[codePreferences]}
+  parameters={{ codeBlock: {
+    autoCollapse: true,
+    collapseAfterLines: 20,
+    collapsedLines: 8,
+    wrap: false,
+    lineNumbers: true,
+  } }} />;
+```
+
+`parameters.codeBlock` 可用于 Reader、Markdown、DocumentProvider 和 AsyncReader。宿主参数对象优先于最后一个插件的参数对象，缺失字段再使用 `codeHighlight()` 工厂选项及内置默认值。`codeHighlight(options)` 也接受这五个字段。自动换行和行号默认关闭；折叠阈值按源码行数计算，折行后的多行共享原行号，行号不会进入复制文本。`collapsedLines` 不超过 `collapseAfterLines`。
+
+折叠和换行按钮只改变当前代码块的视图状态，不修改 Markdown；用户手动选择优先于默认值。每个 Reader 最多记住最近使用的 256 个已修改代码块，离开视口被卸载后可恢复；未修改的代码块不占缓存条目，缓存也不持有源码字符串或语法树。被淘汰的块重新挂载时使用默认值。Reader 销毁或切换新文档后重置，不跨浏览器刷新保存。参数变化不重新解析文档。
+
 ## 释义
 
 ```markdown

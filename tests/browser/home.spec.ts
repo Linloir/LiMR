@@ -81,7 +81,7 @@ test('rendering examples provide real highlight paint, an interactive footnote, 
   await expect(demo.getByRole('button', { name: '公式', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await demo.getByRole('button', { name: '代码', exact: true }).click();
   await expect(demo.locator('pre.shiki')).toContainText("import { Reader } from '@linloir/limr'");
-  await expect(demo.locator('.limr-code-header').getByRole('button')).toBeVisible();
+  await expect(demo.locator('.limr-code-copy')).toBeVisible();
   await demo.getByRole('button', { name: '文章', exact: true }).click();
   await expect(demo.locator('.limr-mark')).toBeVisible();
   expect(errors).toEqual([]);
