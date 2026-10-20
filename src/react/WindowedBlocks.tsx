@@ -299,7 +299,11 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
             // move this slot again, so complete only after that commit settles.
             // A native clamp with no DOM/scroll progress is an actual boundary,
             // not a reason to schedule an endless refinement loop.
-            if (!move(logical + target, true) && !pendingTypography) { request(); rememberPosition(); }
+            // Adjacent page content can put native scroll beyond this book's
+            // own range. logical is clamped there; retain the outside distance
+            // when applying a relative glyph correction or it oscillates.
+            const outside = current - Math.max(origin, Math.min(origin + geometry.physicalMax, current));
+            if (!move(logical + outside + target, true) && !pendingTypography) { request(); rememberPosition(); }
             return;
           }
           if (!pendingTypography) request();
