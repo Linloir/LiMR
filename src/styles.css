@@ -205,6 +205,8 @@
   @media (prefers-color-scheme: dark) { [data-limr-theme='auto'] .shiki,[data-limr-theme='auto'] .limr-code-token { color: var(--shiki-dark); } }
   .limr-math-display { display: block; overflow-x: auto; padding: .75rem 1rem; margin: 0; border-radius: 4px; background: var(--limr-code-bg, #f9f8f6); }
   .limr-math-display .katex-display { margin: .5em 0; }
+  .limr-math-inline [data-limr-math-scroll] { max-width: min(100%, var(--limr-inline-math-width)); overflow-x: auto; overflow-y: hidden; vertical-align: middle; scrollbar-width: thin; overscroll-behavior-x: contain; }
+  .limr-math-source { overflow-wrap: anywhere; white-space: normal; }
   .limr-math-block { position: relative; }
   .limr-math-copy { position: absolute; inset-block-start: .45rem; inset-inline-end: .5rem; opacity: 0; }
   .limr-math-block:hover .limr-math-copy,.limr-math-block:focus-within .limr-math-copy { opacity: 1; }

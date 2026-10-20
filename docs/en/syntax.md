@@ -106,6 +106,8 @@ $$
 
 Import `@linloir/limr/math.css`. Configure formulas with `math({ macros, strict })`. Fenced language names select Shiki highlighting. Highlighting loads near the viewport; streaming code waits for closure and for native selections to leave before applying colors. Code over the default 100,000-character limit, unsupported languages, and languages outside the configured list retain readable source. Configure `codeHighlight({ languages, lightTheme, darkTheme, eager, maxLength })`.
 
+Inline math keeps KaTeX's outer-operator breakpoints. An indivisible formula segment wider than its container gets a horizontal scroll surface, including in standard/justified prose and headings; it returns to normal layout when space permits. Short formulas keep their baseline, and selection/copy still resolve to the original LaTeX. This follows [KaTeX's line-breaking rules](https://katex.org/docs/options); it does not split fractions or grouped terms arbitrarily.
+
 ## Definitions
 
 ```markdown

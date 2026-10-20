@@ -106,6 +106,8 @@ $$
 
 公式需要导入 `@linloir/limr/math.css`；支持通过 `math({ macros, strict })` 配置。代码围栏语言用于 Shiki 高亮。默认接近视口才加载高亮，流式代码等待语法闭合，且原生选区离开代码后再应用高亮；超过默认 100,000 字符、未支持或未在允许列表中的语言保留可读源码。`codeHighlight({ languages, lightTheme, darkTheme, eager, maxLength })` 可配置。
 
+行内公式保留 KaTeX 在外层运算符处的断行点。不可再拆分的公式片段超过容器宽度时，提供局部横向滚动，标准排版、两端对齐和标题中也生效；空间恢复后回到普通布局。短公式保留原基线，选区和复制仍映射到原始 LaTeX。这遵循 [KaTeX 的断行规则](https://katex.org/docs/options)，不会任意拆开分式或分组。
+
 ## 释义
 
 ```markdown
