@@ -138,6 +138,8 @@ Callout 使用与注释、释义、提问一致的小字号标签和正文排版
 
 可用选择器包括 `.limr-document-search`、`.limr-search-field`、`.limr-search-count`、`.limr-search-loading`、`.limr-search-error`、`.limr-search-regex`、`.limr-search-previous`、`.limr-search-next` 和 `.limr-search-close`。用 `[aria-pressed="true"]` 表示选中选项，用 `[data-open]` / `[data-loading]` 区分框体状态。默认选中态无边框，使用标题色与次要色；计数和静态图标使用柔和文字色。输入框不额外添加聚焦轮廓，请保留按钮的键盘焦点提示。
 
+搜索 loading 圆环默认使用与导航控件相同的柔和文字色和更细的描边。可通过 `--limr-search-accent` 单独覆盖圆环颜色。
+
 默认框体从右向左展示固定位置的内容，框体本身淡入，内容略晚淡入。Loading 在左侧扩展 2rem 空间，18px 圆环缩放、淡入淡出，输入框保持位置。定制动画时保留内部宽度、右对齐和裁切；使用 `--limr-search-width`，不要只覆盖框体展开宽度。保留减少动态效果规则。组件/控制器接口和延迟时序见[阅读搜索](search.md)。
 
 ## 代码块与溢出样式

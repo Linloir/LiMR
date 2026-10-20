@@ -138,6 +138,8 @@ Apply `article-search` to DocumentSearch and `article-reader` to Reader or the s
 
 Available selectors include `.limr-document-search`, `.limr-search-field`, `.limr-search-count`, `.limr-search-loading`, `.limr-search-error`, `.limr-search-regex`, `.limr-search-previous`, `.limr-search-next`, and `.limr-search-close`. Use `[aria-pressed="true"]` for selected options and `[data-open]` / `[data-loading]` for frame state. The default selected state is borderless and uses heading/secondary colors; counts and resting icons use muted text. The input has no added focus outline; keep keyboard button focus visible.
 
+The search loading ring uses the same muted color as its navigation controls and a lighter stroke. Override `--limr-search-accent` to give only this ring a custom color.
+
 The default frame reveals fixed-position contents from right to left, with its own opacity transition and delayed content fade. Loading expands a 2rem slot on the left; its 18px ring scales/fades in and out without shifting the input. Preserve inner width/right alignment and clipping if changing motion. Use `--limr-search-width` instead of setting the frame's open width alone, and preserve the reduced-motion override. Component/controller APIs and delay timing are in [reading search](search.md).
 
 ## Code and overflow styling

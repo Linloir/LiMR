@@ -17,7 +17,9 @@
   .limr-document-search[data-open] .limr-search-body { opacity: 1; transition: opacity 240ms cubic-bezier(.16,.8,.25,1) 85ms; }
   .limr-search-loading { position: absolute; right: var(--limr-search-width); top: 0; width: 2rem; height: 44px; display: grid; place-items: center; opacity: 0; transform: scale(.65); transition: opacity 160ms cubic-bezier(.4,0,1,1), transform 220ms cubic-bezier(.55,0,.25,1); pointer-events: none; }
   .limr-document-search[data-open][data-loading] .limr-search-loading { opacity: 1; transform: scale(1); transition: opacity 200ms cubic-bezier(.2,.7,.3,1) 45ms, transform 280ms cubic-bezier(.22,.8,.25,1) 30ms; }
-  .limr-search-loading .limr-loading { width: 18px; height: 18px; color: var(--limr-search-accent, #4285df); }
+  .limr-search-loading .limr-loading { width: 18px; height: 18px; color: var(--limr-search-accent, var(--limr-muted, #8a8178)); }
+  .limr-search-loading .limr-loading circle { stroke-width: 2.5; }
+  .limr-search-loading .limr-loading-track { opacity: .14; }
   .limr-search-field { display: flex; align-items: center; flex: 1; min-width: 0; }
   .limr-document-search input { min-width: 2rem; flex: 1; width: 0; padding: .4rem; border: 0; outline: none; box-shadow: none; border-radius: 4px; background: transparent; color: inherit; font: inherit; }
   .limr-document-search input:focus, .limr-document-search input:focus-visible { outline: none; box-shadow: none; }
