@@ -9,6 +9,34 @@ const atoms = new Set(['math', 'inlineMath', 'image', 'imageReference', 'html'])
 const proseBlocks = new Set(['paragraph', 'heading', 'blockquote', 'list', 'listItem', 'table', 'tableRow', 'code', 'callout', 'calloutTitle']);
 const join = (parts: readonly string[], separator: string) => parts.filter(Boolean).join(separator);
 const footnoteIndexes = new WeakMap<DocumentSnapshot, { node: MarkdownNode; order: number; span: SourceRange }[]>();
+interface ReadingFragment { text: string; resolve: (from: number, to: number) => SourceRange }
+export interface ReadingProjection { text: string; resolve: (range: SourceRange) => SourceRange }
+
+/** Keep leaf mappings lazy: a long plain/code leaf needs no per-character index.
+ * Synthetic renderer text has an explicit block fallback instead of guessing. */
+export function windowedReadingProjection(runtime: ReaderRuntime, span: SourceRange): ReadingProjection {
+  const trace: ReadingFragment[] = [];
+  const text = projectWindowedText(runtime, [span], true, undefined, undefined, trace);
+  const segments: { from: number; to: number; fragment: ReadingFragment }[] = [];
+  let at = 0;
+  for (const fragment of trace) {
+    const from = text.indexOf(fragment.text, at);
+    if (from < 0 || /\S/.test(text.slice(at, from))) return { text, resolve: () => span };
+    segments.push({ from, to: from + fragment.text.length, fragment }); at = from + fragment.text.length;
+  }
+  if (/\S/.test(text.slice(at))) return { text, resolve: () => span };
+  return { text, resolve: range => {
+    let low = 0, high = segments.length;
+    while (low < high) { const mid = (low + high) >>> 1; if (segments[mid].to <= range.start) low = mid + 1; else high = mid; }
+    const first = segments[low];
+    let last = first;
+    while (segments[low] && segments[low].from < range.end) last = segments[low++];
+    if (!first || !last) return span;
+    const start = first.fragment.resolve(Math.max(0, range.start - first.from), Math.min(first.to, range.end) - first.from).start;
+    const end = last.fragment.resolve(Math.max(last.from, range.start) - last.from, Math.min(last.to, range.end) - last.from).end;
+    return end >= start ? { start, end } : span;
+  } };
+}
 
 /** Match the same reader-local override and last module owner as renderNode. */
 export function resolveVirtualizedRenderer(runtime: ReaderRuntime, node: MarkdownNode, ancestors: readonly MarkdownNode[] = [], pending = false): VirtualizedRenderer | undefined {
@@ -34,7 +62,7 @@ export function windowedReadingText(runtime: ReaderRuntime, ranges: readonly Sou
   return projectWindowedText(runtime, ranges, true, mappings, fragments);
 }
 
-function projectWindowedText(runtime: ReaderRuntime, ranges: readonly SourceRange[], reading: boolean, mappings?: WeakMap<MarkdownNode, TextMapping>, fragments?: SourceRange[]): string {
+function projectWindowedText(runtime: ReaderRuntime, ranges: readonly SourceRange[], reading: boolean, mappings?: WeakMap<MarkdownNode, TextMapping>, fragments?: SourceRange[], trace?: ReadingFragment[]): string {
   const document = runtime.document.getSnapshot(), config = runtime.configuration.get();
   const selected = ranges.filter(range => range.end > range.start);
   if (!selected.length) return '';
@@ -96,7 +124,33 @@ function projectWindowedText(runtime: ReaderRuntime, ranges: readonly SourceRang
         }
       }
       if (result) fragments?.push(span);
-      return literal ? result : result.replace(/[\t\r\n ]+/g, ' ');
+      const rendered = literal ? result : result.replace(/[\t\r\n ]+/g, ' ');
+      if (rendered && trace) {
+        let mapping: TextMapping | undefined, boundaries: { from: number; to: number }[] | undefined;
+        const raw = document.source.slice(span.start, span.end);
+        const payload = node.valueRange as SourceRange | undefined;
+        const direct = raw === result ? span.start
+          : payload && document.source.slice(payload.start, payload.end) === result ? payload.start
+          : literal && node.type === 'code' && !node.sourceOmissions?.length && raw.includes(result) ? span.start + raw.indexOf(result) : undefined;
+        trace.push({ text: rendered, resolve: (from, to) => {
+          if (rendered !== result) {
+            boundaries ??= (() => {
+              const output: { from: number; to: number }[] = [];
+              for (let at = 0; at < result.length;) {
+                const start = at++;
+                if (/[\t\r\n ]/.test(result[start])) while (at < result.length && /[\t\r\n ]/.test(result[at])) at++;
+                output.push({ from: start, to: at });
+              }
+              return output;
+            })();
+            from = boundaries[from]?.from ?? result.length; to = boundaries[to - 1]?.to ?? from;
+          }
+          if (direct !== undefined) return { start: direct + from, end: direct + to };
+          mapping ??= literal ? mapLiteral(document.source, node) : mapText(document.source, result, span, { escapes: node.verbatimEscapes !== true && node.type !== 'math' && node.type !== 'inlineMath', omissions: node.sourceOmissions });
+          return { start: mapping.starts[from] ?? span.start, end: mapping.ends[to - 1] ?? span.end };
+        } });
+      }
+      return rendered;
     };
     const visit = (node: MarkdownNode, ancestors: readonly MarkdownNode[], pending: boolean): string => {
       if (!selectedNode(node) || hidden.has(node.type)) return '';
@@ -114,7 +168,15 @@ function projectWindowedText(runtime: ReaderRuntime, ranges: readonly SourceRang
       if (!reading && (node.selection === 'atomic' || atoms.has(node.type))) return sourceFor(span);
       if (adapter) {
         const from = fragments?.length ?? 0;
-        const value = (reading && adapter.searchText || adapter.copyText)(node, { source: sourceFor(span), children: children(), get value() { return text(node, node.type === 'code' || node.type === 'inlineCode'); } });
+        const traceFrom = trace?.length ?? 0, childText = children(), childEnd = trace?.length ?? 0;
+        const value = (reading && adapter.searchText || adapter.copyText)(node, { source: sourceFor(span), children: childText, get value() { return text(node, node.type === 'code' || node.type === 'inlineCode'); } });
+        if (trace) {
+          if (value === childText) trace.splice(childEnd);
+          else if (childEnd > traceFrom || trace.length === traceFrom) {
+            trace.splice(traceFrom);
+            if (value) trace.push({ text: value, resolve: () => span });
+          }
+        }
         if (fragments) {
           if (!value) fragments.splice(from);
           else if (fragments.length === from) fragments.push(span);
