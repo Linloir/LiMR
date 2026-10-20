@@ -19,6 +19,8 @@ export function Article({ source }: { source: string }) {
 
 `Reader.search` 和 `AsyncReader.search` 默认为 `false`。传入 `true` 挂载默认组件，传入 React 节点则替换界面。默认组件在所属阅读器拥有交互焦点时处理 Ctrl/Cmd+F 和 F3；在搜索输入框中，Enter 跳到下一个，Shift+Enter 跳到上一个，Escape 关闭。没有启用搜索组件时保留浏览器搜索；浏览器搜索只能看到已挂载的 DOM。
 
+在阅读正文中选中文字后打开搜索，会自动填入选中的纯文本，不包含 Markdown 标记。Ctrl/Cmd+F 和公开的 `find()` 命令共用此行为。编辑器或搜索输入框中的选中文字不会替换查询。Playground 已启用阅读器快捷键，源码编辑器保留自身的搜索行为。
+
 在 Playground 点击工具栏的**搜索**按钮体验。Aa 切换大小写敏感，`.*` 切换正则。Playground 使用 `shortcuts={false}` 保留浏览器 Ctrl/Cmd+F；搜索框内部的 Enter 和 Escape 仍然有效。渐进加载文档须在完整加载后才能搜索。
 
 ## 脱离 Reader 独立组合

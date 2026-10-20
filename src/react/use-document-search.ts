@@ -6,6 +6,7 @@ import { ownsReaderInteraction } from './reader-ownership';
 import { captureReadingPosition } from './reading-position';
 import { ReadingSearch } from './reading-search';
 import { useSearchLoading } from './search-loading';
+import { selectedSearchText } from './search-selection';
 
 export interface UseDocumentSearchOptions {
   /** Capture reader-owned Ctrl/Cmd+F and F3. Default false for custom UIs. */
@@ -36,11 +37,14 @@ export function useDocumentSearch(options: UseDocumentSearchOptions = {}): Docum
   const [matches, setMatches] = useState<SourceRange[]>([]), [current, setCurrent] = useState(-1);
   const [partial, setPartial] = useState(false), [error, setError] = useState<string | null>(null), [focusRequest, setFocusRequest] = useState(0);
   const session = useRef<ReadingSearch | null>(null), active = useRef(-1), pending = useRef(false), previousFocus = useRef<Element | null>(null);
-  const show = useCallback(() => {
+  const reveal = useCallback((seedSelection: boolean) => {
     if (runtime.configuration.get().provisional) return;
+    const selected = seedSelection ? selectedSearchText(runtime) : '';
+    if (selected) { setQuery(selected); runtime.clearSelection(); }
     setOpen(value => { if (!value) previousFocus.current = document.activeElement; return true; });
     setFocusRequest(value => value + 1);
   }, [runtime]);
+  const show = useCallback(() => reveal(true), [reveal]);
   const close = useCallback(() => {
     session.current?.dispose(); session.current = null;
     setOpen(false);
@@ -86,10 +90,10 @@ export function useDocumentSearch(options: UseDocumentSearchOptions = {}): Docum
     const unsubscribe = runtime.searchCommand.subscribe(() => {
       const command = runtime.searchCommand.get().command;
       if (command === 'close') close();
-      else { show(); if (command !== 'open') move(command === 'next' ? 1 : -1); }
+      else { reveal(command === 'open'); if (command !== 'open') move(command === 'next' ? 1 : -1); }
     });
     return () => { unsubscribe(); };
-  }, [runtime, show, close, move]);
+  }, [runtime, reveal, close, move]);
   useEffect(() => {
     if (!options.shortcuts) return;
     const key = (event: KeyboardEvent) => {

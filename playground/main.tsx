@@ -217,7 +217,7 @@ function App() {
     locale: localeName === 'zh-CN' ? chinese : english, scrollRoot: editor ? preview : null, toc: !editor, sidebar: !editor,
     sidebarCollapse, actions: streaming ? [] : undefined, plugins, annotations, onAnnotationsChange: setAnnotations,
     onSelectionChange: setSelection, documentId: 'demo',
-    search: <DocumentSearch shortcuts={false} style={{ top: '7.5rem' }} />,
+    search: <DocumentSearch style={{ top: '7.5rem' }} />,
     children: <ReaderBridge connect={connectReader} />,
   }), [sourceEditing, handleSourceChange, dark, typography, translationMode, localeName, editor, preview, sidebarCollapse, streaming, plugins, annotations, connectReader]);
   const loadingStatus = asyncInput !== null && !streaming && loadState?.status !== 'ready' ? loadState : undefined;
@@ -235,7 +235,7 @@ function App() {
     {homeRoute ? <Suspense fallback={<div role="status" style={{ padding: '80px 36px', textAlign: 'center' }}>LiMR…</div>}><HomePage locale={localeName} theme={dark ? 'dark' : 'light'} /></Suspense> : docsRoute ? <Documentation route={docsRoute} theme={dark ? 'dark' : 'light'} /> : <>
     <div className="demo-commandbar" data-limr-appearance="classic">
       <nav className="demo-controls demo-document-controls" aria-label={copy.documentActions}>
-        <button disabled={!documentReady || streaming} onClick={() => readerApi.current?.find()} title={localeName === 'zh-CN' ? '体验 LiMR 搜索；Ctrl+F 保留浏览器搜索' : 'Try LiMR search; Ctrl+F keeps browser find'}><span className="limr-underline">{localeName === 'zh-CN' ? '搜索' : 'Search'}</span></button>
+        <button disabled={!documentReady || streaming} onClick={() => readerApi.current?.find()} title={localeName === 'zh-CN' ? '搜索文档（Ctrl/Cmd+F）' : 'Search document (Ctrl/Cmd+F)'}><span className="limr-underline">{localeName === 'zh-CN' ? '搜索' : 'Search'}</span></button>
         <button disabled={!documentReady} onClick={() => { setStreaming(false); setEditor(!editor); setMenu(null); if (editor) save(); }}><span className="limr-underline">{editor ? copy.save : copy.edit}</span></button>
         <span className="demo-control-divider" />
         <div className="demo-dropdown" ref={loadRoot}><button aria-expanded={menu === 'load'} aria-controls="demo-load-menu" onClick={() => setMenu(value => value === 'load' ? null : 'load')}><span className="limr-underline">{copy.load}</span><ToolIcon name="chevron" /></button>

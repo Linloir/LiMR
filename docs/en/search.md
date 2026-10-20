@@ -19,6 +19,8 @@ export function Article({ source }: { source: string }) {
 
 `Reader.search` and `AsyncReader.search` default to `false`. Passing `true` mounts the default component; passing a React node replaces it. The default component handles Ctrl/Cmd+F and F3 while its reader owns the interaction. Its input supports Enter for next, Shift+Enter for previous and Escape to close. A disabled search component leaves browser find available; browser find only sees mounted DOM.
 
+Opening search with selected reader text fills the query with that plain text, without Markdown delimiters. This works with Ctrl/Cmd+F and the public `find()` command. Text selected inside an editor or the search field does not replace the query. Playground enables the reader shortcut; the source editor keeps its own find behavior.
+
 In Playground, use the **Search** toolbar button. Aa toggles case sensitivity; `.*` toggles regex. Playground sets `shortcuts={false}` to retain browser Ctrl/Cmd+F; Enter and Escape still work inside the search component. Search waits until a progressive document is complete.
 
 ## Compose without Reader
