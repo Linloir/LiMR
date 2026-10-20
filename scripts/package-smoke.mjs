@@ -66,7 +66,7 @@ import { readingTools } from '@limr-example/reading-tools';
 import { readingTools as templateTools } from '@example/limr-reading-tools';
 import { inlineNotes } from './inline-notes.js';
 const localFileApp = <Reader source="Editable" plugins={[inlineNotes()]} onSourceChange={(source, change) => { const revision: number = change.document.revision; return source.length > revision; }} />;
-function SearchModule() { const controller = useDocumentSearch({ shortcuts: false }); return <DocumentSearch controller={controller} placement="inline" />; }
+function SearchModule() { const controller = useDocumentSearch({ shortcuts: false, rememberQuery: true }); return <DocumentSearch controller={controller} placement="inline" />; }
 const searchApp = <Reader source="Searchable" search={<SearchModule />} />;
 const templateApp = <Reader source="Template" plugins={[templateTools()]} />;
 const localized = defineAnnotation({ type: 'localized', label: locale => locale.citation ?? 'Citation', overlay: { Card: props => <AnnotationCard {...props} title={useLocale().citation} /> } });
@@ -172,6 +172,7 @@ const searchWorker = () => new Worker('/search-worker.js');
 const workerSource = '# Worker &amp; reader\\n\\n' + Array.from({ length: 200 }, (_, index) => 'Loaded paragraph ' + index + '.').join('\\n\\n');
 function WorkerIntegration() {
   const reader = useLiMR();
+  window.workerReader = reader;
   return h(Fragment, null,
     h('button', { onClick: () => { const start = workerSource.indexOf('Loaded paragraph 199.'); reader.scrollToSource({ start, end: start + 1 }); } }, 'Read the loaded ending'),
     h('button', { onClick: () => reader.find() }, 'Search loaded book'));
@@ -305,14 +306,30 @@ window.renderPackedCode({ lineNumbers: true, maxExpandedLines: 12 });
     await expect.poll(() => code.locator('pre').evaluate(pre => pre.scrollHeight - pre.clientHeight)).toBeLessThan(2);
     await page.getByRole('button', { name: 'Search loaded book', exact: true }).click();
     const search = page.locator('.limr-document-search');
+    await page.evaluate(() => {
+      const start = window.workerState.document.getSnapshot().source.indexOf('Loaded paragraph 100.');
+      window.workerReader.scrollToSource({ start, end: start + 1 });
+    });
+    await expect(page.locator('[data-limr-document="worker"]').getByText('Loaded paragraph 100.', { exact: true })).toBeInViewport();
     await search.locator('input').fill('Loaded paragraph 19[89]');
     await search.getByRole('button', { name: 'Use regular expression' }).click();
+    await expect(search.locator('.limr-search-count')).toHaveText('?/2');
+    await expect(page.locator('[data-limr-document="worker"]').getByText('Loaded paragraph 100.', { exact: true })).toBeInViewport();
+    await search.locator('input').press('Enter');
     await expect(search.locator('.limr-search-count')).toHaveText('1/2');
     await expect(page.locator('[data-search-current]').first()).toBeInViewport();
     await search.locator('input').press('Enter');
     await expect(search.locator('.limr-search-count')).toHaveText('2/2');
     await search.locator('input').press('Escape');
     await expect(page.locator('[data-search]')).toHaveCount(0);
+    await page.evaluate(() => window.workerReader.find());
+    await expect(search.locator('input')).toHaveValue('');
+    await search.locator('input').pressSequentially('new query');
+    await search.locator('input').press('Control+z');
+    await expect(search.locator('input')).toHaveValue('');
+    await search.locator('input').press('Control+y');
+    await expect(search.locator('input')).toHaveValue('new query');
+    await search.locator('input').press('Escape');
     if (errors.length) throw new Error(errors.join('\n'));
     console.log(`React ${version}: packed search/navigation/highlights, plugins, code/table controls, scoped CSS, skill template, KP, Mermaid, callout and footnote modules passed in Chromium`);
   } finally { await browser?.close(); server.kill('SIGTERM'); }
