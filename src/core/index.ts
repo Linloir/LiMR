@@ -8,6 +8,8 @@ export { omitSource } from './source-omissions';
 export * from './knuth-plass';
 export * from './table-layout';
 export * from './search';
+export { searchWorkerSource } from './search-worker';
+export type { SearchWorkerPort } from './search-worker';
 export { walk, textContent, rangeOf, intersects, safeUrl } from './tree';
 
 export * from './session';
