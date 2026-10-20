@@ -7,6 +7,7 @@ import { orderedListStyle } from './ordered-list';
 import { useIsomorphicLayoutEffect, useRuntime, useStoreSelector } from './context';
 import { emptyDecorations } from './runtime';
 import { sourceRangeStartRect } from './source-geometry';
+import { prepareSourceReveal } from './source-reveal';
 import { windowedHeadings } from './windowed-headings';
 import { windowedKeepAliveBlocks } from './windowed-lifetime';
 import { ownsReaderInteraction, rememberReaderOwner } from './reader-ownership';
@@ -289,6 +290,7 @@ export function WindowedBlocks({ blocks, overscan = 1400, windowed = true, proof
           // its source. Wait for the prose style to reflect that store update.
           if (Math.abs(runtime.getContentOffset() - runtime.documentOffset.get()) > .5) { queue(); return; }
           // The first seek uses estimates; refine once the destination exists.
+          if (prepareSourceReveal(runtime, requested.range)) { queue(); return; }
           const target = (sourceRangeStartRect(runtime, requested.range)?.top ?? node.getBoundingClientRect().top) - viewportTop() - requested.offset;
           // KP may still be applying the new width in a later frame. Keep this
           // exact source anchor until its own paragraph is settled; its layout

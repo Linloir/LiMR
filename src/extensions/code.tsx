@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { ResourceCache } from '../core/cache';
-import type { NodeRendererProps, RendererExtension, TextToken } from '../react/types';
+import type { NodeRenderer, NodeRendererProps, RendererExtension, TextToken } from '../react/types';
 import { useIsomorphicLayoutEffect, useLocale, useRendererParameter, useRuntime } from '../react/context';
 import { CopyButton } from '../components/CopyButton';
 import { literalValue } from '../react/literal';
@@ -8,11 +8,18 @@ import { transformCode } from './syntax-transforms';
 import { CodeViewCache, countCodeLines, type CodeViewState } from './code-view-state';
 import { useCodeLayout } from './code-layout';
 import { Collapse } from '../components/Collapse';
+import { rangeOf } from '../core/tree';
+import { registerSourceReveal } from '../react/source-reveal';
+import { sourceRangeStartRect } from '../react/source-geometry';
 import type { ReaderRuntime } from '../react/runtime';
 import { ToolIcon } from '../components/ToolIcon';
 
 const cache = new ResourceCache<readonly TextToken[]>(96);
 const views = new WeakMap<ReaderRuntime, CodeViewCache>();
+const chunkedRenderers = new WeakSet<NodeRenderer>();
+/** Identity proof for the large-block windowing exception. Replacing a
+ * component, even on a standard-named extension, cannot inherit this proof. */
+export const isChunkedCodeRenderer = (renderer: NodeRenderer | undefined): boolean => !!renderer && chunkedRenderers.has(renderer);
 export interface CodeBlockOptions {
   /** Start long blocks folded. Defaults to true; manual folding stays available. */
   autoCollapse?: boolean;
@@ -65,6 +72,22 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
     const layout = useCodeLayout({ code, total, preview: previewLines, threshold, wrap, collapsed: shouldCollapse });
     const foldable = total > threshold || layout.visualFoldable;
     const collapsed = foldable && shouldCollapse;
+    useIsomorphicLayoutEffect(() => {
+      let settled = 0, previous = -1;
+      return registerSourceReveal(runtime, rangeOf(node), range => {
+        if (range.start !== previous) { previous = range.start; settled = 0; }
+        if (collapsed) { setView(current => ({ ...current, collapsed: false })); return true; }
+        const pre = layout.ref.current, target = sourceRangeStartRect(runtime, range);
+        if (!pre || !target) return false;
+        const bounds = pre.getBoundingClientRect(), top = pre.scrollTop, left = pre.scrollLeft;
+        if (target.top < bounds.top || target.bottom > bounds.bottom) pre.scrollTop += target.top - bounds.top - 12;
+        if (target.left < bounds.left || target.right > bounds.right) pre.scrollLeft += target.left - bounds.left - 24;
+        // Arrival must outlive both the height transition and the observer
+        // commit that adds line decorations to the newly visible chunk.
+        if (Math.abs(top - pre.scrollTop) > .5 || Math.abs(left - pre.scrollLeft) > .5 || pre.getAnimations().some(animation => animation.playState === 'running')) settled = 0;
+        return ++settled < 3;
+      });
+    }, [runtime, node, collapsed]);
     const expanded = parameters?.maxExpandedLines ?? options.maxExpandedLines;
     const maxLines = expanded === false ? false : Math.max(previewLines, positiveLines(expanded, 40));
     const lineNumbers = parameters?.lineNumbers ?? options.lineNumbers ?? false;
@@ -145,5 +168,7 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
       </Collapse>}
     </div>;
   }
-  return { name: 'code-highlight', directives: ['code', 'code-highlight'], literal: true, scope: 'local', components: { code: CodeNode }, transform: transformCode };
+  chunkedRenderers.add(CodeNode);
+  return { name: 'code-highlight', directives: ['code', 'code-highlight'], literal: true, scope: 'local', components: { code: CodeNode }, transform: transformCode,
+    virtualization: { code: { copyText: (_node, { value }) => value } } };
 }

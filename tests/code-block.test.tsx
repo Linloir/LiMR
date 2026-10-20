@@ -3,6 +3,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { Markdown, codeHighlight, type MarkdownNode, type RendererParameters } from '../src';
 import { CodeViewCache, countCodeLines } from '../src/extensions/code-view-state';
 import { literalLines } from '../src/react/literal-lines';
+import { createDocument } from '../src/core';
+import { windowingCapability } from '../src/react/windowing-capabilities';
 
 const value = Array.from({ length: 24 }, (_, index) => `line ${index + 1}`).join('\n');
 const source = '```text\n' + value + '\n```';
@@ -66,4 +68,14 @@ it('splits styled tokens at source newlines without losing blank lines, Unicode 
   expect(lines.flat().map(token => token.offset)).toEqual([0, 4, 5]);
   expect(lines[0][0].style).toBe(style);
   expect(lines.flat().map(token => value.slice(token.offset, token.offset + token.content.length)).join('')).toBe(value);
+});
+
+it('allows giant code in a virtual book only with the actual chunked code renderer', () => {
+  const extension = codeHighlight();
+  const document = createDocument('```text\n' + 'x\n'.repeat(150_000) + '```').getSnapshot();
+  expect(windowingCapability(document, { extensions: [extension], virtualization: true }).enabled).toBe(true);
+  expect(windowingCapability(document, { virtualization: true }).enabled).toBe(false);
+  expect(windowingCapability(document, { extensions: [{ ...extension, components: { code: () => null } }], virtualization: true }).enabled).toBe(false);
+  expect(windowingCapability(document, { extensions: [extension], virtualization: true,
+    rendererOverrides: [{ type: 'code', component: () => null, virtualization: { copyText: (_node, { value }) => value } }] }).enabled).toBe(false);
 });

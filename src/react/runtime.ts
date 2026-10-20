@@ -3,6 +3,7 @@ import { intersects, rangeOf } from '../core/tree';
 import type { Annotation, AnnotationOccurrence, DocumentEngine, DocumentSnapshot, HighlightData, MarkdownNode, SelectionSnapshot, SourceRange } from '../core';
 import type { AnnotationType, DocumentCommands, LiMRLocale, NodeRenderer, RendererExtension, ViewConfiguration } from './types';
 import { scrollWithMotion } from './motion';
+import { prepareSourceReveal } from './source-reveal';
 import { indexBlockDecorations } from './decoration-index';
 
 export const english: LiMRLocale = {
@@ -316,7 +317,7 @@ export class ReaderRuntime {
     return true;
   }
   start() { this.sealViewHandoff(); if (this.taskController.signal.aborted) this.taskController = new AbortController(); }
-  dispose() { this.taskController.abort(); this.resources.invalidate(); this.resourceKeys.clear(); this.annotationCreations.clear(); }
+  dispose() { this.taskController.abort(); if (this.sourceRevealFrame) cancelAnimationFrame(this.sourceRevealFrame); this.resources.invalidate(); this.resourceKeys.clear(); this.annotationCreations.clear(); }
   getResourceKey(annotation: Annotation) {
     const old = this.resourceKeys.get(annotation.id);
     if (old?.annotation === annotation) return old.key;
@@ -588,7 +589,18 @@ export class ReaderRuntime {
     if (this.documentViewport) { this.documentViewport.reveal(range); return; }
     const block = this.document.getSnapshot().blocks.find(block => block.range.end > range.start && block.range.start <= range.start);
     const element = block && this.blocks.get(block.id);
-    if (element) this.scrollToElement(element);
+    if (element) this.revealInnerSource(range, () => this.scrollToElement(element));
+  }
+  private sourceRevealFrame = 0;
+  private revealInnerSource(range: SourceRange, complete: () => void) {
+    cancelAnimationFrame(this.sourceRevealFrame);
+    const prepare = () => {
+      this.sourceRevealFrame = 0;
+      if (!this.content?.isConnected || this.signal.aborted) return;
+      if (prepareSourceReveal(this, range)) this.sourceRevealFrame = requestAnimationFrame(prepare);
+      else complete();
+    };
+    prepare();
   }
   scrollToOccurrence(id: string) {
     if (this.documentViewport) {
@@ -596,7 +608,11 @@ export class ReaderRuntime {
       if (occurrence) { this.documentViewport.reveal(occurrence.referenceRange ?? occurrence.range); return; }
     }
     const element = this.anchors.get(id);
-    if (element) this.scrollToElement(element);
+    const occurrence = this.decorations.get().occurrences.find(item => item.id === id);
+    if (element) {
+      if (occurrence) this.revealInnerSource(occurrence.referenceRange ?? occurrence.range, () => this.scrollToElement(element));
+      else this.scrollToElement(element);
+    }
   }
   /** Called by the article's React bubble handler after child controls have
    * had the opportunity to claim a click or prevent its default action. */
