@@ -163,4 +163,4 @@ export function Article({ source }: { source: string }) {
 
 默认框体向左展开并淡入，内部内容保持最终位置并被框体裁切。Loading 在左侧增加一个图标位置，复用圆环动画；延迟显示和最短持续时间避免闪烁。输入焦点和选中选项不额外添加边框，按钮与计数使用柔和主题颜色，选中态使用标题色与次要色。减少动态效果设置会禁用运动。类名和 CSS 变量见[搜索样式](styles.md#搜索样式)。
 
-[50/75 MiB 基准](../../benchmarks/search/README.md)在生产浏览器构建中记录附近搜索、继续扫描、缓存导航和主线程任务；它不替代安装后的 VS Code/Cursor 验收。`searchDocument()` 仍是对 Markdown 源码进行异步字面搜索的独立 API，不启用此阅读界面或正则能力。
+[50/75 MiB 基准](https://github.com/Linloir/LiMR/blob/main/benchmarks/search/README.md)在生产浏览器构建中记录附近搜索、继续扫描、缓存导航和主线程任务；它不替代安装后的 VS Code/Cursor 验收。`searchDocument()` 仍是对 Markdown 源码进行异步字面搜索的独立 API，不启用此阅读界面或正则能力。

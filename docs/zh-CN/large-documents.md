@@ -107,7 +107,7 @@ const override: RendererOverride = {
 
 从 1.3.10 起，代码默认完整展开（`maxExpandedLines: false`）并跟随文档滚动，展开和收起过程中也不出现内部竖向滚动条；延迟排版与按需行号装饰继续生效。宿主可主动设置正数行上限来启用块内滚动；1.3.9 的默认值为 40 行。打印恢复完整排版与行号装饰。源码定位会展开折叠块并将目标代码对齐页面或嵌套滚动容器；若宿主明确启用了限高，则先滚动代码内部。仅实际内置代码渲染器可豁免旧的 262,144 单元文本叶限制，任意替换组件仍执行原来的能力检查。应同时验证巨型代码、长文卸载、折叠/换行恢复、源码定位及滚动锚点。
 
-方案依据 [CSS containment](https://www.w3.org/TR/css-contain-2/#using-cv-auto) 保留文字供浏览器工具访问；类似 [CodeMirror](https://codemirror.net/docs/ref/#view.EditorView.viewport) 的 DOM 窗口还需配套自己的选区与查找机制，LiMR 在此保留原生文字契约。可复现数据见[代码块基准](../../benchmarks/code-blocks/README.md)。
+方案依据 [CSS containment](https://www.w3.org/TR/css-contain-2/#using-cv-auto) 保留文字供浏览器工具访问；类似 [CodeMirror](https://codemirror.net/docs/ref/#view.EditorView.viewport) 的 DOM 窗口还需配套自己的选区与查找机制，LiMR 在此保留原生文字契约。可复现数据见[代码块基准](https://github.com/Linloir/LiMR/blob/main/benchmarks/code-blocks/README.md)。
 
 ## 阅读书签
 
@@ -131,7 +131,7 @@ const override: RendererOverride = {
 
 渐进加载前缀会启用公开的 `readOnly` 视图选项；普通 Reader 也可显式使用，默认行为不变。源码及批注增删改命令统一检查只读，翻译模式、折叠、图片预览和导航仍可使用。只显示声明 `SelectionAction.readOnly: true` 的选区操作，内建复制已声明；未知插件操作等完整加载以后恢复，避免显示无法提交的写入按钮。
 
-完整浏览器测量使用 `pnpm bench --extended`，串行执行基础矩阵、24 次大输入加载、36 次三组件大文档横向比较和 36 次完整论文交互，生成双语性能报告。输入、时钟边界、Worker 与 GPU 环境、RSS/堆差异和复现命令见[性能报告](loading-performance.md)与[基准说明](../../benchmarks/README.md)。
+完整浏览器测量使用 `pnpm bench --extended`，串行执行基础矩阵、24 次大输入加载、36 次三组件大文档横向比较和 36 次完整论文交互，生成双语性能报告。输入、时钟边界、Worker 与 GPU 环境、RSS/堆差异和复现命令见[性能报告](loading-performance.md)与[基准说明](https://github.com/Linloir/LiMR/blob/main/benchmarks/README.md)。
 
 ## Session API 与自定义 Worker
 

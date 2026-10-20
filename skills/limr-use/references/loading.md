@@ -1,6 +1,6 @@
 # Loading, host progress and large-document reading
 
-Use the installed LiMR 1.3.12 declarations. `AsyncReader` loads a complete string, UTF-8 `Uint8Array`, or Blob/File; `Reader`/`Markdown` with accumulated `source` and `streaming` handle ongoing text generation. Progressive file loading is not append streaming.
+Use the installed LiMR 1.3.13 declarations. `AsyncReader` loads a complete string, UTF-8 `Uint8Array`, or Blob/File; `Reader`/`Markdown` with accumulated `source` and `streaming` handle ongoing text generation. Progressive file loading is not append streaming.
 
 ## Pick presentation and ownership
 

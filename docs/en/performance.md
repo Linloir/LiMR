@@ -107,4 +107,4 @@ pnpm exec playwright install chromium
 pnpm bench
 ```
 
-Raw data: [renderers.json](../../benchmarks/results/renderers.json) · [selection.json](../../benchmarks/results/selection.json). [Benchmark guide and individual commands](../../benchmarks/README.md).
+Raw data: [renderers.json](https://github.com/Linloir/LiMR/blob/main/benchmarks/results/renderers.json) · [selection.json](https://github.com/Linloir/LiMR/blob/main/benchmarks/results/selection.json). [Benchmark guide and individual commands](https://github.com/Linloir/LiMR/blob/main/benchmarks/README.md).

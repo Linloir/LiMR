@@ -109,7 +109,7 @@ Since 1.3.9, built-in code exceeding 400 source lines or 50,000 UTF-16 units use
 
 Since 1.3.10, expanded code uses its full height (`maxExpandedLines: false`) and follows document scrolling, with no inner vertical scrollbar during expansion or collapse. Deferred layout and source-line decorations remain active. The host can explicitly set a positive row limit for a local scrolling viewport; 1.3.9 used 40 rows by default. Printing restores complete layout and line decorations. Source navigation opens a folded block and aligns the requested code with the page or nested book scroller; an explicitly bounded code viewport scrolls internally first. The actual built-in code renderer is exempt from the older 262,144-unit leaf guard; arbitrary replacements still undergo the existing capability checks. Test huge code together with window eviction, restored fold/wrap choices, source navigation and scroll anchoring.
 
-The approach follows [CSS containment](https://www.w3.org/TR/css-contain-2/#using-cv-auto), which retains skipped text for browser tools. An editor-style DOM window such as [CodeMirror](https://codemirror.net/docs/ref/#view.EditorView.viewport) would require its own selection/search machinery; LiMR keeps its native text contract. See the [reproducible code benchmark](../../benchmarks/code-blocks/README.md).
+The approach follows [CSS containment](https://www.w3.org/TR/css-contain-2/#using-cv-auto), which retains skipped text for browser tools. An editor-style DOM window such as [CodeMirror](https://codemirror.net/docs/ref/#view.EditorView.viewport) would require its own selection/search machinery; LiMR keeps its native text contract. See the [reproducible code benchmark](https://github.com/Linloir/LiMR/blob/main/benchmarks/code-blocks/README.md).
 
 ## Reading bookmarks
 
@@ -127,7 +127,7 @@ A browser's `beforeprint` event cannot await asynchronous work. Windowed Ctrl+P/
 
 Run `node benchmarks/large-reading/run.mjs` for a frozen production React build with a real browser worker and the complete reader. `LIMR_LARGE_CASES=novels` measures 50/75 MiB novels; `LIMR_LARGE_CASES=papers` measures both sample papers and serves their actual assets from `../test-reading`. Loading frame intervals and long tasks, the ready transition, steady/fast scrolling, source seeks and resize are reported separately under `/tmp/limr-large-reading-*.json`. These are local machine measurements; rAF intervals are not physical input-to-photon latency.
 
-Use `pnpm bench --extended` for the complete browser matrix: baseline suites, 24 large-input loads, 36 large-document cross-renderer trials and 36 full-paper interaction runs, executed serially to generate bilingual reports. See [the report](loading-performance.md) and [benchmark guide](../../benchmarks/README.md) for inputs, timing boundaries, worker/GPU environment, RSS versus heap and reproduction commands.
+Use `pnpm bench --extended` for the complete browser matrix: baseline suites, 24 large-input loads, 36 large-document cross-renderer trials and 36 full-paper interaction runs, executed serially to generate bilingual reports. See [the report](loading-performance.md) and [benchmark guide](https://github.com/Linloir/LiMR/blob/main/benchmarks/README.md) for inputs, timing boundaries, worker/GPU environment, RSS versus heap and reproduction commands.
 
 ## Inputs, edits and plugin updates
 

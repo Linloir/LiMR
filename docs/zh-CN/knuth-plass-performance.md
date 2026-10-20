@@ -87,4 +87,4 @@ pnpm preview:playground --port 4174
 pnpm bench:layout
 ```
 
-[kp-algorithm.json](../../benchmarks/results/kp-algorithm.json) · [kp-browser.json](../../benchmarks/results/kp-browser.json) · [基准方法](../../benchmarks/README.md) · [渲染性能](performance.md).
+[kp-algorithm.json](https://github.com/Linloir/LiMR/blob/main/benchmarks/results/kp-algorithm.json) · [kp-browser.json](https://github.com/Linloir/LiMR/blob/main/benchmarks/results/kp-browser.json) · [基准方法](https://github.com/Linloir/LiMR/blob/main/benchmarks/README.md) · [渲染性能](performance.md).

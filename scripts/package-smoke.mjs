@@ -17,11 +17,16 @@ const contents = new Set(run('tar', ['-tzf', join(temporary, archive)], process.
 for (const path of ['README.md', 'README.en.md', 'docs/zh-CN/modules.md', 'docs/en/modules.md', 'docs/assets/source.svg',
   'dist/worker.js', 'dist/worker.d.ts', 'dist/worker-api.js', 'dist/worker-api.d.ts', 'dist/THIRD_PARTY_LICENSES.txt', 'docs/en/large-documents.md', 'docs/zh-CN/large-documents.md',
   'docs/zh-CN/performance.md', 'docs/en/performance.md', 'docs/zh-CN/knuth-plass-performance.md', 'docs/en/knuth-plass-performance.md',
-  'docs/en/search.md', 'docs/zh-CN/search.md', 'benchmarks/search/README.md', 'benchmarks/results/search-1.3.11.json',
-  'docs/assets/performance/limr-midpoint.png', 'docs/assets/performance/markstream-midpoint.png', 'benchmarks/README.md', 'benchmarks/results/renderers.json',
+  'docs/en/search.md', 'docs/zh-CN/search.md',
+  'docs/assets/performance/limr-midpoint.png', 'docs/assets/performance/markstream-midpoint.png',
   'skills/limr-use/SKILL.md', 'skills/limr-use/references/search.md', 'skills/limr-plugin-development/SKILL.md',
   'skills/limr-plugin-development/references/search.md', 'skills/limr-plugin-development/assets/plugin-template/package.json']) {
   if (!contents.has(`package/${path}`)) throw new Error(`Missing package resource: ${path}`);
+}
+for (const path of contents) {
+  if (/^package\/(?:benchmarks|artifacts|tests|test-results|playground|node_modules)\//.test(path)) {
+    throw new Error(`Development-only resource in package: ${path}`);
+  }
 }
 // Build the distributed template from the archive, independent of repository aliases.
 const unpacked = join(temporary, 'unpacked'); await mkdir(unpacked);

@@ -63,7 +63,7 @@ LiMR **1.3.0** · React **19.3.0** · Chromium **156.0.8078.4** · Node **v20.19
 
 横向矩阵环境：**headless**；GPU renderer 为 `ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver-5.0.0)`，compositing 为 `disabled_software`。
 
-[large-comparison.json](../../benchmarks/results/large-comparison.json)
+[large-comparison.json](https://github.com/Linloir/LiMR/blob/main/benchmarks/results/large-comparison.json)
 
 ## 输入与测试边界
 
@@ -153,4 +153,4 @@ BENCH_READING_SOURCE_DIR=/path/to/test-reading pnpm bench --extended
 BENCH_EXTENDED=1 pnpm bench:report
 ```
 
-[loading.json](../../benchmarks/results/loading.json) · [reading.json](../../benchmarks/results/reading.json) · [测试说明](../../benchmarks/README.md) · [加载 API 与限制](large-documents.md) · [渲染与流式性能](performance.md).
+[loading.json](https://github.com/Linloir/LiMR/blob/main/benchmarks/results/loading.json) · [reading.json](https://github.com/Linloir/LiMR/blob/main/benchmarks/results/reading.json) · [测试说明](https://github.com/Linloir/LiMR/blob/main/benchmarks/README.md) · [加载 API 与限制](large-documents.md) · [渲染与流式性能](performance.md).

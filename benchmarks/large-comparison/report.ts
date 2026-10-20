@@ -53,6 +53,6 @@ export function largeComparisonSection(data: Row, zh: boolean) {
   }));
   doc += tr('\n阅读检查访问开头、中部、结尾与开头，要求正文覆盖视口、开头标记正确、末尾标记可见。LiMR 使用公开 source 导航跨越压缩滚动范围，其他集成使用原生滚动条比例；跳转耗时不做横向排名。常速/快速各采 60 帧。RSS 无强制 GC，包含 Worker 与原生分配；rAF 不代表物理显示延迟。完整原始数据包含 GPU/浏览器身份、每次结果、错误、帧与采样轨迹。\n\n', '\nReading checks visit the start, middle, end and start, requiring viewport content, the correct opening marker and visible tail sentinel. LiMR uses public source navigation across its compressed scroll range; peers use native scrollbar fractions, so seek timings are not ranked. Steady/fast scrolling each samples 60 frames. RSS includes workers/native allocations without forced GC; rAF is not physical display latency. Raw data includes GPU/browser identity, outcomes, errors, frames and sampling traces.\n\n');
   doc += tr(`横向矩阵环境：**${first.browserIdentity.requested.mode}**；GPU renderer 为 \`${gpu?.auxAttributes?.glRenderer ?? 'unobserved'}\`，compositing 为 \`${gpu?.featureStatus?.gpu_compositing ?? 'unobserved'}\`。\n\n`, `Comparison environment: **${first.browserIdentity.requested.mode}**; GPU renderer \`${gpu?.auxAttributes?.glRenderer ?? 'unobserved'}\`, compositing \`${gpu?.featureStatus?.gpu_compositing ?? 'unobserved'}\`.\n\n`);
-  doc += '[large-comparison.json](../../benchmarks/results/large-comparison.json)\n\n';
+  doc += '[large-comparison.json](https://github.com/Linloir/LiMR/blob/main/benchmarks/results/large-comparison.json)\n\n';
   return doc;
 }

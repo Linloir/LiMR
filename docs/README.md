@@ -19,6 +19,6 @@ Documentation is organized around writing content, integrating LiMR, and develop
 
 [项目首页](../README.md) · [Project overview](../README.en.md)
 
-目录约定 / Layout: `zh-CN/` 与 `en/` 保存一一对应的正文；`assets/` 保存共享资源；本文件是唯一的跨语言索引。性能原始数据集中在 `benchmarks/results/`，不复制到文档目录。
+目录约定 / Layout: `zh-CN/` 与 `en/` 保存一一对应的正文；`assets/` 保存共享资源；本文件是唯一的跨语言索引。npm 包保留文档、Skills 与插件示例；基准脚本、样本及原始数据仅保留在[仓库的 benchmarks 目录](https://github.com/Linloir/LiMR/tree/main/benchmarks)，不随 npm 包分发。
 
-Both language directories contain matching guide pages. Shared media belongs in `assets/`; this file is the only cross-language index. Performance data stays in `benchmarks/results/` instead of being duplicated here.
+Both language directories contain matching guide pages. Shared media belongs in `assets/`; this file is the only cross-language index. The npm package retains documentation, Skills and plugin examples. Benchmark scripts, fixtures and raw results stay in the [repository's benchmarks directory](https://github.com/Linloir/LiMR/tree/main/benchmarks) and are excluded from the npm package.

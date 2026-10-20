@@ -107,4 +107,4 @@ pnpm exec playwright install chromium
 pnpm bench
 ```
 
-原始数据: [renderers.json](../../benchmarks/results/renderers.json) · [selection.json](../../benchmarks/results/selection.json). [基准说明与单项命令](../../benchmarks/README.md).
+原始数据: [renderers.json](https://github.com/Linloir/LiMR/blob/main/benchmarks/results/renderers.json) · [selection.json](https://github.com/Linloir/LiMR/blob/main/benchmarks/results/selection.json). [基准说明与单项命令](https://github.com/Linloir/LiMR/blob/main/benchmarks/README.md).

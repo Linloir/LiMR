@@ -51,7 +51,7 @@ const metric = (rows: any[], get: (r: any) => number) => med(rows.map(get));
 const range = (rows: any[], get: (r: any) => number) => `${f(metric(rows, get))} [${f(Math.min(...rows.map(get)))}–${f(Math.max(...rows.map(get)))}]`;
 const label = (name: string) => ({ limr: 'LiMR', 'react-markdown': 'react-markdown', markstream: 'Markstream' }[name] ?? name);
 const table = (headers: string[], rows: (string | number)[][]) => `| ${headers.join(' | ')} |\n| ${headers.map(() => '---').join(' | ')} |\n${rows.map(row => `| ${row.join(' | ')} |`).join('\n')}\n`;
-const raw = (name: string) => `[${name}.json](../../benchmarks/results/${name}.json)`;
+const raw = (name: string) => `[${name}.json](https://github.com/Linloir/LiMR/blob/main/benchmarks/results/${name}.json)`;
 const modes = ['standard', 'justify', 'knuth-plass'];
 for (const zh of [true, false]) {
   const locale = zh ? 'zh-CN' : 'en';
@@ -129,7 +129,7 @@ for (const zh of [true, false]) {
   ]);
   doc += tr('\n受控场景使用相同中性 CSS；丰富场景采用各自集成的样式、字体和加载策略。计时外检查正文结构与文本。原始数据提供逐次计时、资源和配置详情。\n\n', '\nControlled scenarios share neutral CSS. Rich scenarios use each integration’s styles, fonts and loading strategy. Structure and text are validated outside timing. Raw data includes per-run timings, resources and configuration.\n\n');
   doc += '```sh\npnpm install --frozen-lockfile\npnpm exec playwright install chromium\npnpm bench\n```\n\n';
-  doc += `${tr('原始数据', 'Raw data')}: ${['renderers', 'selection'].map(raw).join(' · ')}. [${tr('基准说明与单项命令', 'Benchmark guide and individual commands')}](../../benchmarks/README.md).\n`;
+  doc += `${tr('原始数据', 'Raw data')}: ${['renderers', 'selection'].map(raw).join(' · ')}. [${tr('基准说明与单项命令', 'Benchmark guide and individual commands')}](https://github.com/Linloir/LiMR/blob/main/benchmarks/README.md).\n`;
   await writeFile(`${root}/docs/${locale}/performance.md`, doc);
 
   let kp = header(tr('Knuth–Plass 排版性能', 'Knuth–Plass typography performance'), 'knuth-plass-performance');
@@ -206,7 +206,7 @@ for (const zh of [true, false]) {
   kp += environment;
   kp += tr('使用本地生产构建，按顺序执行，无 CPU 或网络降速；窄屏使用同一 Chromium 的视口模拟。P95 使用最近秩计算，算法表的 15 个样本中 P95 与最大值相同。\n\n', 'Measurements run sequentially against a local production build without CPU or network throttling. Narrow-screen results use Chromium viewport simulation. P95 uses nearest-rank calculation; with 15 algorithm samples, P95 equals the maximum.\n\n');
   kp += `\`\`\`sh\npnpm bench:kp\npnpm build:playground\npnpm preview:playground --port 4174\n# ${tr('预览服务启动后，在另一个终端执行', 'Once the preview server is ready, run in another terminal')}\npnpm bench:layout\n\`\`\`\n\n`;
-  kp += `${raw('kp-algorithm')} · ${raw('kp-browser')} · [${tr('基准方法', 'Benchmark methodology')}](../../benchmarks/README.md) · [${tr('渲染性能', 'Rendering performance')}](performance.md).\n`;
+  kp += `${raw('kp-algorithm')} · ${raw('kp-browser')} · [${tr('基准方法', 'Benchmark methodology')}](https://github.com/Linloir/LiMR/blob/main/benchmarks/README.md) · [${tr('渲染性能', 'Rendering performance')}](performance.md).\n`;
   await writeFile(`${root}/docs/${locale}/knuth-plass-performance.md`, kp);
 }
 await writeFile(`${root}/benchmarks/results/home-performance.json`, JSON.stringify({

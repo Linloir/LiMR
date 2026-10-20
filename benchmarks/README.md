@@ -1,6 +1,6 @@
 # LiMR benchmarks
 
-Reproducible production measurements of the **current source and lockfile**. Reports are generated from the checked-in raw samples. Run these commands from a repository checkout; the npm package includes reports and data for inspection.
+Reproducible production measurements of the **current source and lockfile**. Reports are generated from the checked-in raw samples. Run these commands from a repository checkout. The npm package includes the documentation reports; benchmark scripts, fixtures and raw results stay in the repository.
 
 | Directory | Responsibility |
 | --- | --- |

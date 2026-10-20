@@ -1,4 +1,4 @@
-# Reusable search interfaces (LiMR 1.3.12)
+# Reusable search interfaces (LiMR 1.3.13)
 
 Export a React component for a search UI package; a RendererExtension is unnecessary unless the package also adds syntax or rendering contracts. Applications install the component through Reader.search or place it beside Markdown in the same DocumentProvider. Set a LiMR peer dependency of at least 1.3.11 when using these exports, keep React/LiMR external, and export declarations/CSS normally.
 
