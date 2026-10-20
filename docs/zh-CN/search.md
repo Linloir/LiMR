@@ -19,6 +19,8 @@ export function Article({ source }: { source: string }) {
 
 `Reader.search` 和 `AsyncReader.search` 默认为 `false`。传入 `true` 挂载默认组件，传入 React 节点则替换界面。默认组件在所属阅读器拥有交互焦点时处理 Ctrl/Cmd+F 和 F3；在搜索输入框中，Enter 跳到下一个，Shift+Enter 跳到上一个，Escape 关闭。没有启用搜索组件时保留浏览器搜索；浏览器搜索只能看到已挂载的 DOM。
 
+关闭搜索后默认清空查询。可在 `DocumentSearch` 或 `useDocumentSearch` 上设置 `rememberQuery` 以保留内容。Playground 在搜索按钮旁的菜单中提供此设置，并在本地保存偏好。
+
 在阅读正文中选中文字后打开搜索，会自动填入选中的纯文本，不包含 Markdown 标记。Ctrl/Cmd+F 和公开的 `find()` 命令共用此行为。编辑器或搜索输入框中的选中文字不会替换查询。Playground 已启用阅读器快捷键，源码编辑器保留自身的搜索行为。
 
 默认搜索输入框支持原生 Ctrl/Cmd+Z 撤销、Ctrl+Y 或 Ctrl/Cmd+Shift+Z 重做。快捷键在搜索框内处理，不会传给宿主文档的撤销栈。
@@ -58,12 +60,13 @@ export function Article({ source }: { source: string }) {
 | --- | --- | --- |
 | `shortcuts` | DocumentSearch 为 true，Hook 为 false | 处理所属阅读器的 Ctrl/Cmd+F 和 F3 |
 | `defaultOpen` | false | 初始打开状态，不是受控属性 |
+| `rememberQuery` | false | 关闭后再次打开时保留查询，默认清空 |
 | `worker` | Blob Worker 工厂 | 稳定工厂，每个搜索会话创建新的 `SearchWorkerPort` |
 | `controller` | 由 DocumentSearch 创建 | 复用 Hook 控制器，避免创建第二个 |
 | `placement` | `"floating"` | `"inline"` 参与普通布局；floating 默认固定在右上角 |
 | `className`、`style` | — | 默认组件的样式入口 |
 
-传入 `controller` 时，请在 Hook 上配置 `shortcuts`、`defaultOpen` 和 `worker`；组件上的同名选项不会重新配置已有控制器。
+传入 `controller` 时，请在 Hook 上配置 `shortcuts`、`defaultOpen`、`rememberQuery` 和 `worker`；组件上的同名选项不会重新配置已有控制器。
 
 ## 完全替换界面
 

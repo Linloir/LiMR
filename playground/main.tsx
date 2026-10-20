@@ -25,6 +25,7 @@ import { ToolbarFixture } from './toolbar-fixture';
 const HomePage = lazy(() => import('./HomePage'));
 const storageKey = 'limr-playground-document';
 const localeStorageKey = 'limr-playground-locale';
+const searchPreferenceKey = 'limr-playground-search-remember-query';
 const asyncThreshold = 64 * 1024;
 const createDocumentWorker = () => new Worker(new URL('../src/worker.ts', import.meta.url), { type: 'module' });
 type PlaygroundStatus = '' | 'saved' | 'saveFailed' | 'noSaved' | 'restored' | 'downloaded' | 'fileFailed' | 'sourceUpdated' | 'streamComplete' | 'streamStopped' | { preset: string } | { file: string };
@@ -69,6 +70,9 @@ function App() {
   const [wrap, setWrap] = useState(false);
   const [sourceEditing, setSourceEditing] = useState(false);
   const [sidebarCollapse, setSidebarCollapse] = useState(true);
+  const [searchRememberQuery, setSearchRememberQuery] = useState(() => {
+    try { return localStorage.getItem(searchPreferenceKey) === 'true'; } catch { return false; }
+  });
   const [selection, setSelection] = useState<SelectionSnapshot | null>(null);
   const [annotations, setAnnotations] = useState<readonly Annotation[]>([]);
   const [textarea, setTextarea] = useState<HTMLTextAreaElement | null>(null);
@@ -76,7 +80,7 @@ function App() {
   const [notesEnabled, setNotesEnabled] = useState(true);
   const [assistantEnabled, setAssistantEnabled] = useState(true);
   const [inlineNotesEnabled, setInlineNotesEnabled] = useState(true);
-  const [menu, setMenu] = useState<'load' | 'plugins' | 'translation' | 'locale' | 'typography' | 'sidebarCollapse' | null>(null);
+  const [menu, setMenu] = useState<'load' | 'plugins' | 'translation' | 'locale' | 'typography' | 'sidebarCollapse' | 'search' | null>(null);
   const [status, setStatus] = useState<PlaygroundStatus>('');
   const [answerStatus, setAnswerStatus] = useState<'' | 'answering' | 'answerComplete' | 'answerFailed'>('');
   const [documentVersion, setDocumentVersion] = useState(0);
@@ -93,6 +97,7 @@ function App() {
   const localeRoot = useRef<HTMLDivElement>(null);
   const typographyRoot = useRef<HTMLDivElement>(null);
   const sidebarCollapseRoot = useRef<HTMLDivElement>(null);
+  const searchRoot = useRef<HTMLDivElement>(null);
   const workbench = useRef<HTMLDivElement>(null);
   const editorRatio = useRef(.5);
   const readerApi = useRef<PlaygroundReader | null>(null);
@@ -167,8 +172,12 @@ function App() {
     catch { /* The current locale still works when storage is unavailable. */ }
   }, [localeName]);
   useEffect(() => {
+    try { localStorage.setItem(searchPreferenceKey, String(searchRememberQuery)); }
+    catch { /* The preference still applies for the current page. */ }
+  }, [searchRememberQuery]);
+  useEffect(() => {
     if (!menu) return;
-    const root = menu === 'load' ? loadRoot : menu === 'plugins' ? pluginRoot : menu === 'locale' ? localeRoot : menu === 'typography' ? typographyRoot : menu === 'sidebarCollapse' ? sidebarCollapseRoot : translationRoot;
+    const root = menu === 'load' ? loadRoot : menu === 'plugins' ? pluginRoot : menu === 'locale' ? localeRoot : menu === 'typography' ? typographyRoot : menu === 'sidebarCollapse' ? sidebarCollapseRoot : menu === 'search' ? searchRoot : translationRoot;
     const outside = (event: PointerEvent) => { if (event.target instanceof Node && !root.current?.contains(event.target)) setMenu(null); };
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { setMenu(null); root.current?.querySelector('button')?.focus(); } };
     document.addEventListener('pointerdown', outside); document.addEventListener('keydown', escape);
@@ -217,9 +226,9 @@ function App() {
     locale: localeName === 'zh-CN' ? chinese : english, scrollRoot: editor ? preview : null, toc: !editor, sidebar: !editor,
     sidebarCollapse, actions: streaming ? [] : undefined, plugins, annotations, onAnnotationsChange: setAnnotations,
     onSelectionChange: setSelection, documentId: 'demo',
-    search: <DocumentSearch style={{ top: '7.5rem' }} />,
+    search: <DocumentSearch rememberQuery={searchRememberQuery} style={{ top: '7.5rem' }} />,
     children: <ReaderBridge connect={connectReader} />,
-  }), [sourceEditing, handleSourceChange, dark, typography, translationMode, localeName, editor, preview, sidebarCollapse, streaming, plugins, annotations, connectReader]);
+  }), [sourceEditing, handleSourceChange, dark, typography, translationMode, localeName, editor, preview, sidebarCollapse, searchRememberQuery, streaming, plugins, annotations, connectReader]);
   const loadingStatus = asyncInput !== null && !streaming && loadState?.status !== 'ready' ? loadState : undefined;
   const loadingActive = !!loadingStatus && (loadingStatus.status === 'idle' || loadingStatus.status === 'loading');
   const loadLabel = loadingStatus ? loadingStatus.status === 'error' ? copy.loadFailed : loadingStatus.status === 'cancelled' ? copy.loadCancelled : copy.loadPhases[loadingStatus.phase] : '';
@@ -235,7 +244,13 @@ function App() {
     {homeRoute ? <Suspense fallback={<div role="status" style={{ padding: '80px 36px', textAlign: 'center' }}>LiMR…</div>}><HomePage locale={localeName} theme={dark ? 'dark' : 'light'} /></Suspense> : docsRoute ? <Documentation route={docsRoute} theme={dark ? 'dark' : 'light'} /> : <>
     <div className="demo-commandbar" data-limr-appearance="classic">
       <nav className="demo-controls demo-document-controls" aria-label={copy.documentActions}>
-        <button disabled={!documentReady || streaming} onClick={() => readerApi.current?.find()} title={localeName === 'zh-CN' ? '搜索文档（Ctrl/Cmd+F）' : 'Search document (Ctrl/Cmd+F)'}><span className="limr-underline">{localeName === 'zh-CN' ? '搜索' : 'Search'}</span></button>
+        <div className="demo-dropdown demo-search-control" ref={searchRoot}>
+          <button disabled={!documentReady || streaming} onClick={() => { setMenu(null); readerApi.current?.find(); }} title={localeName === 'zh-CN' ? '搜索文档（Ctrl/Cmd+F）' : 'Search document (Ctrl/Cmd+F)'}><span className="limr-underline">{localeName === 'zh-CN' ? '搜索' : 'Search'}</span></button>
+          <button aria-label={localeName === 'zh-CN' ? '搜索设置' : 'Search settings'} aria-expanded={menu === 'search'} aria-controls="demo-search-menu" onClick={() => setMenu(value => value === 'search' ? null : 'search')}><ToolIcon name="chevron" /></button>
+          <Dropdown open={menu === 'search'} id="demo-search-menu" role="group" aria-label={localeName === 'zh-CN' ? '搜索设置' : 'Search settings'}>
+            <label className="demo-plugin-option"><input type="checkbox" checked={searchRememberQuery} onChange={event => setSearchRememberQuery(event.target.checked)} /><span><strong className="limr-underline">{localeName === 'zh-CN' ? '记住上次搜索' : 'Remember last search'}</strong><small>{localeName === 'zh-CN' ? '关闭后再次打开时，保留上次的搜索内容。' : 'Keep the query when closing and reopening search.'}</small></span></label>
+          </Dropdown>
+        </div>
         <button disabled={!documentReady} onClick={() => { setStreaming(false); setEditor(!editor); setMenu(null); if (editor) save(); }}><span className="limr-underline">{editor ? copy.save : copy.edit}</span></button>
         <span className="demo-control-divider" />
         <div className="demo-dropdown" ref={loadRoot}><button aria-expanded={menu === 'load'} aria-controls="demo-load-menu" onClick={() => setMenu(value => value === 'load' ? null : 'load')}><span className="limr-underline">{copy.load}</span><ToolIcon name="chevron" /></button>

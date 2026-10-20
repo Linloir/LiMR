@@ -13,6 +13,8 @@ export interface UseDocumentSearchOptions {
   /** Capture reader-owned Ctrl/Cmd+F and F3. Default false for custom UIs. */
   shortcuts?: boolean;
   defaultOpen?: boolean;
+  /** Retain the query when closing search. Defaults to false. */
+  rememberQuery?: boolean;
   worker?: () => SearchWorkerPort;
 }
 export interface DocumentSearchController {
@@ -42,15 +44,17 @@ export function useDocumentSearch(options: UseDocumentSearchOptions = {}): Docum
     if (runtime.configuration.get().provisional) return;
     const selected = seedSelection ? selectedSearchText(runtime) : '';
     if (selected) { setQuery(selected); runtime.clearSelection(); }
+    else if (!open && !options.rememberQuery) setQuery('');
     setOpen(value => { if (!value) previousFocus.current = document.activeElement; return true; });
     setFocusRequest(value => value + 1);
-  }, [runtime]);
+  }, [runtime, open, options.rememberQuery]);
   const show = useCallback(() => reveal(true), [reveal]);
   const close = useCallback(() => {
     session.current?.dispose(); session.current = null;
     setOpen(false);
+    if (!options.rememberQuery) setQuery('');
     if (previousFocus.current instanceof HTMLElement && previousFocus.current.isConnected) previousFocus.current.focus({ preventScroll: true });
-  }, []);
+  }, [options.rememberQuery]);
   const publish = useCallback((search: ReadingSearch, index: number, navigate = false) => {
     if (session.current !== search) return;
     active.current = index; setCurrent(index); setMatches(search.matches.map(match => match.range)); setPartial(search.partial);

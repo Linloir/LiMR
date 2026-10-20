@@ -19,6 +19,8 @@ export function Article({ source }: { source: string }) {
 
 `Reader.search` and `AsyncReader.search` default to `false`. Passing `true` mounts the default component; passing a React node replaces it. The default component handles Ctrl/Cmd+F and F3 while its reader owns the interaction. Its input supports Enter for next, Shift+Enter for previous and Escape to close. A disabled search component leaves browser find available; browser find only sees mounted DOM.
 
+Closing search clears its query by default. Set `rememberQuery` on `DocumentSearch` or `useDocumentSearch` to retain it. Playground exposes this in the menu beside Search and saves the preference locally.
+
 Opening search with selected reader text fills the query with that plain text, without Markdown delimiters. This works with Ctrl/Cmd+F and the public `find()` command. Text selected inside an editor or the search field does not replace the query. Playground enables the reader shortcut; the source editor keeps its own find behavior.
 
 The default search input supports native Ctrl/Cmd+Z undo, Ctrl+Y or Ctrl/Cmd+Shift+Z redo. These keys stay inside search and do not reach a host document undo stack.
@@ -58,12 +60,13 @@ Mount one search controller and one primary Markdown per provider. Omit `Markdow
 | --- | --- | --- |
 | `shortcuts` | `true` on DocumentSearch; `false` on the hook | Handle reader-owned Ctrl/Cmd+F and F3 |
 | `defaultOpen` | `false` | Initial open state, not a controlled prop |
+| `rememberQuery` | `false` | Keep the query when closing/reopening search |
 | `worker` | Blob Worker factory | Stable factory returning a fresh `SearchWorkerPort` per search session |
 | `controller` | Created by DocumentSearch | Reuse a hook's controller instead of creating another one |
 | `placement` | `"floating"` | `"inline"` participates in normal layout; floating anchors at the top right |
 | `className`, `style` | — | Standard component styling |
 
-When passing `controller`, configure `shortcuts`, `defaultOpen` and `worker` on the hook. Those component options do not reconfigure an existing controller.
+When passing `controller`, configure `shortcuts`, `defaultOpen`, `rememberQuery` and `worker` on the hook. Those component options do not reconfigure an existing controller.
 
 ## Replace the interface
 

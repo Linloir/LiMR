@@ -65,3 +65,31 @@ test('search undo and redo use native input history without reaching the host', 
   expect(await page.evaluate(() => (window as any).reading.runtime.document.getSnapshot().source))
     .toBe('# Start\n\nSmall initial document.');
 });
+
+test('Playground clears search by default and persists its optional remember setting', async ({ page }) => {
+  await page.goto('/#/playground');
+  const open = page.getByRole('button', { name: '搜索', exact: true }), input = page.locator('.limr-document-search input');
+  await open.click();
+  await input.fill('first query');
+  await page.keyboard.press('Escape');
+  await open.click();
+  await expect(input).toHaveValue('');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '搜索设置' }).click();
+  await page.getByRole('checkbox', { name: '记住上次搜索' }).check();
+  await open.click();
+  await input.fill('remembered query');
+  await page.keyboard.press('Escape');
+  await open.click();
+  await expect(input).toHaveValue('remembered query');
+  await page.keyboard.press('Escape');
+  await page.reload();
+  await page.getByRole('button', { name: '搜索设置' }).click();
+  await expect(page.getByRole('checkbox', { name: '记住上次搜索' })).toBeChecked();
+  await page.getByRole('checkbox', { name: '记住上次搜索' }).uncheck();
+  await open.click();
+  await input.fill('cleared again');
+  await page.keyboard.press('Escape');
+  await open.click();
+  await expect(input).toHaveValue('');
+});

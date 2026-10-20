@@ -22,6 +22,8 @@ button:disabled { cursor: default; opacity: .45; }
 .demo-control-divider { width: 1px; height: 18px; margin: 0 6px; background: var(--demo-line); }
 .demo-session-controls [aria-pressed='true'] { color: var(--limr-accent, #8a7865); }
 .demo-dropdown { position: relative; }
+.demo-search-control { display: flex; align-items: center; }
+.demo-search-control > button:last-of-type { padding-inline: 4px; }
 .demo-dropdown > button svg { width: 13px; height: 13px; transition: transform 360ms var(--limr-ease); }
 .demo-dropdown > button[aria-expanded='true'] svg { transform: rotate(180deg); }
 .demo-dropdown-menu { position: absolute; z-index: 20; top: calc(100% + 8px); left: 0; width: 250px; max-width: calc(100vw - 32px); max-height: min(580px, calc(100dvh - 160px)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--demo-muted) transparent; padding: 6px; border: 1px solid var(--demo-line); border-radius: 5px; background: var(--demo-paper); box-shadow: 0 8px 30px #40392d18; clip-path: inset(0 0 100% 0 round 5px); opacity: 0; transition: clip-path 360ms var(--limr-ease), opacity 220ms var(--limr-ease); }
