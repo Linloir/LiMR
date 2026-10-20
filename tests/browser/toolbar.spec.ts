@@ -67,6 +67,35 @@ test('hover panels preserve input and captured text, share errors, and support k
   await expect(toolbar).toHaveCount(0);
 });
 
+test('hover panels animate in both directions and reverse an interrupted exit', async ({ page }) => {
+  await page.goto('/?fixture=toolbar'); await select(page);
+  const toolbar = page.getByRole('toolbar'), tool = toolbar.getByRole('button', { name: 'Custom tool', exact: true });
+  const collapse = toolbar.locator('.limr-toolbar-panel-collapse'), panel = toolbar.locator('.limr-toolbar-panel');
+  await tool.hover();
+  await expect(collapse).toHaveAttribute('data-open');
+  await expect.poll(() => collapse.evaluate(element => element.getAnimations().length)).toBe(0);
+  const height = (await collapse.boundingBox())!.height;
+  expect(height).toBeGreaterThan(30);
+  await page.mouse.move(1, 1);
+  await expect(collapse).not.toHaveAttribute('data-open');
+  await expect(collapse).toHaveAttribute('inert');
+  const exit = await collapse.evaluate(element => {
+    const animation = element.getAnimations().find(animation => (animation as CSSTransition).transitionProperty === 'grid-template-rows');
+    if (!animation) throw new Error('Missing panel exit transition');
+    animation.pause(); animation.currentTime = Number(animation.effect!.getTiming().duration) / 2;
+    return element.getBoundingClientRect().height;
+  });
+  expect(exit).toBeGreaterThan(0); expect(exit).toBeLessThan(height);
+  await expect(panel).toBeAttached();
+  await tool.hover();
+  await expect(collapse).toHaveAttribute('data-open');
+  await expect(collapse).not.toHaveAttribute('inert');
+  await expect(toolbar.getByRole('textbox', { name: 'Panel input' })).toBeVisible();
+  await page.mouse.move(1, 1);
+  await expect(panel).toHaveCount(0);
+  await expect.poll(() => collapse.evaluate(element => element.getBoundingClientRect().height)).toBe(0);
+});
+
 test('overlapping controlled highlights hit the top layer and edit in place without hiding text', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/?fixture=toolbar&controlled');

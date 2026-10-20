@@ -471,13 +471,14 @@
   .limr-tool-icon :where(div,span,i,b,strong,em) { display: inline-flex; align-items: center; justify-content: center; font-size: inherit !important; line-height: 1 !important; }
   /* Only the actions determine toolbar width. Panels, hints and errors fill
      that width without contributing their own intrinsic text width. */
-  .limr-toolbar-panel,.limr-toolbar-delete-warning,.limr-toolbar-selection-hint,.limr-action-error { contain: inline-size; min-width: 0; align-self: stretch; overflow-wrap: anywhere; }
-  .limr-toolbar-panel { display: flex; min-height: 0; max-height: var(--limr-toolbar-panel-height, 260px); overflow: hidden; text-align: start; margin-top: 4px; border-top: 1px solid var(--limr-toolbar-border, var(--limr-border, #e5e2dc)); animation: limr-tool-float 300ms cubic-bezier(.16,1,.3,1) both, limr-tool-fade 220ms ease 35ms both; }
+  .limr-toolbar-panel-collapse,.limr-toolbar-panel,.limr-toolbar-delete-warning,.limr-toolbar-selection-hint,.limr-action-error { contain: inline-size; min-width: 0; align-self: stretch; overflow-wrap: anywhere; }
+  .limr-toolbar-panel { display: flex; min-height: 0; max-height: var(--limr-toolbar-panel-height, 260px); overflow: hidden; text-align: start; margin-top: 4px; border-top: 1px solid var(--limr-toolbar-border, var(--limr-border, #e5e2dc)); }
   .limr-toolbar-panel .limr-overlay-content { padding: 10px 9px 4px; scroll-padding-block: 8px; }
   .limr-toolbar-panel .limr-overlay-scroll { width: 100%; min-width: 0; }
   .limr-toolbar-panel .limr-overlay-scroll-inner { width: 100%; min-width: 0; overflow-wrap: anywhere; }
   .limr-toolbar-panel :where(input,textarea,select,img) { max-width: 100%; }
-  [data-placement^='top'] .limr-toolbar-panel { order: -1; border-top: 0; border-bottom: 1px solid var(--limr-toolbar-border, var(--limr-border, #e5e2dc)); margin-top: 0; margin-bottom: 4px; }
+  [data-placement^='top'] .limr-toolbar-panel-collapse { order: -1; }
+  [data-placement^='top'] .limr-toolbar-panel { border-top: 0; border-bottom: 1px solid var(--limr-toolbar-border, var(--limr-border, #e5e2dc)); margin-top: 0; margin-bottom: 4px; }
   .limr-toolbar-swatch { position: relative; width: 24px; height: 24px; margin: 3px 12px 3px 5px; padding: 0; border: 1px solid color-mix(in srgb, var(--swatch) 60%, transparent); border-radius: var(--limr-toolbar-swatch-radius, 4px); background: color-mix(in srgb, var(--swatch) 30%, transparent); transition: scale 240ms var(--limr-ease); --limr-highlight: var(--swatch); }
   .limr-toolbar-swatch:hover { scale: 1.07; }
   .limr-toolbar-swatch::after { content: ''; position: absolute; right: -9px; top: 1px; height: 20px; border-right: 1px solid var(--limr-border, #e5e2dc); }

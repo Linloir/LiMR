@@ -21,6 +21,23 @@ export interface SelectionToolbarProps extends StyledProps {
 }
 const defaults = [highlightPalette(), highlightSelection(), copyText(), deleteAnnotations()];
 
+function ToolbarPanel({ action, id, context, label }: {
+  action: SelectionAction | undefined; id: string;
+  context: (action: SelectionAction) => ToolbarActionContext;
+  label: (action: SelectionAction) => string;
+}) {
+  // Retain the last action through exit. Collapse releases its controls after
+  // the animation, and can reverse an interrupted close without remounting.
+  const [retained, setRetained] = useState(action);
+  if (action && action !== retained) setRetained(action);
+  const current = action ?? retained;
+  return <Collapse open={!!action} className="limr-toolbar-panel-collapse">
+    {current && <div id={id} className="limr-toolbar-panel" key={current.id} role="group" aria-label={label(current)}>
+      <OverlayScrollArea active={!!action} label={label(current)}>{current.renderExpanded!(context(current))}</OverlayScrollArea>
+    </div>}
+  </Collapse>;
+}
+
 export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, className = '', style, render }: SelectionToolbarProps) {
   const runtime = useRuntime();
   const appearance = useAppearance(), theme = useTheme();
@@ -268,7 +285,7 @@ export function SelectionToolbar({ actions, portalRoot, maxPanelHeight = 260, cl
         </button>}
       </div>)}</div>
       {selectionHint && <p className="limr-toolbar-selection-hint" role="status">{selectionHint}</p>}
-      {expandedAction && <div id={panelId} className="limr-toolbar-panel" key={expandedAction.id} role="group" aria-label={label(expandedAction)}><OverlayScrollArea active label={label(expandedAction)}>{expandedAction.renderExpanded!(actionContext(expandedAction))}</OverlayScrollArea></div>}
+      <ToolbarPanel key={selectionKey} action={expandedAction} id={panelId} label={label} context={actionContext} />
       {hint && <Collapse open={deleteHintOpen} keepMounted className="limr-toolbar-delete-warning"><p id={`${panelId}-delete`} className="limr-toolbar-delete-hint">{hint}</p></Collapse>}
       {error && <span role="alert" className="limr-action-error">{error}</span>}
     </div>
