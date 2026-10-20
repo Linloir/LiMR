@@ -13,7 +13,8 @@ test('code controls fold, wrap and copy full source with balanced button insets 
   await expect(page.locator('.limr-code-block').last().locator('.limr-code-fold')).toHaveCount(0);
   await expect(pre).toHaveClass('shiki');
   const closedHeight = (await pre.boundingBox())!.height;
-  expect(await pre.locator('code').evaluate(code => code.clientHeight / parseFloat(getComputedStyle(code).lineHeight))).toBeCloseTo(8, 1);
+  expect(await pre.evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(8, 1);
+  await expect(block.locator('.limr-code-footer')).toContainText('22 folded / 30 lines');
   const insets = await block.evaluate(block => {
     const header = block.querySelector('.limr-code-header')!.getBoundingClientRect(), last = block.querySelector('.limr-code-actions > :last-child')!.getBoundingClientRect();
     return { top: last.top - header.top, right: header.right - last.right, order: [...block.querySelectorAll('.limr-code-actions > button')].map(button => button.className) };
@@ -22,7 +23,7 @@ test('code controls fold, wrap and copy full source with balanced button insets 
   expect(insets.order[0]).toContain('limr-code-wrap'); expect(insets.order[1]).toContain('limr-code-copy'); expect(insets.order[2]).toContain('limr-code-fold');
   await fold.click(); await expect(block).not.toHaveAttribute('data-collapsed');
   await expect(fold).toHaveAttribute('aria-expanded', 'true');
-  expect((await pre.boundingBox())!.height).toBeGreaterThan(closedHeight * 2);
+  await expect.poll(async () => (await pre.boundingBox())!.height).toBeGreaterThan(closedHeight * 2);
   await expect.poll(() => fold.locator('svg').evaluate(svg => getComputedStyle(svg).transform)).toBe('matrix(-1, 0, 0, -1, 0, 0)');
   expect(await pre.evaluate(pre => pre.scrollWidth - pre.clientWidth)).toBeGreaterThan(100);
   await block.locator('.limr-code-wrap').click();
@@ -32,7 +33,40 @@ test('code controls fold, wrap and copy full source with balanced button insets 
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(value);
   await expect(page.locator('#stream-source')).toHaveText(source);
   await page.emulateMedia({ media: 'print' });
-  await expect(pre.locator('code')).toHaveCSS('max-height', 'none');
+  await expect(pre).toHaveCSS('max-height', 'none');
+  await expect(block.locator('.limr-code-footer')).toBeHidden();
+});
+
+test('folded footer and body animate in both directions and can reverse without losing content', async ({ page }) => {
+  await page.goto('/?fixture=streaming'); await page.waitForFunction(() => !!window.limrStream);
+  await page.evaluate(() => window.limrStream({ source: '```text\n' + Array.from({ length: 100 }, (_, i) => `line ${i}`).join('\n') + '\n```', streaming: false, chinese: true }));
+  const block = page.locator('.limr-code-block');
+  await expect(block.locator('.limr-code-footer')).toContainText('已折叠 92 行 / 共 100 行');
+  const sample = async (control: string) => block.evaluate(async (block, control) => {
+    const frames: { height: number; footer: number; opacity: number }[] = [], start = performance.now();
+    (block.querySelector(control) as HTMLElement).click();
+    do {
+      await new Promise(requestAnimationFrame);
+      frames.push({ height: block.querySelector('pre')!.clientHeight, footer: block.querySelector('.limr-code-footer')!.getBoundingClientRect().height,
+        opacity: Number(getComputedStyle(block.querySelector('.limr-code-footer button')!).opacity) });
+    } while (performance.now() - start < 500);
+    return frames;
+  }, control);
+  const open = await sample('.limr-code-footer button');
+  expect(new Set(open.map(frame => frame.height)).size).toBeGreaterThan(5);
+  expect(open.at(-1)!.height).toBeGreaterThan(open[0].height);
+  expect(open.at(-1)!.footer).toBe(0); expect(open.at(-1)!.opacity).toBe(0);
+  const close = await sample('.limr-code-fold');
+  expect(new Set(close.map(frame => frame.height)).size).toBeGreaterThan(5);
+  expect(close.at(-1)!.height).toBeLessThan(close[0].height);
+  expect(close.at(-1)!.footer).toBeGreaterThan(20); expect(close.at(-1)!.opacity).toBe(1);
+  await block.locator('.limr-code-fold').click(); await page.waitForTimeout(90);
+  await block.locator('.limr-code-fold').click();
+  await expect(block).toHaveAttribute('data-collapsed', 'true');
+  await expect.poll(() => block.locator('pre').evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(8, 1);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await block.locator('.limr-code-fold').click();
+  await expect.poll(() => block.locator('pre').evaluate(pre => pre.clientHeight / parseFloat(getComputedStyle(pre).lineHeight))).toBeCloseTo(40, 1);
 });
 
 test('line numbers align with wrapped source lines and do not enter selection, highlights or copy', async ({ page, context }) => {

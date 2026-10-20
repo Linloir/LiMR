@@ -5,7 +5,9 @@ import { useIsomorphicLayoutEffect, useLocale, useRendererParameter, useRuntime 
 import { CopyButton } from '../components/CopyButton';
 import { literalValue } from '../react/literal';
 import { transformCode } from './syntax-transforms';
-import { CodeViewCache, exceedsCodeLines, type CodeViewState } from './code-view-state';
+import { CodeViewCache, countCodeLines, type CodeViewState } from './code-view-state';
+import { useCodeLayout } from './code-layout';
+import { Collapse } from '../components/Collapse';
 import type { ReaderRuntime } from '../react/runtime';
 import { ToolIcon } from '../components/ToolIcon';
 
@@ -18,6 +20,9 @@ export interface CodeBlockOptions {
   collapseAfterLines?: number;
   /** Visible rows in a folded block. Defaults to 8. */
   collapsedLines?: number;
+  /** Limit expanded height to this many visual rows, then scroll locally.
+   * Defaults to 40. Set false for an unlimited expanded height. */
+  maxExpandedLines?: number | false;
   /** Initial soft wrapping. Defaults to false. */
   wrap?: boolean;
   /** Show source line numbers, excluding them from selection/copy. Defaults to false. */
@@ -42,7 +47,7 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
     const threshold = positiveLines(parameters?.collapseAfterLines ?? options.collapseAfterLines, 20);
     const previewLines = Math.min(threshold, positiveLines(parameters?.collapsedLines ?? options.collapsedLines, 8));
     const code = useMemo(() => literalValue(node), [node]);
-    const foldable = useMemo(() => exceedsCodeLines(code, threshold), [code, threshold]);
+    const total = useMemo(() => countCodeLines(code), [code]);
     const viewCache = useMemo(() => {
       let saved = views.get(runtime);
       if (!saved) { saved = new CodeViewCache(); views.set(runtime, saved); }
@@ -55,8 +60,13 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
     };
     // An unclosed streaming fence remains readable as it grows. An explicit
     // user choice still wins; the default applies when the block is complete.
-    const collapsed = foldable && (view.collapsed ?? (!pending && (parameters?.autoCollapse ?? options.autoCollapse ?? true)));
+    const shouldCollapse = view.collapsed ?? (!pending && (parameters?.autoCollapse ?? options.autoCollapse ?? true));
     const wrap = view.wrap ?? parameters?.wrap ?? options.wrap ?? false;
+    const layout = useCodeLayout({ code, total, preview: previewLines, threshold, wrap, collapsed: shouldCollapse });
+    const foldable = total > threshold || layout.visualFoldable;
+    const collapsed = foldable && shouldCollapse;
+    const expanded = parameters?.maxExpandedLines ?? options.maxExpandedLines;
+    const maxLines = expanded === false ? false : Math.max(previewLines, positiveLines(expanded, 40));
     const lineNumbers = parameters?.lineNumbers ?? options.lineNumbers ?? false;
     useIsomorphicLayoutEffect(() => { runtime.requestLayout(); }, [collapsed, wrap, lineNumbers, runtime]);
     const foldLabel = collapsed ? locale.expandCode ?? 'Expand code' : locale.collapseCode ?? 'Collapse code';
@@ -116,8 +126,9 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
     }, [code, normalized, pending, visible]);
     const tokens = result?.code === code ? result.tokens : undefined;
     const content = useMemo(() => renderValue(tokens, { lines: lineNumbers }), [renderValue, tokens, lineNumbers]);
-    return <div className="limr-code-block" ref={ref} data-collapsed={collapsed || undefined} data-wrap={wrap || undefined} data-line-numbers={lineNumbers || undefined}
-      style={{ '--limr-code-preview-lines': previewLines } as CSSProperties}>
+    const foldedText = (locale.foldedCode ?? '{hidden} folded / {total} lines').replace('{hidden}', String(layout.hidden)).replace('{total}', String(total));
+    return <div className="limr-code-block" ref={ref} data-collapsed={collapsed || undefined} data-wrap={wrap || undefined} data-line-numbers={lineNumbers || undefined} data-unbounded={maxLines === false || undefined}
+      style={{ '--limr-code-preview-lines': previewLines, '--limr-code-max-lines': maxLines || undefined } as CSSProperties}>
       <div className="limr-code-header" data-limr-ignore="true"><span>{language}</span><div className="limr-code-actions">
         <button type="button" className="limr-copy-button limr-code-wrap" aria-label={wrapLabel} title={wrapLabel} aria-pressed={wrap} aria-controls={id} onClick={() => update({ wrap: !wrap })}>
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M4 11h12a3.5 3.5 0 0 1 0 7h-5m3-3-3 3 3 3M4 16h3" /></svg>
@@ -125,7 +136,12 @@ export function codeHighlight(options: CodeHighlightOptions = {}): RendererExten
         <CopyButton value={code} className="limr-code-copy" />
         {foldable && <button type="button" className="limr-copy-button limr-code-fold" aria-label={foldLabel} title={foldLabel} aria-expanded={!collapsed} aria-controls={id} onClick={() => update({ collapsed: !collapsed })}><ToolIcon name="chevron" /></button>}
       </div></div>
-      <pre id={id} className={tokens?.length ? 'shiki' : undefined}><code>{content}</code></pre>
+      <div className="limr-code-body"><pre ref={layout.ref} id={id} className={tokens?.length ? 'shiki' : undefined} tabIndex={0}><code>{content}</code></pre></div>
+      {foldable && <Collapse open={collapsed} keepMounted className="limr-code-footer">
+        <button type="button" data-limr-ignore="true" aria-label={`${foldLabel}: ${foldedText}`} aria-controls={id} tabIndex={collapsed ? 0 : -1} onClick={() => update({ collapsed: false })}>
+          <span>{foldedText}</span><ToolIcon name="chevron" />
+        </button>
+      </Collapse>}
     </div>;
   }
   return { name: 'code-highlight', directives: ['code', 'code-highlight'], literal: true, scope: 'local', components: { code: CodeNode }, transform: transformCode };

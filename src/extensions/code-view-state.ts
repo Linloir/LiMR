@@ -23,12 +23,9 @@ export class CodeViewCache {
   }
 }
 
-/** Stop at the threshold; very large plain fences need no full line array. */
-export function exceedsCodeLines(code: string, limit: number): boolean {
-  let at = -1;
-  for (let lines = 0; lines < limit; lines++) {
-    at = code.indexOf('\n', at + 1);
-    if (at < 0) return false;
-  }
-  return true;
+/** Count once without allocating an array/string for every source line. */
+export function countCodeLines(code: string): number {
+  let lines = 1, at = -1;
+  while ((at = code.indexOf('\n', at + 1)) >= 0) lines++;
+  return lines;
 }

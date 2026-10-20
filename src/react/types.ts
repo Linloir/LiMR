@@ -256,6 +256,8 @@ export interface LiMRLocale {
   imageFill?: string; imageZoomIn?: string; imageZoomOut?: string; imageCopy?: string;
   imageLoadFailed?: string; imageLoadFailedHint?: string;
   expandCode?: string; collapseCode?: string; wrapCode?: string; unwrapCode?: string;
+  /** Template accepts {hidden} and {total}, counted in source lines. */
+  foldedCode?: string;
   translationOriginal?: string; translationTranslated?: string; translationBoth?: string;
   /** Templates accept {mode} and {next}. */
   translationSwitchLabel?: string; translationLockedLabel?: string;

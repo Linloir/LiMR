@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Markdown, codeHighlight, type MarkdownNode, type RendererParameters } from '../src';
-import { CodeViewCache, exceedsCodeLines } from '../src/extensions/code-view-state';
+import { CodeViewCache, countCodeLines } from '../src/extensions/code-view-state';
 import { literalLines } from '../src/react/literal-lines';
 
 const value = Array.from({ length: 24 }, (_, index) => `line ${index + 1}`).join('\n');
@@ -14,8 +14,10 @@ describe('code block configuration', () => {
     expect(render()).not.toContain('data-wrap="true"');
     expect(render()).not.toContain('data-line-numbers="true"');
     expect(renderToStaticMarkup(<Markdown source={'```\nshort\n```'} />)).not.toContain('limr-code-fold');
-    expect(exceedsCodeLines('one\ntwo', 2)).toBe(false);
-    expect(exceedsCodeLines('one\ntwo\nthree', 2)).toBe(true);
+    expect(countCodeLines('one\ntwo')).toBe(2);
+    expect(countCodeLines('one\ntwo\nthree')).toBe(3);
+    expect(render()).toContain('16 folded / 24 lines');
+    expect(render()).toContain('--limr-code-max-lines:40');
   });
   it('takes host parameters before plugin defaults and factory options', () => {
     const plugins = [{ name: 'code-preferences', parameters: { codeBlock: { autoCollapse: false, wrap: true, lineNumbers: true } } }];
