@@ -167,6 +167,8 @@ export function useLiMR() {
     getReadingPosition: () => captureReadingPosition(runtime),
     restoreReadingPosition: (position: import('./types').ReadingPosition) => restoreReadingPosition(runtime, position),
     clearSelection: () => runtime.clearSelection(),
+    /** Send commands to the mounted default or custom search controller. */
+    find: (command: 'open' | 'next' | 'previous' | 'close' = 'open') => runtime.searchCommand.set({ command, sequence: runtime.searchCommand.get().sequence + 1 }),
     invalidatePresentation: () => runtime.presentation.set(runtime.presentation.get() + 1),
     preparePrint: (options?: import('./document-print').PreparePrintOptions) => import('./document-print').then(module => module.prepareDocumentPrint(runtime, options)),
     scrollToHeading: (id: string) => runtime.scrollToHeading(id),

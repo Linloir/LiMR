@@ -110,6 +110,7 @@ export class ReaderRuntime {
   readonly viewport = new Store(0);
   /** Visible text/state changes, separate from high-frequency geometry updates. */
   readonly presentation = new Store(0);
+  readonly searchCommand = new Store<{ command: 'open' | 'next' | 'previous' | 'close'; sequence: number }>({ command: 'close', sequence: 0 });
   readonly documentOffset = new Store(0);
   /** Cumulative native scroll compensation from virtual block measurements.
    * Viewport-locked UI follows these corrections, independently of user scroll. */

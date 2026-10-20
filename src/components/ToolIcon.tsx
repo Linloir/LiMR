@@ -1,6 +1,6 @@
 import type { SVGProps } from 'react';
 
-export type ToolIconName = 'eye' | 'eye-off' | 'question' | 'highlight' | 'edit' | 'close' | 'copy' | 'background' | 'underline' | 'dotted' | 'wavy' | 'chevron' | 'check' | 'trash' | 'note' | 'footnote' | 'comment' | 'sparkles' | 'zoom-in' | 'zoom-out' | 'source' | 'image' | 'image-error';
+export type ToolIconName = 'eye' | 'eye-off' | 'question' | 'highlight' | 'edit' | 'close' | 'copy' | 'background' | 'underline' | 'dotted' | 'wavy' | 'chevron' | 'check' | 'trash' | 'note' | 'footnote' | 'comment' | 'sparkles' | 'zoom-in' | 'zoom-out' | 'source' | 'image' | 'image-error' | 'regex' | 'match-case';
 
 /** A shared optical grid for the built-in tools and example plugins. */
 export function ToolIcon({ name, ...props }: SVGProps<SVGSVGElement> & { name: ToolIconName }) {
@@ -11,6 +11,8 @@ export function ToolIcon({ name, ...props }: SVGProps<SVGSVGElement> & { name: T
     {name === 'highlight' && <><path d="m8 15 7.6-9a2 2 0 0 1 2.8-.2l.8.7a2 2 0 0 1 .2 2.8L12 18l-4-3Z" /><path d="m8 15-2 3 3 1 3-1M4 21h10M14 8l4 3.5" /></>}
     {name === 'edit' && <><path d="m14.5 5.5 4 4M4.5 19.5l4.5-1 11-11a2.1 2.1 0 0 0 0-3 2.1 2.1 0 0 0-3 0l-11 11-1.5 4Z" /></>}
     {name === 'close' && <path d="m6 6 12 12M18 6 6 18" />}
+    {name === 'regex' && <><circle cx="5.5" cy="17.5" r="1.4" fill="currentColor" stroke="none" /><path d="M16 4v12m-5.2-9 10.4 6m-10.4 0 10.4-6" /></>}
+    {name === 'match-case' && <><path d="m2.5 18 5-12 5 12M4 14h7m5-3c5-2 5 1 5 3v4m0-5c-6-1-7 6-1 4" /></>}
     {name === 'copy' && <><rect x="8.5" y="8" width="10.5" height="12" rx="3" /><path d="M15.5 8V6.8A2.8 2.8 0 0 0 12.7 4H7A3 3 0 0 0 4 7v6a3 3 0 0 0 3 3h1.5" /></>}
     {(name === 'zoom-in' || name === 'zoom-out') && <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.4 15.4 4.6 4.6M7.5 10.5h6" />{name === 'zoom-in' && <path d="M10.5 7.5v6" />}</>}
     {name === 'source' && <><path d="m7 7-4 5 4 5m10-10 4 5-4 5m-4-13-2 16" /></>}

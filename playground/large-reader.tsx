@@ -40,7 +40,7 @@ audit.prepare = (mib?: number): Blob | undefined => {
 audit.render = ({ source, mib, input: suppliedInput, mode = 'blocking', typography = 'standard', automaticWindowing = false, holdCompletion = false, ...options }: { source?: string; mib?: number; mode?: 'blocking' | 'progressive'; automaticWindowing?: boolean; holdCompletion?: boolean } & Partial<AsyncReaderProps>) => {
   const input = suppliedInput ?? audit.prepare(mib) ?? source ?? '# Start\n\nSmall initial document.';
   audit.history = []; audit.started = performance.now(); audit.capability = undefined;
-  root.render(<AsyncReader {...options} input={input} loading={{ worker: holdCompletion ? heldWorker : worker, mode, fallback: 'error' }} typography={typography} virtualization={options.virtualization ?? (automaticWindowing ? undefined : true)} onVirtualizationChange={capability => { audit.capability = capability; }}
+  root.render(<AsyncReader search {...options} input={input} loading={{ worker: holdCompletion ? heldWorker : worker, mode, fallback: 'error' }} typography={typography} virtualization={options.virtualization ?? (automaticWindowing ? undefined : true)} onVirtualizationChange={capability => { audit.capability = capability; }}
     onLoadStateChange={(state, controls) => { audit.state = state; audit.controls = controls; audit.history.push({ at: performance.now(), status: state.status, phase: state.phase, overallProgress: state.overallProgress, complete: state.complete, prefix: !state.complete && !!state.document }); }}><AuditBridge /></AsyncReader>);
 };
 function Lifecycle({ blob, echo }: { blob: boolean; echo: boolean }) {

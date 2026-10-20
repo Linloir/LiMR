@@ -20,6 +20,9 @@ export interface ReaderProps extends Omit<DocumentProviderProps, 'children'>, St
   actions?: readonly SelectionAction[];
   toc?: boolean;
   sidebar?: boolean;
+  /** Opt in to reading-text search, or supply a custom search component.
+   * Default false preserves native browser find (which only sees mounted DOM). */
+  search?: boolean | ReactNode;
   /** Fold crowded consecutive annotation ranges; default false. */
   sidebarCollapse?: boolean;
   followOutput?: boolean;
@@ -27,13 +30,12 @@ export interface ReaderProps extends Omit<DocumentProviderProps, 'children'>, St
   /** Fill unused viewport height without deriving the layout from annotations. */
   fillHeight?: boolean;
 }
-export function Reader({ children, actions, toc = true, sidebar = true, sidebarCollapse = false, followOutput = false, sidebarBreakpoint = 1120, fillHeight = true, className, style, ...provider }: ReaderProps) {
-  return <DocumentProvider {...provider}><ReaderLayout actions={actions} toc={toc} sidebar={sidebar} sidebarCollapse={sidebarCollapse} followOutput={followOutput} sidebarBreakpoint={sidebarBreakpoint} fillHeight={fillHeight} className={className} style={style} />{children}</DocumentProvider>;
+export function Reader({ children, actions, toc = true, sidebar = true, search = false, sidebarCollapse = false, followOutput = false, sidebarBreakpoint = 1120, fillHeight = true, className, style, ...provider }: ReaderProps) {
+  return <DocumentProvider {...provider}><ReaderLayout actions={actions} toc={toc} sidebar={sidebar} search={search} sidebarCollapse={sidebarCollapse} followOutput={followOutput} sidebarBreakpoint={sidebarBreakpoint} fillHeight={fillHeight} className={className} style={style} />{children}</DocumentProvider>;
 }
-function ReaderLayout({ actions, toc, sidebar, sidebarCollapse, followOutput, sidebarBreakpoint, fillHeight, className, style }: Pick<ReaderProps, 'actions' | 'toc' | 'sidebar' | 'sidebarCollapse' | 'followOutput' | 'className' | 'style' | 'fillHeight'> & { sidebarBreakpoint: number }) {
+function ReaderLayout({ actions, toc, sidebar, search, sidebarCollapse, followOutput, sidebarBreakpoint, fillHeight, className, style }: Pick<ReaderProps, 'actions' | 'toc' | 'sidebar' | 'search' | 'sidebarCollapse' | 'followOutput' | 'className' | 'style' | 'fillHeight'> & { sidebarBreakpoint: number }) {
   const runtime = useRuntime();
   const scrollRoot = useStoreSelector(runtime.configuration, config => config.scrollRoot);
-  const windowed = useStoreSelector(runtime.configuration, config => !!config.virtualization);
   const provisional = useStoreSelector(runtime.configuration, config => !!config.provisional);
   const streaming = useDocumentSelector(document => document.streaming);
   const layout = useStoreSelector(runtime.layout, value => value);
@@ -106,7 +108,7 @@ function ReaderLayout({ actions, toc, sidebar, sidebarCollapse, followOutput, si
     {sidebarVisible && <AnnotationSidebar collapseOverflow={sidebarCollapse} />}
     <AnnotationOverlay disabled={sidebarVisible} />
     <SelectionToolbar actions={actions} />
-    <DocumentSearch />
+    {search === true ? <DocumentSearch /> : search || null}
     {(provisional || streaming) && <ProvisionalPrintGuard />}
   </div>;
 }

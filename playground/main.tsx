@@ -1,7 +1,7 @@
 import { StreamingFixture } from './streaming-fixture';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
-import { AsyncReader, Reader, ToolIcon, chinese, english, useLiMR, type Annotation, type AsyncReaderLoadControls, type DocumentInput, type DocumentSessionState, type ReaderProps, type SelectionSnapshot, type TypographyMode, type TranslationMode } from '../src';
+import { AsyncReader, Reader, DocumentSearch, ToolIcon, chinese, english, useLiMR, type Annotation, type AsyncReaderLoadControls, type DocumentInput, type DocumentSessionState, type ReaderProps, type SelectionSnapshot, type TypographyMode, type TranslationMode } from '../src';
 import { Dropdown } from './Dropdown';
 import { Documentation, docsHref, readDocsRoute } from './Documentation';
 import { MediaAnnotationFixture, MediaFixture, TranslationDetailsFixture, TranslationSelectionFixture } from './media-fixture';
@@ -44,7 +44,8 @@ function savedDocument(): { source: string; annotations: readonly Annotation[] }
   } catch { /* A fresh document remains usable if browser storage is unavailable. */ }
   return null;
 }
-function ReaderBridge({ connect }: { connect: (reader: ScrollSyncReader | null) => void }) {
+type PlaygroundReader = ScrollSyncReader & Pick<ReturnType<typeof useLiMR>, 'find'>;
+function ReaderBridge({ connect }: { connect: (reader: PlaygroundReader | null) => void }) {
   const reader = useLiMR();
   useEffect(() => { connect(reader); return () => connect(null); }, [reader, connect]);
   return null;
@@ -94,8 +95,8 @@ function App() {
   const sidebarCollapseRoot = useRef<HTMLDivElement>(null);
   const workbench = useRef<HTMLDivElement>(null);
   const editorRatio = useRef(.5);
-  const readerApi = useRef<ScrollSyncReader | null>(null);
-  const connectReader = useCallback((reader: ScrollSyncReader | null) => { readerApi.current = reader; }, []);
+  const readerApi = useRef<PlaygroundReader | null>(null);
+  const connectReader = useCallback((reader: PlaygroundReader | null) => { readerApi.current = reader; }, []);
   const inlineNotePlugin = useMemo(() => inlineNotes(), []);
   const typographyModes = [{ value: 'knuth-plass', label: 'Knuth–Plass' }, { value: 'standard', label: copy.standard }, { value: 'justify', label: copy.justified }] as const;
   const locales = [{ value: 'zh-CN', label: '中文' }, { value: 'en', label: 'English' }] as const;
@@ -216,6 +217,7 @@ function App() {
     locale: localeName === 'zh-CN' ? chinese : english, scrollRoot: editor ? preview : null, toc: !editor, sidebar: !editor,
     sidebarCollapse, actions: streaming ? [] : undefined, plugins, annotations, onAnnotationsChange: setAnnotations,
     onSelectionChange: setSelection, documentId: 'demo',
+    search: <DocumentSearch shortcuts={false} style={{ top: '7.5rem' }} />,
     children: <ReaderBridge connect={connectReader} />,
   }), [sourceEditing, handleSourceChange, dark, typography, translationMode, localeName, editor, preview, sidebarCollapse, streaming, plugins, annotations, connectReader]);
   const loadingStatus = asyncInput !== null && !streaming && loadState?.status !== 'ready' ? loadState : undefined;
@@ -233,6 +235,7 @@ function App() {
     {homeRoute ? <Suspense fallback={<div role="status" style={{ padding: '80px 36px', textAlign: 'center' }}>LiMR…</div>}><HomePage locale={localeName} theme={dark ? 'dark' : 'light'} /></Suspense> : docsRoute ? <Documentation route={docsRoute} theme={dark ? 'dark' : 'light'} /> : <>
     <div className="demo-commandbar" data-limr-appearance="classic">
       <nav className="demo-controls demo-document-controls" aria-label={copy.documentActions}>
+        <button disabled={!documentReady || streaming} onClick={() => readerApi.current?.find()} title={localeName === 'zh-CN' ? '体验 LiMR 搜索；Ctrl+F 保留浏览器搜索' : 'Try LiMR search; Ctrl+F keeps browser find'}><span className="limr-underline">{localeName === 'zh-CN' ? '搜索' : 'Search'}</span></button>
         <button disabled={!documentReady} onClick={() => { setStreaming(false); setEditor(!editor); setMenu(null); if (editor) save(); }}><span className="limr-underline">{editor ? copy.save : copy.edit}</span></button>
         <span className="demo-control-divider" />
         <div className="demo-dropdown" ref={loadRoot}><button aria-expanded={menu === 'load'} aria-controls="demo-load-menu" onClick={() => setMenu(value => value === 'load' ? null : 'load')}><span className="limr-underline">{copy.load}</span><ToolIcon name="chevron" /></button>

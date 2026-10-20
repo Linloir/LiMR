@@ -23,6 +23,11 @@
   .limr-document-search button { display: grid; flex: none; place-items: center; width: 26px; height: 26px; padding: 3px; border: 0; border-radius: 5px; background: transparent; color: inherit; cursor: pointer; }
   .limr-search-previous svg { rotate: 180deg; }
   .limr-document-search button:hover { background: #87837818; }
+  .limr-document-search button[aria-pressed="true"] { color: var(--limr-search-accent, #4285df); background: color-mix(in srgb, var(--limr-search-accent, #4285df) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--limr-search-accent, #4285df) 45%, transparent); }
+  .limr-document-search[data-placement="inline"] { position: relative; inset: auto; flex: none; }
+  .limr-document-search[data-error] { height: 78px; }
+  .limr-search-error { position: absolute; top: 44px; right: .5rem; width: calc(var(--limr-search-width) - 1rem); font-size: .75rem; color: var(--limr-error, #c74747); overflow: auto; max-height: 30px; }
+  .limr-document-search input[aria-invalid="true"] { outline: 1px solid var(--limr-error, #c74747); }
   .limr-document-search button:disabled { opacity: .35; cursor: default; }
   @media (prefers-reduced-motion: reduce) {
     .limr-document-search, .limr-search-body, .limr-search-loading { transition-duration: .01ms !important; transition-delay: 0ms !important; }
