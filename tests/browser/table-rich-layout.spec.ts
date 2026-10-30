@@ -118,3 +118,47 @@ for (const typography of ['standard', 'justify', 'knuth-plass'] as const) test(`
   await page.keyboard.press('ControlOrMeta+c');
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`$${formula}$`);
 });
+
+test('expanded cells keep the collapse marker after the last character through resize', async ({ page }, testInfo) => {
+  const source = `| ${'A long header with rich content. '.repeat(18)} **END** | Value |\n| --- | --- |\n| short | 1 |`;
+  await page.evaluate(source => window.limrStream({ source, streaming: false }), source);
+  await settled(page);
+  const table = page.locator('.limr-table-layout'), cell = table.locator('th').first();
+  await cell.getByRole('button', { name: 'Full cell content', exact: true }).click();
+  await page.getByRole('button', { name: 'Expand in table', exact: true }).click();
+  const collapse = cell.getByRole('button', { name: 'Collapse', exact: true });
+  for (const width of [600, 360, 720]) {
+    await resize(page, width);
+    const position = await collapse.evaluate(button => {
+      const content = button.closest('.limr-table-cell-content'), tail = button.closest('th')!.querySelector('strong')!;
+      const range = document.createRange(); range.selectNodeContents(tail);
+      const text = range.getClientRects()[range.getClientRects().length - 1], marker = button.getBoundingClientRect();
+      return { inline: !!content, gap: marker.left - text.right, sameLine: marker.top < text.bottom && marker.bottom > text.top };
+    });
+    expect(position.inline).toBe(true); expect(position.sameLine).toBe(true);
+    expect(position.gap).toBeGreaterThanOrEqual(0); expect(position.gap).toBeLessThan(8);
+  }
+  await testInfo.attach('collapse-after-final-character', { body: await cell.screenshot(), contentType: 'image/png' });
+  await collapse.focus(); await page.keyboard.press('Enter');
+  await expect(cell).not.toHaveAttribute('data-cell-expanded', 'true');
+  await expect(cell.getByRole('button', { name: 'Full cell content', exact: true })).toBeVisible();
+});
+
+test('clipped math remains bounded in its preview and after expanding beside a source marker', async ({ page }) => {
+  const formula = 'abcdefgh'.repeat(40);
+  const source = `| ${'Notes '.repeat(20)} $${formula}$^[An inline note] |\n| --- |\n| short |`;
+  await page.evaluate(source => window.limrStream({ source, streaming: false, parameters: { tableLayout: { maxColumnWidth: 180 } } }), source);
+  const table = page.locator('.limr-table-layout');
+  await expect(table.locator('.katex')).toHaveCount(1); await settled(page);
+  await table.getByRole('button', { name: 'Full cell content', exact: true }).click();
+  const clone = page.locator('.limr-table-full-content');
+  await expect(clone.locator('[data-limr-math-scroll]')).toHaveCount(1);
+  expect(await clone.evaluate(content => content.scrollWidth - content.clientWidth)).toBeLessThanOrEqual(1);
+  await page.getByRole('button', { name: 'Expand in table', exact: true }).click(); await settled(page);
+  const content = table.locator('th .limr-table-cell-content');
+  expect(await content.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+  await expect(content.getByRole('button', { name: 'Footnotes', exact: true })).not.toHaveAttribute('inert');
+  await expect(content.getByRole('button', { name: 'Collapse', exact: true })).toBeVisible();
+  await content.getByRole('button', { name: 'Footnotes', exact: true }).click();
+  await expect(page.locator('.limr-annotation-overlay')).toContainText('An inline note');
+});

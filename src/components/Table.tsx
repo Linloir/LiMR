@@ -346,10 +346,11 @@ function MeasuredMarkdownTable({ node, renderChildren, options: settings }: Omit
     const contentMaximum = plan && plan.contentWidths[column] < plan.widths[column] - .1 ? Math.max(1, plan.contentWidths[column] - (settings?.cellPadding ?? measured.current?.padding ?? 0)) : undefined;
     return <Tag key={cell.position?.start.offset ?? column} scope={rowIndex === 0 ? 'col' : undefined} style={{ textAlign: alignment?.[column] as CSSProperties['textAlign'] }} className="limr-table-cell" data-cell-expanded={isExpanded || undefined}>
       <div className="limr-table-cell-window" data-truncated={cut && !isExpanded || undefined} style={{ maxHeight: maximum, maxWidth: contentMaximum }}>
-        <div className="limr-table-cell-content" style={{ maxHeight: cut && !isExpanded ? maximum : undefined }}>{renderChildren(cell.children ?? [])}</div>
+        <div className="limr-table-cell-content" style={{ maxHeight: cut && !isExpanded ? maximum : undefined }}>{renderChildren(cell.children ?? [])}
+          {isExpanded && <span data-limr-ignore="true"><InlineMarker className="limr-table-cell-collapse" label={locale.collapse} color="#8a7865" aria-expanded={true}
+            onClick={() => setExpanded(old => { const next = new Set(old); next.delete(key); return next; })}><ToolIcon name="collapse" /></InlineMarker></span>}
+        </div>
         {cut && !isExpanded && <span className="limr-table-cell-reveal" data-limr-ignore="true"><span aria-hidden="true">…</span><AnnotationMarker occurrence={occurrenceFor(cell, rowIndex, column)} /></span>}
-        {isExpanded && <span className="limr-table-cell-reveal" data-limr-ignore="true"><InlineMarker className="limr-table-cell-collapse" label={locale.collapse} color="#8a7865" aria-expanded={true}
-          onClick={() => setExpanded(old => { const next = new Set(old); next.delete(key); return next; })}><ToolIcon name="collapse" /></InlineMarker></span>}
       </div>
     </Tag>;
   })}</tr>;
