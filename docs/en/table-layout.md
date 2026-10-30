@@ -22,6 +22,10 @@ Table policy is independent of typography, code wrapping and document windows. O
 
 Truncation is decided at the full content width with the suffix temporarily excluded. Emergency wrapping stays the same before and after that decision, so an existing marker cannot create or sustain its own overflow.
 
+After expansion, the collapse marker follows the final inline content and moves with it as the cell wraps. Vertical truncation compares the content and window boxes, so formula ink extending outside a complete line does not create a false overflow preview.
+
+Horizontal overflow also checks logical text and atomic-content fragments before treating overhanging ink as hidden content. Resizing retains confirmed previews until the next measurement; unchanged sidebar cards stay mounted. Collapsing an expanded cell immediately restores its overflow marker and sidebar entry when needed. Action buttons wrap as whole buttons on narrow cards; their labels stay on one line and use an ellipsis if necessary.
+
 Clipped content retains its original source-bound DOM. A separate suffix track reserves space for `…` immediately followed by an ordinary annotation marker; no painted white overlay covers glyphs. Complete cells keep overflow visible so italic and accented glyph ink can extend past its measured advance width. The marker registers a view-only annotation in one batch per table. Wide readers use the existing sidebar and narrow readers use the existing overlay/card. Full content can be read there, copied as Markdown, or expanded in the original cell. The visual preview carries no duplicate source anchors, and derived annotations are neither editable source annotations nor exported Markdown.
 
 ```tsx
@@ -37,7 +41,7 @@ Regression coverage includes sparse, single-column, reference/prose and 19-colum
 
 ## Disable or replace the planner (1.3.1)
 
-This capability belongs to the default table renderer; no separate layout module is required. Omit `parameters.tableLayout` or pass `{}` to retain the 1.3.0 `layoutTable` algorithm, measurement and bounded caches. Existing numeric options remain compatible.
+This capability belongs to the default table renderer; no separate layout module is required. Omit `parameters.tableLayout` or pass `{}` to retain the built-in `layoutTable` algorithm, measurement and bounded caches. Existing numeric options remain compatible.
 
 ```tsx
 import { Reader } from '@linloir/limr';
@@ -85,6 +89,10 @@ The default path adds no per-cell validation, measurements, observers or scoring
 The table fills at least the available body width. Track widths are explicit; spare space first goes to measurable reductions in wrapping or overflow, then to a content-weighted allocation. A single column can therefore fill a wide page while its text window retains a readable maximum line length.
 
 Measurements use the rendered font, weight, letter spacing, inline padding and actual annotation-marker geometry. Markdown syntax length is not a width estimate. A short reference and its marker form an indivisible unit. Ordinary words and modest hyphenated labels such as `E-Commerce` establish a minimum readable width; short phrases are protected when two lines suffice. Header height is limited to three lines. There is no default body line-count limit.
+
+Inline math is measured from KaTeX's rendered segments, retaining its operator and explicit break boundaries. An oversized indivisible segment scrolls within the cell's content window, including a configured `maxColumnWidth`, and in full-content previews. Source selection and copying retain the complete LaTeX. For custom planners, `TableToken.width` remains the intrinsic width; optional `minWidth` describes the fixed portion when the rest can scroll locally. Hidden annotation bodies are excluded, while their visible markers occupy measured space.
+
+Available widths and layout-cache keys retain fractional CSS pixels. Fitting plans absorb up to one pixel of candidate-rounding residue into their tracks, avoiding a scrollbar with only a tiny scroll range. Native scrollbars open only for a committed scrolling plan, so old tracks cannot briefly show a scrollbar while a fitting table resizes.
 
 Glyph-width caches belong to their owning `Document`. Font loading, completion and failure invalidate them, including when all tables are unmounted during loading. Ordinary width changes still reuse font measurements. This relies on font lifecycle events; synchronous font-set or CSSOM changes that emit no such event are not detected automatically.
 
