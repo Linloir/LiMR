@@ -28,7 +28,7 @@ function measurementsFor(document: Document): DocumentMeasurements {
 const styleFor = (element: Element) => element.ownerDocument.defaultView?.getComputedStyle(element) ?? getComputedStyle(element);
 const isElement = (node: Node): node is Element => node.nodeType === 1;
 let graphemes: Intl.Segmenter | undefined;
-interface Run { start: number; end: number; text: string; font: string; spacing: number; atomicWidth?: number }
+interface Run { start: number; end: number; text: string; font: string; spacing: number; atomicWidth?: number; scrollable?: boolean }
 export interface TableMeasurement { rows: TableCellMetrics[][]; fontSize: number; padding: number; fontKey: string }
 export function tableFontKey(element: HTMLElement, overflowMarker?: HTMLElement | null): string {
   const css = styleFor(element);
@@ -37,12 +37,32 @@ export function tableFontKey(element: HTMLElement, overflowMarker?: HTMLElement 
     overflowMarker?.getBoundingClientRect().width, markerStyle?.marginLeft, markerStyle?.marginRight, measurementsFor(element.ownerDocument).generation].join('|');
 }
 
+/** scrollWidth includes italic/math ink past the logical inline box. Only
+ * suspect cells need a fragment walk; preserve atomic math and local scrollers
+ * instead of inspecting KaTeX's hidden MathML or its overflowing descendants. */
+export function tableCellOverflowsHorizontally(content: HTMLElement): boolean {
+  if (content.scrollWidth <= content.clientWidth + 1) return false;
+  const bounds = content.getBoundingClientRect(), range = content.ownerDocument.createRange();
+  const outside = (rects: DOMRectList) => [...rects].some(rect => rect.width > 0 && (rect.left < bounds.left - 1 || rect.right > bounds.right + 1));
+  const visit = (node: Node): boolean => {
+    if (node.nodeType === 3) { range.selectNodeContents(node); return outside(range.getClientRects()); }
+    if (!isElement(node)) return false;
+    const marker = node.matches('.limr-mark-wrap');
+    if (node.hasAttribute('hidden') || node.matches('.limr-collapse[inert]') || node.hasAttribute('data-limr-ignore') && !marker) return false;
+    const css = styleFor(node);
+    if (css.display === 'none' || css.position === 'absolute' || css.position === 'fixed') return false;
+    if (marker || node.matches('[data-limr-atomic],img,svg') || ['auto', 'scroll', 'hidden', 'clip'].includes(css.overflowX)) return outside(node.getClientRects());
+    return [...node.childNodes].some(visit);
+  };
+  return [...content.childNodes].some(visit);
+}
+
 /** Read each styled run once. No DOM mutation, cloning or Range-per-word reads.
  * Width changes reuse these intrinsic measurements; only content/fonts/media
  * invalidate them. Very long cells keep an estimated tail beyond the budget. */
 export function measureTable(element: HTMLTableElement, overflowMarker?: HTMLElement | null): TableMeasurement {
   const style = styleFor(element), fontSize = parseFloat(style.fontSize) || 16;
-  const styles = new Map<Element, { font: string; spacing: number; leading: number; trailing: number }>();
+  const styles = new Map<Element, { font: string; spacing: number; leading: number; trailing: number; display: string; position: string }>();
   let remaining = 160_000, wrapMeasurementBudget = 768;
   const markerStyle = overflowMarker && styleFor(overflowMarker);
   const markerWidth = overflowMarker && markerStyle
@@ -57,7 +77,7 @@ export function measureTable(element: HTMLTableElement, overflowMarker?: HTMLEle
       const css = styleFor(node);
       const inline = css.display === 'inline' || css.display === 'inline-block';
       const pixels = (value: string) => parseFloat(value) || 0;
-      saved = { font: css.font || `${css.fontStyle} ${css.fontWeight} ${css.fontSize} ${css.fontFamily}`, spacing: pixels(css.letterSpacing),
+      saved = { font: css.font || `${css.fontStyle} ${css.fontWeight} ${css.fontSize} ${css.fontFamily}`, spacing: pixels(css.letterSpacing), display: css.display, position: css.position,
         leading: inline ? pixels(css.paddingLeft) + pixels(css.borderLeftWidth) + pixels(css.marginLeft) : 0,
         trailing: inline ? pixels(css.paddingRight) + pixels(css.borderRightWidth) + pixels(css.marginRight) : 0 };
       styles.set(node, saved);
@@ -80,6 +100,8 @@ export function measureTable(element: HTMLTableElement, overflowMarker?: HTMLEle
     const visit = (node: Node) => {
       let trailing = 0;
       if (isElement(node)) {
+        const style = fontFor(node);
+        if (node.hasAttribute('hidden') || node.matches('.limr-collapse[inert]') || style.display === 'none' || style.position === 'absolute' || style.position === 'fixed') return;
         // Markers are excluded from copied source, but occupy real inline
         // space. The word joiner preserves the same preceding-word attachment
         // as InlineMarker/AnnotationMark CSS. Other ignored UI stays ignored.
@@ -95,12 +117,24 @@ export function measureTable(element: HTMLTableElement, overflowMarker?: HTMLEle
         }
         if (node.hasAttribute('data-limr-ignore')) return;
         if (node.tagName === 'BR') { runs.push({ start: text.length, end: text.length + 1, text: '\n', ...fontFor(node) }); text += '\n'; return; }
+        // KaTeX's bases already encode legal operator/allowbreak/nobreak
+        // boundaries. The enclosing inline box instead reports its *current*
+        // wrapped width, which is neither intrinsic nor stable across resize.
+        const math = node.matches('[data-limr-atomic="inline"]') ? node.querySelector(':scope > .limr-math-inline > .katex > .katex-html') : null;
+        if (math?.children.length && [...math.children].every(child => child.matches('.katex-base,.katex-newline'))) {
+          for (const child of math.children) {
+            const newline = child.classList.contains('katex-newline'), value = newline ? '\n' : '\ufffc';
+            runs.push({ start: text.length, end: text.length + 1, text: value, ...fontFor(child),
+              ...!newline && { atomicWidth: Math.max(child.getBoundingClientRect().width, child.scrollWidth), scrollable: true } });
+            text += value;
+          }
+          return;
+        }
         if (node.hasAttribute('data-limr-atomic')) {
           const surface = node.querySelector<HTMLElement>('[data-limr-selection-surface],img') ?? node as HTMLElement;
           const width = Math.max(surface.getBoundingClientRect().width, surface.scrollWidth || 0);
           runs.push({ start: text.length, end: text.length + 1, text: '\ufffc', ...fontFor(node), atomicWidth: width }); text += '\ufffc'; return;
         }
-        const style = fontFor(node);
         if (style.leading) { runs.push({ start: text.length, end: text.length + 2, text: '\ufffc\u2060', ...style, atomicWidth: style.leading }); text += '\ufffc\u2060'; }
         trailing = style.trailing;
       }
@@ -131,17 +165,21 @@ export function measureTable(element: HTMLTableElement, overflowMarker?: HTMLEle
     const emergencyWrapWidths: number[] = [];
     for (let next = breaker.nextBreak(); next; next = breaker.nextBreak()) {
       const end = next.position, piece = text.slice(from, end), trimmed = piece.replace(/\s+$/, ''), bodyEnd = from + trimmed.length;
-      let width = 0, space = 0;
+      let width = 0, space = 0, scrollableWidth = 0;
       while (runIndex < runs.length && runs[runIndex].end <= from) runIndex++;
       for (let at = runIndex; at < runs.length && runs[at].start < end; at++) {
         const run = runs[at], start = Math.max(from, run.start), stop = Math.min(end, run.end);
-        if (run.atomicWidth !== undefined) width += run.atomicWidth;
+        if (run.atomicWidth !== undefined) {
+          width += run.atomicWidth;
+          if (run.scrollable) scrollableWidth += run.atomicWidth;
+        }
         else {
           if (start < Math.min(stop, bodyEnd)) width += widthOf(text.slice(start, Math.min(stop, bodyEnd)), run.font, run.spacing);
           if (stop > Math.max(start, bodyEnd)) space += widthOf(' ', run.font, run.spacing);
         }
       }
       if (width > fontSize * 14) {
+        if (scrollableWidth) minTruncatedWidth = Math.max(minTruncatedWidth, Math.min(scrollableWidth, fontSize * 8));
         // Preserve a recognizable prefix of an otherwise unbounded token:
         // eight Latin graphemes or four full-width CJK graphemes, measured in
         // their actual styled runs. Only these exceptional tokens need the
@@ -159,7 +197,8 @@ export function measureTable(element: HTMLTableElement, overflowMarker?: HTMLEle
           let prefixWidth = 0;
           for (let at = runIndex; at < runs.length && runs[at].start < prefixEnd; at++) {
             const run = runs[at], start = Math.max(from, run.start), stop = Math.min(prefixEnd, run.end);
-            prefixWidth += run.atomicWidth ?? widthOf(text.slice(start, stop), run.font, run.spacing);
+            prefixWidth += run.scrollable ? Math.min(run.atomicWidth!, fontSize * 8)
+              : run.atomicWidth ?? widthOf(text.slice(start, stop), run.font, run.spacing);
           }
           const style = fontFor(content);
           minTruncatedWidth = Math.max(minTruncatedWidth, prefixWidth + widthOf('…', style.font, style.spacing) + markerWidth);
@@ -195,11 +234,12 @@ export function measureTable(element: HTMLTableElement, overflowMarker?: HTMLEle
           }
         }
       }
-      if (width || next.required) tokens.push({ width, space, required: next.required && end < text.length });
+      if (width || next.required) tokens.push({ width, space, required: next.required && end < text.length,
+        ...scrollableWidth > 0 && { minWidth: Math.max(0, width - scrollableWidth) } });
       naturalWidth += width + space; from = end;
     }
     const extraWidth = omitted * (text.length ? naturalWidth / text.length : fontSize * .55);
-    return { tokens, naturalWidth: naturalWidth + extraWidth, minWidth: Math.max(0, ...tokens.map(token => token.width)), lineHeight, extraWidth, minTruncatedWidth, emergencyWrapWidths };
+    return { tokens, naturalWidth: naturalWidth + extraWidth, minWidth: Math.max(0, ...tokens.map(token => token.minWidth ?? token.width)), lineHeight, extraWidth, minTruncatedWidth, emergencyWrapWidths };
   }));
   const first = element.rows[0]?.cells[0], cellStyle = first && styleFor(first);
   const padding = cellStyle ? parseFloat(cellStyle.paddingLeft) + parseFloat(cellStyle.paddingRight) : fontSize * 1.25;

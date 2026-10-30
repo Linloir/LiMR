@@ -1,7 +1,14 @@
 /** Browser-independent, bounded table layout. Width candidates represent changes
  * in wrapping; row heights are selected by the cost of empty space imposed on
  * neighbouring cells, rather than a fixed number of body lines. */
-export interface TableToken { width: number; space?: number; required?: boolean }
+export interface TableToken {
+  width: number;
+  space?: number;
+  required?: boolean;
+  /** Minimum width when part of this token can scroll locally (e.g. math).
+   * Omitted for ordinary indivisible text; width remains the intrinsic width. */
+  minWidth?: number;
+}
 export interface TableCellMetrics {
   tokens: readonly TableToken[];
   naturalWidth: number;
@@ -47,13 +54,13 @@ export type TableLayoutAlgorithm = (input: TableLayoutInput) => TableLayoutPlan;
 const finite = (value: number | undefined, fallback: number) => value !== undefined && Number.isFinite(value) && value > 0 ? value : fallback;
 const quantile = (values: readonly number[], fraction: number) => values.length ? [...values].sort((a, b) => a - b)[Math.floor((values.length - 1) * fraction)] : 0;
 
-/** Native word wrapping with indivisible tokens. A long URL/formula overflows
- * horizontally rather than being split into single letters. */
+/** Native wrapping with indivisible tokens. Locally scrolling boxes consume at
+ * most the line budget; ordinary long tokens remain whole for overflow UI. */
 export function tableCellLines(cell: TableCellMetrics, width: number): number {
   if (!cell.tokens.length && !cell.extraWidth) return 1;
   let lines = 1, used = 0, gap = 0;
   for (const token of cell.tokens) {
-    const amount = Math.max(0, token.width);
+    const amount = Math.max(0, token.minWidth === undefined ? token.width : Math.min(token.width, Math.max(width, token.minWidth)));
     if (used && used + gap + amount > width + .1) { lines++; used = 0; }
     used += (used ? gap : 0) + amount;
     gap = token.space ?? 0;

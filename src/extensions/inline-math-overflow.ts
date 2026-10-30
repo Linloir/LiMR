@@ -1,6 +1,7 @@
 // Only mounted formulas participate. One observer per module measures their
 // containing blocks on resize/font changes, never scans the document on scroll.
 const containers = new Map<HTMLElement, Set<HTMLElement>>();
+const formulaContainers = new WeakMap<HTMLElement, HTMLElement>();
 let observer: ResizeObserver | undefined;
 
 function measure(targets: Iterable<HTMLElement>, only?: HTMLElement) {
@@ -27,8 +28,19 @@ function measure(targets: Iterable<HTMLElement>, only?: HTMLElement) {
 }
 const fontsChanged = () => measure(containers.keys());
 
+/** Tables temporarily remove their suffix track to check full-width content.
+ * Update local math scrolling in that same phase, before overflow is read. */
+export function refreshInlineMath(root: HTMLElement): void {
+  const targets = new Set<HTMLElement>();
+  for (const formula of root.querySelectorAll<HTMLElement>('.limr-math-inline')) {
+    const container = formulaContainers.get(formula);
+    if (container) targets.add(container);
+  }
+  measure(targets);
+}
+
 export function observeInlineMath(formula: HTMLElement, knuthPlass: boolean): (() => void) | undefined {
-  const container = formula.closest<HTMLElement>('p,.limr-paragraph,li,td,th,figcaption,h1,h2,h3,h4,h5,h6,.limr-prose');
+  const container = formula.closest<HTMLElement>('p,.limr-paragraph,li,.limr-table-cell-content,td,th,figcaption,h1,h2,h3,h4,h5,h6,.limr-prose');
   if (!container || typeof ResizeObserver === 'undefined') return;
   // KP already budgets indivisible bases alongside the surrounding prose.
   // Headings/captions still use native wrapping even in a KP document.
@@ -39,13 +51,13 @@ export function observeInlineMath(formula: HTMLElement, knuthPlass: boolean): ((
   }
   let formulas = containers.get(container);
   if (!formulas) { formulas = new Set(); containers.set(container, formulas); observer.observe(container); }
-  formulas.add(formula); measure([container], formula);
+  formulas.add(formula); formulaContainers.set(formula, container); measure([container], formula);
   return () => {
     for (const base of formula.querySelectorAll('[data-limr-math-scroll]')) {
       base.removeAttribute('data-limr-math-scroll'); base.removeAttribute('tabindex');
     }
     formula.style.removeProperty('--limr-inline-math-width');
-    formulas.delete(formula);
+    formulas.delete(formula); formulaContainers.delete(formula);
     if (!formulas.size) { containers.delete(container); observer?.unobserve(container); }
     if (!containers.size) {
       observer?.disconnect(); observer = undefined;

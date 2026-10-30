@@ -4,6 +4,15 @@ const cell = (words: number, token = 32): TableCellMetrics => ({ tokens: Array.f
 const header = (columns: number) => Array.from({ length: columns }, () => cell(1));
 
 describe('content-aware table layout', () => {
+  it('wraps around locally scrolling math while retaining its intrinsic width and fixed suffix', () => {
+    const formula: TableCellMetrics = { tokens: [{ width: 1200, minWidth: 18 }, { width: 40 }], naturalWidth: 1240, minWidth: 40, lineHeight: 24 };
+    expect(tableCellLines(formula, 200)).toBe(2);
+    const result = layoutTable({ rows: [header(1), [formula]], availableWidth: 300 });
+    expect(result.scroll).toBe(false);
+    expect(result.clipped[1]).toEqual([false]);
+    expect(result.heights[1]).toBe(48);
+    expect(formula.tokens[0].width).toBe(1200);
+  });
   it('keeps feasible tables within the viewport and protects the configured column width', () => {
     const result = layoutTable({ rows: [header(3), [cell(2), cell(18), cell(4)], [cell(1), cell(15), cell(2)]], availableWidth: 600, options: { maxColumnWidth: 280 } });
     expect(result.scroll).toBe(false);

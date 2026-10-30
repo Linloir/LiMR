@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { AnnotationOccurrence, MarkdownNode } from '../core';
 import { layoutTable, type TableLayoutAlgorithm, type TableLayoutOptions, type TableLayoutPlan } from '../core/table-layout';
-import { measureTable, tableFontKey, type TableMeasurement } from '../react/table-measure';
+import { measureTable, tableCellOverflowsHorizontally, tableFontKey, type TableMeasurement } from '../react/table-measure';
+import { observeInlineMath, refreshInlineMath } from '../extensions/inline-math-overflow';
 import { useIsomorphicLayoutEffect, useLocale, useOwnedNodeState, useRendererParameter, useRuntime } from '../react/context';
 import { AnnotationMarker } from '../react/render';
 import type { AnnotationContentProps, AnnotationSidebarPreviewProps, AnnotationType } from '../react/types';
@@ -66,6 +67,7 @@ function TableCellContent({ data }: AnnotationContentProps<CellPreview>) {
     const css = getComputedStyle(original);
     target.style.font = css.font; target.style.lineHeight = css.lineHeight;
     target.replaceChildren(clone);
+    const mathCleanups = [...clone.querySelectorAll<HTMLElement>('.limr-math-inline')].map(formula => observeInlineMath(formula, false));
     const images = new Map(sourceImages.flatMap((source, index) => target.contains(clonedImages[index]) ? [[source, clonedImages[index]] as const] : []));
     const refresh = (image: HTMLImageElement) => {
       // The source component declares permission independently of readiness.
@@ -115,6 +117,7 @@ function TableCellContent({ data }: AnnotationContentProps<CellPreview>) {
     });
     images.forEach((_, image) => resources.observe(image, { attributes: true, attributeFilter: ['src', 'srcset', 'sizes', 'data-limr-image-preview'] }));
     return () => {
+      mathCleanups.forEach(cleanup => cleanup?.());
       resources.disconnect(); target.removeEventListener('load', resource, true); target.removeEventListener('error', resource, true);
       target.removeEventListener('click', activate); target.removeEventListener('keydown', activate); target.replaceChildren();
     };
@@ -235,11 +238,14 @@ function MeasuredMarkdownTable({ node, renderChildren, options: settings }: Omit
     const mutations = new MutationObserver(records => {
       if (records.some(record => {
         const element = record.target instanceof Element ? record.target : record.target.parentElement;
+        // Our clipping controls also use inert; they do not change intrinsic
+        // content. Collapsed rich content, however, changes when revealed.
+        if (record.type === 'attributes' && record.attributeName === 'inert' && !element?.matches('.limr-collapse')) return false;
         return element?.closest('.limr-table-cell-content') && !element.closest('[data-limr-ignore],.limr-highlight-layer,.limr-paint-layer') &&
           !(record.type === 'childList' && [...record.addedNodes, ...record.removedNodes].every(node => node instanceof Element && node.matches('.limr-highlight-layer,.limr-paint-layer')));
       })) invalidate();
     });
-    mutations.observe(target, { subtree: true, childList: true, characterData: true });
+    mutations.observe(target, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'aria-hidden', 'inert', 'open'] });
     target.addEventListener('load', invalidate, true);
     const fonts = target.ownerDocument.fonts;
     fonts?.addEventListener('loading', invalidate);
@@ -256,10 +262,13 @@ function MeasuredMarkdownTable({ node, renderChildren, options: settings }: Omit
     // an existing suffix. Its emergency-wrap rule is identical after commit.
     element.setAttribute('data-table-measuring', '');
     try {
+      refreshInlineMath(element);
       for (const [rowIndex, row] of [...element.rows].entries()) {
         flags.push([...row.cells].map((cell, column) => {
           const content = cell.querySelector<HTMLElement>('.limr-table-cell-content')!, window = cell.querySelector<HTMLElement>('.limr-table-cell-window')!;
-          const cut = !expanded.has(`${rowIndex}:${column}`) && (content.scrollHeight > window.clientHeight + 1 || content.scrollWidth > content.clientWidth + 1);
+          // Scroll extents include formula/italic ink outside the line box.
+          // Only an actually shortened content box is vertically truncated.
+          const cut = !expanded.has(`${rowIndex}:${column}`) && (content.getBoundingClientRect().height > window.getBoundingClientRect().height + 1 || tableCellOverflowsHorizontally(content));
           if (cut || managedCells.current.has(cell)) controlCells.current.push({ cell, content, window, cut });
           return cut;
         }));
@@ -272,6 +281,7 @@ function MeasuredMarkdownTable({ node, renderChildren, options: settings }: Omit
   }, [plan, expanded]);
   useIsomorphicLayoutEffect(() => {
     if (clipping.plan !== plan) return;
+    if (table.current) refreshInlineMath(table.current);
     const controls: { node: HTMLElement; hidden: boolean }[] = [];
     // Only confirmed clipped cells and controls previously hidden by this
     // table need final geometry. Do not rescan the whole table after commit.
