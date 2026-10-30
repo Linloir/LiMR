@@ -160,3 +160,29 @@ test('external citations can be deleted while authored citations remain read-onl
   await expect(readonly).toBeVisible();
   await expect(readonly.locator('.limr-annotation-actions')).toHaveCount(0);
 });
+
+for (const sidebar of [true, false]) for (const chinese of [true, false]) test(`table actions stay on one line per button in a narrow ${sidebar ? 'sidebar' : 'overlay'} (${chinese ? 'Chinese' : 'English'})`, async ({ page }) => {
+  await page.setViewportSize({ width: sidebar ? 1700 : 560, height: 1000 });
+  await stream(page, `| ${'A long header '.repeat(40)} |\n| --- |\n| short |`);
+  await page.evaluate(({ source, sidebar, chinese }) => window.limrStream({ source, sidebar, chinese, streaming: false }),
+    { source: `| ${'A long header '.repeat(40)} |\n| --- |\n| short |`, sidebar, chinese });
+  await page.locator('.limr-table-layout').getByRole('button', { name: chinese ? '单元格完整内容' : 'Full cell content', exact: true }).click();
+  const actions = page.locator(`${sidebar ? '.limr-sidebar-card[data-expanded]' : '.limr-annotation-overlay'} .limr-annotation-actions`);
+  await expect(actions).toBeVisible();
+  for (const width of [320, 150, 80, 320]) {
+    await actions.evaluate((element, width) => { element.style.width = `${width}px`; element.style.maxWidth = '100%'; }, width);
+    const geometry = await actions.evaluate(element => {
+      const bounds = element.getBoundingClientRect();
+      return [...element.querySelectorAll('button')].map(button => {
+        const label = button.querySelector<HTMLElement>('.limr-underline')!, box = button.getBoundingClientRect(), text = label.getBoundingClientRect(), css = getComputedStyle(label);
+        return { top: box.top, single: text.height <= parseFloat(css.lineHeight) + 2,
+          inside: box.left >= bounds.left - 1 && box.right <= bounds.right + 1, ellipsis: css.textOverflow,
+          truncated: label.scrollWidth > label.clientWidth, nowrap: css.whiteSpace };
+      });
+    });
+    expect(geometry.every(button => button.single && button.inside && button.nowrap === 'nowrap' && button.ellipsis === 'ellipsis')).toBe(true);
+    expect(new Set(geometry.map(button => button.top)).size).toBe(width === 320 ? 1 : 2);
+    if (width === 80) expect(geometry.some(button => button.truncated)).toBe(true);
+    await aligned(actions);
+  }
+});

@@ -436,10 +436,10 @@
   .limr-annotation-editor-input::placeholder { color: var(--limr-muted, #9b9590); opacity: .6; }
   /* Set the shared metrics on the action row as well as its controls: host
      button resets using font: inherit must inherit the label, not body text. */
-  .limr-annotation-actions { display: flex; justify-content: flex-end; gap: 16px; align-items: center; margin-top: 8px; padding: 0 2px 2px 0; font-size: var(--limr-annotation-label-size, 13px); line-height: 1.5; }
-  .limr-annotation-actions button { display: inline-flex; align-items: center; gap: .3em; padding: 0; border: 0; border-radius: 2px; background: transparent; color: var(--limr-muted, #9b9590); font: inherit; transition: color 250ms var(--limr-ease); }
+  .limr-annotation-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px 16px; align-items: center; margin-top: 8px; padding: 0 2px 2px 0; font-size: var(--limr-annotation-label-size, 13px); line-height: 1.5; }
+  .limr-annotation-actions button { display: inline-flex; flex: 0 1 auto; min-width: 0; max-width: 100%; white-space: nowrap; align-items: center; gap: .3em; padding: 0; border: 0; border-radius: 2px; background: transparent; color: var(--limr-muted, #9b9590); font: inherit; transition: color 250ms var(--limr-ease); }
   .limr-annotation-actions button:hover { color: var(--limr-text, #3d3a36); }
-  .limr-annotation-actions button > .limr-underline { padding-bottom: 1px; }
+  .limr-annotation-actions button > .limr-underline { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-bottom: 1px; }
   .limr-annotation-actions svg { flex: none; width: 1.15em; height: 1.15em; }
   .limr-annotation-actions .limr-annotation-submit { color: var(--limr-accent, #8a7865); font-weight: 600; }
   .limr-annotation-actions .limr-annotation-delete:hover { color: var(--limr-error, #b45858); }
