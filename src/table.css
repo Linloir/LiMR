@@ -1,5 +1,8 @@
 @layer limr {
-  .limr-table-layout { max-width: 100%; scrollbar-width: thin; overscroll-behavior-x: contain; }
+  .limr-table-scroll.limr-table-layout { max-width: 100%; overflow-x: clip; scrollbar-width: thin; overscroll-behavior-x: contain; }
+  /* A fitting table can briefly retain its previous tracks during resize.
+     Only a committed scrolling plan may open a native scrollbar. */
+  .limr-table-layout[data-table-scroll] { overflow-x: auto; }
   .limr-table-layout:focus-visible { outline: 2px solid var(--limr-focus, #8a7865); outline-offset: 3px; }
   .limr-table-layout > table { max-width: none; }
   .limr-table-layout .limr-table-cell { position: relative; padding: .625em; vertical-align: top; }
@@ -22,7 +25,7 @@
   .limr-table-full-content { overflow-wrap: anywhere; word-break: normal; }
   .limr-table-annotation-content { min-width: 0; }
   @media print {
-    .limr-table-layout { overflow: visible; }
+    .limr-table-scroll.limr-table-layout { overflow: visible; }
     .limr-table-layout > table { width: 100% !important; table-layout: auto !important; }
     .limr-table-cell-window { max-height: none !important; overflow: visible; }
     .limr-table-cell-window[data-truncated] { display: block; }

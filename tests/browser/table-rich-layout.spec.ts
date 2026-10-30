@@ -18,6 +18,31 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/?fixture=streaming'); await page.waitForFunction(() => !!window.limrStream);
 });
 
+test('fractional widths fit without a tiny scrollbar and real overflow remains scrollable', async ({ page }) => {
+  const labels = ['E-Commerce', 'Hello', 'Another', 'Ref.'];
+  const source = `| ${labels.join(' | ')} |\n| ${labels.map(() => '---').join(' | ')} |\n| ${labels.map(() => '✓').join(' | ')} |`;
+  await page.evaluate(source => window.limrStream({ source, streaming: false }), source);
+  await resize(page, 200);
+  const table = page.locator('.limr-table-layout');
+  await expect(table).toHaveAttribute('data-table-scroll', 'true');
+  expect(await table.evaluate(host => { host.scrollLeft = host.scrollWidth; return host.scrollLeft; })).toBeGreaterThan(20);
+  const minimum = await table.locator('table').evaluate(element => element.getBoundingClientRect().width);
+  // Visit both sides repeatedly, including multiple widths in one rounded
+  // clientWidth bucket. Neither the planner nor its cache may round upward.
+  for (const offset of [-.5, -.25, 0, .25, .5, 1, -.5]) {
+    await resize(page, minimum + offset);
+    await expect(table).not.toHaveAttribute('data-table-scroll', 'true');
+    const geometry = await table.evaluate(host => {
+      host.scrollLeft = host.scrollWidth;
+      return { travel: host.scrollLeft, overflow: host.scrollWidth - host.clientWidth,
+        widthError: host.querySelector('table')!.getBoundingClientRect().width - host.getBoundingClientRect().width };
+    });
+    expect(geometry.travel).toBe(0); expect(geometry.overflow).toBe(0);
+    expect(Math.abs(geometry.widthError)).toBeLessThan(.1);
+    await expect(table.locator('[data-truncated]')).toHaveCount(0);
+  }
+});
+
 test('short tall math and inline annotations stay complete regardless of source length', async ({ page }) => {
   const math = String.raw`\underbrace{\frac{a+b}{c+d}}_{\text{description}}`;
   const source = `| Formula | Notes |\n| --- | --- |\n| $${math}$ | compact^[${'A long **inline annotation**. '.repeat(80)}] |\n| $\\frac{x}{y}$ | <ref id="r">[4]</ref> |\n\n<citation id="r" title="Reference" />`;

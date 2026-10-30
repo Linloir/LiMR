@@ -134,6 +134,13 @@ function sampleRows(rows: readonly (readonly TableCellMetrics[])[]): number[] {
 
 function fillTracks(widths: number[], weights: readonly number[], available: number, protection: number) {
   let remaining = available - widths.reduce((sum, width) => sum + width, 0);
+  // Half-pixel candidate rounding can put a fitting plan just over budget.
+  // Absorb that residue in the tracks; a no-scroll plan must really fit.
+  if (remaining < 0 && remaining >= -1) {
+    const total = available - remaining;
+    widths.forEach((width, i) => { widths[i] = width * available / total; });
+    return;
+  }
   let active = widths.map((_, i) => i).filter(i => widths[i] < protection);
   while (remaining > .0001 && active.length) {
     const weight = active.reduce((sum, i) => sum + weights[i], 0);
@@ -218,7 +225,7 @@ export function layoutTable({ rows, availableWidth, options = {} }: TableLayoutI
       weight: Math.sqrt(Math.max(em, Math.min(protection, Math.max(typical, header?.naturalWidth ?? 0)))) };
   });
   const minimumSum = columns.reduce((sum, column) => sum + column.minimum, 0);
-  const scroll = minimumSum > available + .5;
+  const scroll = minimumSum > available + 1;
   const budget = scroll ? columns.reduce((sum, column) => sum + column.maximum, 0) : available;
   const widths = columns.map(column => column.minimum);
   let evaluations = 0;

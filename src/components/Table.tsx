@@ -171,9 +171,10 @@ function MeasuredMarkdownTable({ node, renderChildren, options: settings }: Omit
   const managedCells = useRef(new Set<HTMLTableCellElement>());
   const [plan, setPlan] = useState<TableLayoutPlan>();
   const [clipping, setClipping] = useState<{ plan?: TableLayoutPlan; flags: boolean[][] }>({ flags: [] });
-  // A resized plan starts from intrinsic predictions, so a suffix from the
-  // preceding narrow layout cannot perpetuate its own unnecessary truncation.
-  const clipped = clipping.plan === plan ? clipping.flags : plan?.clipped ?? [];
+  // Keep confirmed previews while a new plan is measured. Publishing its
+  // predictions first would remove/recreate sidebar cards on every resize.
+  // Full-width validation below ignores the old suffix independently.
+  const clipped = clipping.flags;
   const [expanded, setExpanded] = useOwnedNodeState<ReadonlySet<string>>(tableStateOwner, node, 'table-expanded-cells', () => new Set());
   const previousNode = useRef({ node, runtime });
   const owner = useRef({});
@@ -204,14 +205,18 @@ function MeasuredMarkdownTable({ node, renderChildren, options: settings }: Omit
     const update = () => {
       frame = 0;
       if (disposed || !visible || host.closest('[inert]')) return;
-      const availableWidth = host.clientWidth;
+      // clientWidth rounds to whole pixels, including rounding upward at the
+      // exact boundary where a native horizontal scrollbar would appear.
+      const css = getComputedStyle(host), pixels = (value: string) => parseFloat(value) || 0;
+      const availableWidth = pixels(css.width) - (css.boxSizing === 'border-box'
+        ? pixels(css.paddingLeft) + pixels(css.paddingRight) + pixels(css.borderLeftWidth) + pixels(css.borderRightWidth) : 0);
       if (availableWidth < 1) return;
       const fontKey = tableFontKey(target, overflowMarker.current);
       if (measured.current?.fontKey !== fontKey) { measured.current = undefined; cache.clear(); }
       if (availableWidth === lastWidth && measured.current) return;
       const measurement = measured.current ??= measureTable(target, overflowMarker.current);
       lastWidth = availableWidth;
-      const key = String(Math.round(availableWidth));
+      const key = String(availableWidth);
       let next = cache.get(key);
       if (!next) {
         next = algorithm({ rows: measurement.rows, availableWidth, options: { fontSize: measurement.fontSize, cellPadding: measurement.padding, ...layoutOptions } });
